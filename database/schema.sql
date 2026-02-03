@@ -117,8 +117,8 @@ CREATE TABLE bookings (
     status ENUM('pending','confirmed','cancelled','completed')
         DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (room_id) REFERENCES rooms(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 
 CREATE TABLE room_booked_dates (
@@ -127,8 +127,8 @@ CREATE TABLE room_booked_dates (
     booked_date DATE,
     booking_id BIGINT UNSIGNED,
     UNIQUE (room_id, booked_date),
-    FOREIGN KEY (room_id) REFERENCES rooms(id),
-    FOREIGN KEY (booking_id) REFERENCES bookings(id)
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
 );
 
 CREATE TABLE payments (
@@ -138,7 +138,7 @@ CREATE TABLE payments (
     method VARCHAR(50),
     status ENUM('pending','paid','failed'),
     paid_at DATETIME,
-    FOREIGN KEY (booking_id) REFERENCES bookings(id)
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
 );
 
 CREATE TABLE booking_logs (
@@ -147,7 +147,7 @@ CREATE TABLE booking_logs (
     old_status VARCHAR(50),
     new_status VARCHAR(50),
     changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (booking_id) REFERENCES bookings(id)
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
 );
 
 CREATE TABLE reviews (
@@ -159,8 +159,8 @@ CREATE TABLE reviews (
     reply TEXT,
     replied_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (room_id) REFERENCES rooms(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 
 CREATE TABLE coupons (

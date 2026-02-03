@@ -12,29 +12,30 @@
                         Đăng ký để nhận ưu đãi độc quyền và quản lý đặt phòng nhanh chóng.
                     </p>
 
-                    <form>
+                    <form method="POST" action="{{ route('register.submit') }}">
+                                            @csrf
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Họ và tên</label>
-                                <input type="text" class="form-control" placeholder="Nguyễn Văn A">
+                                <input type="text" class="form-control" name="full_name" placeholder="Nguyễn Văn A" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Số điện thoại</label>
-                                <input type="text" class="form-control" placeholder="09xx xxx xxx">
+                                <input type="text" class="form-control" name="phone" placeholder="09xx xxx xxx">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" placeholder="you@example.com">
+                            <input type="email" class="form-control" name="email" placeholder="you@example.com" required>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Mật khẩu</label>
-                                <input type="password" class="form-control" placeholder="••••••••">
+                                <input type="password" class="form-control" name="password" placeholder="••••••••" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Xác nhận mật khẩu</label>
-                                <input type="password" class="form-control" placeholder="••••••••">
+                                <input type="password" class="form-control" name="password_confirmation" placeholder="••••••••" required>
                             </div>
                         </div>
                         <div class="form-check mb-3 small">
