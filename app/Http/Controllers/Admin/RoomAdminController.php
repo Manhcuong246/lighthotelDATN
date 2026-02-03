@@ -65,6 +65,16 @@ class RoomAdminController extends Controller
 
     public function destroy(Room $room)
     {
+        // Kiểm tra có booking đang hoạt động không
+        $activeBookings = $room->bookings()
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->count();
+
+        if ($activeBookings > 0) {
+            return redirect()->route('admin.rooms.index')
+                ->with('error', 'Không thể xóa phòng có ' . $activeBookings . ' booking đang hoạt động!');
+        }
+
         $room->delete();
 
         return redirect()->route('admin.rooms.index')->with('success', 'Xóa phòng thành công.');

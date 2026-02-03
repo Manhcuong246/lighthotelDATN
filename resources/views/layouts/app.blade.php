@@ -139,16 +139,28 @@
                     <a class="nav-link fw-medium" href="#rooms-section">Phòng & giá</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link fw-medium" href="{{ route('admin.dashboard') }}">Quản trị</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link fw-medium" href="{{ route('admin.rooms.index') }}">Quản lý phòng</a>
                 </li>
             </ul>
             <div class="d-flex ms-lg-4 mt-3 mt-lg-0 gap-2">
+                @auth
+                <a href="#" class="btn btn-outline-light btn-sm px-3" onclick="event.preventDefault(); document.getElementById('main-logout-form').submit();">
+                    Đăng xuất
+                </a>
+                <form id="main-logout-form" action="{{ route('admin.logout') }}" method="POST" class="d-none">
+                    @csrf
+                </form>
+                @else
                 <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm px-3">
                     Đăng nhập
                 </a>
                 <a href="{{ route('register') }}" class="btn btn-light btn-sm px-3 text-dark fw-semibold">
                     Đăng ký
                 </a>
+                @endauth
             </div>
         </div>
     </div>
