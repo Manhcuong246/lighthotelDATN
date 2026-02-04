@@ -3,7 +3,6 @@
 @section('title', $hotel->name ?? 'Danh sách phòng')
 
 @section('content')
-    {{-- Hero section --}}
     <section class="hero-section mb-5">
         <div class="hero-bg"></div>
         <div class="hero-overlay"></div>
@@ -62,7 +61,6 @@
         </div>
     </section>
 
-    {{-- Section title --}}
     <div id="rooms-section" class="d-flex justify-content-between align-items-end mb-3">
         <div>
             <div class="section-title">Phòng & giá</div>
@@ -109,9 +107,18 @@
                                 <div>Thanh toán tại khách sạn</div>
                             </div>
                         </div>
-                        <a href="{{ route('rooms.show', $room) }}" class="btn btn-primary mt-auto w-100">
-                            Xem chi tiết &amp; đặt phòng
-                        </a>
+                        @auth
+                            @if(auth()->user()->canAccessAdmin())
+                                <div class="d-flex gap-2 mt-auto">
+                                    <a href="{{ route('rooms.show', $room) }}" class="btn btn-outline-primary flex-grow-1">Xem chi tiết</a>
+                                    <a href="{{ route('admin.rooms.edit', $room) }}" class="btn btn-primary">Sửa</a>
+                                </div>
+                            @else
+                                <a href="{{ route('rooms.show', $room) }}" class="btn btn-primary mt-auto w-100">Xem chi tiết &amp; đặt phòng</a>
+                            @endif
+                        @else
+                            <a href="{{ route('rooms.show', $room) }}" class="btn btn-primary mt-auto w-100">Xem chi tiết &amp; đặt phòng</a>
+                        @endauth
                     </div>
                 </div>
             </div>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Light Hotel')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         html, body {
             height: 100%;
@@ -110,6 +111,27 @@
             color: #6b7280;
             font-size: .78rem;
         }
+        .avatar-header {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .avatar-placeholder {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .dropdown-user .dropdown-toggle::after { margin-left: 0.4rem; }
         main {
             flex: 1 0 auto;
         }
@@ -132,23 +154,48 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-                <li class="nav-item">
-                    <a class="nav-link fw-medium" href="{{ route('home') }}">Trang chủ</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-medium" href="#rooms-section">Phòng & giá</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-medium" href="{{ route('admin.rooms.index') }}">Quản lý phòng</a>
-                </li>
+                @auth
+                    @if(auth()->user()->canAccessAdmin())
+                    <li class="nav-item">
+                        <a class="nav-link fw-medium" href="{{ route('admin.dashboard') }}">Quản trị</a>
+                    </li>
+                    @endif
+                @endauth
             </ul>
-            <div class="d-flex ms-lg-4 mt-3 mt-lg-0 gap-2">
+            <div class="d-flex ms-lg-4 mt-3 mt-lg-0 align-items-center gap-2">
+                @auth
+                <div class="dropdown dropdown-user">
+                    <a class="d-flex align-items-center text-decoration-none text-white dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        @if(auth()->user()->avatar_url)
+                            <img src="{{ asset(auth()->user()->avatar_url) }}" alt="" class="avatar-header me-2">
+                        @else
+                            <span class="avatar-placeholder me-2">{{ strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1)) }}</span>
+                        @endif
+                        <span class="d-none d-md-inline fw-medium">{{ auth()->user()->full_name }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-1">
+                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Lịch sử đặt phòng</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Hồ sơ</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.settings') }}"><i class="bi bi-gear me-2"></i>Cài đặt</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item py-2 text-danger" href="#" onclick="event.preventDefault(); document.getElementById('main-logout-form').submit();">
+                                <i class="bi bi-box-arrow-right me-2"></i>Đăng xuất
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <form id="main-logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                    @csrf
+                </form>
+                @else
                 <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm px-3">
                     Đăng nhập
                 </a>
                 <a href="{{ route('register') }}" class="btn btn-light btn-sm px-3 text-dark fw-semibold">
                     Đăng ký
                 </a>
+                @endauth
             </div>
         </div>
     </div>
@@ -156,8 +203,10 @@
 
 <main class="container mb-5">
     @if(session('success'))
-        <div class="alert alert-success">
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
             {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
         </div>
     @endif
 
