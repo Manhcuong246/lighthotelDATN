@@ -10,7 +10,6 @@ class ReviewAdminController extends Controller
 {
     public function __construct()
     {
-        // Apply admin middleware to all methods in this controller
         $this->middleware('admin');
     }
 
@@ -45,6 +44,9 @@ class ReviewAdminController extends Controller
 
     public function destroy(Review $review)
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được xóa đánh giá.');
+        }
         $review->delete();
 
         return redirect()->route('admin.reviews.index')->with('success', 'Xóa đánh giá thành công.');

@@ -203,18 +203,23 @@
             <div class="d-flex align-items-center ms-auto">
                 <div class="dropdown">
                     <a class="user-info dropdown-toggle d-flex align-items-center text-decoration-none" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
-                        <span class="d-none d-md-inline">Admin User</span>
+                        @if(auth()->user()->avatar_url)
+                            <img src="{{ asset(auth()->user()->avatar_url) }}" alt="" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;border:2px solid rgba(255,255,255,0.5)">
+                        @else
+                            <span class="rounded-circle me-2 d-inline-flex align-items-center justify-content-center text-white fw-bold" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.95rem">{{ strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1)) }}</span>
+                        @endif
+                        <span class="d-none d-md-inline">{{ auth()->user()->isAdmin() ? 'Quản trị viên' : 'Nhân viên' }}</span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i> Hồ sơ</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i> Cài đặt</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-1">
+                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Lịch sử đặt phòng</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Hồ sơ</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.settings') }}"><i class="bi bi-gear me-2"></i>Cài đặt</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bi bi-box-arrow-right me-2"></i> Đăng xuất</a></li>
-                                            <form id="logout-form" action="{{ route('admin.logout') }}" method="POST" class="d-none">
-                                                @csrf
-                                            </form>
+                        <li><a class="dropdown-item py-2 text-danger" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
                     </ul>
+                    <form id="logout-form" action="{{ route('admin.logout') }}" method="POST" class="d-none">
+                        @csrf
+                    </form>
                 </div>
             </div>
         </div>
@@ -229,45 +234,55 @@
             </div>
             <ul class="nav flex-column mt-4">
                 <li class="nav-item">
-                    <a class="nav-link active" href="{{ route('admin.dashboard') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
                         <i class="bi bi-speedometer2"></i>
                         Bảng điều khiển
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('admin.rooms.index') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.rooms*') ? 'active' : '' }}" href="{{ route('admin.rooms.index') }}">
                         <i class="bi bi-door-open"></i>
                         Quản lý phòng
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('admin.bookings.index') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.bookings*') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
                         <i class="bi bi-calendar-check"></i>
                         Đặt phòng
                     </a>
                 </li>
+                @if(auth()->user()->isAdmin())
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('admin.users.index') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.users*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                         <i class="bi bi-people"></i>
                         Người dùng
                     </a>
                 </li>
+                @endif
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('admin.reviews.index') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.reviews*') ? 'active' : '' }}" href="{{ route('admin.reviews.index') }}">
                         <i class="bi bi-chat-square-text"></i>
                         Đánh giá
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('admin.payments.index') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.payments*') ? 'active' : '' }}" href="{{ route('admin.payments.index') }}">
                         <i class="bi bi-credit-card"></i>
                         Thanh toán
                     </a>
                 </li>
+                @if(auth()->user()->isAdmin())
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('admin.settings.index') }}">
+                    <a class="nav-link {{ request()->routeIs('admin.settings*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
                         <i class="bi bi-gear"></i>
                         Cài đặt
+                    </a>
+                </li>
+                @endif
+                <li class="nav-item mt-3 pt-3 border-top border-secondary">
+                    <a class="nav-link" href="{{ route('home') }}">
+                        <i class="bi bi-house-door"></i>
+                        Trang chủ
                     </a>
                 </li>
             </ul>
@@ -278,6 +293,12 @@
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ session('error') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif

@@ -18,7 +18,6 @@ return [
     |
     */
 
-    // Ép dùng file session cho đơn giản, không cần bảng `sessions` trong database
     'driver' => 'file',
 
     /*
