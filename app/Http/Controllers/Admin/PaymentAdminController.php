@@ -10,7 +10,6 @@ class PaymentAdminController extends Controller
 {
     public function __construct()
     {
-        // Apply admin middleware to all methods in this controller
         $this->middleware('admin');
     }
 
@@ -45,6 +44,9 @@ class PaymentAdminController extends Controller
 
     public function destroy(Payment $payment)
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được xóa thanh toán.');
+        }
         $payment->delete();
 
         return redirect()->route('admin.payments.index')->with('success', 'Xóa thanh toán thành công.');

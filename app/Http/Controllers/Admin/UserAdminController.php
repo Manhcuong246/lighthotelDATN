@@ -7,14 +7,13 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 
 class UserAdminController extends Controller
 {
     public function __construct()
     {
-        // Apply admin middleware to all methods in this controller
         $this->middleware('admin');
+        $this->middleware('admin.only');
     }
 
     public function index()
@@ -46,12 +45,9 @@ class UserAdminController extends Controller
         $user->update($validated);
 
         if ($request->filled('password')) {
-            $user->update([
-                'password' => Hash::make($request->password)
-            ]);
+            $user->update(['password' => $request->password]);
         }
 
-        // Update roles if provided
         if ($request->filled('role_ids') && is_array($request->role_ids)) {
             $user->roles()->sync($request->role_ids);
         }

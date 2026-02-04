@@ -57,15 +57,20 @@
         <div class="row justify-content-center">
             <div class="login-container">
                 <div class="login-header">
-                    <h2><i class="bi bi-shield-lock me-2"></i> Admin Portal</h2>
-                    <p class="mb-0 opacity-75">Đăng nhập vào bảng điều khiển quản trị</p>
+                    <h2><i class="bi bi-shield-lock me-2"></i> Quản trị</h2>
+                    <p class="mb-0 opacity-75">Đăng nhập dành cho Quản trị viên & Nhân viên</p>
                 </div>
                 <div class="login-body">
+                    @if($errors->any())
+                        <div class="alert alert-danger py-2 small">
+                            @foreach($errors->all() as $err) {{ $err }} @endforeach
+                        </div>
+                    @endif
                     <form method="POST" action="{{ route('admin.login.submit') }}">
                         @csrf
                         <div class="mb-3">
-                            <label for="email" class="form-label">Email quản trị</label>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="Nhập email quản trị" required>
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ old('email') }}" placeholder="Nhập email" required>
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Mật khẩu</label>

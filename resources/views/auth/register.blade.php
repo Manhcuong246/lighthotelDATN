@@ -13,25 +13,33 @@
                     </p>
 
                     <form method="POST" action="{{ route('register.submit') }}">
-                                            @csrf
+                        @csrf
+                        @if($errors->any())
+                            <div class="alert alert-danger py-2 small">
+                                <ul class="mb-0 list-unstyled">@foreach($errors->all() as $err) <li>{{ $err }}</li> @endforeach</ul>
+                            </div>
+                        @endif
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Họ và tên</label>
-                                <input type="text" class="form-control" name="full_name" placeholder="Nguyễn Văn A" required>
+                                <input type="text" class="form-control @error('full_name') is-invalid @enderror" name="full_name" value="{{ old('full_name') }}" placeholder="Nguyễn Văn A" required>
+                                @error('full_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Số điện thoại</label>
-                                <input type="text" class="form-control" name="phone" placeholder="09xx xxx xxx">
+                                <input type="text" class="form-control" name="phone" value="{{ old('phone') }}" placeholder="09xx xxx xxx">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" placeholder="you@example.com" required>
+                            <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="you@example.com" required>
+                            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Mật khẩu</label>
-                                <input type="password" class="form-control" name="password" placeholder="••••••••" required>
+                                <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="••••••••" required>
+                                @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Xác nhận mật khẩu</label>

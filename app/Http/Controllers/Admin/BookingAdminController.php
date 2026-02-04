@@ -10,7 +10,6 @@ class BookingAdminController extends Controller
 {
     public function __construct()
     {
-        // Apply admin middleware to all methods in this controller
         $this->middleware('admin');
     }
 
@@ -45,6 +44,9 @@ class BookingAdminController extends Controller
 
     public function destroy(Booking $booking)
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được xóa đơn đặt phòng.');
+        }
         $booking->delete();
 
         return redirect()->route('admin.bookings.index')->with('success', 'Xóa đơn đặt phòng thành công.');

@@ -11,22 +11,18 @@ use App\Http\Controllers\Admin\ReviewAdminController;
 use App\Http\Controllers\Admin\PaymentAdminController;
 use App\Http\Controllers\Admin\SettingsAdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AccountController;
 
-// Trang chủ: danh sách phòng
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
-// Chi tiết phòng + form đặt phòng
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 
-// Xử lý đặt phòng
 Route::post('/rooms/{room}/book', [BookingController::class, 'store'])->name('bookings.store');
 
-// Trang đăng nhập admin
 Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [AdminController::class, 'login'])->name('admin.login.submit');
 Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.logout');
 
-// Khu vực quản trị (có xác thực admin)
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/rooms', [RoomAdminController::class, 'index'])->name('rooms.index');
@@ -65,11 +61,18 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::put('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.update.site.content');
 });
 
-// Authentication routes
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
 Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
+    Route::get('/bookings', [AccountController::class, 'bookings'])->name('bookings');
+    Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
+    Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
+    Route::get('/settings', [AccountController::class, 'settings'])->name('settings');
+    Route::put('/settings', [AccountController::class, 'updateSettings'])->name('settings.update');
+});
 
 
