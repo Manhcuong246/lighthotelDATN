@@ -12,18 +12,26 @@
                         Đăng nhập để quản lý đặt phòng và thông tin tài khoản.
                     </p>
 
-                    <form>
+                    <form method="POST" action="{{ route('login.submit') }}">
+                        @csrf
+                        @if($errors->any())
+                            <div class="alert alert-danger py-2 small">
+                                @foreach($errors->all() as $err) {{ $err }} @endforeach
+                            </div>
+                        @endif
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" placeholder="you@example.com">
+                            <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="you@example.com" required>
+                            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mật khẩu</label>
-                            <input type="password" class="form-control" placeholder="••••••••">
+                            <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="••••••••" required>
+                            @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-3 small">
                             <div>
-                                <input type="checkbox" id="remember" class="form-check-input me-1">
+                                <input type="checkbox" id="remember" name="remember" class="form-check-input me-1">
                                 <label for="remember" class="form-check-label">Ghi nhớ đăng nhập</label>
                             </div>
                             <a href="#" class="text-decoration-none">Quên mật khẩu?</a>

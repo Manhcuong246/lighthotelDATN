@@ -17,11 +17,17 @@ class RoomAdminController extends Controller
 
     public function create()
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được thêm phòng mới.');
+        }
         return view('admin.rooms.create');
     }
 
     public function store(Request $request)
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được thêm phòng mới.');
+        }
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'nullable|string|max:100',
@@ -65,6 +71,18 @@ class RoomAdminController extends Controller
 
     public function destroy(Room $room)
     {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được xóa phòng.');
+        }
+        $activeBookings = $room->bookings()
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->count();
+
+        if ($activeBookings > 0) {
+            return redirect()->route('admin.rooms.index')
+                ->with('error', 'Không thể xóa phòng có ' . $activeBookings . ' booking đang hoạt động!');
+        }
+
         $room->delete();
 
         return redirect()->route('admin.rooms.index')->with('success', 'Xóa phòng thành công.');
