@@ -98,29 +98,6 @@ class BookingController extends Controller
 
         return $total;
     }
-    public function checkIn(Booking $booking)
-    {
-        abort_unless($booking->isCheckinAllowed(), 403);
-
-        $booking->update([
-            'checked_in_at' => now(),
-        ]);
-
-        return back()->with('success', 'Check-in thành công');
-    }
-
-    public function checkOut(Booking $booking)
-    {
-        abort_unless($booking->isCheckoutAllowed(), 403);
-
-        $booking->update([
-            'checked_out_at' => now(),
-            'status' => 'completed',
-        ]);
-
-        return back()->with('success', 'Check-out thành công');
-    }
-
 }
 
 
