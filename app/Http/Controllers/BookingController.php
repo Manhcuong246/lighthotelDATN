@@ -12,7 +12,6 @@ use Carbon\CarbonPeriod;
 
 class BookingController extends Controller
 {
-    // Xử lý đặt phòng đơn giản cho 1 phòng
     public function store(Request $request, Room $room)
     {
         $data = $request->validate([
@@ -24,7 +23,6 @@ class BookingController extends Controller
             'guests' => 'required|integer|min:1|max:' . $room->max_guests,
         ]);
 
-        // Tính tổng tiền
         $checkIn = new \Carbon\Carbon($data['check_in']);
         $checkOut = new \Carbon\Carbon($data['check_out']);
         $nights = $checkIn->diffInDays($checkOut);
@@ -35,7 +33,6 @@ class BookingController extends Controller
 
         $totalPrice = $this->calculateTotalPrice($room, $checkIn, $checkOut);
 
-        // Kiểm tra trùng lịch
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
         $dates = collect();
         foreach ($period as $date) {
@@ -52,7 +49,6 @@ class BookingController extends Controller
 
         DB::beginTransaction();
         try {
-            // Nếu chưa có user đăng nhập, bạn có thể gắn tạm user_id = null hoặc 1 user guest.
             $booking = Booking::create([
                 'user_id' => null,
                 'room_id' => $room->id,
@@ -63,7 +59,6 @@ class BookingController extends Controller
                 'status' => 'pending',
             ]);
 
-            // Lưu ngày đã đặt
             foreach ($dates as $d) {
                 RoomBookedDate::create([
                     'room_id' => $room->id,
@@ -82,7 +77,6 @@ class BookingController extends Controller
         }
     }
 
-    // Hàm tính tổng tiền theo base_price và bảng room_prices
     protected function calculateTotalPrice(Room $room, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): float
     {
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
@@ -104,6 +98,29 @@ class BookingController extends Controller
 
         return $total;
     }
+    public function checkIn(Booking $booking)
+    {
+        abort_unless($booking->isCheckinAllowed(), 403);
+
+        $booking->update([
+            'checked_in_at' => now(),
+        ]);
+
+        return back()->with('success', 'Check-in thành công');
+    }
+
+    public function checkOut(Booking $booking)
+    {
+        abort_unless($booking->isCheckoutAllowed(), 403);
+
+        $booking->update([
+            'checked_out_at' => now(),
+            'status' => 'completed',
+        ]);
+
+        return back()->with('success', 'Check-out thành công');
+    }
+
 }
 
 
