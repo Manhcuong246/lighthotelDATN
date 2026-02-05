@@ -222,11 +222,9 @@
     </div>
 </div>
 
-<!-- Chart.js for revenue chart -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Monthly Revenue Chart
     const ctx = document.getElementById('monthlyRevenueChart').getContext('2d');
     const monthlyRevenueChart = new Chart(ctx, {
         type: 'line',

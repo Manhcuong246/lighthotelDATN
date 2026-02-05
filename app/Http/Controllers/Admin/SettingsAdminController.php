@@ -11,16 +11,14 @@ class SettingsAdminController extends Controller
 {
     public function __construct()
     {
-        // Apply admin middleware to all methods in this controller
         $this->middleware('admin');
+        $this->middleware('admin.only');
     }
 
     public function index()
     {
-        // Get hotel information
         $hotelInfo = HotelInfo::first();
-        
-        // Get site content
+
         $banners = SiteContent::where('type', 'banner')->get();
         $abouts = SiteContent::where('type', 'about')->get();
         $policies = SiteContent::where('type', 'policy')->get();
