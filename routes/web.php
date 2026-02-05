@@ -31,34 +31,31 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/rooms/{room}/edit', [RoomAdminController::class, 'edit'])->name('rooms.edit');
     Route::put('/rooms/{room}', [RoomAdminController::class, 'update'])->name('rooms.update');
     Route::delete('/rooms/{room}', [RoomAdminController::class, 'destroy'])->name('rooms.destroy');
-
+    
     Route::get('/bookings', [BookingAdminController::class, 'index'])->name('bookings.index');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
     Route::get('/bookings/{booking}/edit', [BookingAdminController::class, 'edit'])->name('bookings.edit');
     Route::put('/bookings/{booking}', [BookingAdminController::class, 'update'])->name('bookings.update');
-    Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
-    Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
-    Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
     Route::delete('/bookings/{booking}', [BookingAdminController::class, 'destroy'])->name('bookings.destroy');
-
+    
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');
     Route::get('/users/{user}', [UserAdminController::class, 'show'])->name('users.show');
     Route::get('/users/{user}/edit', [UserAdminController::class, 'edit'])->name('users.edit');
     Route::put('/users/{user}', [UserAdminController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [UserAdminController::class, 'destroy'])->name('users.destroy');
-
+    
     Route::get('/reviews', [ReviewAdminController::class, 'index'])->name('reviews.index');
     Route::get('/reviews/{review}', [ReviewAdminController::class, 'show'])->name('reviews.show');
     Route::get('/reviews/{review}/edit', [ReviewAdminController::class, 'edit'])->name('reviews.edit');
     Route::put('/reviews/{review}', [ReviewAdminController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [ReviewAdminController::class, 'destroy'])->name('reviews.destroy');
-
+    
     Route::get('/payments', [PaymentAdminController::class, 'index'])->name('payments.index');
     Route::get('/payments/{payment}', [PaymentAdminController::class, 'show'])->name('payments.show');
     Route::get('/payments/{payment}/edit', [PaymentAdminController::class, 'edit'])->name('payments.edit');
     Route::put('/payments/{payment}', [PaymentAdminController::class, 'update'])->name('payments.update');
     Route::delete('/payments/{payment}', [PaymentAdminController::class, 'destroy'])->name('payments.destroy');
-
+    
     Route::get('/settings', [SettingsAdminController::class, 'index'])->name('settings.index');
     Route::put('/settings/general', [SettingsAdminController::class, 'updateGeneral'])->name('settings.update.general');
     Route::put('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.update.site.content');
