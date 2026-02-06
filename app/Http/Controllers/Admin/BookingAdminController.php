@@ -90,12 +90,22 @@ class BookingAdminController extends Controller
     public function destroy(Booking $booking)
     {
         $user = Auth::user();
-        if (!$user || $user->role !== 'admin') {
+        if (!$user || !$user->isAdmin()) {
             abort(403, 'Chỉ quản trị viên mới được xóa đơn đặt phòng.');
         }
-        $booking->delete();
+        DB::beginTransaction();
+        try {
+            // Remove related booked date records first to satisfy FK constraints
+            RoomBookedDate::where('booking_id', $booking->id)->delete();
 
-        return redirect()->route('admin.bookings.index')->with('success', 'Xóa đơn đặt phòng thành công.');
+            $booking->delete();
+
+            DB::commit();
+            return redirect()->route('admin.bookings.index')->with('success', 'Xóa đơn đặt phòng thành công.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi khi xóa đơn đặt phòng. Vui lòng thử lại sau.');
+        }
     }
 
     public function updateStatus(Request $request, Booking $booking)

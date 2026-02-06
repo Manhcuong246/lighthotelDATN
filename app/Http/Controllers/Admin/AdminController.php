@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -19,19 +20,19 @@ class AdminController extends Controller
     {
         return view('admin.dashboard');
     }
-    
+
     public function showLoginForm()
     {
         return view('admin.login');
     }
-    
+
     public function login(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
-        
+
         $remember = $request->filled('remember');
 
         $user = User::with('roles')->where('email', $request->email)->first();
@@ -45,14 +46,14 @@ class AdminController extends Controller
             return back()->withErrors(['email' => 'Bạn không có quyền truy cập khu vực quản trị. Chỉ admin và nhân viên mới đăng nhập tại đây.']);
         }
 
-        if ($user->password === $request->password) {
+        if (Hash::check($request->password, $user->password)) {
             Auth::login($user, $remember);
             return redirect()->intended(route('admin.dashboard'));
         }
 
         return back()->withErrors(['email' => 'Thông tin đăng nhập không chính xác.']);
     }
-    
+
     public function logout()
     {
         Auth::logout();

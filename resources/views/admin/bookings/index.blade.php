@@ -7,8 +7,54 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h2 fw-bold mb-0 text-dark">📋 Quản lý đặt phòng</h1>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-primary rounded-pill fs-6 px-3 py-2">{{ $bookings->total() }} đơn đặt phòng</span>
+
+        <!-- Notification Bell -->
+        <div class="dropdown">
+            <button class="btn btn-light btn-lg position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-bell-fill fs-5" style="color: #ff6b6b;"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {{ $bookings->total() }}
+                    <span class="visually-hidden">đơn chưa xem</span>
+                </span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 300px;">
+                <li><h6 class="dropdown-header">📬 Đơn đặt phòng</h6></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('admin.bookings.index') }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>📊 Tổng đơn:</strong></span>
+                            <span class="badge bg-primary">{{ $bookings->total() }}</span>
+                        </div>
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=pending">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>⏳ Chờ xác nhận:</strong></span>
+                            <span class="badge bg-warning">{{ $bookings->where('status', 'pending')->count() }}</span>
+                        </div>
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=confirmed">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>✓ Đã xác nhận:</strong></span>
+                            <span class="badge bg-info">{{ $bookings->where('status', 'confirmed')->count() }}</span>
+                        </div>
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=completed">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>✓✓ Hoàn thành:</strong></span>
+                            <span class="badge bg-success">{{ $bookings->where('status', 'completed')->count() }}</span>
+                        </div>
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-center small text-primary fw-bold" href="{{ route('admin.bookings.index') }}">→ Xem danh sách chi tiết</a></li>
+            </ul>
         </div>
     </div>
 
@@ -86,9 +132,12 @@
                             </td>
                             <td class="action-buttons">
                                 <div class="d-flex align-items-center gap-2">
+                                    {{-- Toggle details --}}
+                                    <button class="btn btn-sm btn-outline-secondary px-3" type="button" data-bs-toggle="collapse" data-bs-target="#details-{{ $booking->id }}" aria-expanded="false" aria-controls="details-{{ $booking->id }}">
+                                        Chi tiết
+                                    </button>
                                     {{-- View button --}}
-                                    <a href="{{ route('admin.bookings.show', $booking) }}"
-                                    class="btn btn-sm btn-outline-primary px-3">
+                                    <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary px-3">
                                         Xem
                                     </a>
 
@@ -179,6 +228,27 @@
                                 </div>
                             </td>
                         </tr>
+                        <tr>
+                            <td colspan="9" class="bg-light">
+                                <div class="collapse" id="details-{{ $booking->id }}">
+                                    <div class="p-3">
+                                        <div class="row">
+                                            <div class="col-md-3"><strong>Khách:</strong> {{ $booking->user?->full_name ?? '—' }}<br><small class="text-muted">{{ $booking->user?->phone ?? '—' }}</small></div>
+                                            <div class="col-md-3"><strong>Phòng:</strong> {{ $booking->room?->name ?? '—' }} <small class="text-muted">({{ $booking->room?->type ?? '—' }})</small></div>
+                                            <div class="col-md-2"><strong>Check-in:</strong> {{ $booking->check_in?->format('d/m/Y') ?? '—' }}</div>
+                                            <div class="col-md-2"><strong>Check-out:</strong> {{ $booking->check_out?->format('d/m/Y') ?? '—' }}</div>
+                                            <div class="col-md-2"><strong>Thanh toán:</strong> {{ $booking->payment?->status ?? '—' }}</div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-3"><strong>Số khách:</strong> {{ $booking->guests ?? 0 }}</div>
+                                            <div class="col-md-3"><strong>Tổng tiền:</strong> {{ number_format($booking->total_price ?? 0,0,',','.') }} ₫</div>
+                                            <div class="col-md-3"><strong>Thực tế check-in:</strong> {{ $booking->actual_check_in?->format('d/m/Y H:i') ?? '—' }}</div>
+                                            <div class="col-md-3"><strong>Thực tế check-out:</strong> {{ $booking->actual_check_out?->format('d/m/Y H:i') ?? '—' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
                     @empty
                         <tr>
                             <td colspan="9" class="text-center py-4 text-muted">📭 Chưa có đơn đặt phòng</td>
@@ -216,7 +286,10 @@
     .card-header-admin {
         background: linear-gradient(90deg, #3b49d6 0%, #4b3bd6 100%);
         color: #fff;
-        border-top-left-radius: 10px;
+        border-top-lef        php artisan tinker
+        $user = \App\Models\User::find(USER_ID);
+        $admin = \App\Models\Role::where('name','admin')->first();
+        $user->roles()->attach($admin->id);t-radius: 10px;
         border-top-right-radius: 10px;
         box-shadow: 0 2px 6px rgba(75,59,214,0.12) inset;
     }
