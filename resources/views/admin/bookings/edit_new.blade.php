@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Sửa đơn đặt phòng (Compact)')
+@section('title', 'Sửa đơn đặt phòng')
 
 @section('content')
 <div class="container-fluid px-3 px-lg-4">

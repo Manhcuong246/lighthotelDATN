@@ -77,6 +77,60 @@ class BookingController extends Controller
         }
     }
 
+    public function update(Request $request, Booking $booking)
+    {
+        $data = $request->validate([
+            'check_in' => 'required|date',
+            'check_out' => 'required|date|after:check_in',
+            'guests' => 'required|integer|min:1|max:' . $booking->room->max_guests,
+            'total_price' => 'required|numeric|min:0',
+            'status' => 'required|in:pending,confirmed,completed,cancelled',
+        ]);
+
+        $checkIn = new \Carbon\Carbon($data['check_in']);
+        $checkOut = new \Carbon\Carbon($data['check_out']);
+        $nights = $checkIn->diffInDays($checkOut);
+
+        if ($nights <= 0) {
+            return back()->withErrors('Ngày trả phòng phải sau ngày nhận phòng.')->withInput();
+        }
+
+        DB::beginTransaction();
+        try {
+            // If check-in or check-out dates changed, update the RoomBookedDate records
+            if ($booking->check_in != $checkIn->format('Y-m-d') || $booking->check_out != $checkOut->format('Y-m-d')) {
+                // Delete old booked dates
+                RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+                // Create new booked dates
+                $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+                foreach ($period as $date) {
+                    RoomBookedDate::create([
+                        'room_id' => $booking->room_id,
+                        'booked_date' => $date->toDateString(),
+                        'booking_id' => $booking->id,
+                    ]);
+                }
+            }
+
+            // Update the booking
+            $booking->update([
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'guests' => $data['guests'],
+                'total_price' => $data['total_price'],
+                'status' => $data['status'],
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.bookings.show', $booking)->with('success', 'Cập nhật đơn thành công');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra, vui lòng thử lại sau.')->withInput();
+        }
+    }
+
     protected function calculateTotalPrice(Room $room, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): float
     {
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
