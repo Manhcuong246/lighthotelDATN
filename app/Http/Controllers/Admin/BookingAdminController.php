@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\RoomBookedDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
 {
@@ -33,25 +36,55 @@ class BookingAdminController extends Controller
     public function update(Request $request, Booking $booking)
     {
         $validated = $request->validate([
-            'guests' => 'required|integer|min:1',
+            'check_in' => 'required|date',
+            'check_out' => 'required|date|after:check_in',
+            'guests' => 'required|integer|min:1|max:' . $booking->room->max_guests,
             'total_price' => 'required|numeric|min:0',
             'status' => 'required|in:pending,confirmed,cancelled,completed',
         ]);
 
         $old_status = $booking->status;
-        $booking->update($validated);
 
-        // Log status change if status was updated
-        if ($old_status !== $booking->status) {
-            \App\Models\BookingLog::create([
-                'booking_id' => $booking->id,
-                'old_status' => $old_status,
-                'new_status' => $booking->status,
-                'changed_at' => now(),
-            ]);
+        DB::beginTransaction();
+        try {
+            // If check-in or check-out dates changed, update the RoomBookedDate records
+            $newCheckIn = new \Carbon\Carbon($validated['check_in']);
+            $newCheckOut = new \Carbon\Carbon($validated['check_out']);
+
+            if ($booking->check_in != $newCheckIn->format('Y-m-d') || $booking->check_out != $newCheckOut->format('Y-m-d')) {
+                // Delete old booked dates
+                RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+                // Create new booked dates
+                $period = CarbonPeriod::create($newCheckIn, $newCheckOut->copy()->subDay());
+                foreach ($period as $date) {
+                    RoomBookedDate::create([
+                        'room_id' => $booking->room_id,
+                        'booked_date' => $date->toDateString(),
+                        'booking_id' => $booking->id,
+                    ]);
+                }
+            }
+
+            $booking->update($validated);
+
+            // Log status change if status was updated
+            if ($old_status !== $booking->status) {
+                \App\Models\BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $old_status,
+                    'new_status' => $booking->status,
+                    'changed_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('admin.bookings.show', $booking)->with('success', 'Cập nhật đơn đặt phòng thành công.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra, vui lòng thử lại sau.')->withInput();
         }
-
-        return redirect()->route('admin.bookings.show', $booking)->with('success', 'Cập nhật đơn đặt phòng thành công.');
     }
 
     public function destroy(Booking $booking)

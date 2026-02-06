@@ -15,14 +15,14 @@
             --dark-color: #1d3557;
             --light-color: #f8f9fa;
         }
-        
+
         body {
             background-color: #f0f2f5;
             color: #333;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             overflow-x: hidden;
         }
-        
+
         /* Sidebar styles */
         #sidebar {
             min-height: calc(100vh - var(--navbar-height));
@@ -36,7 +36,7 @@
             z-index: 100;
             box-shadow: 3px 0 10px rgba(0,0,0,0.1);
         }
-        
+
         #sidebar .nav-link {
             color: rgba(255, 255, 255, 0.8);
             padding: 12px 20px;
@@ -44,24 +44,24 @@
             border-radius: 8px;
             transition: all 0.3s;
         }
-        
-        #sidebar .nav-link:hover, 
+
+        #sidebar .nav-link:hover,
         #sidebar .nav-link.active {
             background: rgba(255, 255, 255, 0.1);
             color: white;
         }
-        
+
         #sidebar .nav-link i {
             margin-right: 10px;
             width: 20px;
             text-align: center;
         }
-        
+
         #sidebar .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         #content {
             margin-left: var(--sidebar-width);
             margin-top: var(--navbar-height);
@@ -69,7 +69,7 @@
             transition: all 0.3s;
             min-height: calc(100vh - var(--navbar-height));
         }
-        
+
         /* Top navbar styles */
         .navbar-admin {
             background: linear-gradient(90deg, var(--dark-color), var(--secondary-color));
@@ -81,28 +81,28 @@
             z-index: 105;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        
+
         .navbar-brand-admin {
             color: white !important;
             font-weight: 700;
             font-size: 1.5rem;
         }
-        
+
         .navbar-brand-admin i {
             margin-right: 10px;
         }
-        
+
         .user-info {
             color: white !important;
         }
-        
+
         .toggle-btn {
             color: white;
             border: none;
             background: none;
             font-size: 1.2rem;
         }
-        
+
         /* Card styles */
         .card-admin {
             border: none;
@@ -111,11 +111,11 @@
             margin-bottom: 20px;
             transition: transform 0.3s ease;
         }
-        
+
         .card-admin:hover {
             transform: translateY(-5px);
         }
-        
+
         .card-header-admin {
             background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
             color: white;
@@ -124,7 +124,7 @@
             font-weight: 600;
             border: none;
         }
-        
+
         /* Stats cards */
         .stat-card {
             border-radius: 12px;
@@ -132,12 +132,12 @@
             box-shadow: 0 6px 15px rgba(0,0,0,0.08);
             transition: all 0.3s ease;
         }
-        
+
         .stat-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.12);
         }
-        
+
         .stat-icon {
             width: 60px;
             height: 60px;
@@ -147,31 +147,31 @@
             justify-content: center;
             font-size: 1.8rem;
         }
-        
+
         .bg-primary-light { background-color: rgba(67, 97, 238, 0.15); }
         .bg-success-light { background-color: rgba(60, 186, 159, 0.15); }
         .bg-warning-light { background-color: rgba(247, 183, 49, 0.15); }
         .bg-danger-light { background-color: rgba(231, 76, 60, 0.15); }
-        
+
         .text-primary-dark { color: #4361ee; }
         .text-success-dark { color: #3da58a; }
         .text-warning-dark { color: #e79427; }
         .text-danger-dark { color: #c0392b; }
-        
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             #sidebar {
                 margin-left: -var(--sidebar-width);
             }
-            
+
             #sidebar.active {
                 margin-left: 0;
             }
-            
+
             #content {
                 margin-left: 0;
             }
-            
+
             .overlay {
                 display: none;
                 position: fixed;
@@ -182,7 +182,7 @@
                 background: rgba(0,0,0,0.5);
                 z-index: 99;
             }
-            
+
             .overlay.active {
                 display: block;
             }
@@ -327,15 +327,24 @@
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('sidebarToggle');
             const overlay = document.getElementById('overlay');
-            
+
             toggleBtn.addEventListener('click', function() {
                 sidebar.classList.toggle('active');
                 overlay.classList.toggle('active');
             });
-            
+
             overlay.addEventListener('click', function() {
                 sidebar.classList.remove('active');
                 overlay.classList.remove('active');
+            });
+
+            // Auto-dismiss alerts after 5 seconds
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000); // 5 seconds
             });
         });
     </script>
