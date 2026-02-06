@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AccountController extends Controller
 {
@@ -53,10 +54,10 @@ class AccountController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
         $user = Auth::user();
-        if ($user->password !== $request->current_password) {
+        if (!Hash::check($request->current_password, $user->password)) {
             return back()->withErrors(['current_password' => 'Mật khẩu hiện tại không đúng.']);
         }
-        $user->update(['password' => $request->password]);
+        $user->update(['password' => Hash::make($request->password)]);
         return redirect()->route('account.settings')->with('success', 'Đổi mật khẩu thành công.');
     }
 }
