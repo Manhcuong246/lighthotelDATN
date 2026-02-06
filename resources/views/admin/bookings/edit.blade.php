@@ -39,9 +39,9 @@
                 <div class="row g-2">
                     <div class="col-sm-3">
                         <label class="form-label small fw-bold text-muted mb-1">Khách hàng</label>
-                        <input type="text" class="form-control form-control-sm rounded-2" disabled
-                               value="{{ $booking->user?->full_name ?? '—' }}" />
-                        <small class="text-muted">{{ $booking->user?->email ?? '—' }}</small>
+                           <input type="text" class="form-control form-control-sm rounded-2" disabled
+                               value="{{ $booking->user?->full_name ?? '' }}" />
+                           <small class="text-muted">{{ $booking->user?->email ?? '' }}</small>
                     </div>
                     <div class="col-sm-2">
                         <label class="form-label small fw-bold text-muted mb-1">Phòng</label>

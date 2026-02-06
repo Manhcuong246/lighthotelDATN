@@ -6,6 +6,8 @@ use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
 use App\Models\RoomPrice;
+use App\Models\User;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\CarbonPeriod;
@@ -49,8 +51,23 @@ class BookingController extends Controller
 
         DB::beginTransaction();
         try {
+            // Attach or create a user for the guest (so admin lists show a name)
+            if (auth()->check()) {
+                $userId = auth()->id();
+            } else {
+                $user = User::firstOrCreate(
+                    ['email' => $data['email']],
+                    [
+                        'full_name' => $data['full_name'],
+                        'phone' => $data['phone'] ?? null,
+                        'password' => bcrypt(Str::random(12)),
+                    ]
+                );
+                $userId = $user->id;
+            }
+
             $booking = Booking::create([
-                'user_id' => null,
+                'user_id' => $userId ?? null,
                 'room_id' => $room->id,
                 'check_in' => $checkIn->toDateString(),
                 'check_out' => $checkOut->toDateString(),
