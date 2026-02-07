@@ -18,14 +18,14 @@ class AuthController extends Controller
     {
         return view('auth.register');
     }
-    
+
     public function login(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
-        
+
         $user = User::where('email', $request->email)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
@@ -37,7 +37,7 @@ class AuthController extends Controller
             'email' => 'Thông tin đăng nhập không chính xác.',
         ]);
     }
-    
+
     public function register(Request $request)
     {
         $request->validate([
@@ -45,7 +45,7 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:150|unique:users',
             'password' => 'required|string|min:6|confirmed',
         ]);
-        
+
         $user = User::create([
             'full_name' => $request->full_name,
             'email' => $request->email,
@@ -58,19 +58,19 @@ class AuthController extends Controller
         if ($guestRole) {
             $user->roles()->attach($guestRole->id);
         }
-        
+
         Auth::login($user);
 
         return redirect()->intended('/')->with('success', 'Đăng ký thành công! Chào mừng bạn đến với Light Hotel.');
     }
-    
+
     public function logout(Request $request)
     {
         Auth::logout();
-        
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect('/');
     }
 }

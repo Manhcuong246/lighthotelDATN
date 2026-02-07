@@ -20,19 +20,19 @@ class AdminController extends Controller
     {
         return view('admin.dashboard');
     }
-    
+
     public function showLoginForm()
     {
         return view('admin.login');
     }
-    
+
     public function login(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
-        
+
         $remember = $request->filled('remember');
 
         $user = User::with('roles')->where('email', $request->email)->first();
@@ -53,7 +53,7 @@ class AdminController extends Controller
 
         return back()->withErrors(['email' => 'Thông tin đăng nhập không chính xác.']);
     }
-    
+
     public function logout()
     {
         Auth::logout();
