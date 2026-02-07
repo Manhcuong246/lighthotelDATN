@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -45,7 +46,7 @@ class AdminController extends Controller
             return back()->withErrors(['email' => 'Bạn không có quyền truy cập khu vực quản trị. Chỉ admin và nhân viên mới đăng nhập tại đây.']);
         }
 
-        if ($user->password === $request->password) {
+        if (Hash::check($request->password, $user->password)) {
             Auth::login($user, $remember);
             return redirect()->intended(route('admin.dashboard'));
         }
