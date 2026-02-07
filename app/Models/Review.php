@@ -8,19 +8,24 @@ class Review extends Model
 {
     protected $table = 'reviews';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'user_id',
         'room_id',
         'rating',
+        'title',
         'comment',
         'reply',
         'replied_at',
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [
         'replied_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function user()
