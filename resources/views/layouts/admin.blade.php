@@ -239,6 +239,13 @@
                         Bảng điều khiển
                     </a>
                 </li>
+     <li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('admin.roomtypes*') ? 'active' : '' }}"
+       href="{{ route('admin.roomtypes.index') }}">
+        <i class="bi bi-layers"></i>
+        Quản lý loại phòng
+    </a>
+</li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.rooms*') ? 'active' : '' }}" href="{{ route('admin.rooms.index') }}">
                         <i class="bi bi-door-open"></i>
