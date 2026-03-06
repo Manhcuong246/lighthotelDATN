@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\PaymentAdminController;
 use App\Http\Controllers\Admin\SettingsAdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Admin\RoomTypeController;
+
 
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
@@ -62,6 +64,20 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/settings', [SettingsAdminController::class, 'index'])->name('settings.index');
     Route::put('/settings/general', [SettingsAdminController::class, 'updateGeneral'])->name('settings.update.general');
     Route::put('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.update.site.content');
+
+
+      // ====== QUẢN LÝ LOẠI PHÒNG ======
+Route::prefix('roomtypes')->name('roomtypes.')->group(function () {
+    Route::get('/', [RoomTypeController::class, 'index'])->name('index');
+    Route::get('/create', [RoomTypeController::class, 'create'])->name('create');
+    Route::post('/', [RoomTypeController::class, 'store'])->name('store');
+    Route::get('/{id}/edit', [RoomTypeController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [RoomTypeController::class, 'update'])->name('update');
+    Route::delete('/{id}', [RoomTypeController::class, 'destroy'])->name('destroy');
+});
+
+
+  
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
