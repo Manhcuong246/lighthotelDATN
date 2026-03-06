@@ -47,7 +47,10 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('admin.rooms.edit', $room) }}" class="btn btn-sm btn-outline-primary">Sửa</a>
+                                   <a href="{{ route('admin.roomtypes.edit', $rt->id) }}" class="btn btn-warning btn-sm">
+    Sửa
+</a>
+
                                     @if(auth()->user()->isAdmin())
                                     <form action="{{ route('admin.rooms.destroy', $room) }}" method="POST" class="d-inline"
                                           onsubmit="return confirm('Bạn có chắc muốn xóa phòng này?');">
