@@ -26,10 +26,14 @@ class RoomTypeController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:room_types,name',
+            'capacity' => 'required|integer|min:1',
+            'price' => 'required|numeric|min:0',
         ]);
 
         RoomType::create([
             'name' => $request->name,
+            'capacity' => $request->capacity,
+            'price' => $request->price,
             'description' => $request->description,
             'status' => $request->status ?? 1,
         ]);
@@ -52,10 +56,14 @@ class RoomTypeController extends Controller
 
         $request->validate([
             'name' => 'required|max:255|unique:room_types,name,' . $roomType->id,
+            'capacity' => 'required|integer|min:1',
+            'price' => 'required|numeric|min:0',
         ]);
 
         $roomType->update([
             'name' => $request->name,
+            'capacity' => $request->capacity,
+            'price' => $request->price,
             'description' => $request->description,
             'status' => $request->status,
         ]);
