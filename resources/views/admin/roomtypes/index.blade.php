@@ -40,8 +40,8 @@
                     <thead class="table-light">
                         <tr>
                             <th width="60">ID</th>
+                            <th>Ảnh</th>
                             <th>Tên loại phòng</th>
-                            <th>Số người</th>
                             <th>Giá phòng</th>
                             <th>Mô tả</th>
                             <th>Trạng thái</th>
@@ -57,14 +57,16 @@
 
                             <td class="text-muted">{{ $type->id }}</td>
 
-                            <td class="fw-semibold">
-                                {{ $type->name }}
+                            <td>
+                                @if($type->image)
+                                    <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
+                                @else
+                                    <span class="text-muted">Không có</span>
+                                @endif
                             </td>
 
-                            <td>
-                                <span class="badge bg-info">
-                                    {{ $type->capacity }} người
-                                </span>
+                            <td class="fw-semibold">
+                                {{ $type->name }}
                             </td>
 
                             <td class="fw-semibold text-danger">
@@ -88,7 +90,15 @@
                             </td>
 
                             <td class="text-center">
+                                <!-- Nút xem chi tiết -->
+                                <button type="button" 
+                                        class="btn btn-info btn-sm mb-1" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#detailModal{{ $type->id }}">
+                                    <i class="bi bi-eye"></i>
+                                </button>
 
+                                <!-- Nút sửa -->
                                 <a href="{{ route('admin.roomtypes.edit', $type->id) }}"
                                    class="btn btn-warning btn-sm">
                                     <i class="bi bi-pencil"></i>
@@ -115,7 +125,7 @@
                         @empty
 
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="9" class="text-center text-muted py-4">
                                 Chưa có loại phòng nào
                             </td>
                         </tr>
@@ -125,12 +135,79 @@
                     </tbody>
 
                 </table>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
+
+<!-- Modal Chi tiết loại phòng -->
+@foreach($roomTypes as $type)
+<div class="modal fade" id="detailModal{{ $type->id }}" tabindex="-1" aria-labelledby="detailModalLabel{{ $type->id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="detailModalLabel{{ $type->id }}">Chi tiết loại phòng: {{ $type->name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        @if($type->image)
+                            <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" class="img-fluid rounded shadow-sm w-100" style="max-height: 300px; object-fit: cover;">
+                        @else
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px;">
+                                <span class="text-muted">Không có ảnh</span>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%"><i class="bi bi-tag"></i> Tên loại:</th>
+                                <td>{{ $type->name }}</td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-people"></i> Sức chứa:</th>
+                                <td><span class="badge bg-info">{{ $type->capacity }} người</span></td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-door-open"></i> Số giường:</th>
+                                <td><span class="badge bg-warning text-dark">{{ $type->beds ?? 1 }} giường</span></td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-droplet"></i> Số phòng tắm:</th>
+                                <td><span class="badge bg-secondary">{{ $type->baths ?? 1 }} phòng</span></td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-currency-dollar"></i> Giá phòng:</th>
+                                <td class="fw-bold text-danger">{{ number_format($type->price, 0, ',', '.') }} VNĐ</td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-patch-check"></i> Trạng thái:</th>
+                                <td>
+                                    @if($type->status)
+                                        <span class="badge bg-success">Hiển thị</span>
+                                    @else
+                                        <span class="badge bg-secondary">Ẩn</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-card-text"></i> Mô tả:</th>
+                                <td>{{ $type->description ?? 'Không có mô tả' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ route('admin.roomtypes.edit', $type->id) }}" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i> Chỉnh sửa
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endforeach
 @endsection

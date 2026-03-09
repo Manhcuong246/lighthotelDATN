@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\RoomType;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
 
 class RoomTypeController extends Controller
 {
@@ -27,12 +28,16 @@ class RoomTypeController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:room_types,name',
             'capacity' => 'required|integer|min:1',
+            'beds' => 'required|integer|min:1',
+            'baths' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
         ]);
 
-        RoomType::create([
+         RoomType::create([
             'name' => $request->name,
             'capacity' => $request->capacity,
+            'beds' => $request->beds,
+            'baths' => $request->baths,
             'price' => $request->price,
             'description' => $request->description,
             'status' => $request->status ?? 1,
@@ -54,19 +59,26 @@ class RoomTypeController extends Controller
     {
         $roomType = RoomType::findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|max:255|unique:room_types,name,' . $roomType->id,
             'capacity' => 'required|integer|min:1',
+            'beds' => 'required|integer|min:1',
+            'baths' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'status' => 'nullable|boolean',
         ]);
 
-        $roomType->update([
-            'name' => $request->name,
-            'capacity' => $request->capacity,
-            'price' => $request->price,
-            'description' => $request->description,
-            'status' => $request->status,
-        ]);
+        if ($request->hasFile('image')) {
+            // Xóa ảnh cũ nếu có
+            if ($roomType->image) {
+                Storage::disk('public')->delete($roomType->image);
+            }
+            $validated['image'] = $request->file('image')->store('room_types', 'public');
+        }
+
+        $roomType->update($validated);
 
         return redirect()->route('admin.roomtypes.index')
             ->with('success', 'Cập nhật thành công');
@@ -76,6 +88,12 @@ class RoomTypeController extends Controller
     public function destroy($id)
     {
         $roomType = RoomType::findOrFail($id);
+        
+        // Xóa ảnh nếu có
+        if ($roomType->image) {
+            Storage::disk('public')->delete($roomType->image);
+        }
+        
         $roomType->delete();
 
         return redirect()->route('admin.roomtypes.index')
