@@ -36,7 +36,7 @@
 
         <div class="card-body">
 
-            <form action="{{ route('admin.roomtypes.update', $roomType->id) }}" method="POST">
+            <form action="{{ route('admin.roomtypes.update', $roomType->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -62,6 +62,28 @@
                                required>
                     </div>
 
+                    <!-- Số giường -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Số giường</label>
+                        <input type="number"
+                               name="beds"
+                               class="form-control"
+                               value="{{ old('beds', $roomType->beds ?? 1) }}"
+                               min="1"
+                               required>
+                    </div>
+
+                    <!-- Số phòng tắm -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Số phòng tắm</label>
+                        <input type="number"
+                               name="baths"
+                               class="form-control"
+                               value="{{ old('baths', $roomType->baths ?? 1) }}"
+                               min="0"
+                               required>
+                    </div>
+
                     <!-- Giá phòng -->
                     <div class="col-md-3 mb-3">
                         <label class="form-label fw-semibold">Giá phòng</label>
@@ -78,6 +100,18 @@
                         <textarea name="description"
                                   rows="4"
                                   class="form-control">{{ old('description', $roomType->description) }}</textarea>
+                    </div>
+
+                    <!-- Ảnh đại diện -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Ảnh đại diện</label>
+                        @if($roomType->image)
+                            <div class="mb-2">
+                                <img src="{{ asset('storage/' . $roomType->image) }}" alt="{{ $roomType->name }}" class="img-thumbnail" style="max-width: 200px;">
+                            </div>
+                        @endif
+                        <input type="file" name="image" class="form-control" accept="image/*">
+                        <small class="text-muted">Định dạng: JPG, PNG, GIF. Tối đa 2MB. Upload ảnh mới để thay thế.</small>
                     </div>
 
                     <!-- Trạng thái -->
