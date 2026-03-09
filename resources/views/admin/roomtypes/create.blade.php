@@ -36,7 +36,7 @@
 
         <div class="card-body">
 
-            <form method="POST" action="{{ route('admin.roomtypes.store') }}">
+            <form method="POST" action="{{ route('admin.roomtypes.store') }}" enctype="multipart/form-data">
                 @csrf
 
                 <div class="row">
@@ -63,6 +63,30 @@
                                required>
                     </div>
 
+                    <!-- Số giường -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Số giường</label>
+                        <input type="number"
+                               name="beds"
+                               class="form-control"
+                               placeholder="Ví dụ: 1"
+                               value="{{ old('beds', 1) }}"
+                               min="1"
+                               required>
+                    </div>
+
+                    <!-- Số phòng tắm -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Số phòng tắm</label>
+                        <input type="number"
+                               name="baths"
+                               class="form-control"
+                               placeholder="Ví dụ: 1"
+                               value="{{ old('baths', 1) }}"
+                               min="0"
+                               required>
+                    </div>
+
                     <!-- Giá -->
                     <div class="col-md-3 mb-3">
                         <label class="form-label fw-semibold">Giá phòng</label>
@@ -81,6 +105,13 @@
                                   rows="4"
                                   class="form-control"
                                   placeholder="Mô tả loại phòng...">{{ old('description') }}</textarea>
+                    </div>
+
+                    <!-- Ảnh đại diện -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Ảnh đại diện</label>
+                        <input type="file" name="image" class="form-control" accept="image/*">
+                        <small class="text-muted">Định dạng: JPG, PNG, GIF. Tối đa 2MB</small>
                     </div>
 
                     <!-- Trạng thái -->
