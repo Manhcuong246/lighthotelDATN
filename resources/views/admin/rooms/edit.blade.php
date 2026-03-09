@@ -18,13 +18,28 @@
                 @csrf
                 @method('PUT')
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Tên phòng</label>
-                        <input type="text" name="name" class="form-control" value="{{ old('name', $room->name) }}" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label class="form-label">Loại phòng</label>
-                        <input type="text" name="type" class="form-control" value="{{ old('type', $room->type) }}">
+                        <select name="room_type_id" id="room_type_id" class="form-select">
+                            <option value="">-- Chọn loại phòng --</option>
+                            @foreach($roomTypes as $rt)
+                                <option value="{{ $rt->id }}" 
+                                    data-name="{{ $rt->name }}" 
+                                    data-capacity="{{ $rt->capacity }}" 
+                                    data-price="{{ $rt->price }}"
+                                    data-beds="{{ $rt->beds }}"
+                                    data-baths="{{ $rt->baths }}"
+                                    data-image="{{ $rt->image }}"
+                                    {{ old('room_type_id', $room->room_type_id) == $rt->id ? 'selected' : '' }}>
+                                    {{ $rt->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Số phòng</label>
+                        <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $room->name) }}"required placeholder="Nhập số (ví dụ: 1, 101...)">
+                        <small class="text-muted">Tự động thêm "Phòng" và format số</small>
                     </div>
                 </div>
                 <div class="row">
@@ -72,4 +87,57 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roomTypeSelect = document.getElementById('room_type_id');
+    const nameInput = document.getElementById('name');
+    const basePriceInput = document.querySelector('input[name="base_price"]');
+    const maxGuestsInput = document.querySelector('input[name="max_guests"]');
+    const bedsInput = document.querySelector('input[name="beds"]');
+    const bathsInput = document.querySelector('input[name="baths"]');
+    
+    // Format số phòng khi blur (mất focus)
+    nameInput.addEventListener('blur', function() {
+        let value = this.value.trim();
+        if (value) {
+            // Chỉ lấy số
+            let numberOnly = value.replace(/[^0-9]/g, '');
+            if (numberOnly) {
+                // Format với 3 chữ số (001, 002, ...)
+                let formattedNumber = numberOnly.padStart(3, '0');
+                this.value = 'Phòng ' + formattedNumber;
+            }
+        }
+    });
+    
+    // Xóa "Phòng" khi focus để dễ chỉnh sửa
+    nameInput.addEventListener('focus', function() {
+        let value = this.value;
+        if (value.startsWith('Phòng ')) {
+            this.value = value.replace('Phòng ', '').trim();
+        }
+    });
+    
+    roomTypeSelect.addEventListener('change', function() {
+        const selectedOption= this.options[this.selectedIndex];
+        if (this.value) {
+            // Tự động điền giá và thông tin từ loại phòng (KHÔNG điền tên phòng)
+            if (!basePriceInput.value || basePriceInput.value === '0') {
+                basePriceInput.value = selectedOption.dataset.price || '';
+            }
+            if (!maxGuestsInput.value || maxGuestsInput.value === '1') {
+                maxGuestsInput.value = selectedOption.dataset.capacity || '';
+            }
+            // Điền số giường và số phòng tắm
+            if (!bedsInput.value || bedsInput.value === '1') {
+                bedsInput.value = selectedOption.dataset.beds || '1';
+            }
+            if (!bathsInput.value || bathsInput.value === '1') {
+                bathsInput.value = selectedOption.dataset.baths || '1';
+            }
+        }
+    });
+});
+</script>
 @endsection
