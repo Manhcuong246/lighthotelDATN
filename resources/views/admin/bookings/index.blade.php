@@ -1,0 +1,255 @@
+@extends('layouts.admin')
+
+@section('title', 'Quản lý đặt phòng')
+
+@section('content')
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2 fw-bold mb-0 text-dark">📋 Quản lý đặt phòng</h1>
+
+        <div class="d-flex gap-2">
+            <!-- Create Button -->
+            <a href="{{ route('admin.bookings.create') }}" class="btn btn-success d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi bi-plus-lg"></i>
+                <span>Tạo đơn</span>
+            </a>
+
+            <!-- Notification Bell -->
+            <div class="dropdown">
+                <button class="btn btn-light btn-lg position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-bell-fill fs-5" style="color: #ff6b6b;"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        {{ $bookings->total() }}
+                    </span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 280px;">
+                    <li><h6 class="dropdown-header">📬 Đơn đặt phòng</h6></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.bookings.index') }}">
+                            <div class="d-flex justify-content-between">
+                                <span><strong>📊 Tổng đơn:</strong></span>
+                                <span class="badge bg-primary">{{ $bookings->total() }}</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=pending">
+                            <div class="d-flex justify-content-between">
+                                <span><strong>⏳ Chờ xác nhận:</strong></span>
+                                <span class="badge bg-warning">{{ $bookings->where('status', 'pending')->count() }}</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=confirmed">
+                            <div class="d-flex justify-content-between">
+                                <span><strong>✓ Đã xác nhận:</strong></span>
+                                <span class="badge bg-info">{{ $bookings->where('status', 'confirmed')->count() }}</span>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>✅ Thành công!</strong> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>❌ Lỗi!</strong> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    <!-- Table Card -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header py-3 px-4" style="background: linear-gradient(90deg, #3b49d6 0%, #4b3bd6 100%);">
+            <h5 class="mb-0 text-white fw-semibold">📋 Danh sách đơn đặt phòng</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="overflow: visible;">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 180px;">👤 Khách hàng</th>
+                            <th style="width: 120px;">🏨 Phòng</th>
+                            <th style="width: 100px;">📅 Check-in</th>
+                            <th style="width: 100px;">📅 Check-out</th>
+                            <th style="width: 50px;" class="text-center">👥</th>
+                            <th style="width: 120px;" class="text-end">💰 Tổng tiền</th>
+                            <th style="width: 110px;">📊 Trạng thái</th>
+                            <th style="width: 220px;">⚡ Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($bookings as $booking)
+                            <tr>
+                                <td><strong>#{{ $booking->id }}</strong></td>
+                                <td>
+                                    <div class="fw-bold">{{ $booking->user?->full_name ?? '—' }}</div>
+                                    <small class="text-muted">{{ $booking->user?->email ?? '—' }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ $booking->room?->name ?? '—' }}</span>
+                                </td>
+                                <td>{{ $booking->check_in?->format('d/m/Y') ?? '—' }}</td>
+                                <td>{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">{{ $booking->guests ?? 0 }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <strong class="text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</strong>
+                                </td>
+                                <td>
+                                    @php
+                                        $statusColors = [
+                                            'pending' => 'warning',
+                                            'confirmed' => 'info',
+                                            'completed' => 'success',
+                                            'cancelled' => 'danger',
+                                        ];
+                                        $statusLabels = [
+                                            'pending' => 'Chờ xác nhận',
+                                            'confirmed' => 'Đã xác nhận',
+                                            'completed' => 'Hoàn thành',
+                                            'cancelled' => 'Đã hủy',
+                                        ];
+                                    @endphp
+                                    <span class="badge bg-{{ $statusColors[$booking->status] ?? 'secondary' }}">
+                                        {{ $statusLabels[$booking->status] ?? '—' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary" title="Xem">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ route('admin.bookings.edit', $booking) }}" class="btn btn-sm btn-outline-secondary" title="Sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end" style="position: fixed; inset: 0px auto auto 0px; transform: translate3d(0px, 38px, 0px); z-index: 9999;">
+                                                @if($booking->status === 'pending')
+                                                <li>
+                                                    <form action="{{ route('admin.bookings.updateStatus', $booking) }}" method="POST">
+                                                        @csrf
+                                                        <input type="hidden" name="status" value="confirmed">
+                                                        <button class="dropdown-item text-success">
+                                                            <i class="bi bi-check-circle me-2"></i> Xác nhận đơn
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                @endif
+
+                                                @if($booking->isCheckinAllowed())
+                                                <li>
+                                                    <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST">
+                                                        @csrf
+                                                        <button class="dropdown-item text-info">
+                                                            <i class="bi bi-box-arrow-in-right me-2"></i> Check-in
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                @endif
+
+                                                @if($booking->isCheckoutAllowed())
+                                                <li>
+                                                    <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST">
+                                                        @csrf
+                                                        <button class="dropdown-item text-warning">
+                                                            <i class="bi bi-box-arrow-right me-2"></i> Check-out
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                @endif
+
+                                                @if($booking->status !== 'cancelled' && $booking->status !== 'completed')
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <form action="{{ route('admin.bookings.updateStatus', $booking) }}" method="POST">
+                                                        @csrf
+                                                        <input type="hidden" name="status" value="cancelled">
+                                                        <button class="dropdown-item text-danger">
+                                                            <i class="bi bi-x-circle me-2"></i> Hủy đơn
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                @endif
+
+                                                @if(auth()->user()->isAdmin())
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <form action="{{ route('admin.bookings.destroy', $booking) }}" method="POST" onsubmit="return confirm('Xóa vĩnh viễn đơn #{{ $booking->id }}?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button class="dropdown-item text-danger">
+                                                            <i class="bi bi-trash me-2"></i> Xóa vĩnh viễn
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                @endif
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox display-4 d-block mb-3"></i>
+                                    📭 Chưa có đơn đặt phòng nào
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if($bookings->hasPages())
+            <div class="card-footer bg-white border-0 py-3">
+                {{ $bookings->links('pagination::bootstrap-5') }}
+            </div>
+        @endif
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .card-header {
+        border-radius: 12px 12px 0 0 !important;
+    }
+    .table th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    .table td {
+        vertical-align: middle;
+    }
+    .badge {
+        font-size: 0.85rem;
+        padding: 0.4em 0.7em;
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+</style>
+@endsection
