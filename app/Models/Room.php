@@ -20,6 +20,9 @@ class Room extends Model
         'area',
         'description',
         'status',
+        'room_type_id',
+        'room_number',
+        'image',
     ];
 
     public function prices()
@@ -50,6 +53,11 @@ class Room extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class);
+    }
+
+   public function roomType()
+    {
+        return $this->belongsTo(RoomType::class);
     }
 }
 
