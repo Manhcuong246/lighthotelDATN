@@ -61,7 +61,8 @@
                                 @if($type->image)
                                     <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
                                 @else
-                                    <span class="text-muted">Không có</span>
+                                    <!-- show placeholder image when no upload -->
+                                    <img src="{{ asset('storage/room_types/dummy.png') }}" alt="không có" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; opacity: .5;">
                                 @endif
                             </td>
 
@@ -91,9 +92,9 @@
 
                             <td class="text-center">
                                 <!-- Nút xem chi tiết -->
-                                <button type="button" 
-                                        class="btn btn-info btn-sm mb-1" 
-                                        data-bs-toggle="modal" 
+                                <button type="button"
+                                        class="btn btn-info btn-sm mb-1"
+                                        data-bs-toggle="modal"
                                         data-bs-target="#detailModal{{ $type->id }}">
                                     <i class="bi bi-eye"></i>
                                 </button>

@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Payment;
+use App\Models\Room;
 use App\Models\RoomBookedDate;
+use App\Models\RoomPrice;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
@@ -26,6 +31,137 @@ class BookingAdminController extends Controller
     public function show(Booking $booking)
     {
         return view('admin.bookings.show', compact('booking'));
+    }
+
+    public function create()
+    {
+        $rooms = Room::where('status', 'available')->orderBy('name')->get();
+        return view('admin.bookings.create', compact('rooms'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'full_name' => 'required|string|max:150',
+            'email' => 'required|email|max:150',
+            'phone' => 'nullable|string|max:20',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'guests' => 'required|integer|min:1',
+            'status' => 'required|in:pending,confirmed',
+            'payment_method' => 'required|in:cash,bank_transfer,credit_card,momo,zalopay',
+            'payment_status' => 'required|in:pending,paid,partial',
+            'amount_paid' => 'nullable|numeric|min:0',
+            'payment_note' => 'nullable|string|max:500',
+        ]);
+
+        $room = Room::findOrFail($validated['room_id']);
+        $checkIn = new \Carbon\Carbon($validated['check_in']);
+        $checkOut = new \Carbon\Carbon($validated['check_out']);
+
+        // Check room availability
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $dates = collect();
+        foreach ($period as $date) {
+            $dates->push($date->toDateString());
+        }
+
+        $conflict = RoomBookedDate::where('room_id', $room->id)
+            ->whereIn('booked_date', $dates)
+            ->exists();
+
+        if ($conflict) {
+            return back()->withErrors(['check_in' => 'Phòng đã được đặt trong khoảng thời gian này.'])->withInput();
+        }
+
+        // Calculate total price
+        $totalPrice = $this->calculateTotalPrice($room, $checkIn, $checkOut);
+
+        DB::beginTransaction();
+        try {
+            // Find or create user
+            $user = User::firstOrCreate(
+                ['email' => $validated['email']],
+                [
+                    'full_name' => $validated['full_name'],
+                    'phone' => $validated['phone'] ?? null,
+                    'password' => bcrypt(Str::random(12)),
+                ]
+            );
+
+            // Create booking
+            $booking = Booking::create([
+                'user_id' => $user->id,
+                'room_id' => $room->id,
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'guests' => $validated['guests'],
+                'total_price' => $totalPrice,
+                'status' => $validated['status'],
+            ]);
+
+            // Create booked dates
+            foreach ($dates as $d) {
+                RoomBookedDate::create([
+                    'room_id' => $room->id,
+                    'booked_date' => $d,
+                    'booking_id' => $booking->id,
+                ]);
+            }
+
+            // Log
+            \App\Models\BookingLog::create([
+                'booking_id' => $booking->id,
+                'old_status' => 'new',
+                'new_status' => $booking->status,
+                'changed_at' => now(),
+            ]);
+
+            // Create payment record
+            try {
+                Payment::create([
+                    'booking_id' => $booking->id,
+                    'amount' => $validated['amount_paid'] ?? 0,
+                    'payment_method' => $validated['payment_method'],
+                    'status' => $validated['payment_status'],
+                    'transaction_id' => 'ADM' . time() . rand(1000, 9999),
+                    'notes' => $validated['payment_note'] ?? null,
+                    'paid_at' => $validated['payment_status'] === 'paid' ? now() : ($validated['payment_status'] === 'partial' ? now() : null),
+                ]);
+            } catch (\Exception $e) {
+                // Continue even if payment creation fails
+            }
+
+            DB::commit();
+
+            return redirect()->route('admin.bookings.show', $booking)->with('success', 'Tạo đơn đặt phòng thành công!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    protected function calculateTotalPrice(Room $room, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): float
+    {
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $prices = RoomPrice::where('room_id', $room->id)->get();
+
+        $total = 0;
+        foreach ($period as $date) {
+            $priceForDate = $room->base_price;
+
+            foreach ($prices as $price) {
+                if ($date->betweenIncluded($price->start_date, $price->end_date)) {
+                    $priceForDate = $price->price;
+                    break;
+                }
+            }
+
+            $total += (float) $priceForDate;
+        }
+
+        return $total;
     }
 
     public function edit(Booking $booking)
@@ -89,6 +225,7 @@ class BookingAdminController extends Controller
 
     public function destroy(Booking $booking)
     {
+        /** @var \App\Models\User|null $user */
         $user = Auth::user();
         if (!$user || !$user->isAdmin()) {
             abort(403, 'Chỉ quản trị viên mới được xóa đơn đặt phòng.');
