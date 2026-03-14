@@ -35,6 +35,8 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('/rooms/{room}', [RoomAdminController::class, 'destroy'])->name('rooms.destroy');
 
     Route::get('/bookings', [BookingAdminController::class, 'index'])->name('bookings.index');
+    Route::get('/bookings/create', [BookingAdminController::class, 'create'])->name('bookings.create');
+    Route::post('/bookings', [BookingAdminController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
     Route::get('/bookings/{booking}/edit', [BookingAdminController::class, 'edit'])->name('bookings.edit');
     Route::put('/bookings/{booking}', [BookingAdminController::class, 'update'])->name('bookings.update');
