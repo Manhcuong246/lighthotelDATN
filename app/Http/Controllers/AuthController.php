@@ -29,6 +29,13 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
+            // Ngăn admin/staff đăng nhập qua trang user
+            if ($user->isAdmin() || $user->isStaff()) {
+                return back()->withErrors([
+                    'email' => 'Tài khoản quản trị vui lòng đăng nhập tại trang Admin.',
+                ]);
+            }
+            
             Auth::login($user, $request->filled('remember'));
             return redirect()->intended('/');
         }
