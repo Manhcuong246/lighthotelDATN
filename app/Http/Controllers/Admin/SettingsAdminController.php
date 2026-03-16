@@ -35,6 +35,9 @@ class SettingsAdminController extends Controller
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:150',
+            'bank_id' => 'nullable|string|max:50',
+            'bank_account' => 'nullable|string|max:50',
+            'bank_account_name' => 'nullable|string|max:255',
         ]);
 
         $hotelInfo = HotelInfo::firstOrCreate(['id' => 1]);
