@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
 use App\Models\RoomPrice;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\CarbonPeriod;
 
@@ -23,6 +25,7 @@ class BookingController extends Controller
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'guests' => 'required|integer|min:1|max:' . $room->max_guests,
+            'payment_method' => 'required|in:cash,bank_transfer',
         ]);
 
         $checkIn = new \Carbon\Carbon($data['check_in']);
@@ -52,8 +55,8 @@ class BookingController extends Controller
         DB::beginTransaction();
         try {
             // Attach or create a user for the guest (so admin lists show a name)
-            if (auth()->check()) {
-                $userId = auth()->id();
+            if (Auth::check()) {
+                $userId = Auth::id();
             } else {
                 $user = User::firstOrCreate(
                     ['email' => $data['email']],
@@ -84,9 +87,17 @@ class BookingController extends Controller
                 ]);
             }
 
+            // Create payment record
+            Payment::create([
+                'booking_id' => $booking->id,
+                'amount' => $totalPrice,
+                'method' => $data['payment_method'],
+                'status' => 'pending',
+            ]);
+
             DB::commit();
 
-            return redirect()->route('rooms.show', $room)->with('success', 'Đặt phòng thành công! Vui lòng chờ xác nhận.');
+            return redirect()->route('account.bookings')->with('success', 'Đặt phòng thành công! Vui lòng kiểm tra lịch đặt phòng để xem thông tin thanh toán.');
         } catch (\Exception $e) {
             DB::rollBack();
 

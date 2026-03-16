@@ -26,6 +26,16 @@
         </div>
     @endif
 
+    @php
+        $bankConfigJson = json_encode([
+            'bankId' => $hotelInfo->bank_id ?? '',
+            'accountNo' => $hotelInfo->bank_account ?? '',
+            'accountName' => $hotelInfo->bank_account_name ?? '',
+            'template' => 'print'
+        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+    @endphp
+    <div id="bank-config" data-config="{{ $bankConfigJson }}" hidden></div>
+    
     <form action="{{ route('admin.bookings.store') }}" method="POST" class="needs-validation" novalidate>
         @csrf
 
@@ -66,16 +76,16 @@
             <div class="card-body">
                 <div class="row g-2">
                     <div class="col-sm-4">
-                        <label for="room_id" class="form-label small fw-bold text-muted mb-1">Phòng *</label>
+                        <label for="room_id" class="form-label small fw-bold text-muted mb-1">Số phòng *</label>
                         <select class="form-select form-select-sm rounded-2 @error('room_id') is-invalid @enderror"
                                 id="room_id" name="room_id" required>
-                            <option value="">-- Chọn phòng --</option>
+                            <option value="">-- Chọn số phòng --</option>
                             @foreach($rooms as $room)
-                                <option value="{{ $room->id }}" 
+                                <option value="{{ $room->id }}"
                                         data-price="{{ $room->base_price }}"
                                         data-max-guests="{{ $room->max_guests }}"
                                         {{ old('room_id') == $room->id ? 'selected' : '' }}>
-                                    {{ $room->name }} - {{ number_format($room->base_price, 0, ',', '.') }}đ/đêm (Tối đa {{ $room->max_guests }} khách)
+                                    Phòng {{ $room->room_number }} - {{ $room->roomType->name ?? 'Không xác định' }} - {{ number_format($room->base_price, 0, ',', '.') }}đ/đêm (Tối đa {{ $room->max_guests }} khách)
                                 </option>
                             @endforeach
                         </select>
@@ -103,8 +113,7 @@
                         <label for="status" class="form-label small fw-bold text-muted mb-1">Trạng thái *</label>
                         <select class="form-select form-select-sm rounded-2 @error('status') is-invalid @enderror"
                                 id="status" name="status" required>
-                            <option value="pending" {{ old('status') == 'pending' ? 'selected' : '' }}>⏳ Chờ xác nhận</option>
-                            <option value="confirmed" {{ old('status') == 'confirmed' ? 'selected' : '' }}>✓ Đã xác nhận</option>
+                            <option value="confirmed" selected>✓ Đã xác nhận</option>
                         </select>
                         @error('status')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
@@ -162,7 +171,7 @@
                     </div>
                     <div class="col-sm-4">
                         <label for="amount_paid" class="form-label small fw-bold text-muted mb-1">Số tiền đã thanh toán</label>
-                        <input type="number" class="form-control form-select-sm rounded-2 @error('amount_paid') is-invalid @enderror"
+                        <input type="number" class="form-control form-control-sm rounded-2 @error('amount_paid') is-invalid @enderror"
                                id="amount_paid" name="amount_paid" value="{{ old('amount_paid', 0) }}" min="0" placeholder="0" />
                         <small class="text-muted">Để trống nếu chưa thanh toán</small>
                         @error('amount_paid')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
@@ -179,6 +188,7 @@
 
                 <!-- QR Code Section -->
                 <div class="mt-3 pt-3 border-top" id="qr-section" style="display: none;">
+                    @if($hotelInfo && $hotelInfo->bank_id && $hotelInfo->bank_account)
                     <div class="row">
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted mb-2">📱 Quét mã QR để thanh toán</label>
@@ -193,9 +203,9 @@
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted mb-2">🏦 Thông tin chuyển khoản</label>
                             <div class="bg-light p-3 rounded-2">
-                                <p class="mb-1"><strong>Ngân hàng:</strong> <span id="bank-name">Vietcombank</span></p>
-                                <p class="mb-1"><strong>Số tài khoản:</strong> <span id="account-number">1234567890</span></p>
-                                <p class="mb-1"><strong>Chủ tài khoản:</strong> <span id="account-name">LIGHT HOTEL</span></p>
+                                <p class="mb-1"><strong>Ngân hàng:</strong> <span id="bank-name">{{ $hotelInfo->bank_id ?? 'Chưa cấu hình' }}</span></p>
+                                <p class="mb-1"><strong>Số tài khoản:</strong> <span id="account-number">{{ $hotelInfo->bank_account ?? 'Chưa cấu hình' }}</span></p>
+                                <p class="mb-1"><strong>Chủ tài khoản:</strong> <span id="account-name">{{ $hotelInfo->bank_account_name ?? 'Chưa cấu hình' }}</span></p>
                                 <p class="mb-0"><strong>Số tiền:</strong> <span id="bank-amount" class="text-success fw-bold">0đ</span></p>
                             </div>
                             <div class="mt-2">
@@ -205,6 +215,11 @@
                             </div>
                         </div>
                     </div>
+                    @else
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> Chưa cấu hình thông tin ngân hàng. Vui lòng cấu hình trong phần Cài đặt.
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -265,114 +280,215 @@
 </style>
 
 <script>
-    // Calculate price preview
-    const roomSelect = document.getElementById('room_id');
-    const checkInInput = document.getElementById('check_in');
-    const checkOutInput = document.getElementById('check_out');
-    const guestsInput = document.getElementById('guests');
-    const pricePreview = document.getElementById('price-preview');
+const roomSelect = document.getElementById('room_id');
+const checkInInput = document.getElementById('check_in');
+const checkOutInput = document.getElementById('check_out');
+const guestsInput = document.getElementById('guests');
+const pricePreview = document.getElementById('price-preview');
 
-    function updatePricePreview() {
-        const selectedOption = roomSelect.options[roomSelect.selectedIndex];
-        const checkIn = checkInInput.value;
-        const checkOut = checkOutInput.value;
+const paymentMethodSelect = document.getElementById('payment_method');
+const paymentStatusSelect = document.getElementById('payment_status');
+const amountPaidInput = document.getElementById('amount_paid');
+const qrSection = document.getElementById('qr-section');
 
-        if (selectedOption.value && checkIn && checkOut) {
-            const basePrice = parseFloat(selectedOption.dataset.price) || 0;
-            const maxGuests = parseInt(selectedOption.dataset.maxGuests) || 1;
-            
-            // Update max guests
-            guestsInput.max = maxGuests;
-            if (parseInt(guestsInput.value) > maxGuests) {
-                guestsInput.value = maxGuests;
-            }
+// Bank config passed via data attribute to avoid linter false positives
+const bankConfigEl = document.getElementById('bank-config');
+const bankConfig = bankConfigEl ? JSON.parse(bankConfigEl.dataset.config) : {};
 
-            // Calculate nights
-            const startDate = new Date(checkIn);
-            const endDate = new Date(checkOut);
-            const nights = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+/* =========================
+PRICE PREVIEW
+========================= */
 
-            if (nights > 0) {
-                const total = basePrice * nights;
-                document.getElementById('nights-count').textContent = nights;
-                document.getElementById('base-price').textContent = new Intl.NumberFormat('vi-VN').format(basePrice) + 'đ';
-                document.getElementById('total-price').textContent = new Intl.NumberFormat('vi-VN').format(total) + 'đ';
-                pricePreview.style.display = 'block';
-            } else {
-                pricePreview.style.display = 'none';
-            }
-        } else {
-            pricePreview.style.display = 'none';
-        }
+function updatePricePreview() {
+
+    const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+
+    const checkIn = checkInInput.value;
+    const checkOut = checkOutInput.value;
+
+    if (!selectedOption.value || !checkIn || !checkOut) {
+        pricePreview.style.display = 'none';
+        return;
     }
 
-    roomSelect.addEventListener('change', updatePricePreview);
-    checkInInput.addEventListener('change', function() {
-        // Set min checkout date
-        checkOutInput.min = this.value;
-        if (checkOutInput.value && checkOutInput.value <= this.value) {
-            checkOutInput.value = '';
-        }
-        updatePricePreview();
-    });
-    checkOutInput.addEventListener('change', updatePricePreview);
+    const basePrice = parseFloat(selectedOption.dataset.price) || 0;
+    const maxGuests = parseInt(selectedOption.getAttribute('data-max-guests')) || 1;
 
-    // QR Code Generation
-    const paymentMethodSelect = document.getElementById('payment_method');
-    const paymentStatusSelect = document.getElementById('payment_status');
-    const amountPaidInput = document.getElementById('amount_paid');
-    const qrSection = document.getElementById('qr-section');
+    guestsInput.max = maxGuests;
 
-    // Bank configuration - Change these to your actual bank details
-    const bankConfig = {
-        bankId: '970436', // Vietcombank ID
-        accountNo: '1234567890', // Your account number
-        accountName: 'LIGHT HOTEL', // Your account name
-        template: 'compact' // QR template
-    };
-
-    function generateQR() {
-        const method = paymentMethodSelect.value;
-        const status = paymentStatusSelect.value;
-        const amount = parseFloat(amountPaidInput.value) || 0;
-
-        // Only show QR for bank_transfer or pending/partial payments
-        if (method === 'bank_transfer' && amount > 0 && (status === 'pending' || status === 'partial')) {
-            const description = 'Thanh toan don phong ' + new Date().getTime();
-            
-            // Generate VietQR URL
-            const qrUrl = `https://img.vietqr.io/image/${bankConfig.bankId}-${bankConfig.accountNo}-${bankConfig.template}.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(bankConfig.accountName)}`;
-            
-            document.getElementById('qr-image').src = qrUrl;
-            document.getElementById('qr-amount').textContent = new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
-            document.getElementById('qr-content').textContent = description;
-            document.getElementById('bank-amount').textContent = new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
-            
-            qrSection.style.display = 'block';
-        } else {
-            qrSection.style.display = 'none';
-        }
+    if (parseInt(guestsInput.value) > maxGuests) {
+        guestsInput.value = maxGuests;
     }
 
-    paymentMethodSelect.addEventListener('change', generateQR);
-    paymentStatusSelect.addEventListener('change', generateQR);
-    amountPaidInput.addEventListener('input', generateQR);
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
 
-    // Bootstrap validation
-    (function () {
-        'use strict';
-        window.addEventListener('load', function () {
-            const forms = document.querySelectorAll('.needs-validation');
-            Array.prototype.slice.call(forms).forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    form.classList.add('was-validated');
-                }, false);
-            });
-        }, false);
-    })();
+    const nights = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+    if (nights <= 0) {
+        pricePreview.style.display = 'none';
+        return;
+    }
+
+    const total = basePrice * nights;
+
+    document.getElementById('nights-count').textContent = nights;
+    document.getElementById('base-price').textContent =
+        new Intl.NumberFormat('vi-VN').format(basePrice) + 'đ';
+
+    document.getElementById('total-price').textContent =
+        new Intl.NumberFormat('vi-VN').format(total) + 'đ';
+
+    pricePreview.style.display = 'block';
+}
+
+
+/* =========================
+GET TOTAL PRICE
+========================= */
+
+function getTotalPrice() {
+
+    const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+
+    const checkIn = checkInInput.value;
+    const checkOut = checkOutInput.value;
+
+    if (!selectedOption.value || !checkIn || !checkOut) return 0;
+
+    const basePrice = parseFloat(selectedOption.dataset.price) || 0;
+
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
+
+    const nights = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+    if (nights <= 0) return 0;
+
+    return basePrice * nights;
+}
+
+
+/* =========================
+GENERATE QR
+========================= */
+
+function generateQR() {
+
+    if (!roomSelect.value) {
+        qrSection.style.display = 'none';
+        return;
+    }
+
+    const method = paymentMethodSelect.value;
+    const paidAmount = parseFloat(amountPaidInput.value) || 0;
+
+    const totalPrice = getTotalPrice();
+
+    const displayAmount = paidAmount > 0 ? paidAmount : totalPrice;
+
+    if (method !== 'bank_transfer' || displayAmount <= 0) {
+        qrSection.style.display = 'none';
+        return;
+    }
+
+    if (!bankConfig.bankId || !bankConfig.accountNo) {
+        qrSection.style.display = 'block';
+        return;
+    }
+
+    const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+
+    const roomNumber = selectedOption.text.split('-')[0].trim();
+
+    const description = roomNumber + '-' + Date.now();
+
+    const qrUrl =
+        `https://img.vietqr.io/image/${bankConfig.bankId}-${bankConfig.accountNo}-${bankConfig.template}.png` +
+        `?amount=${displayAmount}` +
+        `&addInfo=${encodeURIComponent(description)}` +
+        `&accountName=${encodeURIComponent(bankConfig.accountName)}`;
+
+    document.getElementById('qr-image').src = qrUrl;
+
+    document.getElementById('qr-amount').textContent =
+        new Intl.NumberFormat('vi-VN').format(displayAmount) + 'đ';
+
+    document.getElementById('qr-content').textContent = description;
+
+    document.getElementById('bank-amount').textContent =
+        new Intl.NumberFormat('vi-VN').format(displayAmount) + 'đ';
+
+    qrSection.style.display = 'block';
+}
+
+
+/* =========================
+EVENTS
+========================= */
+
+roomSelect.addEventListener('change', function () {
+    updatePricePreview();
+    setTimeout(generateQR, 100);
+});
+
+checkInInput.addEventListener('change', function () {
+
+    checkOutInput.min = this.value;
+
+    if (checkOutInput.value && checkOutInput.value <= this.value) {
+        checkOutInput.value = '';
+    }
+
+    updatePricePreview();
+
+    setTimeout(generateQR, 100);
+});
+
+checkOutInput.addEventListener('change', function () {
+
+    updatePricePreview();
+
+    setTimeout(generateQR, 100);
+});
+
+paymentMethodSelect.addEventListener('change', generateQR);
+
+paymentStatusSelect.addEventListener('change', generateQR);
+
+amountPaidInput.addEventListener('input', generateQR);
+
+
+/* =========================
+BOOTSTRAP VALIDATION
+========================= */
+
+(function () {
+
+    'use strict';
+
+    window.addEventListener('load', function () {
+
+        const forms = document.querySelectorAll('.needs-validation');
+
+        Array.prototype.slice.call(forms).forEach(function (form) {
+
+            form.addEventListener('submit', function (event) {
+
+                if (!form.checkValidity()) {
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                form.classList.add('was-validated');
+
+            }, false);
+
+        });
+
+    }, false);
+
+})();
 </script>
 @endsection
