@@ -55,6 +55,34 @@
                 </div>
             </div>
 
+            <!-- Dịch vụ đi kèm -->
+            @if(isset($services) && $services->count() > 0)
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-plus-circle"></i> Dịch vụ đi kèm (tùy chọn)
+                </label>
+                <div class="services-list border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+                    @foreach($services as $service)
+                    <div class="form-check service-item d-flex justify-content-between align-items-center py-1">
+                        <div>
+                            <input class="form-check-input" type="checkbox" 
+                                   name="services[]" 
+                                   value="{{ $service->id }}" 
+                                   id="service_{{ $service->id }}"
+                                   data-price="{{ $service->price }}"
+                                   onchange="updateTotalPrice()">
+                            <label class="form-check-label" for="service_{{ $service->id }}">
+                                {{ $service->name }}
+                            </label>
+                        </div>
+                        <span class="text-muted small">{{ number_format($service->price, 0, ',', '.') }} ₫</span>
+                    </div>
+                    @endforeach
+                </div>
+                <small class="text-muted">Chọn dịch vụ bổ sung nếu cần</small>
+            </div>
+            @endif
+
             <button type="submit" class="btn btn-primary w-100" id="submitBtn" disabled>
                 Xác nhận đặt phòng
             </button>
@@ -80,7 +108,9 @@
                 const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
                 if (nights > 0) {
-                    const total = basePrice * nights;
+                    const roomTotal = basePrice * nights;
+                    const servicesTotal = calculateServicesTotal();
+                    const total = roomTotal + servicesTotal;
                     nightsCount.textContent = nights;
                     totalPrice.textContent = new Intl.NumberFormat('vi-VN').format(total) + ' ₫';
                     pricePreview.style.display = 'block';
@@ -91,6 +121,18 @@
             pricePreview.style.display = 'none';
             submitBtn.disabled = true;
             return 0;
+        }
+
+        function calculateServicesTotal() {
+            let total = 0;
+            document.querySelectorAll('.service-item input[type="checkbox"]:checked').forEach(function(checkbox) {
+                total += Number(checkbox.dataset.price);
+            });
+            return total;
+        }
+
+        function updateTotalPrice() {
+            calculatePrice();
         }
 
         checkIn.addEventListener('change', function() {
