@@ -7,18 +7,25 @@
         <div class="col-md-7">
             <div id="roomCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
                 <div class="carousel-inner">
-                    @forelse($room->images as $index => $image)
+                    @php
+                        $roomImages = $room->images;
+                        // Nếu không có ảnh trong bảng images nhưng có ảnh đại diện
+                        if($roomImages->isEmpty() && $room->image) {
+                            $roomImages = collect([(object)['image_url' => $room->image]]);
+                        }
+                    @endphp
+                    @forelse($roomImages as $index => $image)
                         <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
-                            <img src="{{ $image->image_url }}" class="d-block w-100" alt="{{ $room->name }}">
+                            <img src="{{ asset($image->image_url) }}" class="d-block w-100" alt="{{ $room->name }}" style="max-height: 400px; object-fit: cover;">
                         </div>
                     @empty
                         <div class="carousel-item active">
                             <img src="https://via.placeholder.com/800x500?text=Light+Hotel" class="d-block w-100"
-                                 alt="{{ $room->name }}">
+                                 alt="{{ $room->name }}" style="max-height: 400px; object-fit: cover;">
                         </div>
                     @endforelse
                 </div>
-                @if($room->images->count() > 1)
+                @if($roomImages->count() > 1)
                     <button class="carousel-control-prev" type="button" data-bs-target="#roomCarousel" data-bs-slide="prev">
                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                         <span class="visually-hidden">Previous</span>
