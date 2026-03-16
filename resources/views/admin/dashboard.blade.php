@@ -7,24 +7,25 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Bảng điều khiển Admin</h1>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary"><i class="bi bi-download me-1"></i> Xuất báo cáo</button>
+            <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary"><i class="bi bi-download me-1"></i> Xuất báo cáo</a>
             <button class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Thêm mới</button>
         </div>
     </div>
 
     <!-- Stats Cards -->
     <div class="row mb-4">
+        <!-- Doanh thu hôm nay -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card h-100">
+            <div class="card stat-card h-100 border-left-primary">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-primary mb-1">Tổng phòng</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">24</div>
+                            <div class="fs-6 fw-bold text-uppercase text-primary mb-1">Doanh thu hôm nay</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($todayRevenue, 0, ',', '.') }} ₫</div>
                         </div>
                         <div class="col-auto">
                             <div class="stat-icon bg-primary-light text-primary-dark">
-                                <i class="bi bi-door-open"></i>
+                                <i class="bi bi-cash-stack"></i>
                             </div>
                         </div>
                     </div>
@@ -32,17 +33,18 @@
             </div>
         </div>
 
+        <!-- Doanh thu tháng -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card h-100">
+            <div class="card stat-card h-100 border-left-success">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-success mb-1">Đơn đặt phòng</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">124</div>
+                            <div class="fs-6 fw-bold text-uppercase text-success mb-1">Doanh thu tháng</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($monthlyRevenue, 0, ',', '.') }} ₫</div>
                         </div>
                         <div class="col-auto">
                             <div class="stat-icon bg-success-light text-success-dark">
-                                <i class="bi bi-calendar-check"></i>
+                                <i class="bi bi-currency-dollar"></i>
                             </div>
                         </div>
                     </div>
@@ -50,17 +52,19 @@
             </div>
         </div>
 
+        <!-- Tỉ lệ lấp phòng -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card h-100">
+            <div class="card stat-card h-100 border-left-info">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-warning mb-1">Khách hàng</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">58</div>
+                            <div class="fs-6 fw-bold text-uppercase text-info mb-1">Tỉ lệ lấp phòng</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $occupancyRate }}%</div>
+                            <div class="small text-muted">Tháng: {{ $monthlyOccupancyRate }}%</div>
                         </div>
                         <div class="col-auto">
-                            <div class="stat-icon bg-warning-light text-warning-dark">
-                                <i class="bi bi-people"></i>
+                            <div class="stat-icon bg-info-light text-info-dark">
+                                <i class="bi bi-pie-chart"></i>
                             </div>
                         </div>
                     </div>
@@ -68,17 +72,18 @@
             </div>
         </div>
 
+        <!-- Tổng doanh thu -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card stat-card h-100">
+            <div class="card stat-card h-100 border-left-danger">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-danger mb-1">Doanh thu</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">42.500.000 ₫</div>
+                            <div class="fs-6 fw-bold text-uppercase text-danger mb-1">Tổng doanh thu</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($totalRevenue, 0, ',', '.') }} ₫</div>
                         </div>
                         <div class="col-auto">
                             <div class="stat-icon bg-danger-light text-danger-dark">
-                                <i class="bi bi-currency-dollar"></i>
+                                <i class="bi bi-wallet2"></i>
                             </div>
                         </div>
                     </div>
@@ -225,14 +230,15 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Biểu đồ doanh thu 7 ngày
     const ctx = document.getElementById('monthlyRevenueChart').getContext('2d');
-    const monthlyRevenueChart = new Chart(ctx, {
+    const revenueChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6'],
+            labels: {!! json_encode($revenueChart['labels']) !!},
             datasets: [{
                 label: 'Doanh thu (VNĐ)',
-                data: [32000000, 42500000, 38000000, 45000000, 52000000, 48000000],
+                data: {!! json_encode($revenueChart['data']) !!},
                 borderColor: '#4361ee',
                 backgroundColor: 'rgba(67, 97, 238, 0.1)',
                 borderWidth: 2,
