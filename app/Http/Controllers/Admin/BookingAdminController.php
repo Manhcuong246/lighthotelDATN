@@ -35,8 +35,12 @@ class BookingAdminController extends Controller
 
     public function create()
     {
-        $rooms = Room::where('status', 'available')->orderBy('name')->get();
-        return view('admin.bookings.create', compact('rooms'));
+        $rooms = Room::where('status', 'available')
+            ->with('roomType')
+            ->orderBy('room_number')
+            ->get();
+        $hotelInfo = \App\Models\HotelInfo::first();
+        return view('admin.bookings.create', compact('rooms', 'hotelInfo'));
     }
 
     public function store(Request $request)
