@@ -7,6 +7,8 @@ use App\Models\Room;
 use App\Models\RoomBookedDate;
 use App\Models\RoomPrice;
 use App\Models\User;
+use App\Models\Service;
+use App\Models\BookingService;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,15 +68,42 @@ class BookingController extends Controller
                 $userId = $user->id;
             }
 
+            // Tính tổng tiền dịch vụ
+            $servicesTotal = 0;
+            $selectedServices = [];
+            if ($request->has('services')) {
+                $services = Service::whereIn('id', $request->services)->get();
+                foreach ($services as $service) {
+                    $servicesTotal += $service->price;
+                    $selectedServices[] = [
+                        'service_id' => $service->id,
+                        'price' => $service->price,
+                        'quantity' => 1,
+                    ];
+                }
+            }
+
+            $finalTotalPrice = $totalPrice + $servicesTotal;
+
             $booking = Booking::create([
                 'user_id' => $userId ?? null,
                 'room_id' => $room->id,
                 'check_in' => $checkIn->toDateString(),
                 'check_out' => $checkOut->toDateString(),
                 'guests' => $data['guests'],
-                'total_price' => $totalPrice,
+                'total_price' => $finalTotalPrice,
                 'status' => 'pending',
             ]);
+
+            // Lưu dịch vụ đi kèm
+            foreach ($selectedServices as $serviceData) {
+                BookingService::create([
+                    'booking_id' => $booking->id,
+                    'service_id' => $serviceData['service_id'],
+                    'quantity' => $serviceData['quantity'],
+                    'price' => $serviceData['price'],
+                ]);
+            }
 
             foreach ($dates as $d) {
                 RoomBookedDate::create([
