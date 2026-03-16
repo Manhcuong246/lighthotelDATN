@@ -131,120 +131,75 @@
                                 <span class="badge bg-{{ $statusColors[$booking->status] ?? 'secondary' }}">{{ $statusLabels[$booking->status] ?? '—' }}</span>
                             </td>
                             <td class="action-buttons">
-                                <div class="d-flex align-items-center gap-2">
-                                    {{-- Toggle details --}}
-                                    <button class="btn btn-sm btn-outline-secondary px-3" type="button" data-bs-toggle="collapse" data-bs-target="#details-{{ $booking->id }}" aria-expanded="false" aria-controls="details-{{ $booking->id }}">
-                                        Chi tiết
-                                    </button>
-                                    {{-- View button --}}
-                                    <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary px-3">
-                                        Xem
-                                    </a>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    {{-- PRIMARY ACTION BUTTONS BASED ON STATUS (Priority buttons) --}}
+                                    @if($booking->status === 'pending')
+                                        <form action="{{ route('admin.bookings.requestPayment', $booking) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-primary px-3">
+                                                <i class="bi bi-credit-card"></i> Yêu cầu thanh toán
+                                            </button>
+                                        </form>
+                                    @elseif($booking->status === 'awaiting_payment')
+                                        <form action="{{ route('admin.bookings.confirmPayment', $booking) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-success px-3">
+                                                <i class="bi bi-check-circle"></i> Xác nhận thanh toán
+                                            </button>
+                                        </form>
+                                    @endif
 
-                                    {{-- Dropdown actions --}}
-                                    <div class="btn-group btn-group-sm booking-dropdown">
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split px-2"
-                                            data-bs-toggle="dropdown"
-                                            data-bs-display="static"
-                                            aria-expanded="false">
-                                        </button>
+                                    @if($booking->isCheckinAllowed())
+                                        <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-info px-3">
+                                                <i class="bi bi-door-open"></i> Check-in
+                                            </button>
+                                        </form>
+                                    @endif
 
-                                        <ul class="dropdown-menu shadow-lg border-0 rounded-3">
-                                            {{-- ===== PRIMARY ACTIONS ===== --}}
-                                            @if($booking->status === 'pending')
-                                            <li>
-                                                <form action="{{ route('admin.bookings.updateStatus', $booking) }}" method="POST">
-                                                    @csrf
-                                                    <input type="hidden" name="status" value="confirmed">
-                                                    <button class="dropdown-item text-success fw-semibold">
-                                                        ✓ Xác nhận đơn
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            @endif
+                                    @if($booking->isCheckoutAllowed())
+                                        <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-warning px-3">
+                                                <i class="bi bi-door-closed"></i> Check-out
+                                            </button>
+                                        </form>
+                                    @endif
 
-                                            @if($booking->isCheckinAllowed())
-                                            <li>
-                                                <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST">
-                                                    @csrf
-                                                    <button class="dropdown-item text-info fw-semibold">
-                                                        🚪 Check-in
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            @endif
+                                    {{-- STANDARD ACTION BUTTONS (Xem, Sửa, Hủy, Xóa) - Always together --}}
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {{-- View button --}}
+                                        <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-outline-primary" title="Xem chi tiết">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        
+                                        {{-- Edit button --}}
+                                        <a href="{{ route('admin.bookings.edit', $booking) }}" class="btn btn-outline-secondary" title="Sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
 
-                                            @if($booking->isCheckoutAllowed())
-                                            <li>
-                                                <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST">
-                                                    @csrf
-                                                    <button class="dropdown-item text-warning fw-semibold">
-                                                        🚪 Check-out
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            @endif
+                                        {{-- Cancel button --}}
+                                        @if($booking->status !== 'cancelled' && $booking->status !== 'completed')
+                                            <form action="{{ route('admin.bookings.updateStatus', $booking) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <input type="hidden" name="status" value="cancelled">
+                                                <button type="submit" class="btn btn-outline-danger" title="Hủy" onclick="return confirm('Hủy đơn đặt phòng này?')">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            </form>
+                                        @endif
 
-                                            <li><hr class="dropdown-divider my-1"></li>
-
-                                            {{-- ===== SECONDARY ===== --}}
-                                            <li>
-                                                <a href="{{ route('admin.bookings.edit', $booking) }}"
-                                                class="dropdown-item">
-                                                    ✏️ Sửa thông tin
-                                                </a>
-                                            </li>
-
-                                            {{-- ===== DANGER ZONE ===== --}}
-                                            @if($booking->status !== 'cancelled' && $booking->status !== 'completed')
-                                            <li>
-                                                <form action="{{ route('admin.bookings.updateStatus', $booking) }}" method="POST">
-                                                    @csrf
-                                                    <input type="hidden" name="status" value="cancelled">
-                                                    <button class="dropdown-item text-danger">
-                                                        ✕ Hủy đơn
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            @endif
-
-                                            @if(auth()->user()->isAdmin())
-                                            <li>
-                                                <form action="{{ route('admin.bookings.destroy', $booking) }}"
-                                                    method="POST"
-                                                    onsubmit="return confirm('Xóa vĩnh viễn đơn #{{ $booking->id }}?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button class="dropdown-item text-danger fw-semibold">
-                                                        🗑️ Xóa vĩnh viễn
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            @endif
-                                        </ul>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="9" class="bg-light">
-                                <div class="collapse" id="details-{{ $booking->id }}">
-                                    <div class="p-3">
-                                        <div class="row">
-                                            <div class="col-md-3"><strong>Khách:</strong> {{ $booking->user?->full_name ?? '—' }}<br><small class="text-muted">{{ $booking->user?->phone ?? '—' }}</small></div>
-                                            <div class="col-md-3"><strong>Phòng:</strong> {{ $booking->room?->name ?? '—' }} <small class="text-muted">({{ $booking->room?->type ?? '—' }})</small></div>
-                                            <div class="col-md-2"><strong>Check-in:</strong> {{ $booking->check_in?->format('d/m/Y') ?? '—' }}</div>
-                                            <div class="col-md-2"><strong>Check-out:</strong> {{ $booking->check_out?->format('d/m/Y') ?? '—' }}</div>
-                                            <div class="col-md-2"><strong>Thanh toán:</strong> {{ $booking->payment?->status ?? '—' }}</div>
-                                        </div>
-                                        <div class="row mt-2">
-                                            <div class="col-md-3"><strong>Số khách:</strong> {{ $booking->guests ?? 0 }}</div>
-                                            <div class="col-md-3"><strong>Tổng tiền:</strong> {{ number_format($booking->total_price ?? 0,0,',','.') }} ₫</div>
-                                            <div class="col-md-3"><strong>Thực tế check-in:</strong> {{ $booking->actual_check_in?->format('d/m/Y H:i') ?? '—' }}</div>
-                                            <div class="col-md-3"><strong>Thực tế check-out:</strong> {{ $booking->actual_check_out?->format('d/m/Y H:i') ?? '—' }}</div>
-                                        </div>
+                                        {{-- Delete button (admin only) --}}
+                                        @if(auth()->user()->isAdmin())
+                                            <form action="{{ route('admin.bookings.destroy', $booking) }}" method="POST" class="d-inline" onsubmit="return confirm('Xóa vĩnh viễn đơn #{{ $booking->id }}?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-outline-danger" title="Xóa">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </div>
                             </td>

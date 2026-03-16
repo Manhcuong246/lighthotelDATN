@@ -16,6 +16,15 @@ class RoomTypeController extends Controller
         return view('admin.roomtypes.index', compact('roomTypes'));
     }
 
+    // Hiển thị chi tiết loại phòng cho user booking
+    public function show(RoomType $roomType)
+    {
+        // Đếm số phòng available của loại này
+        $availableRoomsCount = $roomType->rooms()->where('status', 'available')->count();
+        
+        return view('roomtypes.show', compact('roomType', 'availableRoomsCount'));
+    }
+
     // Form thêm
     public function create()
     {

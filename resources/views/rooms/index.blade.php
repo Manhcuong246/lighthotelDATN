@@ -63,72 +63,73 @@
 
     <div id="rooms-section" class="d-flex justify-content-between align-items-end mb-3">
         <div>
-            <div class="section-title">Phòng & giá</div>
-            <h2 class="h4 mt-1 mb-0">Chọn không gian phù hợp cho kỳ nghỉ của bạn</h2>
+            <div class="section-title">Loại phòng & giá</div>
+            <h2 class="h4 mt-1 mb-0">Chọn loại phòng phù hợp cho kỳ nghỉ của bạn</h2>
         </div>
         <div class="text-muted small d-none d-md-block">
-            {{ $rooms->total() }} phòng hiện có
+            {{ $roomTypes->total() }} loại phòng hiện có
         </div>
     </div>
 
     <div class="row g-4">
-        @forelse($rooms as $room)
+        @forelse($roomTypes as $type)
             <div class="col-md-4">
                 <div class="card card-room h-100">
-                    @php
-                        $image = $room->images->first();
-                    @endphp
-                    @if($image)
-                        <img src="{{ $image->image_url }}" class="card-img-top card-room-img" alt="{{ $room->name }}">
+                    @if($type->image)
+                        <img src="{{ asset('storage/' . $type->image) }}" class="card-img-top card-room-img" alt="{{ $type->name }}">
                     @else
                         <img src="https://images.pexels.com/photos/1571458/pexels-photo-1571458.jpeg?auto=compress&cs=tinysrgb&w=1200"
-                             class="card-img-top card-room-img" alt="{{ $room->name }}">
+                             class="card-img-top card-room-img" alt="{{ $type->name }}">
                     @endif
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">{{ $room->name }}</h5>
+                            <h5 class="card-title mb-0">{{ $type->name }}</h5>
                             <span class="badge rounded-pill badge-soft">
-                                {{ $room->type ?? 'Tiêu chuẩn' }}
+                                Loại phòng
                             </span>
                         </div>
                         <p class="card-text mb-2 text-muted small">
-                            {{ $room->beds }} giường • {{ $room->baths }} phòng tắm • Tối đa {{ $room->max_guests }} khách
+                            {{ $type->beds ?? 1 }} giường • {{ $type->baths ?? 1 }} phòng tắm • Tối đa {{ $type->capacity }} khách
                         </p>
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
                                 <div class="small text-muted">Giá từ</div>
                                 <div class="fw-bold text-primary">
-                                    {{ number_format($room->base_price, 0, ',', '.') }} VNĐ
+                                    {{ number_format($type->price, 0, ',', '.') }} VNĐ
                                     <span class="text-muted small">/ đêm</span>
                                 </div>
                             </div>
-                            <div class="text-end small text-muted">
-                                <div>Miễn phí hủy</div>
-                                <div>Thanh toán tại khách sạn</div>
-                            </div>
-                        </div>
-                        @auth
-                            @if(auth()->user()->canAccessAdmin())
-                                <div class="d-flex gap-2 mt-auto">
-                                    <a href="{{ route('rooms.show', $room) }}" class="btn btn-outline-primary flex-grow-1">Xem chi tiết</a>
-                                    <a href="{{ route('admin.rooms.edit', $room) }}" class="btn btn-primary">Sửa</a>
-                                </div>
+                            @if($type->available_rooms_count > 0)
+                                <span class="badge bg-success">Còn {{ $type->available_rooms_count }} phòng</span>
                             @else
-                                <a href="{{ route('rooms.show', $room) }}" class="btn btn-primary mt-auto w-100">Xem chi tiết &amp; đặt phòng</a>
+                                <span class="badge bg-danger">Hết phòng</span>
                             @endif
-                        @else
-                            <a href="{{ route('rooms.show', $room) }}" class="btn btn-primary mt-auto w-100">Xem chi tiết &amp; đặt phòng</a>
-                        @endauth
+                        </div>
+                        <p class="card-text text-muted small flex-grow-1">
+                            {{ Str::limit($type->description ?? 'Phòng tiêu chuẩn với đầy đủ tiện nghi hiện đại, phù hợp cho kỳ nghỉ của bạn.', 80) }}
+                        </p>
+                        <div class="d-grid gap-2 mt-auto">
+                            @if($type->available_rooms_count > 0)
+                                <a href="{{ route('roomtypes.show', $type) }}" class="btn btn-primary">
+                                    <i class="bi bi-calendar-check"></i> Đặt ngay
+                                </a>
+                                <a href="{{ route('roomtypes.show', $type) }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-eye"></i> Xem chi tiết
+                                </a>
+                            @else
+                                <button class="btn btn-secondary" disabled>Hết phòng</button>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
         @empty
-            <p class="text-center text-muted py-5">Hiện chưa có phòng nào.</p>
+            <p class="text-center text-muted py-5">Hiện chưa có loại phòng nào.</p>
         @endforelse
     </div>
 
     <div class="mt-4">
-        {{ $rooms->links() }}
+        {{ $roomTypes->links() }}
     </div>
 @endsection
 
