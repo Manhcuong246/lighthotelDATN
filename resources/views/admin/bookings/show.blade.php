@@ -80,6 +80,39 @@
                         </div>
                     </div>
 
+                    @php
+                        $hotelInfo = \App\Models\HotelInfo::first();
+                        $payment = $booking->payment;
+                    @endphp
+                    @if($hotelInfo && $hotelInfo->bank_id && $hotelInfo->bank_account && $payment && $payment->method === 'bank_transfer' && in_array($payment->status, ['pending', 'partial']))
+                    <!-- QR Code Payment Section -->
+                    <div class="row mt-4 pt-3 border-top">
+                        <div class="col-12">
+                            <h6 class="fw-bold mb-3">📱 Thanh toán qua QR Code</h6>
+                            <div class="row">
+                                <div class="col-md-4 text-center">
+                                    @php
+                                        $qrUrl = "https://img.vietqr.io/image/{$hotelInfo->bank_id}-{$hotelInfo->bank_account}-print.png?amount={$payment->amount}&addInfo=BOOKING{$booking->id}&accountName=" . urlencode($hotelInfo->bank_account_name);
+                                    @endphp
+                                    <img src="{{ $qrUrl }}" alt="QR Code Thanh toán" class="img-fluid border rounded" style="max-width: 200px;">
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="bg-light p-3 rounded">
+                                        <p class="mb-2"><strong>Ngân hàng:</strong> {{ strtoupper($hotelInfo->bank_id) }}</p>
+                                        <p class="mb-2"><strong>Số tài khoản:</strong> {{ $hotelInfo->bank_account }}</p>
+                                        <p class="mb-2"><strong>Chủ tài khoản:</strong> {{ $hotelInfo->bank_account_name }}</p>
+                                        <p class="mb-2"><strong>Số tiền:</strong> <span class="text-success fw-bold">{{ number_format($payment->amount, 0, ',', '.') }} ₫</span></p>
+                                        <p class="mb-0"><strong>Nội dung CK:</strong> <code>BOOKING{{ $booking->id }}</code></p>
+                                    </div>
+                                    <div class="mt-3">
+                                        <small class="text-muted">Khách hàng có thể quét mã QR bằng ứng dụng ngân hàng để thanh toán nhanh chóng.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     @if($booking->actual_check_in || $booking->actual_check_out)
                     <!-- Actual Times Row -->
                     <div class="row g-3 mb-4">
