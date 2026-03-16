@@ -252,7 +252,7 @@ class BookingAdminController extends Controller
     public function updateStatus(Request $request, Booking $booking)
     {
         $request->validate([
-            'status' => 'required|in:pending,confirmed,cancelled,completed',
+            'status' => 'required|in:pending,confirmed,cancelled,completed,awaiting_payment',
         ]);
 
         $old = $booking->status;
@@ -267,6 +267,92 @@ class BookingAdminController extends Controller
         ]);
 
         return back()->with('success', 'Cập nhật trạng thái thành công.');
+    }
+
+    /**
+     * Admin yêu cầu thanh toán deposit (30%)
+     */
+    public function requestPayment(Request $request, Booking $booking)
+    {
+        // Chỉ cho phép yêu cầu thanh toán khi status = pending
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return back()->withErrors('Đơn này chưa ở trạng thái chờ xác nhận.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $oldStatus = $booking->status;
+            
+            $booking->update([
+                'payment_request_sent_at' => now(),
+                'status' => Booking::STATUS_AWAITING_PAYMENT,
+            ]);
+
+            // Tạo booking log với error handling
+            try {
+                \App\Models\BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => Booking::STATUS_AWAITING_PAYMENT,
+                    'changed_at' => now(),
+                ]);
+            } catch (\Exception $logException) {
+                // Log error but don't fail the whole operation
+                \Log::error('Failed to create booking log', [
+                    'booking_id' => $booking->id,
+                    'error' => $logException->getMessage()
+                ]);
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'Đã gửi yêu cầu thanh toán deposit cho khách hàng.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Request payment failed', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Admin xác nhận đã nhận được thanh toán deposit
+     */
+    public function confirmPayment(Booking $booking)
+    {
+        // Kiểm tra booking đã được thanh toán chưa
+        if ($booking->isDepositPaid()) {
+            return back()->withErrors('Đơn này đã được thanh toán rồi.');
+        }
+
+        if ($booking->status !== Booking::STATUS_AWAITING_PAYMENT) {
+            return back()->withErrors('Đơn này chưa ở trạng thái yêu cầu thanh toán.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $booking->update([
+                'deposit_paid_at' => now(),
+                'status' => Booking::STATUS_CONFIRMED,
+            ]);
+
+            \App\Models\BookingLog::create([
+                'booking_id' => $booking->id,
+                'old_status' => Booking::STATUS_AWAITING_PAYMENT,
+                'new_status' => Booking::STATUS_CONFIRMED,
+                'changed_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return back()->with('success', 'Đã xác nhận thanh toán deposit. Đơn đặt phòng đã được xác nhận thành công.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra, vui lòng thử lại sau.');
+        }
     }
 
     public function checkIn(Booking $booking)

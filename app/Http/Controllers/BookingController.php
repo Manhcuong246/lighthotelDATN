@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Room;
+use App\Models\RoomType;
 use App\Models\RoomBookedDate;
 use App\Models\RoomPrice;
 use App\Models\User;
@@ -18,6 +19,97 @@ use Carbon\CarbonPeriod;
 
 class BookingController extends Controller
 {
+    /**
+     * Booking theo loại phòng (thay vì phòng cụ thể)
+     */
+    public function storeByType(Request $request, RoomType $roomType)
+    {
+        $data = $request->validate([
+            'full_name' => 'required|string|max:150',
+            'email' => 'required|email|max:150',
+            'phone' => 'nullable|string|max:20',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'guests' => 'required|integer|min:1|max:' . $roomType->capacity,
+            'preferred_room_number' => 'nullable|string|max:20',
+        ]);
+
+        $checkIn = new \Carbon\Carbon($data['check_in']);
+        $checkOut = new \Carbon\Carbon($data['check_out']);
+        $nights = $checkIn->diffInDays($checkOut);
+
+        if ($nights <= 0) {
+            return back()->withErrors('Ngày trả phòng phải sau ngày nhận phòng.')->withInput();
+        }
+
+        // Auto-assign room dựa trên room_type_id và dates
+        $assignedRoom = Booking::assignAvailableRoom(
+            $roomType->id,
+            $checkIn->toDateString(),
+            $checkOut->toDateString(),
+            $data['preferred_room_number'] ?? null
+        );
+
+        if (!$assignedRoom) {
+            return back()->withErrors('Rất tiếc, loại phòng này đã hết phòng trống trong khoảng thời gian này. Vui lòng chọn ngày khác hoặc loại phòng khác.')->withInput();
+        }
+
+        $totalPrice = $this->calculateTotalPriceByType($roomType, $checkIn, $checkOut);
+
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $dates = collect();
+        foreach ($period as $date) {
+            $dates->push($date->toDateString());
+        }
+
+        DB::beginTransaction();
+        try {
+            // Attach or create a user for the guest
+            if (auth()->check()) {
+                $userId = auth()->id();
+            } else {
+                $user = User::firstOrCreate(
+                    ['email' => $data['email']],
+                    [
+                        'full_name' => $data['full_name'],
+                        'phone' => $data['phone'] ?? null,
+                        'password' => bcrypt(Str::random(12)),
+                    ]
+                );
+                $userId = $user->id;
+            }
+
+            $depositAmount = round($totalPrice * 0.3, 2); // 30% deposit
+            
+            $booking = Booking::create([
+                'user_id' => $userId ?? null,
+                'room_type_id' => $roomType->id,
+                'room_id' => $assignedRoom->id, // Auto-assign room
+                'preferred_room_number' => $data['preferred_room_number'] ?? null,
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'guests' => $data['guests'],
+                'total_price' => $totalPrice,
+                'deposit_amount' => $depositAmount,
+                'status' => 'pending',
+            ]);
+
+            foreach ($dates as $d) {
+                RoomBookedDate::create([
+                    'room_id' => $assignedRoom->id,
+                    'booked_date' => $d,
+                    'booking_id' => $booking->id,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('roomtypes.show', $roomType)->with('success', 'Đặt phòng thành công! Phòng số ' . $assignedRoom->name . ' đã được giữ cho bạn.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra, vui lòng thử lại sau.')->withInput();
+        }
+    }
     public function store(Request $request, Room $room)
     {
         $data = $request->validate([
@@ -205,6 +297,19 @@ class BookingController extends Controller
             }
 
             $total += (float) $priceForDate;
+        }
+
+        return $total;
+    }
+
+    protected function calculateTotalPriceByType(RoomType $roomType, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): float
+    {
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        
+        $total = 0;
+        foreach ($period as $date) {
+            // Sử dụng giá từ room_type
+            $total += (float) $roomType->price;
         }
 
         return $total;

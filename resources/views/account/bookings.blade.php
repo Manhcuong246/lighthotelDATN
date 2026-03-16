@@ -26,20 +26,40 @@
                                     <th>Trả phòng</th>
                                     <th>Số khách</th>
                                     <th>Tổng tiền</th>
+                                    <th>Đã thanh toán</th>
                                     <th>Trạng thái</th>
+                                    <th>Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($bookings as $b)
                                 <tr>
-                                    <td>{{ $b->room ? $b->room->name : '—' }}</td>
+                                    <td>
+                                        <strong>{{ $b->roomType->name ?? ($b->room ? $b->room->name : '—') }}</strong>
+                                        @if($b->room)
+                                            <br><small class="text-muted">Số: {{ $b->room->name }}</small>
+                                        @endif
+                                    </td>
                                     <td>{{ $b->check_in ? $b->check_in->format('d/m/Y') : '—' }}</td>
                                     <td>{{ $b->check_out ? $b->check_out->format('d/m/Y') : '—' }}</td>
                                     <td>{{ $b->guests ?? '—' }}</td>
-                                    <td>{{ $b->total_price ? number_format($b->total_price, 0, ',', '.') . ' VNĐ' : '—' }}</td>
+                                    <td>
+                                        <strong>{{ number_format($b->total_price, 0, ',', '.') }} ₫</strong>
+                                    </td>
+                                    <td>
+                                        @if($b->isDepositPaid())
+                                            <span class="badge bg-success">✓ {{ number_format($b->deposit_amount, 0, ',', '.') }} ₫</span>
+                                        @elseif($b->status === 'awaiting_payment')
+                                            <span class="badge bg-warning text-dark">Chưa thanh toán</span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         @if($b->status === 'pending')
                                             <span class="badge bg-warning text-dark">Chờ xác nhận</span>
+                                        @elseif($b->status === 'awaiting_payment')
+                                            <span class="badge bg-primary">Yêu cầu thanh toán</span>
                                         @elseif($b->status === 'confirmed')
                                             <span class="badge bg-info">Đã xác nhận</span>
                                         @elseif($b->status === 'completed')
@@ -48,6 +68,17 @@
                                             <span class="badge bg-secondary">Đã hủy</span>
                                         @else
                                             <span class="badge bg-secondary">{{ $b->status }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($b->requiresDeposit())
+                                            <a href="{{ route('payments.show', $b) }}" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-credit-card"></i> Thanh toán 30%
+                                            </a>
+                                        @elseif($b->status === 'pending')
+                                            <span class="text-muted small">Chờ admin duyệt</span>
+                                        @elseif($b->isDepositPaid())
+                                            <span class="text-success small"><i class="bi bi-check-circle"></i> Đã thanh toán</span>
                                         @endif
                                     </td>
                                 </tr>

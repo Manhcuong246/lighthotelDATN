@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\PaymentAdminController;
 use App\Http\Controllers\Admin\SettingsAdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\RoomTypeController;
 
 
@@ -19,7 +20,14 @@ Route::get('/', [RoomController::class, 'index'])->name('home');
 
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 
-Route::post('/rooms/{room}/book', [BookingController::class, 'store'])->name('bookings.store');
+// Payment routes
+Route::get('/bookings/{booking}/payment', [PaymentController::class, 'showPaymentForm'])->name('payments.show');
+Route::post('/bookings/{booking}/payment', [PaymentController::class, 'processPayment'])->name('payments.process');
+Route::post('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+
+// Booking theo loại phòng (mới)
+Route::get('/roomtypes/{roomType}', [RoomTypeController::class, 'show'])->name('roomtypes.show');
+Route::post('/roomtypes/{roomType}/book', [BookingController::class, 'storeByType'])->name('bookings.store_by_type');
 
 Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [AdminController::class, 'login'])->name('admin.login.submit');
@@ -44,6 +52,11 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
+    
+    // Payment actions
+    Route::post('/bookings/{booking}/request-payment', [BookingAdminController::class, 'requestPayment'])->name('bookings.requestPayment');
+    Route::post('/bookings/{booking}/confirm-payment', [BookingAdminController::class, 'confirmPayment'])->name('bookings.confirmPayment');
+    
     Route::delete('/bookings/{booking}', [BookingAdminController::class, 'destroy'])->name('bookings.destroy');
 
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');
