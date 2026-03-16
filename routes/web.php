@@ -27,6 +27,7 @@ Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.lo
 
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/statistics/export', [AdminController::class, 'exportStatistics'])->name('statistics.export');
     Route::get('/rooms', [RoomAdminController::class, 'index'])->name('rooms.index');
     Route::get('/rooms/create', [RoomAdminController::class, 'create'])->name('rooms.create');
     Route::post('/rooms', [RoomAdminController::class, 'store'])->name('rooms.store');
