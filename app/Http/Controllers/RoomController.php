@@ -19,8 +19,9 @@ class RoomController extends Controller
     public function show(Room $room)
     {
         $room->load(['images', 'amenities', 'reviews.user']);
+        $hotelInfo = HotelInfo::first();
 
-        return view('rooms.show', compact('room'));
+        return view('rooms.show', compact('room', 'hotelInfo'));
     }
 }
 

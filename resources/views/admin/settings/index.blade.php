@@ -39,23 +39,23 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Tên khách sạn</label>
-                                <input type="text" 
-                                       class="form-control @error('hotel_name') is-invalid @enderror" 
-                                       name="hotel_name" 
-                                       value="{{ old('hotel_name') }}"
+                                <input type="text"
+                                       class="form-control @error('name') is-invalid @enderror"
+                                       name="name"
+                                       value="{{ old('name', $hotelInfo->name ?? '') }}"
                                        placeholder="Tên khách sạn">
-                                @error('hotel_name')
+                                @error('name')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Email</label>
-                                <input type="email" 
-                                       class="form-control @error('hotel_email') is-invalid @enderror" 
-                                       name="hotel_email" 
-                                       value="{{ old('hotel_email') }}"
+                                <input type="email"
+                                       class="form-control @error('email') is-invalid @enderror"
+                                       name="email"
+                                       value="{{ old('email', $hotelInfo->email ?? '') }}"
                                        placeholder="Email của khách sạn">
-                                @error('hotel_email')
+                                @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -64,23 +64,23 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Điện thoại</label>
-                                <input type="text" 
-                                       class="form-control @error('hotel_phone') is-invalid @enderror" 
-                                       name="hotel_phone" 
-                                       value="{{ old('hotel_phone') }}"
+                                <input type="text"
+                                       class="form-control @error('phone') is-invalid @enderror"
+                                       name="phone"
+                                       value="{{ old('phone', $hotelInfo->phone ?? '') }}"
                                        placeholder="Số điện thoại">
-                                @error('hotel_phone')
+                                @error('phone')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Địa chỉ</label>
-                                <input type="text" 
-                                       class="form-control @error('hotel_address') is-invalid @enderror" 
-                                       name="hotel_address" 
-                                       value="{{ old('hotel_address') }}"
+                                <input type="text"
+                                       class="form-control @error('address') is-invalid @enderror"
+                                       name="address"
+                                       value="{{ old('address', $hotelInfo->address ?? '') }}"
                                        placeholder="Địa chỉ">
-                                @error('hotel_address')
+                                @error('address')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -88,14 +88,60 @@
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Mô tả</label>
-                            <textarea class="form-control @error('hotel_description') is-invalid @enderror" 
-                                      name="hotel_description" 
+                            <textarea class="form-control @error('description') is-invalid @enderror"
+                                      name="description"
                                       rows="4"
-                                      placeholder="Mô tả về khách sạn">{{ old('hotel_description') }}</textarea>
-                            @error('hotel_description')
+                                      placeholder="Mô tả về khách sạn">{{ old('description', $hotelInfo->description ?? '') }}</textarea>
+                            @error('description')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <hr class="my-4">
+                        <h6 class="fw-bold mb-3">🏦 Cấu hình thanh toán QR (VietQR)</h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Mã ngân hàng</label>
+                                <input type="text"
+                                       class="form-control @error('bank_id') is-invalid @enderror"
+                                       name="bank_id"
+                                       value="{{ old('bank_id', $hotelInfo->bank_id ?? '') }}"
+                                       placeholder="VD: mbbank, vietcombank, vcb">
+                                <small class="text-muted">VD: mbbank, vietcombank, techcombank...</small>
+                                @error('bank_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Số tài khoản</label>
+                                <input type="text"
+                                       class="form-control @error('bank_account') is-invalid @enderror"
+                                       name="bank_account"
+                                       value="{{ old('bank_account', $hotelInfo->bank_account ?? '') }}"
+                                       placeholder="Số tài khoản ngân hàng">
+                                @error('bank_account')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Tên chủ tài khoản</label>
+                                <input type="text"
+                                       class="form-control @error('bank_account_name') is-invalid @enderror"
+                                       name="bank_account_name"
+                                       value="{{ old('bank_account_name', $hotelInfo->bank_account_name ?? '') }}"
+                                       placeholder="Tên chủ tài khoản">
+                                @error('bank_account_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        @if($hotelInfo && $hotelInfo->bank_id && $hotelInfo->bank_account)
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> QR Code sẽ được tạo tự động khi tạo đơn đặt phòng với phương thức thanh toán Chuyển khoản.
+                        </div>
+                        @endif
 
                         <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
                     </form>
