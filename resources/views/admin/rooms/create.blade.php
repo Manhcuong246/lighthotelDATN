@@ -14,7 +14,7 @@
             <h5 class="mb-0">Thông tin phòng</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.rooms.store') }}">
+            <form method="POST" action="{{ route('admin.rooms.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -40,6 +40,11 @@
                         <input type="text" name="name" id="name" class="form-control" value="{{ old('name') }}"required placeholder="Nhập số (ví dụ: 1, 101...)">
                         <small class="text-muted">Tự động thêm "Phòng" và format số</small>
                     </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Ảnh phòng</label>
+                    <input type="file" name="images[]" class="form-control" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" multiple>
+                    <small class="text-muted">Có thể chọn nhiều ảnh (tối đa 4 ảnh, mỗi ảnh &lt; 2MB)</small>
                 </div>
                 <!-- Hiển thị ảnh từ loại phòng -->
                 <div class="mb-3" id="roomTypeImagePreview" style="display: none;">

@@ -18,7 +18,14 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/framework/views/*.php
+/storage/framework/sessions/*
+/storage/framework/cache/*
+/storage/logs/*.log
+/storage/app/public/rooms/*
 /vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Docker files should be committed

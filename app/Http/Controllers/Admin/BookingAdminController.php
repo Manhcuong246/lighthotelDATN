@@ -22,10 +22,31 @@ class BookingAdminController extends Controller
         $this->middleware('admin');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $bookings = Booking::with(['user', 'room'])->latest()->paginate(15);
-        return view('admin.bookings.index', compact('bookings'));
+        $query = Booking::with(['user', 'room'])->latest();
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(function ($qry) use ($q) {
+                $qry->whereHas('user', fn ($u) => $u->where('full_name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%"))
+                    ->orWhereHas('room', fn ($r) => $r->where('name', 'like', "%{$q}%"))
+                    ->orWhere('id', 'like', "%{$q}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $bookings = $query->paginate(15)->withQueryString();
+
+        $counts = [
+            'total' => Booking::count(),
+            'pending' => Booking::where('status', 'pending')->count(),
+            'confirmed' => Booking::where('status', 'confirmed')->count(),
+        ];
+        return view('admin.bookings.index', compact('bookings', 'counts'));
     }
 
     public function show(Booking $booking)
@@ -178,7 +199,7 @@ class BookingAdminController extends Controller
         $validated = $request->validate([
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1|max:' . $booking->room->max_guests,
+            'guests' => 'required|integer|min:1|max:' . ($booking->room->max_guests ?? 99),
             'total_price' => 'required|numeric|min:0',
             'status' => 'required|in:pending,confirmed,cancelled,completed',
         ]);

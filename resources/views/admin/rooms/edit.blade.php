@@ -14,7 +14,7 @@
             <h5 class="mb-0">Thông tin phòng</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.rooms.update', $room) }}">
+            <form method="POST" action="{{ route('admin.rooms.update', $room) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="row">
@@ -41,6 +41,45 @@
                         <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $room->name) }}"required placeholder="Nhập số (ví dụ: 1, 101...)">
                         <small class="text-muted">Tự động thêm "Phòng" và format số</small>
                     </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Ảnh phòng</label>
+                    @if($room->images->isNotEmpty())
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        @foreach($room->images as $img)
+                        <div class="position-relative d-inline-block room-image-item" style="width: 80px;">
+                            <img src="{{ $img->image_url && !str_starts_with($img->image_url, 'http') ? asset('storage/' . $img->image_url) : $img->image_url }}"
+                                 alt=""
+                                 class="img-thumbnail room-image-thumb"
+                                 style="width: 80px; height: 60px; object-fit: cover;">
+                            <input
+                                type="checkbox"
+                                id="remove_image_{{ $img->id }}"
+                                name="remove_images[]"
+                                value="{{ $img->id }}"
+                                class="room-remove-image-checkbox visually-hidden">
+
+                            <button
+                                type="button"
+                                class="position-absolute top-0 end-0 m-1 btn btn-sm btn-danger p-1 rounded-circle room-remove-image-btn"
+                                style="cursor: pointer; line-height: 1; z-index: 10;"
+                                title="Đánh dấu xóa ảnh"
+                                data-checkbox-id="remove_image_{{ $img->id }}"
+                                aria-pressed="false"
+                            >
+                                <i class="bi bi-x"></i>
+                            </button>
+
+                            <div class="position-absolute top-0 start-0 w-100 h-100 rounded-2 room-image-remove-overlay"
+                                 style="display:none; background: rgba(220,53,69,0.20); border: 2px solid rgba(220,53,69,0.55);">
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    <small class="text-muted d-block mb-1">Tick icon X để xóa ảnh khi cập nhật</small>
+                    @endif
+                    <input type="file" name="images[]" class="form-control" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" multiple>
+                    <small class="text-muted">Thêm ảnh mới (tối đa 4 ảnh, mỗi ảnh &lt; 2MB)</small>
                 </div>
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -96,6 +135,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const maxGuestsInput = document.querySelector('input[name="max_guests"]');
     const bedsInput = document.querySelector('input[name="beds"]');
     const bathsInput = document.querySelector('input[name="baths"]');
+
+    // Toggle chọn ảnh cần xóa (mobile-friendly)
+    document.querySelectorAll('.room-remove-image-btn').forEach((btn) => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const id = this.dataset.checkboxId;
+            if (!id) return;
+            const checkbox = document.getElementById(id);
+            if (!checkbox) return;
+
+            checkbox.checked = !checkbox.checked;
+
+            const item = this.closest('.room-image-item');
+            const overlay = item ? item.querySelector('.room-image-remove-overlay') : null;
+            const thumb = item ? item.querySelector('.room-image-thumb') : null;
+
+            const on = checkbox.checked;
+            this.setAttribute('aria-pressed', on ? 'true' : 'false');
+            this.classList.toggle('btn-danger', !on);
+            this.classList.toggle('btn-outline-danger', on);
+            if (overlay) overlay.style.display = on ? 'block' : 'none';
+            if (thumb) thumb.style.opacity = on ? '0.55' : '1';
+        });
+    });
     
     // Format số phòng khi blur (mất focus)
     nameInput.addEventListener('blur', function() {

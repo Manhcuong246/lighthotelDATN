@@ -7,7 +7,6 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Đánh giá #{{ $review->id }}</h1>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.reviews.edit', $review) }}" class="btn btn-primary">Chỉnh sửa</a>
             <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary">Quay lại</a>
         </div>
     </div>
@@ -45,6 +44,39 @@
                     </div>
                     @endif
 
+                    @if($review->reply)
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Phản hồi từ khách sạn</label>
+                        <p class="form-control-plaintext">{{ $review->reply }}</p>
+                        @if($review->replied_at)
+                            <small class="text-muted">
+                                Đã phản hồi: {{ is_string($review->replied_at) ? \Carbon\Carbon::parse($review->replied_at)->format('d/m/Y H:i:s') : $review->replied_at->format('d/m/Y H:i:s') }}
+                            </small>
+                        @endif
+                    </div>
+                    @endif
+
+                    <form action="{{ route('admin.reviews.reply', $review) }}" method="POST" class="mt-3">
+                        @csrf
+                        <div class="mb-3">
+                            <label for="reply" class="form-label fw-bold">Cập nhật phản hồi</label>
+                            <textarea
+                                class="form-control @error('reply') is-invalid @enderror"
+                                id="reply"
+                                name="reply"
+                                rows="3"
+                                placeholder="Nhập phản hồi của khách sạn...">{{ old('reply', $review->reply) }}</textarea>
+                            @error('reply')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-2">
+                                Nếu để trống và lưu, phản hồi sẽ bị xóa.
+                            </small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-sm">Lưu phản hồi</button>
+                    </form>
+
                     <div class="row">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Ngày tạo</label>
@@ -77,6 +109,9 @@
                     <p class="mb-0">
                         <strong>Phòng:</strong><br>
                         {{ $review->room->name }}
+                        <a href="{{ route('rooms.show', $review->room) }}" class="btn btn-outline-primary btn-sm d-block mt-2">
+                            Xem chi tiết phòng
+                        </a>
                     </p>
                     @endif
                 </div>

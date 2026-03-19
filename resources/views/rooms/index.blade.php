@@ -13,23 +13,20 @@
                     <span class="text-primary-emphasis bg-light rounded-pill px-2 py-1">Light Hotel</span>
                 </div>
                 <h1 class="hero-title">
-                    Trải nghiệm kỳ nghỉ sang trọng<br>
+                    Trải nghiệm kỳ nghỉ <span class="text-nowrap">sang trọng</span><br>
                     ngay giữa lòng thành phố.
                 </h1>
                 <p class="hero-subtitle mb-4">
-                    {{ $hotel->description ?? 'Light Hotel mang đến không gian nghỉ dưỡng chuẩn 4★ với tầm nhìn toàn cảnh thành phố, dịch vụ 24/7 và thiết kế hiện đại.' }}
+                    {{ $hotel->description ?? 'Light Hotel mang đến không gian nghỉ dưỡng sang trọng 4★, tầm nhìn thành phố và dịch vụ 24/7. Phù hợp cho kỳ nghỉ thư giãn cùng gia đình.' }}
                 </p>
                 <div class="d-flex flex-wrap align-items-center gap-3 hero-tags mb-4">
                     <span>Nhận phòng 24/7</span>
                     <span>Hủy miễn phí</span>
                     <span>Thanh toán tại khách sạn</span>
                 </div>
-                <a href="#rooms-section" class="btn btn-light btn-lg px-4 me-2">
+                <a href="#rooms-section" class="btn btn-light btn-lg px-4">
                     Xem phòng trống
                 </a>
-                <button type="button" class="btn btn-outline-light btn-lg px-4 d-none d-sm-inline-flex">
-                    Liên hệ lễ tân
-                </button>
             </div>
             <div class="col-lg-5 d-none d-lg-block">
                 <div class="bg-white bg-opacity-10 rounded-4 p-3">
@@ -71,19 +68,21 @@
         </div>
     </div>
 
+    @php
+        $placeholderSvg = "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22250%22 viewBox=%220 0 400 250%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22%3E%3Cstop offset=%220%25%22 stop-color=%22%231e293b%22/%3E%3Cstop offset=%22100%25%22 stop-color=%22%230f172a%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill=%22url(%23g)%22 width=%22400%22 height=%22250%22/%3E%3Ctext fill=%22%2394a3b8%22 font-size=%2218%22 x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22%3ELight Hotel%3C/text%3E%3C/svg%3E";
+    @endphp
     <div class="row g-4">
         @forelse($rooms as $room)
+            @php
+                $imageUrls = $room->getDisplayImageUrls();
+                $imageUrl = $imageUrls[0] ?? null;
+                $placeholder = $placeholderSvg;
+            @endphp
             <div class="col-md-4">
                 <div class="card card-room h-100">
-                    @php
-                        $image = $room->images->first();
-                    @endphp
-                    @if($image)
-                        <img src="{{ $image->image_url }}" class="card-img-top card-room-img" alt="{{ $room->name }}">
-                    @else
-                        <img src="https://images.pexels.com/photos/1571458/pexels-photo-1571458.jpeg?auto=compress&cs=tinysrgb&w=1200"
-                             class="card-img-top card-room-img" alt="{{ $room->name }}">
-                    @endif
+                    <img src="{{ $imageUrl ?? $placeholder }}" class="card-img-top card-room-img" alt="{{ $room->name }}"
+                         @if($imageUrl) data-fallback="{{ $placeholder }}"
+                         onerror="var f=this.dataset.fallback;if(f){this.onerror=null;this.src=f}" @endif>
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title mb-0">{{ $room->name }}</h5>
@@ -127,8 +126,8 @@
         @endforelse
     </div>
 
-    <div class="mt-4">
-        {{ $rooms->links() }}
+    <div class="mt-4 d-flex justify-content-center">
+        {{ $rooms->links('pagination::bootstrap-5') }}
     </div>
 @endsection
 
