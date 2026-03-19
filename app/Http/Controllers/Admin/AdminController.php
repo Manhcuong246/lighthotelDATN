@@ -30,13 +30,13 @@ class AdminController extends Controller
             $q->where('name', 'customer');
         })->count();
         
-        // Doanh thu
-        $totalRevenue = Payment::where('status', 'completed')->sum('amount') ?? 0;
-        $monthlyRevenue = Payment::where('status', 'completed')
+        // Doanh thu (Payment status = 'paid' khi thanh toán thành công)
+        $totalRevenue = Payment::where('status', 'paid')->sum('amount') ?? 0;
+        $monthlyRevenue = Payment::where('status', 'paid')
             ->whereMonth('paid_at', Carbon::now()->month)
             ->whereYear('paid_at', Carbon::now()->year)
             ->sum('amount') ?? 0;
-        $todayRevenue = Payment::where('status', 'completed')
+        $todayRevenue = Payment::where('status', 'paid')
             ->whereDate('paid_at', Carbon::today())
             ->sum('amount') ?? 0;
         
@@ -62,11 +62,20 @@ class AdminController extends Controller
         // Dữ liệu biểu đồ tỉ lệ lấp phòng 7 ngày gần nhất
         $occupancyChart = $this->getOccupancyChartData();
         
-        // Đơn đặt phòng gần đây
-        $recentBookings = Booking::with(['user', 'room'])
-            ->latest()
-            ->take(5)
+        // Top 5 phòng có doanh thu cao nhất (cho biểu đồ tròn)
+        $topRoomsByRevenue = Payment::where('payments.status', 'paid')
+            ->join('bookings', 'payments.booking_id', '=', 'bookings.id')
+            ->join('rooms', 'bookings.room_id', '=', 'rooms.id')
+            ->selectRaw('rooms.id, rooms.name, SUM(payments.amount) as total_revenue')
+            ->groupBy('rooms.id', 'rooms.name')
+            ->orderByDesc('total_revenue')
+            ->limit(5)
             ->get();
+
+        // Tình trạng phòng (available, booked, maintenance)
+        $roomsAvailable = Room::where('status', 'available')->count();
+        $roomsBooked = Room::where('status', 'booked')->count();
+        $roomsMaintenance = Room::where('status', 'maintenance')->count();
 
         return view('admin.dashboard', compact(
             'totalRooms',
@@ -79,7 +88,10 @@ class AdminController extends Controller
             'monthlyOccupancyRate',
             'revenueChart',
             'occupancyChart',
-            'recentBookings'
+            'topRoomsByRevenue',
+            'roomsAvailable',
+            'roomsBooked',
+            'roomsMaintenance'
         ));
     }
     
@@ -91,13 +103,16 @@ class AdminController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
             $labels[] = $date->format('d/m');
-            $revenue = Payment::where('status', 'completed')
+            $revenue = Payment::where('status', 'paid')
                 ->whereDate('paid_at', $date)
                 ->sum('amount') ?? 0;
             $data[] = $revenue;
         }
         
-        return ['labels' => $labels, 'data' => $data];
+        $max = count($data) > 0 ? max($data) : 0;
+        $suggestedMax = $max > 0 ? (int) ceil($max * 1.2 / 100000) * 100000 : 1000000;
+        
+        return ['labels' => $labels, 'data' => $data, 'suggestedMax' => $suggestedMax];
     }
     
     private function getOccupancyChartData()
@@ -177,11 +192,11 @@ class AdminController extends Controller
             fputcsv($output, []);
             
             // Doanh thu
-            $totalRevenue = Payment::where('status', 'completed')->sum('amount') ?? 0;
-            $monthlyRevenue = Payment::where('status', 'completed')
+            $totalRevenue = Payment::where('status', 'paid')->sum('amount') ?? 0;
+            $monthlyRevenue = Payment::where('status', 'paid')
                 ->whereMonth('paid_at', Carbon::now()->month)
                 ->sum('amount') ?? 0;
-            $todayRevenue = Payment::where('status', 'completed')
+            $todayRevenue = Payment::where('status', 'paid')
                 ->whereDate('paid_at', Carbon::today())
                 ->sum('amount') ?? 0;
             

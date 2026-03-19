@@ -3,50 +3,47 @@
 @section('title', 'Quản lý đặt phòng')
 
 @section('content')
-<div class="container-fluid px-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2 fw-bold mb-0 text-dark">📋 Quản lý đặt phòng</h1>
-
-        <div class="d-flex gap-2">
-            <!-- Create Button -->
-            <a href="{{ route('admin.bookings.create') }}" class="btn btn-success d-flex align-items-center gap-2 px-3 py-2">
-                <i class="bi bi-plus-lg"></i>
-                <span>Tạo đơn</span>
+<div class="container-fluid px-0">
+    <div class="page-header">
+        <h1 class="text-dark fw-bold">Quản lý đặt phòng</h1>
+        <div class="d-flex flex-wrap gap-2">
+            @if(auth()->user()->isAdmin())
+            <a href="{{ route('admin.bookings.create') }}" class="btn btn-success btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>Tạo đơn
             </a>
+            @endif
 
-            <!-- Notification Bell -->
             <div class="dropdown">
-                <button class="btn btn-light btn-lg position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="btn btn-light btn-sm position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell-fill fs-5" style="color: #ff6b6b;"></i>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        {{ $bookings->total() }}
+                        {{ $counts['total'] ?? $bookings->total() }}
                     </span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 280px;">
-                    <li><h6 class="dropdown-header">📬 Đơn đặt phòng</h6></li>
+                    <li><h6 class="dropdown-header">Đơn đặt phòng</h6></li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item" href="{{ route('admin.bookings.index') }}">
                             <div class="d-flex justify-content-between">
-                                <span><strong>📊 Tổng đơn:</strong></span>
-                                <span class="badge bg-primary">{{ $bookings->total() }}</span>
+                                <span><strong>Tổng đơn:</strong></span>
+                                <span class="badge bg-primary">{{ $counts['total'] ?? 0 }}</span>
                             </div>
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=pending">
                             <div class="d-flex justify-content-between">
-                                <span><strong>⏳ Chờ xác nhận:</strong></span>
-                                <span class="badge bg-warning">{{ $bookings->where('status', 'pending')->count() }}</span>
+                                <span><strong>Chờ xác nhận:</strong></span>
+                                <span class="badge bg-warning">{{ $counts['pending'] ?? 0 }}</span>
                             </div>
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=confirmed">
                             <div class="d-flex justify-content-between">
-                                <span><strong>✓ Đã xác nhận:</strong></span>
-                                <span class="badge bg-info">{{ $bookings->where('status', 'confirmed')->count() }}</span>
+                                <span><strong>Đã xác nhận:</strong></span>
+                                <span class="badge bg-info">{{ $counts['confirmed'] ?? 0 }}</span>
                             </div>
                         </a>
                     </li>
@@ -71,8 +68,22 @@
 
     <!-- Table Card -->
     <div class="card shadow-sm border-0">
-        <div class="card-header py-3 px-4" style="background: linear-gradient(90deg, #3b49d6 0%, #4b3bd6 100%);">
-            <h5 class="mb-0 text-white fw-semibold">📋 Danh sách đơn đặt phòng</h5>
+        <div class="card-header py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: linear-gradient(90deg, #3b49d6 0%, #4b3bd6 100%);">
+            <h5 class="mb-0 text-white fw-semibold">Danh sách đơn đặt phòng</h5>
+            <form action="{{ route('admin.bookings.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm khách, phòng, mã đơn..." style="width: 200px;">
+                <select name="status" class="form-select form-select-sm" style="width: 150px;">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Chờ xác nhận</option>
+                    <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Đã xác nhận</option>
+                    <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Hoàn thành</option>
+                    <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Đã hủy</option>
+                </select>
+                <button type="submit" class="btn btn-light btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                @if(request()->hasAny(['q','status']))
+                <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-light btn-sm">Xóa bộ lọc</a>
+                @endif
+            </form>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive" style="overflow: visible;">

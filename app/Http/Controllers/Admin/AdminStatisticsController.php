@@ -81,7 +81,7 @@ class AdminStatisticsController extends Controller
     private function getMonthlyRevenue($startDate, $endDate)
     {
         return Payment::whereBetween('paid_at', [$startDate, $endDate])
-            ->where('status', 'completed')
+            ->where('status', 'paid')
             ->sum('amount') ?? 0;
     }
 
@@ -94,7 +94,7 @@ class AdminStatisticsController extends Controller
         $tomorrow = Carbon::now()->endOfDay();
 
         return Payment::whereBetween('paid_at', [$today, $tomorrow])
-            ->where('status', 'completed')
+            ->where('status', 'paid')
             ->sum('amount') ?? 0;
     }
 
@@ -103,7 +103,7 @@ class AdminStatisticsController extends Controller
      */
     private function getTotalRevenue()
     {
-        return Payment::where('status', 'completed')
+        return Payment::where('status', 'paid')
             ->sum('amount') ?? 0;
     }
 
@@ -180,7 +180,7 @@ class AdminStatisticsController extends Controller
             $dateString = $date->toDateString();
             
             $revenue = Payment::whereDate('paid_at', $dateString)
-                ->where('status', 'completed')
+                ->where('status', 'paid')
                 ->sum('amount') ?? 0;
 
             $labels[] = $date->format('d/m');

@@ -54,6 +54,8 @@
                                     Chuyển khoản ngân hàng
                                 @elseif($payment->method === 'cash')
                                     Tiền mặt
+                                @elseif($payment->method === 'vnpay')
+                                    <span class="badge bg-dark">VNPay</span>
                                 @else
                                     {{ $payment->method }}
                                 @endif
@@ -63,8 +65,14 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Ngày tạo</label>
-                            <p class="form-control-plaintext">{{ $payment->created_at ? (is_string($payment->created_at) ? \Carbon\Carbon::parse($payment->created_at)->format('d/m/Y H:i:s') : $payment->created_at->format('d/m/Y H:i:s')) : '—' }}</p>
+                            <label class="form-label fw-bold">Ngày thanh toán</label>
+                            <p class="form-control-plaintext">
+                                {{ $payment->paid_at
+                                    ? (is_string($payment->paid_at)
+                                        ? \Carbon\Carbon::parse($payment->paid_at)->format('d/m/Y H:i:s')
+                                        : $payment->paid_at->format('d/m/Y H:i:s'))
+                                    : '—' }}
+                            </p>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Cập nhật lần cuối</label>

@@ -72,6 +72,21 @@
                             @enderror
                         </div>
 
+                        <div class="mb-3">
+                            <label for="reply" class="form-label fw-bold">Phản hồi từ khách sạn</label>
+                            <textarea class="form-control @error('reply') is-invalid @enderror"
+                                      id="reply"
+                                      name="reply"
+                                      rows="3"
+                                      placeholder="Nhập phản hồi...">{{ old('reply', $review->reply) }}</textarea>
+                            @error('reply')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-2">
+                                Khi lưu, hệ thống sẽ tự cập nhật thời gian `replied_at`. Nếu để trống, phản hồi sẽ được xóa.
+                            </small>
+                        </div>
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
                             <a href="{{ route('admin.reviews.show', $review) }}" class="btn btn-outline-secondary">Hủy</a>

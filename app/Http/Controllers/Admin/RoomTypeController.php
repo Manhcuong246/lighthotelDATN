@@ -10,9 +10,16 @@ use Illuminate\Support\Facades\Storage;
 class RoomTypeController extends Controller
 {
     // Danh sách loại phòng
-    public function index()
+    public function index(Request $request)
     {
-        $roomTypes = RoomType::orderBy('id', 'desc')->get();
+        $query = RoomType::orderBy('id', 'desc');
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where('name', 'like', "%{$q}%");
+        }
+
+        $roomTypes = $query->get();
         return view('admin.roomtypes.index', compact('roomTypes'));
     }
 
@@ -36,12 +43,11 @@ class RoomTypeController extends Controller
             'status' => 'nullable|boolean',
         ]);
 
-        // store uploaded image if provided
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('room_types', 'public');
         }
 
-         RoomType::create([
+        RoomType::create([
             'name' => $validated['name'],
             'capacity' => $validated['capacity'],
             'beds' => $validated['beds'],
@@ -80,7 +86,6 @@ class RoomTypeController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Xóa ảnh cũ nếu có
             if ($roomType->image) {
                 Storage::disk('public')->delete($roomType->image);
             }
