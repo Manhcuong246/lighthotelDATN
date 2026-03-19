@@ -10,6 +10,7 @@ use App\Models\RoomPrice;
 use App\Models\User;
 use App\Models\Service;
 use App\Models\BookingService;
+use App\Services\VnPayService;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,14 +21,20 @@ class BookingController extends Controller
 {
     public function store(Request $request, Room $room)
     {
+        if (Auth::check() && Auth::user()?->canAccessAdmin()) {
+            return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
+        }
+
+        $maxGuests = $room->max_guests ?? 99;
         $data = $request->validate([
             'full_name' => 'required|string|max:150',
             'email' => 'required|email|max:150',
             'phone' => 'nullable|string|max:20',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1|max:' . $room->max_guests,
-            'payment_method' => 'required|in:cash,bank_transfer',
+            'guests' => 'required|integer|min:1|max:' . $maxGuests,
+            'payment_method' => 'required|in:vnpay',
+            'bank_code' => 'nullable|string|max:50',
         ]);
 
         $checkIn = new \Carbon\Carbon($data['check_in']);
@@ -51,7 +58,7 @@ class BookingController extends Controller
             ->exists();
 
         if ($conflict) {
-            return back()->withErrors('Phòng đã được đặt trong khoảng thời gian này. Vui lòng chọn ngày khác.')->withInput();
+            return back()->withErrors('Có lỗi xảy ra, vui lòng thử lại sau.')->withInput();
         }
 
         DB::beginTransaction();
@@ -77,10 +84,11 @@ class BookingController extends Controller
             if ($request->has('services')) {
                 $services = Service::whereIn('id', $request->services)->get();
                 foreach ($services as $service) {
-                    $servicesTotal += $service->price;
+                    $price = is_numeric($service->price) ? (float) $service->price : 0;
+                    $servicesTotal += $price;
                     $selectedServices[] = [
                         'service_id' => $service->id,
-                        'price' => $service->price,
+                        'price' => $price,
                         'quantity' => 1,
                     ];
                 }
@@ -116,15 +124,43 @@ class BookingController extends Controller
                 ]);
             }
 
-            // Create payment record
-            Payment::create([
+            $payment = Payment::create([
                 'booking_id' => $booking->id,
-                'amount' => $totalPrice,
+                'amount' => $finalTotalPrice,
                 'method' => $data['payment_method'],
                 'status' => 'pending',
             ]);
 
             DB::commit();
+
+            if ($data['payment_method'] === 'vnpay') {
+                $vnPayService = app(VnPayService::class);
+                $returnUrl = route('payment.vnpay.return');
+                $orderInfo = 'Dat phong Light Hotel #' . $booking->id;
+                $txnRef = 'LIGHT' . $booking->id;
+                $amount = (int) round($finalTotalPrice);
+                $bankCode = $request->input('bank_code') ?: null;
+
+                $paymentUrl = $vnPayService->createPaymentUrl(
+                    $txnRef,
+                    $amount,
+                    $orderInfo,
+                    $returnUrl,
+                    $request->ip(),
+                    'vn',
+                    $bankCode
+                );
+
+                if (! Auth::check() && isset($user)) {
+                    Auth::login($user);
+                }
+
+                return redirect()->away($paymentUrl);
+            }
+
+            if (! Auth::check() && isset($user)) {
+                Auth::login($user);
+            }
 
             return redirect()->route('account.bookings')->with('success', 'Đặt phòng thành công! Vui lòng kiểm tra lịch đặt phòng để xem thông tin thanh toán.');
         } catch (\Exception $e) {

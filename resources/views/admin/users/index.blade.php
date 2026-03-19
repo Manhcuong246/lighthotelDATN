@@ -3,14 +3,21 @@
 @section('title', 'Quản lý người dùng')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 text-dark">Quản lý người dùng</h1>
+<div class="container-fluid px-0">
+    <div class="page-header">
+        <h1 class="text-dark fw-bold">Quản lý người dùng</h1>
     </div>
 
     <div class="card card-admin shadow mb-4">
-        <div class="card-header-admin py-3">
+        <div class="card-header-admin py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h5 class="mb-0">Danh sách người dùng</h5>
+            <form action="{{ route('admin.users.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm tên, email, SĐT..." style="width: 220px;">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                @if(request('q'))
+                <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                @endif
+            </form>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -33,7 +40,7 @@
                                 <td>{{ $user->id }}</td>
                                 <td>
                                     @if($user->avatar_url)
-                                        <img src="{{ $user->avatar_url }}" alt="{{ $user->full_name }}" class="rounded-circle me-2" width="32" height="32">
+                                        <img src="{{ str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : asset('storage/' . $user->avatar_url) }}" alt="{{ $user->full_name }}" class="rounded-circle me-2" width="32" height="32" style="object-fit:cover;">
                                     @endif
                                     {{ $user->full_name }}
                                 </td>

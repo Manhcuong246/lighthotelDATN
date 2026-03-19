@@ -3,15 +3,19 @@
 @section('title', 'Quản lý loại phòng')
 
 @section('content')
-<div class="container-fluid px-4">
-
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 text-dark fw-bold">Quản lý loại phòng</h1>
-
-        <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-lg me-1"></i> Thêm loại phòng
-        </a>
+<div class="container-fluid px-0">
+    <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h1 class="text-dark fw-bold">Quản lý loại phòng</h1>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <form action="{{ route('admin.roomtypes.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm tên loại phòng..." style="width: 200px;">
+                <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                @if(request('q'))
+                <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                @endif
+            </form>
+            <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Thêm loại phòng</a>
+        </div>
     </div>
 
     <!-- Alert -->

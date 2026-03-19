@@ -3,14 +3,21 @@
 @section('title', 'Quản lý đánh giá')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 text-dark">Quản lý đánh giá</h1>
+<div class="container-fluid px-0">
+    <div class="page-header">
+        <h1 class="text-dark fw-bold">Quản lý đánh giá</h1>
     </div>
 
     <div class="card card-admin shadow mb-4">
-        <div class="card-header-admin py-3">
+        <div class="card-header-admin py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h5 class="mb-0">Danh sách đánh giá</h5>
+            <form action="{{ route('admin.reviews.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm khách, phòng, nội dung..." style="width: 240px;">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                @if(request('q'))
+                <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                @endif
+            </form>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -51,7 +58,6 @@
                                 <td>{{ $review->created_at ? (is_string($review->created_at) ? \Carbon\Carbon::parse($review->created_at)->format('d/m/Y') : $review->created_at->format('d/m/Y')) : '—' }}</td>
                                 <td>
                                     <a href="{{ route('admin.reviews.show', $review) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-                                    <a href="{{ route('admin.reviews.edit', $review) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
                                     @if(auth()->user()->isAdmin())
                                     <form action="{{ route('admin.reviews.destroy', $review) }}" method="POST" class="d-inline"
                                           onsubmit="return confirm('Bạn có chắc muốn xóa đánh giá này?');">

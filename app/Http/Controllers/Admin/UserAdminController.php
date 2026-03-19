@@ -16,9 +16,20 @@ class UserAdminController extends Controller
         $this->middleware('admin.only');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('roles')->latest()->paginate(15);
+        $query = User::with('roles')->latest();
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(function ($qry) use ($q) {
+                $qry->where('full_name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%")
+                    ->orWhere('phone', 'like', "%{$q}%");
+            });
+        }
+
+        $users = $query->paginate(15)->withQueryString();
         return view('admin.users.index', compact('users'));
     }
 

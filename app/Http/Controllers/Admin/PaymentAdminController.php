@@ -13,9 +13,25 @@ class PaymentAdminController extends Controller
         $this->middleware('admin');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $payments = Payment::with(['booking.user', 'booking.room'])->latest()->paginate(15);
+        $query = Payment::with(['booking.user', 'booking.room'])->latest();
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(function ($qry) use ($q) {
+                $qry->where('transaction_id', 'like', "%{$q}%")
+                    ->orWhereHas('booking', function ($b) use ($q) {
+                        $b->whereHas('user', fn ($u) => $u->where('full_name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%"));
+                    });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $payments = $query->paginate(15)->withQueryString();
         return view('admin.payments.index', compact('payments'));
     }
 

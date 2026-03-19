@@ -1,8 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\Admin\RoomAdminController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BookingAdminController;
@@ -12,14 +14,36 @@ use App\Http\Controllers\Admin\PaymentAdminController;
 use App\Http\Controllers\Admin\SettingsAdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
 
+
+// Serve storage files (fallback when symlink fails or PHP built-in server)
+Route::get('/storage/{path}', function (string $path) {
+    $path = str_replace(['../', '..\\'], '', $path);
+    if (! Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    $fullPath = Storage::disk('public')->path($path);
+    $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
+    return response()->file($fullPath, [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('path', '.+');
 
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 
 Route::post('/rooms/{room}/book', [BookingController::class, 'store'])->name('bookings.store');
+
+Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
+
+Route::get('/payment/vnpay/return', [VnPayController::class, 'return'])->name('payment.vnpay.return');
+Route::get('/payment/success/{booking}', [PaymentController::class, 'success'])->name('payment.success');
+Route::get('/payment/failed', [PaymentController::class, 'failed'])->name('payment.failed');
 
 Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [AdminController::class, 'login'])->name('admin.login.submit');
@@ -36,15 +60,18 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('/rooms/{room}', [RoomAdminController::class, 'destroy'])->name('rooms.destroy');
 
     Route::get('/bookings', [BookingAdminController::class, 'index'])->name('bookings.index');
-    Route::get('/bookings/create', [BookingAdminController::class, 'create'])->name('bookings.create');
-    Route::post('/bookings', [BookingAdminController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
-    Route::get('/bookings/{booking}/edit', [BookingAdminController::class, 'edit'])->name('bookings.edit');
-    Route::put('/bookings/{booking}', [BookingAdminController::class, 'update'])->name('bookings.update');
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
-    Route::delete('/bookings/{booking}', [BookingAdminController::class, 'destroy'])->name('bookings.destroy');
+    
+    Route::middleware(['admin.only'])->group(function () {
+        Route::get('/bookings/create', [BookingAdminController::class, 'create'])->name('bookings.create');
+        Route::post('/bookings', [BookingAdminController::class, 'store'])->name('bookings.store');
+        Route::get('/bookings/{booking}/edit', [BookingAdminController::class, 'edit'])->name('bookings.edit');
+        Route::put('/bookings/{booking}', [BookingAdminController::class, 'update'])->name('bookings.update');
+        Route::delete('/bookings/{booking}', [BookingAdminController::class, 'destroy'])->name('bookings.destroy');
+    });
 
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');
     Route::get('/users/{user}', [UserAdminController::class, 'show'])->name('users.show');
@@ -54,8 +81,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
 
     Route::get('/reviews', [ReviewAdminController::class, 'index'])->name('reviews.index');
     Route::get('/reviews/{review}', [ReviewAdminController::class, 'show'])->name('reviews.show');
-    Route::get('/reviews/{review}/edit', [ReviewAdminController::class, 'edit'])->name('reviews.edit');
-    Route::put('/reviews/{review}', [ReviewAdminController::class, 'update'])->name('reviews.update');
+    Route::post('/reviews/{review}/reply', [ReviewAdminController::class, 'reply'])->name('reviews.reply');
     Route::delete('/reviews/{review}', [ReviewAdminController::class, 'destroy'])->name('reviews.destroy');
 
     Route::get('/payments', [PaymentAdminController::class, 'index'])->name('payments.index');
@@ -91,10 +117,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
     Route::get('/bookings', [AccountController::class, 'bookings'])->name('bookings');
+    Route::get('/bookings/{booking}', [AccountController::class, 'showBooking'])->name('bookings.show');
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
-    Route::get('/settings', [AccountController::class, 'settings'])->name('settings');
-    Route::put('/settings', [AccountController::class, 'updateSettings'])->name('settings.update');
+    Route::put('/profile/password', [AccountController::class, 'updatePassword'])->name('profile.update.password');
 });
 
 

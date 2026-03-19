@@ -3,9 +3,9 @@
 @section('title', 'Cài đặt hệ thống')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 text-dark">Cài đặt hệ thống</h1>
+<div class="container-fluid px-0">
+    <div class="page-header">
+        <h1 class="text-dark fw-bold">Cài đặt hệ thống</h1>
     </div>
 
     @if(session('success'))
@@ -24,8 +24,8 @@
         </div>
     @endif
 
-    <div class="row">
-        <div class="col-lg-8">
+    <div class="row g-3">
+        <div class="col-12 col-lg-8">
             <!-- General Settings -->
             <div class="card card-admin shadow mb-4">
                 <div class="card-header-admin py-3">
