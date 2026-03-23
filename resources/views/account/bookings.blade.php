@@ -182,6 +182,9 @@
                             <span><i class="bi bi-arrow-right"></i></span>
                             <span><i class="bi bi-calendar-x"></i>{{ $b->check_out ? $b->check_out->format('d/m/Y') : '—' }}</span>
                             <span><i class="bi bi-people"></i>{{ $b->guests ?? '—' }} khách</span>
+                            @if(($b->booking_services_count ?? 0) > 0)
+                            <span><i class="bi bi-bag-check"></i>{{ $b->booking_services_count }} dịch vụ kèm</span>
+                            @endif
                         </div>
                     </div>
                     <div class="booking-side">
