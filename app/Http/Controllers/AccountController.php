@@ -24,6 +24,7 @@ class AccountController extends Controller
         $bookings = Auth::user()
             ->bookings()
             ->with('room')
+            ->withCount('bookingServices')
             ->latest('id')
             ->paginate(10);
 
@@ -39,7 +40,7 @@ class AccountController extends Controller
         if ($booking->user_id !== Auth::id()) {
             abort(403);
         }
-        $booking->load(['room.roomType', 'payment']);
+        $booking->load(['room.roomType', 'payment', 'bookingServices.service']);
         return view('account.booking-show', compact('booking'));
     }
 

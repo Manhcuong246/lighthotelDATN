@@ -80,6 +80,39 @@
                         </div>
                     </div>
 
+                    @if($booking->bookingServices->isNotEmpty())
+                    <div class="row mt-3 pt-3 border-top">
+                        <div class="col-12">
+                            <p class="text-uppercase small fw-bold text-muted mb-2">Dịch vụ kèm theo</p>
+                            <div class="table-responsive rounded-2 border bg-white">
+                                <table class="table table-sm mb-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Tên dịch vụ</th>
+                                            <th class="text-end">SL</th>
+                                            <th class="text-end">Đơn giá</th>
+                                            <th class="text-end pe-3">Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($booking->bookingServices as $bs)
+                                        @php
+                                            $line = (float) $bs->price * (int) $bs->quantity;
+                                        @endphp
+                                        <tr>
+                                            <td class="ps-3">{{ $bs->service?->name ?? 'Dịch vụ #' . $bs->service_id }}</td>
+                                            <td class="text-end">{{ $bs->quantity }}</td>
+                                            <td class="text-end text-muted">{{ number_format((float) $bs->price, 0, ',', '.') }} ₫</td>
+                                            <td class="text-end pe-3 fw-semibold">{{ number_format($line, 0, ',', '.') }} ₫</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     @php
                         $hotelInfo = \App\Models\HotelInfo::first();
                         $payment = $booking->payment;
