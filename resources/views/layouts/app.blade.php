@@ -342,6 +342,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-1">
                         <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Thông tin cá nhân</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Lịch đặt phòng</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item py-2 text-danger" href="#" onclick="event.preventDefault(); document.getElementById('main-logout-form').submit();">

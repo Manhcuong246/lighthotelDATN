@@ -51,6 +51,8 @@ class BookingAdminController extends Controller
 
     public function show(Booking $booking)
     {
+        $booking->load(['user', 'room', 'payment', 'logs', 'bookingServices.service']);
+
         return view('admin.bookings.show', compact('booking'));
     }
 

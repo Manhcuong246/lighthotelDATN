@@ -57,6 +57,11 @@ class Booking extends Model
         return $this->hasMany(RoomBookedDate::class);
     }
 
+    public function bookingServices()
+    {
+        return $this->hasMany(BookingService::class);
+    }
+
    public function isCheckinAllowed(): bool
     {
         return $this->status === 'confirmed'
