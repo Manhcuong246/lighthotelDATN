@@ -35,26 +35,20 @@ class RoomController extends Controller
 
         $hotel = HotelInfo::first();
 
-        $query = Room::with(['images', 'roomType', 'amenities'])->where('status', 'available');
+        $query = RoomType::with(['rooms' => function($q) {
+            $q->where('status', 'available')->with('images');
+        }]);
 
         // Lọc theo loại phòng
         if ($request->filled('room_type')) {
             $roomTypeIds = is_array($request->room_type) ? $request->room_type : [$request->room_type];
-            $query->whereIn('room_type_id', $roomTypeIds);
-        }
-
-        // Lọc theo khoảng giá
-        if ($request->filled('min_price')) {
-            $query->where('base_price', '>=', $request->min_price);
-        }
-        if ($request->filled('max_price')) {
-            $query->where('base_price', '<=', $request->max_price);
+            $query->whereIn('id', $roomTypeIds);
         }
 
         // Lọc theo tiện nghi
         if ($request->filled('amenities')) {
             $amenityIds = is_array($request->amenities) ? $request->amenities : [$request->amenities];
-            $query->whereHas('amenities', function ($q) use ($amenityIds) {
+            $query->whereHas('rooms.amenities', function ($q) use ($amenityIds) {
                 $q->whereIn('amenities.id', $amenityIds);
             });
         }
@@ -63,30 +57,19 @@ class RoomController extends Controller
         if ($request->filled('adults') || $request->filled('children')) {
             $adults = (int) $request->input('adults', 1);
             $children = (int) $request->input('children', 0);
-
-            $query->whereHas('roomType', function ($q) use ($adults, $children) {
-                $q->where('adult_capacity', '>=', $adults)
+            $query->where('adult_capacity', '>=', $adults)
                   ->where('child_capacity', '>=', $children);
-            });
         }
 
-
-        if ($request->filled('check_in') && $request->filled('check_out')) {
-            $checkIn = $request->check_in;
-            $checkOut = $request->check_out;
-            $query->whereDoesntHave('bookedDates', function ($q) use ($checkIn, $checkOut) {
-                $q->whereBetween('booked_date', [$checkIn, Carbon::parse($checkOut)->subDay()->toDateString()]);
-            });
-        }
 
         // Sắp xếp
         $sortBy = $request->input('sort_by', 'price_asc');
         switch ($sortBy) {
             case 'price_asc':
-                $query->orderBy('base_price', 'asc');
+                $query->orderBy('price', 'asc');
                 break;
             case 'price_desc':
-                $query->orderBy('base_price', 'desc');
+                $query->orderBy('price', 'desc');
                 break;
             case 'name_asc':
                 $query->orderBy('name', 'asc');
@@ -95,16 +78,15 @@ class RoomController extends Controller
                 $query->orderBy('name', 'desc');
                 break;
             default:
-                $query->orderBy('base_price', 'asc');
+                $query->orderBy('price', 'asc');
         }
 
-        $rooms = $query->paginate(9)->withQueryString();
-
-        // Lấy danh sách loại phòng và tiện nghi cho bộ lọc
-        $roomTypes = RoomType::where('status', 'active')->orWhereNull('status')->get();
+        $roomTypesList = $query->paginate(10)->withQueryString();
         $amenities = Amenity::orderBy('name')->get();
+        // Cần truyền thêm $allRoomTypes cho bộ lọc (tránh trùng tên biến)
+        $allRoomTypes = RoomType::where('status', 'active')->orWhereNull('status')->get();
 
-        return view('rooms.index', compact('hotel', 'rooms', 'roomTypes', 'amenities'));
+        return view('rooms.index', compact('hotel', 'roomTypesList', 'allRoomTypes', 'amenities'));
     }
 
     public function show(Room $room)
@@ -124,6 +106,64 @@ class RoomController extends Controller
         $hotelInfo = HotelInfo::first();
 
         return view('rooms.show', compact('room', 'reviews', 'services', 'hotelInfo', 'bookedDates'));
+    }
+
+    /**
+     * Search for available rooms.
+     */
+    public function search(Request $request)
+    {
+        $request->validate([
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+        ], [
+            'check_in.required' => 'Vui lòng chọn ngày nhận phòng.',
+            'check_out.required' => 'Vui lòng chọn ngày trả phòng.',
+            'check_in.after_or_equal' => 'Ngày nhận phòng phải từ hôm nay.',
+            'check_out.after' => 'Ngày trả phòng phải sau ngày nhận phòng.',
+        ]);
+
+        $checkIn = $request->check_in;
+        $checkOut = $request->check_out;
+
+        // 1. Tìm tất cả các phòng vật lý đang rảnh
+        $availableRooms = Room::where('status', 'available')
+            ->whereDoesntHave('bookedDates', function ($q) use ($checkIn, $checkOut) {
+                $q->whereBetween('booked_date', [
+                    $checkIn,
+                    Carbon::parse($checkOut)->subDay()->toDateString()
+                ]);
+            })
+            ->get();
+
+        // 2. Lấy danh sách ID các loại phòng có phòng rảnh
+        $availableRoomTypeIds = $availableRooms->pluck('room_type_id')->unique()->filter();
+
+        // 3. Phân trang theo Loại phòng
+        $roomTypes = RoomType::whereIn('id', $availableRoomTypeIds)
+            ->paginate(10);
+
+        // 4. Với mỗi loại phòng, gắn danh sách phòng vật lý đang rảnh của nó vào
+        $roomTypes->each(function($type) use ($availableRooms) {
+            $type->setRelation('available_rooms', $availableRooms->where('room_type_id', $type->id));
+        });
+
+        // Debug log
+        \Illuminate\Support\Facades\Log::info('Search Debug', [
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'availableRoomsCount' => $availableRooms->count(),
+            'roomTypesCount' => $roomTypes->count(),
+        ]);
+
+        $hotel = HotelInfo::first();
+        return view('rooms.search', [
+            'roomTypes' => $roomTypes,
+            'hotel' => $hotel,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'nights' => Carbon::parse($checkIn)->diffInDays(Carbon::parse($checkOut))
+        ]);
     }
 }
 

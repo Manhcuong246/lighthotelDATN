@@ -230,6 +230,11 @@ class BookingAdminController extends Controller
             }
 
             $booking->update($validated);
+            
+            // If cancelled, release dates
+            if ($booking->status === 'cancelled') {
+                RoomBookedDate::where('booking_id', $booking->id)->delete();
+            }
 
             // Log status change if status was updated
             if ($old_status !== $booking->status) {
@@ -281,6 +286,10 @@ class BookingAdminController extends Controller
         $old = $booking->status;
         $booking->status = $request->status;
         $booking->save();
+
+        if ($booking->status === 'cancelled') {
+            RoomBookedDate::where('booking_id', $booking->id)->delete();
+        }
 
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,

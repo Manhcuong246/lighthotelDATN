@@ -19,11 +19,24 @@
                 </p>
                 @endif
                 @if(isset($booking))
-                <div class="bg-light rounded p-3 mb-4 text-start">
-                    <p class="mb-1"><strong>Mã đơn:</strong> #{{ $booking->id }}</p>
-                    <p class="mb-1"><strong>Phòng:</strong> {{ $booking->room?->name ?? '—' }}</p>
-                    <p class="mb-1"><strong>Nhận phòng:</strong> {{ $booking->check_in?->format('d/m/Y') ?? '—' }}</p>
-                    <p class="mb-0"><strong>Trả phòng:</strong> {{ $booking->check_out?->format('d/m/Y') ?? '—' }}</p>
+                <div class="bg-light rounded p-4 mb-4 text-start">
+                    <p class="mb-2 border-bottom pb-2"><strong>Mã đơn:</strong> <span class="text-primary">#{{ $booking->id }}</span></p>
+                    
+                    <div class="mb-3">
+                        <strong>Các phòng đã đặt:</strong>
+                        <ul class="list-unstyled mt-2 mb-0">
+                            @foreach($booking->rooms as $room)
+                                <li class="d-flex justify-content-between align-items-center mb-1 bg-white p-2 rounded shadow-sm">
+                                    <span><i class="bi bi-door-closed me-2"></i>{{ $room->name }}</span>
+                                    <span class="text-muted small">{{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+
+                    <p class="mb-1"><strong>Nhận phòng:</strong> {{ \Carbon\Carbon::parse($booking->check_in)->format('d/m/Y') }}</p>
+                    <p class="mb-1"><strong>Trả phòng:</strong> {{ \Carbon\Carbon::parse($booking->check_out)->format('d/m/Y') }}</p>
+                    <p class="mb-0 fw-bold pt-2 border-top"><strong>Tổng cộng:</strong> <span class="text-success fs-5">{{ number_format($booking->total_price, 0, ',', '.') }} ₫</span></p>
                 </div>
                 @endif
                 <div class="d-flex gap-2 justify-content-center flex-wrap">

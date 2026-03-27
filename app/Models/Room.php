@@ -42,7 +42,9 @@ class Room extends Model
 
     public function bookings()
     {
-        return $this->hasMany(Booking::class);
+        return $this->belongsToMany(Booking::class, 'booking_rooms')
+                    ->withPivot('price_per_night', 'nights', 'subtotal')
+                    ->withTimestamps();
     }
 
     public function bookedDates()
