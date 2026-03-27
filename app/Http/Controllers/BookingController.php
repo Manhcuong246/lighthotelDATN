@@ -26,16 +26,39 @@ class BookingController extends Controller
         }
 
         $maxGuests = $room->max_guests ?? 99;
+        $adultCapacity = $room->roomType?->adult_capacity ?? $maxGuests;
+        $childCapacity = $room->roomType?->child_capacity ?? 0;
+
         $data = $request->validate([
-            'full_name' => 'required|string|max:150',
+            'full_name' => 'required|string|max:150|min:2',
             'email' => 'required|email|max:150',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'required|string|min:10|max:20|regex:/^[0-9\+\-\s]+$/',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1|max:' . $maxGuests,
+            'adults' => 'required|integer|min:1|max:' . $adultCapacity,
+            'children' => 'required|integer|min:0|max:' . $childCapacity,
             'payment_method' => 'required|in:vnpay',
             'bank_code' => 'nullable|string|max:50',
+        ], [
+            'full_name.required' => 'Vui lòng nhập họ tên.',
+            'full_name.min' => 'Họ tên phải có ít nhất 2 ký tự.',
+            'email.required' => 'Vui lòng nhập email.',
+            'email.email' => 'Email không hợp lệ.',
+            'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'phone.min' => 'Số điện thoại phải có ít nhất 10 số.',
+            'phone.regex' => 'Số điện thoại chỉ được chứa số, dấu +, dấu - và khoảng trắng.',
+            'check_in.after_or_equal' => 'Ngày nhận phòng phải từ hôm nay trở đi.',
+            'check_out.after' => 'Ngày trả phòng phải sau ngày nhận phòng.',
+            'adults.max' => 'Số người lớn vượt quá sức chứa của phòng (tối đa ' . $adultCapacity . ' người lớn).',
+            'children.max' => 'Số trẻ em vượt quá sức chứa của phòng (tối đa ' . $childCapacity . ' trẻ em).',
         ]);
+
+        // Validate tổng số người
+        $totalGuests = $data['adults'] + $data['children'];
+        $roomCapacity = $room->roomType?->capacity ?? $maxGuests;
+        if ($totalGuests > $roomCapacity) {
+            return back()->withErrors(['adults' => 'Tổng số người (' . $totalGuests . ') vượt quá sức chứa phòng (tối đa ' . $roomCapacity . ' người).'])->withInput();
+        }
 
         $checkIn = new \Carbon\Carbon($data['check_in']);
         $checkOut = new \Carbon\Carbon($data['check_out']);
@@ -45,7 +68,12 @@ class BookingController extends Controller
             return back()->withErrors('Ngày trả phòng phải sau ngày nhận phòng.')->withInput();
         }
 
-        $totalPrice = $this->calculateTotalPrice($room, $checkIn, $checkOut);
+        // Giới hạn đặt phòng tối đa 30 ngày
+        if ($nights > 30) {
+            return back()->withErrors('Bạn chỉ có thể đặt phòng tối đa 30 đêm.')->withInput();
+        }
+
+        $totalPrice = $this->calculateTotalPrice($room, $checkIn, $checkOut, $data['adults'], $data['children']);
 
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
         $dates = collect();
@@ -101,7 +129,9 @@ class BookingController extends Controller
                 'room_id' => $room->id,
                 'check_in' => $checkIn->toDateString(),
                 'check_out' => $checkOut->toDateString(),
-                'guests' => $data['guests'],
+                'guests' => $data['adults'] + $data['children'],
+                'adults' => $data['adults'],
+                'children' => $data['children'],
                 'total_price' => $finalTotalPrice,
                 'status' => 'pending',
             ]);
@@ -175,7 +205,9 @@ class BookingController extends Controller
         $data = $request->validate([
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1|max:' . $booking->room->max_guests,
+            'guests' => 'nullable|integer|min:1|max:' . $booking->room->max_guests,
+            'adults' => 'nullable|integer|min:1',
+            'children' => 'nullable|integer|min:0',
             'total_price' => 'required|numeric|min:0',
             'status' => 'required|in:pending,confirmed,completed,cancelled',
         ]);
@@ -206,14 +238,20 @@ class BookingController extends Controller
                 }
             }
 
-            // Update the booking
-            $booking->update([
+            $updateData = [
                 'check_in' => $checkIn->toDateString(),
                 'check_out' => $checkOut->toDateString(),
-                'guests' => $data['guests'],
                 'total_price' => $data['total_price'],
                 'status' => $data['status'],
-            ]);
+            ];
+
+            if (isset($data['adults'])) $updateData['adults'] = $data['adults'];
+            if (isset($data['children'])) $updateData['children'] = $data['children'];
+            if (isset($data['guests'])) $updateData['guests'] = $data['guests'];
+            elseif (isset($data['adults']) && isset($data['children'])) $updateData['guests'] = $data['adults'] + $data['children'];
+
+            // Update the booking
+            $booking->update($updateData);
 
             DB::commit();
 
@@ -224,14 +262,21 @@ class BookingController extends Controller
         }
     }
 
-    protected function calculateTotalPrice(Room $room, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): float
+    protected function calculateTotalPrice(Room $room, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut, int $adults = 1, int $children = 0): float
     {
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
         $prices = RoomPrice::where('room_id', $room->id)->get();
 
+        $adultPrice = $room->roomType->adult_price ?? 0;
+        $childPrice = $room->roomType->child_price ?? 0;
+
+        $basePricePerNight = ($adultPrice > 0 || $childPrice > 0)
+            ? ($adults * $adultPrice) + ($children * $childPrice)
+            : $room->base_price;
+
         $total = 0;
         foreach ($period as $date) {
-            $priceForDate = $room->base_price;
+            $priceForDate = $basePricePerNight;
 
             foreach ($prices as $price) {
                 if ($date->betweenIncluded($price->start_date, $price->end_date)) {
@@ -250,7 +295,7 @@ class BookingController extends Controller
         abort_unless($booking->isCheckinAllowed(), 403);
 
         $booking->update([
-            'checked_in_at' => now(),
+            'actual_check_in' => now(),
         ]);
 
         return back()->with('success', 'Check-in thành công');
@@ -261,7 +306,7 @@ class BookingController extends Controller
         abort_unless($booking->isCheckoutAllowed(), 403);
 
         $booking->update([
-            'checked_out_at' => now(),
+            'actual_check_out' => now(),
             'status' => 'completed',
         ]);
 

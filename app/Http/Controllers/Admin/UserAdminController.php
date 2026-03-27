@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+
 
 class UserAdminController extends Controller
 {
@@ -51,12 +53,21 @@ class UserAdminController extends Controller
             'email' => 'required|string|email|max:150|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive,banned',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar_url && ! str_starts_with($user->avatar_url, 'http')) {
+                Storage::disk('public')->delete($user->avatar_url);
+            }
+            $validated['avatar_url'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        unset($validated['avatar']);
         $user->update($validated);
 
         if ($request->filled('password')) {
-            $user->update(['password' => $request->password]);
+            $user->update(['password' => $request->password]); // Note: Model should handle hashing if not already
         }
 
         if ($request->filled('role_ids') && is_array($request->role_ids)) {
@@ -65,6 +76,7 @@ class UserAdminController extends Controller
 
         return redirect()->route('admin.users.index')->with('success', 'Cập nhật người dùng thành công.');
     }
+
 
     public function destroy(User $user)
     {

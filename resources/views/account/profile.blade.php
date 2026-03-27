@@ -23,9 +23,9 @@
                                     : null;
                             @endphp
                             @if($avatarUrl)
-                                <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle border" style="width:80px;height:80px;object-fit:cover;" id="avatarPreview">
+                                <img src="{{ $avatarUrl }}" alt="Avatar" class="rounded-circle border" style="width:80px;height:80px;object-fit:cover; cursor:pointer;" id="avatarPreview" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="openProfileModal(event)">
                             @else
-                                <div class="rounded-circle border d-flex align-items-center justify-content-center bg-light" style="width:80px;height:80px;font-size:2rem;font-weight:600;color:#94a3b8;" id="avatarPreview">
+                                <div class="rounded-circle border d-flex align-items-center justify-content-center bg-light" style="width:80px;height:80px;font-size:2rem;font-weight:600;color:#94a3b8; cursor:pointer;" id="avatarPreview" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="openProfileModal(event)">
                                     {{ strtoupper(mb_substr($user->full_name ?? 'U', 0, 1)) }}
                                 </div>
                             @endif
@@ -90,6 +90,52 @@
 
 @push('scripts')
 <script>
+// Initialize Bootstrap modal
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if Bootstrap is loaded
+    if (typeof bootstrap !== 'undefined') {
+        console.log('Bootstrap is loaded');
+    } else {
+        console.log('Bootstrap not loaded, loading manually...');
+        // Load Bootstrap if not available
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js';
+        script.onload = function() {
+            console.log('Bootstrap loaded successfully');
+        };
+        document.head.appendChild(script);
+    }
+});
+
+function openProfileModal(event) {
+    event.preventDefault();
+
+    console.log('Opening profile modal...');
+
+    // Check if modal exists
+    var modalElement = document.getElementById('profileModal');
+    if (!modalElement) {
+        console.error('Modal element not found!');
+        alert('Modal không tìm thấy! Vui lòng refresh trang.');
+        return;
+    }
+
+    console.log('Modal element found:', modalElement);
+
+    // Try to use Bootstrap modal first
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        console.log('Using Bootstrap modal');
+        var modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    } else {
+        console.log('Bootstrap not available, using manual display');
+        // Fallback: manually show modal
+        modalElement.style.display = 'block';
+        modalElement.classList.add('show');
+        document.body.classList.add('modal-open');
+    }
+}
+
 document.getElementById('avatarInput')?.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
@@ -113,4 +159,97 @@ document.getElementById('avatarInput')?.addEventListener('change', function(e) {
 });
 </script>
 @endpush
-@endsection
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="profileModalLabel">
+                    <i class="bi bi-person-circle me-2"></i>
+                    Thông tin cá nhân & Lịch đặt phòng
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    {{-- User Info --}}
+                    <div class="col-md-6">
+                        <h6 class="mb-3"><i class="bi bi-person me-2"></i>Thông tin cá nhân</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <p><strong>Họ và tên:</strong> {{ $user->full_name }}</p>
+                                <p><strong>Email:</strong> {{ $user->email }}</p>
+                                <p><strong>Số điện thoại:</strong> {{ $user->phone ?? 'Chưa cập nhật' }}</p>
+                                <p><strong>Ngày tham gia:</strong> {{ \Carbon\Carbon::parse($user->created_at)->format('d/m/Y') }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+
+                        {{-- Cancellation History --}}
+                        <div class="col-md-12 mt-4">
+                            <h6 class="mb-3"><i class="bi bi-x-circle me-2"></i>Lịch hủy phòng</h6>
+                            @php
+                                $cancelledBookings = \App\Models\Booking::where('user_id', auth()->id())
+                                    ->where('status', 'cancelled')
+                                    ->with('room')
+                                    ->orderBy('created_at', 'desc')
+                                    ->get();
+                            @endphp
+
+                            @if($cancelledBookings->count() > 0)
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Phòng</th>
+                                                <th>Ngày hủy</th>
+                                                <th>Lý do</th>
+                                                <th>Tiền hoàn lại</th>
+                                                <th>Phí hủy</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($cancelledBookings as $booking)
+                                                <tr>
+                                                    <td>
+                                                        <a href="{{ route('rooms.show', $booking->room_id) }}" class="text-decoration-none">
+                                                            {{ $booking->room->name ?? 'N/A' }}
+                                                        </a>
+                                                    </td>
+                                                    <td>{{ \Carbon\Carbon::parse($booking->cancelled_at ?? $booking->updated_at)->format('d/m/Y H:i') }}</td>
+                                                    <td>{{ $booking->cancellation_reason ?? 'Yêu cầu từ khách hàng' }}</td>
+                                                    <td class="text-success fw-semibold">{{ number_format($booking->refund_amount ?? 0, 0, ',', '.') }} VNĐ</td>
+                                                    <td class="text-danger">{{ number_format($booking->cancellation_fee ?? 0, 0, ',', '.') }} VNĐ</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                            @else
+                                <div class="text-center py-4">
+                                    <i class="bi bi-check-circle fs-1 text-muted mb-3 d-block"></i>
+                                    <p class="text-muted">Bạn không có lịch hủy phòng nào.</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('styles')
+<style>
+.modal-avatar {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.modal-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+@endpush
