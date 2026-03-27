@@ -26,7 +26,8 @@
                     <h5 class="mb-0">Thông tin người dùng</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('admin.users.update', $user) }}" method="POST">
+                    <form action="{{ route('admin.users.update', $user) }}" method="POST" enctype="multipart/form-data">
+
                         @csrf
                         @method('PUT')
 
@@ -81,6 +82,46 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
++
++                        <div class="mb-3">
++                            <label for="avatar" class="form-label fw-bold">Ảnh đại diện</label>
++                            <div class="d-flex align-items-center gap-3 mb-2">
++                                @if($user->avatar_url)
++                                    <img src="{{ str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : asset('storage/' . $user->avatar_url) }}" 
++                                         alt="Avatar" class="rounded-circle" style="width: 64px; height: 64px; object-fit: cover;">
++                                @else
++                                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" 
++                                         style="width: 64px; height: 64px;">
++                                        {{ strtoupper(mb_substr($user->full_name, 0, 1)) }}
++                                    </div>
++                                @endif
++                                <input type="file" class="form-control @error('avatar') is-invalid @enderror" id="avatar" name="avatar" accept="image/*">
++                            </div>
++                            <small class="text-muted">Định dạng: JPG, PNG, GIF. Tối đa 2MB.</small>
++                            @error('avatar')
++                                <div class="invalid-feedback">{{ $message }}</div>
++                            @enderror
++                        </div>
++
++                        <div class="card bg-light border-0 mb-4">
++                            <div class="card-body p-3">
++                                <h6 class="fw-bold mb-3">Vai trò</h6>
++                                <div class="d-flex flex-wrap gap-3">
++                                    @forelse ($roles as $role)
++                                        <div class="form-check">
++                                            <input class="form-check-input" type="checkbox" name="role_ids[]" id="role_{{ $role->id }}" value="{{ $role->id }}"
++                                                   @if($user->roles->contains($role->id)) checked @endif>
++                                            <label class="form-check-label" for="role_{{ $role->id }}">
++                                                {{ ucfirst($role->name) }}
++                                            </label>
++                                        </div>
++                                    @empty
++                                        <p class="text-muted mb-0">Không có vai trò nào</p>
++                                    @endforelse
++                                </div>
++                            </div>
++                        </div>
+
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
@@ -91,28 +132,9 @@
             </div>
         </div>
 
-        <div class="col-lg-4">
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h5 class="mb-0">Vai trò</h5>
-                </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        @forelse($roles as $role)
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles[]" id="role_{{ $role->id }}" value="{{ $role->id }}"
-                                       @if($user->roles->contains($role->id)) checked @endif>
-                                <label class="form-check-label" for="role_{{ $role->id }}">
-                                    {{ ucfirst($role->name) }}
-                                </label>
-                            </div>
-                        @empty
-                            <p class="text-muted">Không có vai trò nào</p>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
         </div>
++        {{-- Cột Roles cũ đã dời vào form chính --}}
+
     </div>
 </div>
 @endsection

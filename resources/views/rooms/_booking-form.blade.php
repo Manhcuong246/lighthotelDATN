@@ -217,11 +217,17 @@
                         <input type="text" name="check_out" class="form-control" id="check_out"
                                value="{{ old('check_out') }}" placeholder="dd/mm/yyyy" required readonly>
                     </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-label">Số lượng khách</label>
-                        <input type="number" name="guests" class="form-control" id="guests"
-                               min="1" max="{{ $room->max_guests }}"
-                               value="{{ old('guests', 1) }}" required>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Người lớn</label>
+                        <input type="number" name="adults" class="form-control" id="adults"
+                               min="1" max="{{ $room->roomType->adult_capacity ?? $room->max_guests }}"
+                               value="{{ request('adults', old('adults', 1)) }}" required onchange="updateTotalPrice()">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Trẻ em</label>
+                        <input type="number" name="children" class="form-control" id="children"
+                               min="0" max="{{ $room->roomType->child_capacity ?? $room->max_guests }}"
+                               value="{{ request('children', old('children', 0)) }}" required onchange="updateTotalPrice()">
                     </div>
                 </div>
             </div>
@@ -254,7 +260,7 @@
                     </div>
                     <div class="room-booking-summary-row">
                         <span>Giá/đêm</span>
-                        <strong>{{ number_format($room->base_price, 0, ',', '.') }} ₫</strong>
+                        <strong id="pricePerNightDisplay">{{ number_format($room->base_price, 0, ',', '.') }} ₫</strong>
                     </div>
                     <div class="room-booking-summary-row total">
                         <span>Tổng tiền</span>
@@ -279,6 +285,8 @@
         const submitBtn = document.getElementById('submitBtn');
 
         const basePrice = Number('{{ $room->base_price ?? 0 }}');
+        const adultPrice = Number('{{ $room->roomType->adult_price ?? 0 }}');
+        const childPrice = Number('{{ $room->roomType->child_price ?? 0 }}');
         const bookedDates = @json($bookedDates ?? []);
 
         const fpCheckIn = flatpickr(checkInEl, {
@@ -323,16 +331,28 @@
         function calculatePrice() {
             const checkInVal = checkInEl.value;
             const checkOutVal = checkOutEl.value;
+            const adultsVal = Number(document.getElementById('adults').value) || 1;
+            const childrenVal = Number(document.getElementById('children').value) || 0;
+
             if (checkInVal && checkOutVal) {
                 const start = new Date(checkInVal);
                 const end = new Date(checkOutVal);
                 const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
                 if (nights > 0) {
-                    const roomTotal = basePrice * nights;
+                    let roomPricePerNight = 0;
+                    if (adultPrice > 0 || childPrice > 0) {
+                        roomPricePerNight = (adultsVal * adultPrice) + (childrenVal * childPrice);
+                    } else {
+                        roomPricePerNight = basePrice;
+                    }
+
+                    const roomTotal = roomPricePerNight * nights;
                     const servicesTotal = calculateServicesTotal();
                     const total = roomTotal + servicesTotal;
+                    
                     nightsCount.textContent = nights;
+                    document.getElementById('pricePerNightDisplay').textContent = new Intl.NumberFormat('vi-VN').format(roomPricePerNight) + ' ₫';
                     totalPrice.textContent = new Intl.NumberFormat('vi-VN').format(total) + ' ₫';
                     pricePreview.style.display = 'block';
                     submitBtn.disabled = false;

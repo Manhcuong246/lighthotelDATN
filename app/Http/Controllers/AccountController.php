@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -17,11 +18,14 @@ class AccountController extends Controller
 
     public function bookings()
     {
-        if (Auth::user()?->canAccessAdmin()) {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user?->canAccessAdmin()) {
             abort(403);
         }
 
-        $bookings = Auth::user()
+        $bookings = $user
             ->bookings()
             ->with('room')
             ->withCount('bookingServices')
@@ -33,7 +37,10 @@ class AccountController extends Controller
 
     public function showBooking(Booking $booking)
     {
-        if (Auth::user()?->canAccessAdmin()) {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user?->canAccessAdmin()) {
             abort(403);
         }
 
@@ -44,6 +51,28 @@ class AccountController extends Controller
         return view('account.booking-show', compact('booking'));
     }
 
+    public function cancelBooking(Booking $booking)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user?->canAccessAdmin() || $booking->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if (!in_array($booking->status, ['pending', 'confirmed'])) {
+            return back()->with('error', 'Không thể hủy đơn đặt phòng này.');
+        }
+
+        $booking->update([
+            'status' => 'cancelled'
+        ]);
+
+        \App\Models\RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+        return back()->with('success', 'Hủy đơn đặt phòng thành công.');
+    }
+
     public function profile()
     {
         $user = Auth::user();
@@ -52,6 +81,7 @@ class AccountController extends Controller
 
     public function updateProfile(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
         $validated = $request->validate([
             'full_name' => 'required|string|max:150',
@@ -77,6 +107,7 @@ class AccountController extends Controller
             'current_password' => 'required|string',
             'password' => 'required|string|min:6|confirmed',
         ]);
+        /** @var User $user */
         $user = Auth::user();
         if (!Hash::check($request->current_password, $user->password)) {
             return back()->withErrors(['current_password' => 'Mật khẩu hiện tại không đúng.']);
