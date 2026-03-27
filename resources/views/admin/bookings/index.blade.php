@@ -109,13 +109,22 @@
                                     <div class="fw-bold">{{ $booking->user?->full_name ?? '—' }}</div>
                                     <small class="text-muted">{{ $booking->user?->email ?? '—' }}</small>
                                 </td>
-                                <td>
-                                    <span class="badge bg-primary">{{ $booking->room?->name ?? '—' }}</span>
+                                 <td>
+                                    @if($booking->rooms->count() > 1)
+                                        <div class="fw-bold text-primary">{{ $booking->rooms->count() }} phòng</div>
+                                        <small class="text-muted">{{ $booking->rooms->pluck('name')->implode(', ') }}</small>
+                                    @else
+                                        <span class="badge bg-primary">{{ $booking->rooms->first()->name ?? '—' }}</span>
+                                    @endif
                                 </td>
                                 <td>{{ $booking->check_in?->format('d/m/Y') ?? '—' }}</td>
                                 <td>{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</td>
                                 <td class="text-center">
-                                    <span class="badge bg-secondary">{{ $booking->guests ?? 0 }}</span>
+                                    <span class="badge bg-secondary">
+                                        {{ $booking->bookingRooms->sum(function($br) { 
+                                            return $br->adults + $br->children_0_5 + $br->children_6_11; 
+                                        }) }}
+                                    </span>
                                 </td>
                                 <td class="text-end">
                                     <strong class="text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</strong>

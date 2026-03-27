@@ -38,8 +38,11 @@ Route::get('/storage/{path}', function (string $path) {
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
+Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
-Route::post('/rooms/{room}/book', [BookingController::class, 'store'])->name('bookings.store');
+Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel.post');
+Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
 
 Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
