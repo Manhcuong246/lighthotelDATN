@@ -17,7 +17,7 @@
                 <button class="btn btn-light btn-sm position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell-fill fs-5" style="color: #ff6b6b;"></i>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        {{ $counts['total'] ?? $bookings->total() }}
+                        {{ $counts['total'] ?? (is_object($bookings) && method_exists($bookings, 'total') ? $bookings->total() : (is_array($bookings) ? count($bookings) : 0)) }}
                     </span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 280px;">
@@ -102,7 +102,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($bookings as $booking)
+                        @forelse ($bookings as $booking)
                             <tr>
                                 <td><strong>#{{ $booking->id }}</strong></td>
                                 <td>
@@ -230,7 +230,7 @@
         </div>
 
         <!-- Pagination -->
-        @if($bookings->hasPages())
+        @if(method_exists($bookings, 'hasPages') && $bookings->hasPages())
             <div class="card-footer bg-white border-0 py-3">
                 {{ $bookings->links('pagination::bootstrap-5') }}
             </div>

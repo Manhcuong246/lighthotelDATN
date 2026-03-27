@@ -8,6 +8,7 @@
     $avgRating = $room->reviews()->avg('rating');
     $reviewCount = $room->reviews()->count();
     $userHasReviewed = auth()->check() && $room->reviews()->where('user_id', auth()->id())->exists();
+    $hasCompletedBooking = auth()->check() ? \App\Models\Booking::where('user_id', auth()->id())->where('room_id', $room->id)->where('status', 'completed')->exists() : false;
 @endphp
 
 @section('content')
@@ -177,7 +178,7 @@
                         </div>
                     @endif
                     @auth
-                        @if(!auth()->user()->canAccessAdmin() && !$userHasReviewed)
+                        @if(!auth()->user()->canAccessAdmin() && !$userHasReviewed && $hasCompletedBooking)
                             <div class="room-review-form mt-4 pt-4 border-top">
                                 <label class="form-label fw-semibold">Viết đánh giá của bạn</label>
                                 <form method="POST" action="{{ route('reviews.store', $room) }}" class="review-form">
@@ -206,6 +207,8 @@
                                     <button type="submit" class="btn btn-primary">Gửi đánh giá</button>
                                 </form>
                             </div>
+                        @elseif(!auth()->user()->canAccessAdmin() && !$userHasReviewed && !$hasCompletedBooking)
+                            <p class="text-muted small mt-4 pt-4 border-top mb-0">Bạn cần hoàn thành kỳ nghỉ tại phòng này để có thể đánh giá.</p>
                         @elseif($userHasReviewed)
                             <p class="text-muted small mt-4 pt-4 border-top mb-0">Bạn đã đánh giá phòng này.</p>
                         @endif
@@ -230,8 +233,6 @@
                 @include('rooms._booking-form')
             @endauth
         </section>
-    </div>
-</div>
 
 @push('styles')
 <style>

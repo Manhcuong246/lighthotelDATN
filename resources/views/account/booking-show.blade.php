@@ -121,11 +121,28 @@
     </div>
 </div>
 
-@if($booking->room)
-<div class="mt-3">
+@if(in_array($booking->status, ['pending', 'confirmed']))
+<div class="mt-3 d-flex gap-2">
+    @if($booking->room)
     <a href="{{ route('rooms.show', $booking->room) }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-eye me-1"></i>Xem phòng
     </a>
+    @endif
+    <form action="{{ route('account.bookings.cancel', $booking) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đặt phòng này?');">
+        @csrf
+        @method('PUT')
+        <button type="submit" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-x-circle me-1"></i>Hủy đơn
+        </button>
+    </form>
 </div>
+@else
+    @if($booking->room)
+    <div class="mt-3">
+        <a href="{{ route('rooms.show', $booking->room) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-eye me-1"></i>Xem phòng
+        </a>
+    </div>
+    @endif
 @endif
 @endsection

@@ -157,6 +157,11 @@
     <div class="page-header">
         <h1 class="page-title">Lịch sử đặt phòng</h1>
         <p class="page-subtitle">Xem và quản lý các đơn đặt phòng của bạn</p>
+
+        {{-- Debug Info --}}
+        <div class="alert alert-info">
+            <small><strong>Debug:</strong> User ID: {{ Auth::id() }} | Total bookings: {{ $bookings->count() }}</small>
+        </div>
     </div>
 
     @if($bookings->isEmpty())

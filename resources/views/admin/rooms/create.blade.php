@@ -57,7 +57,7 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Giá cơ bản (VNĐ/đêm)</label>
-                        <input type="number" name="base_price" class="form-control" value="{{ old('base_price') }}" min="0" required>
+                        <input type="number" name="base_price" class="form-control" value="{{ old('base_price') }}" min="0" required readonly>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Tối đa khách</label>

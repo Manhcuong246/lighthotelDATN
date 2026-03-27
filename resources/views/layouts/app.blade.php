@@ -298,10 +298,431 @@
             margin-left: 0;
             border-radius: 0.375rem;
         }
-        /* Pagination size (tùy biến nhẹ để nút không quá to) */
-        .pagination-sm .page-link {
-            padding: 0.25rem 0.55rem;
-            font-size: 0.875rem;
+        /* =====================================================
+           LIGHT HOTEL — PREMIUM LAYOUT STYLES
+           ===================================================== */
+
+        /* Hero */
+        .lh-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 60%, #1e40af 100%);
+            padding: 56px 0 80px;
+            position: relative;
+            overflow: visible;
+        }
+        .lh-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url('https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg?auto=compress&cs=tinysrgb&w=1600');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.18;
+        }
+        .lh-hero-inner { position: relative; z-index: 2; overflow: visible; }
+        .lh-hero-eyebrow {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.65);
+        }
+        .lh-hero-title {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+        .lh-hero-title em { font-style: italic; color: #fbbf24; }
+        .lh-hero-sub {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.95rem;
+            margin-top: 0.75rem;
+        }
+        .lh-rating-chip {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px;
+            padding: 16px 24px;
+            color: #fff;
+        }
+        .lh-rating-score {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #fbbf24;
+            line-height: 1;
+        }
+
+        /* Search bar */
+        .lh-search-bar {
+            display: flex;
+            align-items: stretch;
+            background: #fff;
+            border-radius: 10px;
+            overflow: visible;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+        }
+        .lh-seg {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            padding: 14px 18px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .lh-seg:hover:not(:last-child) { background: #f8fafc; }
+        .lh-seg-dest  { flex: 1.4; border-radius: 10px 0 0 10px; }
+        .lh-seg-date  { flex: 1; }
+        .lh-seg-guests{ flex: 1.2; }
+        .lh-seg-icon  { font-size: 1.2rem; color: #2563eb; margin-right: 12px; flex-shrink: 0; }
+        .lh-seg-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7280; margin-bottom: 2px; }
+        .lh-seg-val   { font-size: 0.92rem; font-weight: 600; color: #111827; border: none; background: transparent; outline: none; width: 100%; padding: 0; cursor: pointer; }
+        .lh-divider   { width: 1px; background: #e5e7eb; margin: 10px 0; flex-shrink: 0; }
+        .lh-search-btn {
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 0 10px 10px 0;
+            padding: 0 32px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.18s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .lh-search-btn:hover { background: #1d4ed8; transform: scale(1.02); }
+        @media (max-width: 767px) {
+            .lh-search-bar { flex-direction: column; border-radius: 10px; }
+            .lh-divider { width: 100%; height: 1px; margin: 0; }
+            .lh-seg-dest { border-radius: 10px 10px 0 0; }
+            .lh-search-btn { border-radius: 0 0 10px 10px; padding: 14px; }
+        }
+
+        /* Guest popup */
+        .lh-popup {
+            display: none;
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 0;
+            z-index: 9999;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            min-width: 290px;
+            padding: 20px;
+        }
+        .lh-popup.show { display: block; }
+
+        /* Guest counter buttons */
+        .guest-btn {
+            width: 32px; height: 32px;
+            border: 1.5px solid #2563eb;
+            border-radius: 50%;
+            background: #fff;
+            color: #2563eb;
+            font-size: 1.1rem; font-weight: 700;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1; transition: background 0.15s;
+        }
+        .guest-btn:hover:not(:disabled) { background: #2563eb; color: #fff; }
+        .guest-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .guest-count-input {
+            width: 36px; text-align: center; border: none;
+            font-weight: 700; font-size: 1rem; background: transparent;
+        }
+        .guest-count-input::-webkit-inner-spin-button,
+        .guest-count-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+        .guest-count-input[type=number] { -moz-appearance: textfield; }
+
+        /* Filter sidebar */
+        .lh-filter-card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        .lh-filter-header {
+            background: linear-gradient(90deg, #1e40af, #2563eb);
+            color: #fff;
+            padding: 14px 20px;
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+        .lh-filter-group {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .lh-filter-group:last-child { border-bottom: none; }
+        .lh-filter-group-title {
+            font-size: 0.72rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: #64748b; margin-bottom: 10px;
+        }
+        .lh-filter-card form > .d-grid { padding: 14px 20px; }
+        .lh-trust-card {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+
+        /* Result card */
+        .lh-result-card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            overflow: hidden;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .lh-result-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.13); transform: translateY(-2px); }
+        .lh-result-img-wrap { position: relative; height: 100%; min-height: 180px; overflow: hidden; }
+        .lh-result-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s; }
+        .lh-result-card:hover .lh-result-img { transform: scale(1.05); }
+        .lh-result-badge {
+            position: absolute; top: 12px; left: 12px;
+            background: #fbbf24; color: #1e293b;
+            font-size: 0.7rem; font-weight: 800;
+            padding: 3px 10px; border-radius: 99px;
+            letter-spacing: 0.05em;
+        }
+        .lh-room-name { font-size: 1.1rem; color: #111827; }
+        .lh-room-type-badge {
+            display: inline-block;
+            background: rgba(37,99,235,0.08);
+            color: #2563eb;
+            font-size: 0.72rem; font-weight: 700;
+            padding: 2px 10px; border-radius: 99px;
+        }
+        .lh-score-chip {
+            display: flex; flex-direction: column; align-items: center;
+            background: #1d4ed8; color: #fff;
+            border-radius: 8px; padding: 6px 10px;
+            min-width: 60px; text-align: center;
+        }
+        .lh-score { font-size: 1.3rem; font-weight: 800; line-height: 1; }
+        .lh-score-label { font-size: 0.63rem; opacity: 0.85; margin-top: 2px; }
+        .lh-amenity-tag {
+            font-size: 0.75rem; background: #f1f5f9;
+            border-radius: 6px; padding: 3px 8px; color: #475569;
+        }
+        .lh-room-desc { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .lh-price-block {}
+        .lh-price-label { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 600; }
+        .lh-price { font-size: 1.35rem; font-weight: 800; color: #1d4ed8; }
+        .lh-price-night { font-size: 0.72rem; color: #64748b; }
+        .lh-freecancel { font-size: 0.72rem; color: #16a34a; font-weight: 600; margin-top: 2px; }
+        .lh-btn-book {
+            background: #2563eb; color: #fff; font-weight: 700;
+            border-radius: 8px; padding: 10px 20px; font-size: 0.9rem;
+            border: none; transition: background 0.18s;
+        }
+        .lh-btn-book:hover { background: #1d4ed8; color: #fff; }
+        .lh-empty-state {
+            text-align: center; padding: 60px 20px;
+            background: #fff; border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .lh-badge-active {
+            background: #2563eb; color: #fff;
+            font-size: 0.75rem; border-radius: 99px;
+            padding: 4px 12px;
+        }
+
+        /* Home grid cards */
+        .lh-room-card {
+            background: #fff; border-radius: 16px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            overflow: hidden;
+            transition: transform 0.22s, box-shadow 0.22s;
+            display: flex; flex-direction: column;
+        }
+        .lh-room-card:hover { transform: translateY(-5px); box-shadow: 0 12px 36px rgba(0,0,0,0.14); }
+        .lh-room-card-img-wrap { position: relative; overflow: hidden; }
+        .lh-room-card-img { width: 100%; height: 210px; object-fit: cover; transition: transform 0.4s; display: block; }
+        .lh-room-card:hover .lh-room-card-img { transform: scale(1.06); }
+        .lh-room-card-badge {
+            position: absolute; top: 12px; right: 12px;
+            background: rgba(15,23,42,0.75);
+            color: #fff; font-size: 0.68rem; font-weight: 700;
+            padding: 3px 10px; border-radius: 99px;
+        }
+        .lh-room-card-body { padding: 18px 20px; display: flex; flex-direction: column; flex: 1; }
+        .lh-room-card-title { font-size: 1.05rem; font-weight: 700; color: #111827; margin-bottom: 6px; }
+        .lh-room-card-meta { font-size: 0.78rem; color: #64748b; margin-bottom: 10px; }
+        .lh-room-card-amenities {
+            display: flex; gap: 10px; flex-wrap: wrap;
+            font-size: 0.75rem; color: #64748b; margin-bottom: 14px;
+        }
+        .lh-room-card-amenities span { display: flex; align-items: center; gap: 4px; }
+        .lh-room-card-footer {
+            margin-top: auto;
+            display: flex; align-items: flex-end; justify-content: space-between;
+            padding-top: 12px; border-top: 1px solid #f1f5f9;
+        }
+        .lh-card-price-label { font-size: 0.68rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; }
+        .lh-card-price { font-size: 1.15rem; font-weight: 800; color: #1d4ed8; line-height: 1.2; }
+        .lh-card-currency { font-size: 0.72rem; font-weight: 500; color: #64748b; }
+        .lh-btn-book-sm {
+            background: #2563eb; color: #fff; font-weight: 700;
+            border-radius: 8px; padding: 7px 16px; font-size: 0.82rem;
+            border: none; transition: background 0.18s; white-space: nowrap;
+        }
+        .lh-btn-book-sm:hover { background: #1d4ed8; color: #fff; }
+        .lh-section-eyebrow {
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; color: #64748b;
+        }
+
+        /* =====================================================
+           BOOKING.COM STYLE SEARCH BAR
+           ===================================================== */
+        .bk-search-bar {
+            display: flex;
+            align-items: stretch;
+            background: #fff;
+            border: 3px solid #febb02;
+            border-radius: 8px;
+            overflow: visible;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            position: relative;
+        }
+        .bk-seg {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            flex: 1;
+            position: relative;
+            cursor: pointer;
+            min-width: 0;
+        }
+        .bk-seg:hover { background: #f5f5f5; }
+        .bk-seg-dest { flex: 1.2; border-radius: 5px 0 0 5px; }
+        .bk-seg-dates { flex: 1.4; }
+        .bk-seg-guests { flex: 1.4; overflow: visible !important; position: relative; }
+        .bk-seg-icon {
+            font-size: 1.3rem;
+            color: #333;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .bk-seg-content {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .bk-seg-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+        }
+        .bk-input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            width: 100%;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .bk-date-input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.85rem;
+            color: #1a1a1a;
+            cursor: pointer;
+            font-weight: 500;
+            width: auto;
+        }
+        .bk-clear-btn {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0 4px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .bk-clear-btn:hover { color: #333; }
+        .bk-sep {
+            width: 1px;
+            background: #ddd;
+            margin: 8px 0;
+            flex-shrink: 0;
+        }
+        .bk-search-btn {
+            background: #0071c2;
+            color: #fff;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            padding: 0 32px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .bk-search-btn:hover { background: #005fa3; }
+
+        /* Guest popup */
+        .guest-popup {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            z-index: 10000;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            min-width: 320px;
+            max-width: 360px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .guest-popup.show { display: block; }
+        .guest-btn {
+            width: 32px; height: 32px;
+            border: 1px solid #0071c2;
+            border-radius: 50%;
+            background: #fff;
+            color: #0071c2;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1;
+        }
+        .guest-btn:hover:not(:disabled) { background: #0071c2; color: #fff; }
+        .guest-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .guest-count-input {
+            width: 36px;
+            text-align: center;
+            border: none;
+            font-weight: 700;
+            font-size: 1rem;
+            background: transparent;
+        }
+        .guest-count-input::-webkit-inner-spin-button,
+        .guest-count-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+        .guest-count-input[type=number] { -moz-appearance: textfield; }
+
+        @media (max-width: 767px) {
+            .bk-search-bar { flex-direction: column; border-radius: 8px; }
+            .bk-sep { width: 100%; height: 1px; margin: 0; }
+            .bk-seg-dest { border-radius: 5px 5px 0 0; }
+            .bk-search-btn { border-radius: 0 0 5px 5px; padding: 14px; }
+            .bk-seg-dates, .bk-seg-guests, .bk-seg-dest { flex: none; width: 100%; }
         }
     </style>
     @stack('styles')
@@ -340,23 +761,25 @@
                         @endif
                         <span class="d-none d-md-inline fw-medium">{{ auth()->user()->full_name }}</span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-1">
-                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Thông tin cá nhân</a></li>
-                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Lịch đặt phòng</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ route('account.profile') }}">
+                            <i class="bi bi-person me-2"></i>Thông tin cá nhân
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ route('account.bookings') }}">
+                            <i class="bi bi-clock-history me-2"></i>Lịch sử đặt phòng
+                        </a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item py-2 text-danger" href="#" onclick="event.preventDefault(); document.getElementById('main-logout-form').submit();">
-                                <i class="bi bi-box-arrow-right me-2"></i>Đăng xuất
-                            </a>
-                        </li>
+                        <li><a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                            <i class="bi bi-box-arrow-right me-2"></i>Đăng xuất
+                        </a></li>
                     </ul>
+                    <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                        @csrf
+                    </form>
                 </div>
-                <form id="main-logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                    @csrf
-                </form>
                 @else
-                <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm px-3">
-                    Đăng nhập
+                <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-person me-1"></i>Đăng nhập
                 </a>
                 <a href="{{ route('register') }}" class="btn btn-light btn-sm px-3 text-dark fw-semibold">
                     Đăng ký

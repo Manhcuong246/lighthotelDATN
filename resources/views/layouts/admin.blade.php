@@ -207,7 +207,7 @@
         }
 
         /* Safe area for notched devices */
-        @supports (padding: max(0px)) {
+        @@supports (padding: max(0px)) {
             body { padding-top: max(var(--navbar-height), env(safe-area-inset-top)); }
             #sidebar { padding-bottom: env(safe-area-inset-bottom); }
         }
@@ -307,6 +307,12 @@
                 <a class="nav-link {{ request()->routeIs('admin.payments*') ? 'active' : '' }}" href="{{ route('admin.payments.index') }}">
                     <i class="bi bi-credit-card"></i>
                     Thanh toán
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.coupons*') ? 'active' : '' }}" href="{{ route('admin.coupons.index') }}">
+                    <i class="bi bi-ticket-perforated"></i>
+                    Mã giảm giá
                 </a>
             </li>
             @if(auth()->user()->isAdmin())

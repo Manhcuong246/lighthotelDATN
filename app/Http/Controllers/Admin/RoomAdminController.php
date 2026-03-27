@@ -72,7 +72,7 @@ class RoomAdminController extends Controller
             $roomType = RoomType::find($request->room_type_id);
             if ($roomType) {
                 $data['type'] = $roomType->name;
-                $data['base_price'] = $data['base_price'] ?: $roomType->price;
+                $data['base_price'] = $roomType->price; // Luôn lấy theo loại phòng
                 $data['max_guests'] = $data['max_guests'] ?: $roomType->capacity;
             }
         }
@@ -100,7 +100,7 @@ class RoomAdminController extends Controller
             'room_number' => 'nullable|string|max:50',
             'room_type_id' => 'nullable|exists:room_types,id',
             'type' => 'nullable|string|max:100',
-            'base_price' => 'required|numeric|min:0',
+            'base_price' => 'nullable|numeric|min:0', // Để trống để lấy theo loại
             'max_guests' => 'required|integer|min:1',
             'beds' => 'required|integer|min:1',
             'baths' => 'required|integer|min:0',
@@ -113,48 +113,48 @@ class RoomAdminController extends Controller
             'remove_images.*' => 'integer|exists:images,id',
         ]);
 
-        // Nếu chọn room_type_id thì lấy thông tin từ room type
+        $removeIds = $data['remove_images'] ?? [];
+        $newFilesLabels = $request->file('images') ?: [];
+
+        // Logic check số lượng ảnh (tối đa 4)
+        $existingCount = $room->images()->count();
+        $actualRemoveCount = Image::where('room_id', $room->id)->whereIn('id', $removeIds)->count();
+        $finalCount = $existingCount - $actualRemoveCount + count($newFilesLabels);
+
+        if ($finalCount > 4) {
+            throw ValidationException::withMessages([
+                'images' => 'Mỗi phòng chỉ được phép tối đa 4 ảnh. Hiện tại bạn đang định giữ lại ' . ($existingCount - $actualRemoveCount) . ' ảnh cũ và thêm ' . count($newFilesLabels) . ' ảnh mới.',
+            ]);
+        }
+
+        // Lấy thông tin từ Room Type nếu có
         if ($request->filled('room_type_id')) {
             $roomType = RoomType::find($request->room_type_id);
             if ($roomType) {
                 $data['type'] = $roomType->name;
-                $data['base_price'] = $data['base_price'] ?: $roomType->price;
-                $data['max_guests'] = $data['max_guests'] ?: $roomType->capacity;
+                $data['base_price'] = $roomType->price; // Ép giá theo loại phòng
             }
         }
 
-        $removeIds = $data['remove_images'] ?? [];
-
-        // Chặn upload vượt quá 4 ảnh tổng số sau khi xóa ảnh cũ.
-        $newImagesCount = $request->file('images') ? count($request->file('images')) : 0;
-        if ($newImagesCount > 0) {
-            $existingCount = $room->images()->count();
-            $actualRemoveCount = $room->images()->whereIn('id', $removeIds)->count();
-            $remainingCount = max(0, $existingCount - $actualRemoveCount);
-
-            if ($remainingCount + $newImagesCount > 4) {
-                throw ValidationException::withMessages([
-                    'images' => 'Mỗi phòng chỉ được phép tối đa 4 ảnh.',
-                ]);
-            }
-        }
-
-        unset($data['images'], $data['remove_images']);
-
-        $room->update($data);
-
-        if (! empty($removeIds)) {
+        // Xóa ảnh cũ trước khi thêm mới
+        if (!empty($removeIds)) {
             $toRemove = Image::where('room_id', $room->id)->whereIn('id', $removeIds)->get();
             foreach ($toRemove as $img) {
-                if ($img->image_url && ! str_starts_with($img->image_url, 'http')) {
+                if ($img->image_url && !str_starts_with($img->image_url, 'http')) {
                     Storage::disk('public')->delete($img->image_url);
                 }
                 $img->delete();
             }
         }
 
+        // Thêm ảnh mới
         $this->saveRoomImages($room, $request->file('images'));
+        
+        // Cập nhật thông tin cơ bản của phòng
+        unset($data['images'], $data['remove_images']);
+        $room->update($data);
 
+        // Đảm bảo có ảnh chính
         $this->ensureRoomPrimaryImage($room);
 
         return redirect()->route('admin.rooms.index')->with('success', 'Cập nhật phòng thành công.');

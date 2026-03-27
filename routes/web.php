@@ -11,7 +11,9 @@ use App\Http\Controllers\Admin\BookingAdminController;
 use App\Http\Controllers\Admin\UserAdminController;
 use App\Http\Controllers\Admin\ReviewAdminController;
 use App\Http\Controllers\Admin\PaymentAdminController;
+use App\Http\Controllers\Admin\CouponAdminController;
 use App\Http\Controllers\Admin\SettingsAdminController;
+use App\Http\Controllers\Admin\InvoiceAdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\PaymentController;
@@ -64,7 +66,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
-    
+
     Route::middleware(['admin.only'])->group(function () {
         Route::get('/bookings/create', [BookingAdminController::class, 'create'])->name('bookings.create');
         Route::post('/bookings', [BookingAdminController::class, 'store'])->name('bookings.store');
@@ -90,6 +92,19 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::put('/payments/{payment}', [PaymentAdminController::class, 'update'])->name('payments.update');
     Route::delete('/payments/{payment}', [PaymentAdminController::class, 'destroy'])->name('payments.destroy');
 
+    Route::resource('coupons', CouponAdminController::class)->except(['show']);
+
+    // ====== QUẢN LÝ HÓA ĐƠN ======
+    Route::get('/invoices', [InvoiceAdminController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/{invoice}', [InvoiceAdminController::class, 'show'])->name('invoices.show');
+    Route::get('/bookings/{booking}/invoices/create', [InvoiceAdminController::class, 'create'])->name('invoices.create');
+    Route::post('/bookings/{booking}/invoices', [InvoiceAdminController::class, 'store'])->name('invoices.store');
+    Route::get('/invoices/{invoice}/edit', [InvoiceAdminController::class, 'edit'])->name('invoices.edit');
+    Route::put('/invoices/{invoice}', [InvoiceAdminController::class, 'update'])->name('invoices.update');
+    Route::delete('/invoices/{invoice}', [InvoiceAdminController::class, 'destroy'])->name('invoices.destroy');
+    Route::post('/invoices/{invoice}/paid', [InvoiceAdminController::class, 'markAsPaid'])->name('invoices.markAsPaid');
+    Route::get('/invoices/{invoice}/print', [InvoiceAdminController::class, 'print'])->name('invoices.print');
+
     Route::get('/settings', [SettingsAdminController::class, 'index'])->name('settings.index');
     Route::put('/settings/general', [SettingsAdminController::class, 'updateGeneral'])->name('settings.update.general');
     Route::put('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.update.site.content');
@@ -106,7 +121,7 @@ Route::prefix('roomtypes')->name('roomtypes.')->group(function () {
 });
 
 
-  
+
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -118,6 +133,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
     Route::get('/bookings', [AccountController::class, 'bookings'])->name('bookings');
     Route::get('/bookings/{booking}', [AccountController::class, 'showBooking'])->name('bookings.show');
+    Route::put('/bookings/{booking}/cancel', [AccountController::class, 'cancelBooking'])->name('bookings.cancel');
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [AccountController::class, 'updatePassword'])->name('profile.update.password');

@@ -6,7 +6,10 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Cập nhật phòng: {{ $room->name }}</h1>
-        <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+        <div class="d-flex gap-2">
+            <button type="submit" form="room-edit-form" class="btn btn-primary d-none d-md-inline-block">Cập nhật</button>
+            <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+        </div>
     </div>
 
     <div class="card card-admin shadow mb-4">
@@ -14,7 +17,7 @@
             <h5 class="mb-0">Thông tin phòng</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.rooms.update', $room) }}" enctype="multipart/form-data">
+            <form id="room-edit-form" method="POST" action="{{ route('admin.rooms.update', $room) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="row">
@@ -85,7 +88,7 @@
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Giá cơ bản (VNĐ/đêm)</label>
                         <input type="number" name="base_price" class="form-control"
-                               value="{{ old('base_price', $room->base_price) }}" min="0" required>
+                               value="{{ old('base_price', $room->base_price) }}" min="0" required readonly>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Tối đa khách</label>
@@ -140,23 +143,23 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.room-remove-image-btn').forEach((btn) => {
         btn.addEventListener('click', function (e) {
             e.preventDefault();
-            const id = this.dataset.checkboxId;
-            if (!id) return;
-            const checkbox = document.getElementById(id);
+            const checkboxId = this.getAttribute('data-checkbox-id');
+            const checkbox = document.getElementById(checkboxId);
             if (!checkbox) return;
 
-            checkbox.checked = !checkbox.checked;
-
-            const item = this.closest('.room-image-item');
-            const overlay = item ? item.querySelector('.room-image-remove-overlay') : null;
-            const thumb = item ? item.querySelector('.room-image-thumb') : null;
-
-            const on = checkbox.checked;
-            this.setAttribute('aria-pressed', on ? 'true' : 'false');
-            this.classList.toggle('btn-danger', !on);
-            this.classList.toggle('btn-outline-danger', on);
-            if (overlay) overlay.style.display = on ? 'block' : 'none';
-            if (thumb) thumb.style.opacity = on ? '0.55' : '1';
+            // Xóa ảnh tức thì khỏi giao diện (nhưng vẫn giữ input để gửi lên server)
+            if (confirm('Xóa ảnh này khỏi danh sách? (Sẽ được lưu vĩnh viễn khi bạn nhấn Cập nhật)')) {
+                checkbox.checked = true;
+                const item = this.closest('.room-image-item');
+                if (item) {
+                    item.style.transition = 'opacity 0.3s, transform 0.3s';
+                    item.style.opacity = '0';
+                    item.style.transform = 'scale(0.8)';
+                    setTimeout(() => {
+                        item.style.display = 'none';
+                    }, 300);
+                }
+            }
         });
     });
     
