@@ -35,7 +35,7 @@
                             <small class="text-muted d-block">{{ $room->roomType->name ?? '' }} - {{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫/đêm</small>
                             <small class="text-info d-block">
                                 <i class="bi bi-people me-1"></i>
-                                {{ $room->pivot->adults }} Người lớn, 
+                                {{ $room->pivot->adults }} Người lớn,
                                 {{ $room->pivot->children_0_5 + $room->pivot->children_6_11 }} Trẻ em
                             </small>
                         </div>
@@ -151,13 +151,4 @@
         </button>
     </form>
 </div>
-@else
-    @if($booking->rooms->isNotEmpty())
-    <div class="mt-3">
-        <a href="{{ route('rooms.show', $booking->rooms->first()) }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-eye me-1"></i>Xem phòng
-        </a>
-    </div>
-    @endif
-@endif
 @endsection
