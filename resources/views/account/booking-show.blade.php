@@ -24,13 +24,24 @@
     <div class="card-body p-4">
         <div class="row g-4">
             <div class="col-md-6">
-                <h6 class="text-muted text-uppercase small fw-semibold mb-2">Phòng</h6>
-                <p class="mb-0 fw-semibold">
-                    <i class="bi bi-door-open text-primary me-2"></i>{{ $booking->room?->name ?? '—' }}
-                </p>
-                @if($booking->room?->roomType)
-                <small class="text-muted">{{ $booking->room->roomType->name }}</small>
-                @endif
+                <h6 class="text-muted text-uppercase small fw-semibold mb-2">Phòng đã đặt</h6>
+                <ul class="list-unstyled mb-0">
+                    @foreach($booking->rooms as $room)
+                    <li class="mb-3">
+                        <p class="mb-0 fw-semibold">
+                            <i class="bi bi-door-open text-primary me-2"></i>{{ $room->name }}
+                        </p>
+                        <div class="ms-4">
+                            <small class="text-muted d-block">{{ $room->roomType->name ?? '' }} - {{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫/đêm</small>
+                            <small class="text-info d-block">
+                                <i class="bi bi-people me-1"></i>
+                                {{ $room->pivot->adults }} Người lớn, 
+                                {{ $room->pivot->children_0_5 + $room->pivot->children_6_11 }} Trẻ em
+                            </small>
+                        </div>
+                    </li>
+                    @endforeach
+                </ul>
             </div>
             <div class="col-md-6">
                 <h6 class="text-muted text-uppercase small fw-semibold mb-2">Thời gian</h6>
@@ -42,8 +53,14 @@
                 </p>
             </div>
             <div class="col-md-6">
-                <h6 class="text-muted text-uppercase small fw-semibold mb-2">Số khách</h6>
-                <p class="mb-0"><i class="bi bi-people me-2 text-muted"></i>{{ $booking->guests ?? '—' }} khách</p>
+                <h6 class="text-muted text-uppercase small fw-semibold mb-2">Trạng thái thanh toán</h6>
+                <p class="mb-0">
+                    @if($booking->payment?->status === 'paid')
+                        <span class="text-success fw-bold"><i class="bi bi-credit-card-2-front me-2"></i>Đã thanh toán</span>
+                    @else
+                        <span class="text-warning fw-bold"><i class="bi bi-credit-card-2-front me-2"></i>Chưa thanh toán</span>
+                    @endif
+                </p>
             </div>
             <div class="col-md-6">
                 <h6 class="text-muted text-uppercase small fw-semibold mb-2">Tổng tiền</h6>
@@ -121,25 +138,23 @@
     </div>
 </div>
 
-@if(in_array($booking->status, ['pending', 'confirmed']))
 <div class="mt-3 d-flex gap-2">
-    @if($booking->room)
-    <a href="{{ route('rooms.show', $booking->room) }}" class="btn btn-outline-primary btn-sm">
+    @if($booking->rooms->isNotEmpty())
+    <a href="{{ route('rooms.show', $booking->rooms->first()) }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-eye me-1"></i>Xem phòng
     </a>
     @endif
-    <form action="{{ route('account.bookings.cancel', $booking) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đặt phòng này?');">
+    <form action="{{ route('bookings.cancel.post', $booking) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đặt phòng này?');">
         @csrf
-        @method('PUT')
         <button type="submit" class="btn btn-outline-danger btn-sm">
             <i class="bi bi-x-circle me-1"></i>Hủy đơn
         </button>
     </form>
 </div>
 @else
-    @if($booking->room)
+    @if($booking->rooms->isNotEmpty())
     <div class="mt-3">
-        <a href="{{ route('rooms.show', $booking->room) }}" class="btn btn-outline-primary btn-sm">
+        <a href="{{ route('rooms.show', $booking->rooms->first()) }}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-eye me-1"></i>Xem phòng
         </a>
     </div>

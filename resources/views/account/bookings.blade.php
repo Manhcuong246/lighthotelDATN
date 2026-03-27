@@ -180,7 +180,14 @@
                 <div class="booking-card-inner">
                     <div class="booking-main">
                         <div class="booking-room">
-                            <i class="bi bi-door-open"></i>{{ $b->room ? $b->room->name : '—' }}
+                            <i class="bi bi-door-open"></i>
+                            @if($b->rooms->count() > 1)
+                                {{ $b->rooms->count() }} phòng ({{ $b->rooms->pluck('name')->implode(', ') }})
+                            @elseif($b->rooms->count() == 1)
+                                {{ $b->rooms->first()->name }}
+                            @else
+                                {{ $b->room->name ?? '—' }}
+                            @endif
                         </div>
                         <div class="booking-details">
                             <span><i class="bi bi-calendar-check"></i>{{ $b->check_in ? $b->check_in->format('d/m/Y') : '—' }}</span>

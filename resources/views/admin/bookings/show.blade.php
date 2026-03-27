@@ -55,12 +55,9 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <p class="text-uppercase small fw-bold text-muted mb-1">👤 Khách hàng</p>
-                            <p class="mb-0 fw-bold">{{ $booking->user?->full_name ?? '—' }}</p>
-                            <small class="text-muted">{{ $booking->user?->email ?? '—' }}</small>
-                        </div>
-                        <div class="col-md-2">
-                            <p class="text-uppercase small fw-bold text-muted mb-1">🏨 Phòng</p>
-                            <span class="badge bg-primary px-2 py-1">{{ $booking->room?->name }}</span>
+                            <p class="mb-0 fw-bold text-primary">{{ $booking->user?->full_name ?? '—' }}</p>
+                            <small class="text-muted d-block">{{ $booking->user?->email ?? '—' }}</small>
+                            <small class="text-muted">{{ $booking->user?->phone ?? '—' }}</small>
                         </div>
                         <div class="col-md-2">
                             <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-in</p>
@@ -70,13 +67,49 @@
                             <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-out</p>
                             <p class="mb-0 fw-bold">{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</p>
                         </div>
-                        <div class="col-md-1">
-                            <p class="text-uppercase small fw-bold text-muted mb-1">👥</p>
-                            <span class="badge bg-secondary px-2 py-1">{{ $booking->guests ?? 0 }}</span>
-                        </div>
                         <div class="col-md-2">
+                            <p class="text-uppercase small fw-bold text-muted mb-1">🏨 Số lượng phòng</p>
+                            <span class="badge bg-primary px-3 py-2">{{ $booking->rooms->count() }} phòng</span>
+                        </div>
+                        <div class="col-md-3">
                             <p class="text-uppercase small fw-bold text-muted mb-1">💰 Tổng tiền</p>
-                            <p class="mb-0 fw-bold text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</p>
+                            <p class="mb-0 fw-bold text-success fs-5">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</p>
+                            @if($booking->discount_amount > 0)
+                                <small class="text-danger">Đã giảm: {{ number_format($booking->discount_amount, 0, ',', '.') }} ₫ ({{ $booking->coupon_code }})</small>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Room List Table -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <p class="text-uppercase small fw-bold text-muted mb-2">🏨 Chi tiết phòng</p>
+                            <div class="table-responsive rounded-2 border shadow-sm">
+                                <table class="table table-hover mb-0 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Tên phòng</th>
+                                            <th>Loại phòng</th>
+                                            <th class="text-center">Người lớn</th>
+                                            <th class="text-center">Trẻ em</th>
+                                            <th class="text-end">Giá/đêm</th>
+                                            <th class="text-end pe-3">Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($booking->bookingRooms as $br)
+                                        <tr>
+                                            <td class="ps-3 fw-bold">{{ $br->room->name ?? '—' }}</td>
+                                            <td>{{ $br->room->roomType->name ?? '—' }}</td>
+                                            <td class="text-center">{{ $br->adults }}</td>
+                                            <td class="text-center">{{ $br->children_0_5 + $br->children_6_11 }}</td>
+                                            <td class="text-end text-muted">{{ number_format($br->price_per_night, 0, ',', '.') }} ₫</td>
+                                            <td class="text-end pe-3 fw-bold text-secondary">{{ number_format($br->subtotal, 0, ',', '.') }} ₫</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

@@ -13,7 +13,6 @@ class Booking extends Model
 
     protected $fillable = [
         'user_id',
-        'room_id',
         'check_in',
         'check_out',
         'actual_check_in',
@@ -23,6 +22,8 @@ class Booking extends Model
         'children',
         'total_price',
         'status',
+        'coupon_code',
+        'discount_amount',
     ];
 
     protected $casts = [
@@ -39,6 +40,27 @@ class Booking extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Quan hệ mới: 1 booking có nhiều booking_rooms
+     */
+    public function bookingRooms()
+    {
+        return $this->hasMany(BookingRoom::class);
+    }
+
+    /**
+     * Shortcut: danh sách Room qua booking_rooms
+     */
+    public function rooms()
+    {
+        return $this->belongsToMany(Room::class, 'booking_rooms')
+                    ->withPivot('price_per_night', 'nights', 'subtotal', 'adults', 'children_0_5', 'children_6_11')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Giữ lại để tương thích với code admin cũ (dùng $booking->room)
+     */
     public function room()
     {
         return $this->belongsTo(Room::class);

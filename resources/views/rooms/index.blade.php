@@ -30,7 +30,7 @@
         {{-- ============================
              SEARCH BAR (Booking.com style)
              ============================ --}}
-        <form method="GET" action="{{ route('home') }}" id="search-form" novalidate class="mt-5" onsubmit="return validateSearchForm(this)">
+        <form method="GET" action="{{ route('rooms.search') }}" id="search-form" novalidate class="mt-5" onsubmit="return validateSearchForm(this)">
             <input type="hidden" name="search" value="1">
             <div class="bk-search-bar">
                 {{-- Destination --}}
@@ -58,63 +58,18 @@
                     </div>
                 </div>
                 <div class="bk-sep"></div>
-                {{-- Guests --}}
-                <div class="bk-seg bk-seg-guests" id="guest-segment">
-                    <i class="bi bi-person bk-seg-icon"></i>
+                {{-- Số phòng --}}
+                <div class="bk-seg">
+                    <i class="bi bi-door-open bk-seg-icon"></i>
                     <div class="bk-seg-content">
-                        <div class="bk-seg-label">Khách & phòng</div>
-                        <div class="bk-input" id="guest-trigger" style="cursor:pointer;">
-                            <span id="guest-summary-label">{{ request('adults', 1) }} người lớn · {{ request('children', 0) }} trẻ em · {{ request('rooms', 1) }} phòng</span>
-                        </div>
-                    </div>
-                    <button type="button" class="bk-clear-btn" onclick="resetGuests()">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                    {{-- Guest popup --}}
-                    <div id="guest-popup" class="guest-popup shadow">
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <div class="fw-semibold">Người lớn</div>
-                                    <div class="small text-muted">Từ 18 tuổi</div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <button type="button" class="guest-btn" onclick="updateGuestCount('adults',-1)" id="adults-minus">−</button>
-                                    <input type="number" name="adults" id="guest-adults" value="{{ request('adults', 1) }}" min="1" max="10" class="guest-count-input" readonly>
-                                    <button type="button" class="guest-btn" onclick="updateGuestCount('adults',1)" id="adults-plus">+</button>
-                                </div>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <div class="fw-semibold">Trẻ em</div>
-                                    <div class="small text-muted">Dưới 18 tuổi</div>
-                                    <div id="child-ages-container" style="display: none;">
-                                        <div id="child-ages-list" class="d-flex flex-column gap-2"></div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <button type="button" class="guest-btn" onclick="updateGuestCount('children',-1)" id="children-minus">−</button>
-                                    <input type="number" name="children" id="guest-children" value="{{ request('children', 0) }}" min="0" max="10" class="guest-count-input" readonly>
-                                    <button type="button" class="guest-btn" onclick="updateGuestCount('children',1)" id="children-plus">+</button>
-                                </div>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="fw-semibold">Phòng</div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <button type="button" class="guest-btn" onclick="updateGuestCount('rooms',-1)" id="rooms-minus">−</button>
-                                    <input type="number" name="rooms" id="guest-rooms" value="{{ request('rooms', 1) }}" min="1" max="10" class="guest-count-input" readonly>
-                                    <button type="button" class="guest-btn" onclick="updateGuestCount('rooms',1)" id="rooms-plus">+</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                            <button type="button" class="btn btn-link text-decoration-none p-0" style="color: #0071c2;" onclick="resetGuests()">Xóa tất cả</button>
-                            <button type="button" class="btn btn-primary btn-sm px-4" style="background: #0071c2; border: none;" onclick="document.getElementById('guest-popup').classList.remove('show')">Xong</button>
+                        <div class="bk-seg-label">Số phòng</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="guest-btn" onclick="changeRooms(-1)" id="rooms-minus-btn">−</button>
+                            <input type="number" name="rooms" id="rooms-input"
+                                   value="{{ request('rooms', 1) }}" min="1" max="20"
+                                   class="guest-count-input" readonly
+                                   style="width: 40px; text-align: center; border: none; background: transparent; font-weight: 600; font-size: 1rem;">
+                            <button type="button" class="guest-btn" onclick="changeRooms(1)" id="rooms-plus-btn">+</button>
                         </div>
                     </div>
                 </div>
@@ -136,7 +91,7 @@
          QUICK FILTER BAR (moved down)
          ============================ --}}
     <section class="bg-white border rounded p-3 mb-4 shadow-sm">
-        <form method="GET" action="{{ route('home') }}" id="quick-filter-form">
+        <form method="GET" action="{{ route('rooms.search') }}" id="quick-filter-form">
             <input type="hidden" name="search" value="1">
             <input type="hidden" name="check_in" value="{{ request('check_in', date('Y-m-d')) }}">
             <input type="hidden" name="check_out" value="{{ request('check_out', date('Y-m-d', strtotime('+1 day'))) }}">
@@ -155,7 +110,7 @@
                     <label class="form-label small text-muted mb-1">Loại phòng</label>
                     <select name="room_type" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">Tất cả loại phòng</option>
-                        @foreach($roomTypes as $rt)
+                        @foreach($allRoomTypes as $rt)
                             <option value="{{ $rt->id }}" {{ request('room_type') == $rt->id ? 'selected' : '' }}>
                                 {{ $rt->name }}
                             </option>
@@ -266,7 +221,7 @@
                                        {{ !request('room_type') ? 'checked' : '' }}>
                                 <label class="form-check-label" for="rt_all">Tất cả loại phòng</label>
                             </div>
-                            @foreach($roomTypes as $rt)
+                            @foreach($allRoomTypes as $rt)
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="radio" name="room_type"
                                        value="{{ $rt->id }}" id="rt_{{ $rt->id }}"
@@ -335,7 +290,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                     <div>
                         <h2 class="h5 mb-0 fw-bold">
-                            {{ $rooms->total() }} phòng có sẵn
+                            {{ $roomTypesList->total() }} loại phòng hiện có
                             @if(request('check_in') && request('check_out'))
                                 <span class="text-muted fw-normal fs-6">·
                                     {{ \Carbon\Carbon::parse(request('check_in'))->format('d/m') }} –
@@ -364,73 +319,41 @@
                 @endphp
 
                 <div class="d-flex flex-column gap-3">
-                    @forelse($rooms as $room)
-                        @php
-                            $imageUrls = $room->getDisplayImageUrls();
-                            $imageUrl  = $imageUrls[0] ?? null;
-                        @endphp
+                    @forelse($roomTypesList as $type)
                         <div class="lh-result-card">
                             <div class="row g-0 h-100">
                                 <div class="col-md-4 col-sm-5">
-                                    <div class="lh-result-img-wrap">
-                                        <img src="{{ $imageUrl ?? $placeholderSvg }}"
-                                             class="lh-result-img" alt="{{ $room->name }}"
-                                             @if($imageUrl) onerror="this.onerror=null;this.src='{{ $placeholderSvg }}'" @endif>
-                                        <span class="lh-result-badge">Phổ biến</span>
+                                    <div class="lh-result-img-wrap" style="height: 200px;">
+                                        <img src="{{ $type->rooms->flatMap->images->first()->image_url ?? $type->image ?? $placeholderSvg }}"
+                                             class="lh-result-img w-100 h-100" style="object-fit: cover;"
+                                             alt="{{ $type->name }}">
                                     </div>
                                 </div>
-                                <div class="col-md-8 col-sm-7 d-flex flex-column p-3 p-md-4">
-                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                        <div>
-                                            <h5 class="fw-bold mb-1 lh-room-name">{{ $room->name }}</h5>
-                                            <span class="lh-room-type-badge">{{ $room->roomType->name ?? ($room->type ?? 'Tiêu chuẩn') }}</span>
-                                        </div>
-                                        <div class="lh-score-chip flex-shrink-0">
-                                            <span class="lh-score">8.9</span>
-                                            <span class="lh-score-label">Tuyệt vời</span>
-                                        </div>
+                                <div class="col-md-8 col-sm-7 d-flex flex-column p-3">
+                                    <div class="d-flex justify-content-between">
+                                        <h5 class="fw-bold mb-1">{{ $type->name }}</h5>
+                                        <div class="text-primary fw-bold">{{ number_format($type->price, 0, ',', '.') }} VNĐ</div>
                                     </div>
-
-                                    <div class="d-flex flex-wrap gap-2 mb-2 mt-1">
-                                        <span class="lh-amenity-tag"><i class="bi bi-people me-1"></i>{{ $room->max_guests }} khách</span>
-                                        <span class="lh-amenity-tag"><i class="bi bi-aspect-ratio me-1"></i>{{ $room->area ?? 30 }} m²</span>
-                                        <span class="lh-amenity-tag"><i class="bi bi-wifi me-1"></i>WiFi</span>
-                                        <span class="lh-amenity-tag"><i class="bi bi-snow me-1"></i>Điều hòa</span>
+                                    <p class="text-muted small mb-2">{{ Str::limit($type->description, 100) }}</p>
+                                    <div class="d-flex gap-2 mb-3">
+                                        <span class="badge bg-light text-dark border"><i class="bi bi-people me-1"></i>{{ $type->adult_capacity }} NL, {{ $type->child_capacity }} TE</span>
+                                        <span class="badge bg-light text-dark border"><i class="bi bi-aspect-ratio me-1"></i>{{ $type->area ?? 30 }} m²</span>
                                     </div>
-
-                                    <p class="text-muted small mb-0 lh-room-desc">
-                                        {{ $room->description ?? 'Không gian nghỉ dưỡng cao cấp với đầy đủ tiện nghi hiện đại, tầm nhìn thành phố tuyệt đẹp.' }}
-                                    </p>
-
-                                    <div class="mt-auto pt-3 d-flex justify-content-between align-items-end flex-wrap gap-2">
-                                        <div class="lh-price-block">
-                                            <div class="lh-price-label">Chỉ từ</div>
-                                            <div class="lh-price">{{ number_format($room->base_price, 0, ',', '.') }} VNĐ</div>
-                                            <div class="lh-price-night">/đêm · Đã bao gồm thuế</div>
-                                            <div class="lh-freecancel"><i class="bi bi-check-circle-fill text-success me-1"></i>Hủy Miễn phí</div>
-                                        </div>
-                                        <div class="text-end">
-                                            <a href="{{ route('rooms.show', $room) }}" class="btn lh-btn-book">
-                                                Xem & Đặt phòng <i class="bi bi-arrow-right ms-1"></i>
-                                            </a>
-                                            <div class="small text-muted mt-1">Xác nhận ngay lập tức</div>
-                                        </div>
+                                    <div class="mt-auto d-flex justify-content-end">
+                                        <a href="{{ route('rooms.search', ['room_type' => $type->id, 'check_in' => date('Y-m-d'), 'check_out' => date('Y-m-d', strtotime('+1 day'))]) }}" class="btn btn-warning btn-sm fw-bold px-4 rounded-pill">
+                                            Chọn phòng
+                                        </a>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     @empty
-                        <div class="lh-empty-state">
-                            <i class="bi bi-search fs-1 text-muted mb-3 d-block"></i>
-                            <h5 class="fw-bold">Không tìm thấy phòng phù hợp</h5>
-                            <p class="text-muted">Thử điều chỉnh ngày hoặc số lượng khách.</p>
-                            <a href="{{ route('home') }}" class="btn btn-primary mt-2">Xem tất cả phòng</a>
-                        </div>
+                        <div class="text-center py-5">Chưa có phòng nào phù hợp.</div>
                     @endforelse
                 </div>
 
                 <div class="mt-4 d-flex justify-content-center">
-                    {{ $rooms->appends(request()->query())->links('pagination::bootstrap-5') }}
+                    {{ $roomTypesList->appends(request()->query())->links('pagination::bootstrap-5') }}
                 </div>
             </div>
         </div>
@@ -445,66 +368,73 @@
                 <p class="lh-section-eyebrow mb-1">Bộ sưu tập phòng</p>
                 <h2 class="h4 fw-bold mb-0">Chọn không gian lý tưởng cho bạn</h2>
             </div>
-            <div class="text-muted">{{ $rooms->total() }} phòng hiện có</div>
+            <div class="text-muted">{{ $roomTypesList->total() }} loại phòng hiện có</div>
         </div>
 
         @php
             $placeholderSvg = "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22250%22 viewBox=%220 0 400 250%22%3E%3Crect fill=%22%231e293b%22 width=%22400%22 height=%22250%22/%3E%3Ctext fill=%22%2394a3b8%22 font-size=%2218%22 x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22%3ELight Hotel%3C/text%3E%3C/svg%3E";
         @endphp
 
-        <div class="row g-4">
-            @forelse($rooms as $room)
-                @php
-                    $imageUrls = $room->getDisplayImageUrls();
-                    $imageUrl  = $imageUrls[0] ?? null;
-                @endphp
-                <div class="col-md-6 col-lg-4">
-                    <div class="lh-room-card h-100">
-                        <div class="lh-room-card-img-wrap">
-                            <img src="{{ $imageUrl ?? $placeholderSvg }}" class="lh-room-card-img" alt="{{ $room->name }}"
-                                 @if($imageUrl) onerror="this.onerror=null;this.src='{{ $placeholderSvg }}'" @endif>
-                            <span class="lh-room-card-badge">{{ $room->roomType->name ?? 'Tiêu chuẩn' }}</span>
-                        </div>
-                        <div class="lh-room-card-body">
-                            <h5 class="lh-room-card-title">{{ $room->name }}</h5>
-                            <p class="lh-room-card-meta">
-                                <i class="bi bi-people me-1"></i>{{ $room->max_guests }} khách &nbsp;·&nbsp;
-                                <i class="bi bi-door-open me-1"></i>{{ $room->beds }} giường &nbsp;·&nbsp;
-                                <i class="bi bi-aspect-ratio me-1"></i>{{ $room->area ?? 30 }}m²
-                            </p>
-                            <div class="lh-room-card-amenities">
-                                <span><i class="bi bi-wifi"></i> WiFi</span>
-                                <span><i class="bi bi-snow"></i> Điều hòa</span>
-                                <span><i class="bi bi-tv"></i> TV</span>
+        <div class="d-flex flex-column gap-4">
+            @forelse($roomTypesList as $type)
+                <div class="lh-result-card shadow-sm border-0 rounded-4 overflow-hidden bg-white">
+                    <div class="row g-0 h-100">
+                        <div class="col-md-4 col-sm-5">
+                            <div class="lh-result-img-wrap position-relative h-100" style="height: 250px;">
+                                @php
+                                    $firstRoom = $type->rooms->first();
+                                    $imageUrl = $firstRoom ? ($firstRoom->getDisplayImageUrls()[0] ?? $placeholderSvg) : ($type->image ? App\Models\Room::resolveImageUrl($type->image) : $placeholderSvg);
+                                @endphp
+                                <img src="{{ $imageUrl }}"
+                                     class="w-100 h-100" style="object-fit: cover;"
+                                     alt="{{ $type->name }}">
+                                <span class="position-absolute top-0 start-0 m-3 badge bg-primary">Phổ biến</span>
                             </div>
-                            <div class="lh-room-card-footer">
+                        </div>
+                        <div class="col-md-8 col-sm-7 d-flex flex-column p-4">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
-                                    <div class="lh-card-price-label">Từ</div>
-                                    <div class="lh-card-price">{{ number_format($room->base_price, 0, ',', '.') }}<span class="lh-card-currency"> VNĐ/đêm</span></div>
+                                    <h3 class="h4 fw-bold mb-1">{{ $type->name }}</h3>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-aspect-ratio me-1"></i>{{ $type->area ?? 30 }} m² · 
+                                        <i class="bi bi-people me-1"></i>{{ $type->adult_capacity }} Người lớn, {{ $type->child_capacity }} Trẻ em
+                                    </div>
                                 </div>
-                                @auth
-                                    @if(auth()->user()->canAccessAdmin())
-                                        <div class="d-flex gap-2">
-                                            <a href="{{ route('rooms.show', $room) }}" class="btn lh-btn-book-sm">Xem</a>
-                                            <a href="{{ route('admin.rooms.edit', $room) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                                        </div>
-                                    @else
-                                        <a href="{{ route('rooms.show', $room) }}" class="btn lh-btn-book-sm">Đặt ngay</a>
-                                    @endif
-                                @else
-                                    <a href="{{ route('rooms.show', $room) }}" class="btn lh-btn-book-sm">Đặt ngay</a>
-                                @endauth
+                                <div class="text-end">
+                                    <div class="text-muted small">Giá chỉ từ</div>
+                                    <div class="h4 fw-bold text-primary mb-0">{{ number_format($type->price, 0, ',', '.') }} VNĐ</div>
+                                    <div class="text-muted small">/ đêm</div>
+                                </div>
+                            </div>
+
+                            <div class="lh-room-card-amenities mb-3 border-0 p-0">
+                                <span class="badge bg-light text-dark border-0 rounded-pill px-3 py-2"><i class="bi bi-wifi me-1"></i> Wi-Fi miễn phí tốc độ cao</span>
+                                <span class="badge bg-light text-dark border-0 rounded-pill px-3 py-2"><i class="bi bi-snow me-1"></i> Ban công view biển</span>
+                                <span class="badge bg-light text-dark border-0 rounded-pill px-3 py-2"><i class="bi bi-wind me-1"></i> Máy sấy tóc cao cấp</span>
+                            </div>
+
+                            <p class="text-muted mb-4 flex-grow-1">
+                                {{ Str::limit($type->description, 180) }}
+                                <br><a href="#" class="text-primary small text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#policyModal{{ $type->id }}">Tiện nghi và chính sách</a>
+                            </p>
+
+                            <div class="d-flex justify-content-end align-items-center gap-3">
+                                <a href="{{ route('rooms.search', ['room_type' => $type->id, 'check_in' => date('Y-m-d'), 'check_out' => date('Y-m-d', strtotime('+1 day'))]) }}" class="btn btn-warning fw-bold px-5 py-2 rounded-pill shadow-sm">
+                                    Chọn phòng
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
+                {{-- Include Modals --}}
+                @include('rooms.partials.modals', ['type' => $type])
             @empty
-                <p class="text-center text-muted py-5">Hiện chưa có phòng nào.</p>
+                <p class="text-center text-muted py-5">Hiện chưa có loại phòng nào.</p>
             @endforelse
         </div>
 
         <div class="mt-4 d-flex justify-content-center">
-            {{ $rooms->links('pagination::bootstrap-5') }}
+            {{ $roomTypesList->links('pagination::bootstrap-5') }}
         </div>
 
     @endif
@@ -513,22 +443,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Guest popup toggle
-    var guestTrigger = document.getElementById('guest-trigger');
-    var guestPopup   = document.getElementById('guest-popup');
-    if (guestTrigger && guestPopup) {
-        guestTrigger.addEventListener('click', function(e) {
-            e.stopPropagation();
-            guestPopup.classList.toggle('show');
-        });
-    }
-    document.addEventListener('click', function(e) {
-        var seg = document.getElementById('guest-segment');
-        if (guestPopup && seg && !seg.contains(e.target)) {
-            guestPopup.classList.remove('show');
-        }
-    });
-
     // check_in → update check_out min
     var ci = document.getElementById('check_in_input');
     var co = document.getElementById('check_out_input');
@@ -543,42 +457,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Guest counter
-    if (document.getElementById('guest-adults')) {
-        updateGuestSummary();
-        updateGuestCount('adults',  0);
-        updateGuestCount('children',0);
-        updateGuestCount('rooms',   0);
-
-        // Update amenities text
-        updateAmenitiesText();
-
-        // Restore child ages from URL parameters
-        var urlParams = new URLSearchParams(window.location.search);
-        var childAges = urlParams.getAll('child_ages[]');
-
-        // Debug: log URL parameters
-        console.log('URL params:', window.location.search);
-        console.log('Child ages from URL:', childAges);
-
-        if (childAges.length > 0) {
-            var childrenCount = parseInt(document.getElementById('guest-children').value);
-            updateChildAgeDropdowns(childrenCount);
-
-            // Wait for dropdowns to be created, then set values
-            setTimeout(function() {
-                var selects = document.querySelectorAll('select[name="child_ages[]"]');
-                console.log('Found selects:', selects.length);
-                childAges.forEach(function(age, index) {
-                    if (selects[index]) {
-                        selects[index].value = age;
-                        console.log('Set select', index, 'to value:', age);
-                    }
-                });
-            }, 200);
-        }
-    }
+    // Khởi tạo nút +/- phòng
+    updateRoomsBtnState();
 });
+
+function changeRooms(delta) {
+    var input = document.getElementById('rooms-input');
+    if (!input) return;
+    var val = parseInt(input.value) + delta;
+    if (val < 1) val = 1;
+    if (val > 20) val = 20;
+    input.value = val;
+    updateRoomsBtnState();
+}
+
+function updateRoomsBtnState() {
+    var input = document.getElementById('rooms-input');
+    if (!input) return;
+    var val = parseInt(input.value);
+    var minusBtn = document.getElementById('rooms-minus-btn');
+    var plusBtn  = document.getElementById('rooms-plus-btn');
+    if (minusBtn) minusBtn.disabled = (val <= 1);
+    if (plusBtn)  plusBtn.disabled  = (val >= 20);
+}
 
 function updateGuestCount(type, delta) {
     var input = document.getElementById('guest-' + type);
