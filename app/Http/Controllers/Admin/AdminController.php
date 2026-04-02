@@ -30,23 +30,13 @@ class AdminController extends Controller
             $q->where('name', 'customer');
         })->count();
         
-<<<<<<< HEAD
-        // Doanh thu
-        $totalRevenue = Payment::where('status', 'completed')->sum('amount') ?? 0;
-        $monthlyRevenue = Payment::where('status', 'completed')
-            ->whereMonth('paid_at', Carbon::now()->month)
-            ->whereYear('paid_at', Carbon::now()->year)
-            ->sum('amount') ?? 0;
-        $todayRevenue = Payment::where('status', 'completed')
-=======
-        // Doanh thu (Payment status = 'paid' khi thanh toán thành công)
+// Doanh thu (Payment status = 'paid' khi thanh toán thành công)
         $totalRevenue = Payment::where('status', 'paid')->sum('amount') ?? 0;
         $monthlyRevenue = Payment::where('status', 'paid')
             ->whereMonth('paid_at', Carbon::now()->month)
             ->whereYear('paid_at', Carbon::now()->year)
             ->sum('amount') ?? 0;
         $todayRevenue = Payment::where('status', 'paid')
->>>>>>> vinam
             ->whereDate('paid_at', Carbon::today())
             ->sum('amount') ?? 0;
         
@@ -72,14 +62,6 @@ class AdminController extends Controller
         // Dữ liệu biểu đồ tỉ lệ lấp phòng 7 ngày gần nhất
         $occupancyChart = $this->getOccupancyChartData();
         
-<<<<<<< HEAD
-        // Đơn đặt phòng gần đây
-        $recentBookings = Booking::with(['user', 'room'])
-            ->latest()
-            ->take(5)
-            ->get();
-
-=======
         // Top 5 phòng có doanh thu cao nhất (cho biểu đồ tròn)
         $topRoomsByRevenue = Payment::where('payments.status', 'paid')
             ->join('bookings', 'payments.booking_id', '=', 'bookings.id')
@@ -94,8 +76,6 @@ class AdminController extends Controller
         $roomsAvailable = Room::where('status', 'available')->count();
         $roomsBooked = Room::where('status', 'booked')->count();
         $roomsMaintenance = Room::where('status', 'maintenance')->count();
-
->>>>>>> vinam
         return view('admin.dashboard', compact(
             'totalRooms',
             'totalBookings',
@@ -107,14 +87,10 @@ class AdminController extends Controller
             'monthlyOccupancyRate',
             'revenueChart',
             'occupancyChart',
-<<<<<<< HEAD
-            'recentBookings'
-=======
             'topRoomsByRevenue',
             'roomsAvailable',
             'roomsBooked',
             'roomsMaintenance'
->>>>>>> vinam
         ));
     }
     
@@ -126,24 +102,16 @@ class AdminController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
             $labels[] = $date->format('d/m');
-<<<<<<< HEAD
-            $revenue = Payment::where('status', 'completed')
-=======
             $revenue = Payment::where('status', 'paid')
->>>>>>> vinam
                 ->whereDate('paid_at', $date)
                 ->sum('amount') ?? 0;
             $data[] = $revenue;
         }
         
-<<<<<<< HEAD
-        return ['labels' => $labels, 'data' => $data];
-=======
         $max = count($data) > 0 ? max($data) : 0;
         $suggestedMax = $max > 0 ? (int) ceil($max * 1.2 / 100000) * 100000 : 1000000;
         
         return ['labels' => $labels, 'data' => $data, 'suggestedMax' => $suggestedMax];
->>>>>>> vinam
     }
     
     private function getOccupancyChartData()
@@ -223,19 +191,11 @@ class AdminController extends Controller
             fputcsv($output, []);
             
             // Doanh thu
-<<<<<<< HEAD
-            $totalRevenue = Payment::where('status', 'completed')->sum('amount') ?? 0;
-            $monthlyRevenue = Payment::where('status', 'completed')
-                ->whereMonth('paid_at', Carbon::now()->month)
-                ->sum('amount') ?? 0;
-            $todayRevenue = Payment::where('status', 'completed')
-=======
             $totalRevenue = Payment::where('status', 'paid')->sum('amount') ?? 0;
             $monthlyRevenue = Payment::where('status', 'paid')
                 ->whereMonth('paid_at', Carbon::now()->month)
                 ->sum('amount') ?? 0;
             $todayRevenue = Payment::where('status', 'paid')
->>>>>>> vinam
                 ->whereDate('paid_at', Carbon::today())
                 ->sum('amount') ?? 0;
             
