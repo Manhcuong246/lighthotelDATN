@@ -138,7 +138,7 @@ class RoomAdminController extends Controller
 
         // Xóa ảnh cũ trước khi thêm mới
         if (!empty($removeIds)) {
-            $toRemove = Image::where('room_id', $room->id)->whereIn('id', $removeIds)->get();
+            $toRemove = $room->images()->whereIn('id', $removeIds)->get();
             foreach ($toRemove as $img) {
                 if ($img->image_url && !str_starts_with($img->image_url, 'http')) {
                     Storage::disk('public')->delete($img->image_url);

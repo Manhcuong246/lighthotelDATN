@@ -115,4 +115,83 @@ class AccountController extends Controller
         $user->update(['password' => Hash::make($request->password)]);
         return redirect()->route('account.profile')->with('success', 'Đổi mật khẩu thành công.');
     }
+
+    public function refundForm(Booking $booking, \App\Services\RefundService $refundService)
+    {
+        if ($booking->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($booking->status !== 'confirmed') {
+            return redirect()->route('account.bookings.show', $booking)->with('error', 'Chỉ có thể yêu cầu hoàn tiền cho đơn đã xác nhận.');
+        }
+
+        $calc = $refundService->calculateRefund($booking);
+
+        // Cho phép xem form ngay cả khi 0% (calc['eligible'] = false) 
+        // để người dùng vẫn có thể gửi thông tin tài khoản cho admin xem xét.
+
+        return view('account.refund', compact('booking', 'calc'));
+    }
+
+    public function submitRefund(Request $request, Booking $booking, \App\Services\RefundService $refundService)
+    {
+        if ($booking->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($booking->status !== 'confirmed') {
+            return back()->with('error', 'Trạng thái đơn không hợp lệ.');
+        }
+
+        $calc = $refundService->calculateRefund($booking);
+        if (!$calc['eligible']) {
+            return back()->with('error', 'Không đủ điều kiện hoàn tiền.');
+        }
+
+        $validated = $request->validate([
+            'account_name' => 'required|string|max:255',
+            'account_number' => 'required|string|max:50',
+            'bank_name' => 'required|string|max:255',
+            'qr_image' => 'nullable|image|max:2048',
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        if ($request->hasFile('qr_image')) {
+            $validated['qr_image'] = $request->file('qr_image')->store('refunds', 'public');
+        }
+
+        $refundRequest = \App\Models\RefundRequest::create([
+            'booking_id' => $booking->id,
+            'user_id' => Auth::id(),
+            'account_name' => $validated['account_name'],
+            'account_number' => $validated['account_number'],
+            'bank_name' => $validated['bank_name'],
+            'qr_image' => $validated['qr_image'] ?? null,
+            'refund_percentage' => $calc['percentage'],
+            'refund_amount' => $calc['amount'],
+            'note' => $validated['note'],
+            'status' => 'pending_refund',
+        ]);
+
+        $booking->update(['status' => 'cancel_requested']);
+
+        // Send Email to Admin (Giả sử admin email là info@lighthotel.com hoặc lấy từ config)
+        try {
+            \Illuminate\Support\Facades\Mail::to('admin@lighthotel.com')->send(new \App\Mail\RefundRequestedMail($refundRequest));
+        } catch (\Exception $e) {
+            // Log error but don't stop the process
+            \Illuminate\Support\Facades\Log::error('Mail error: ' . $e->getMessage());
+        }
+
+        // Log
+        \App\Models\BookingLog::create([
+            'booking_id' => $booking->id,
+            'old_status' => 'confirmed',
+            'new_status' => 'cancel_requested',
+            'changed_at' => now(),
+        ]);
+
+        return redirect()->route('account.bookings.show', $booking)->with('success', 'Yêu cầu hoàn tiền của bạn đã được gửi và đang chờ xử lý.');
+    }
 }

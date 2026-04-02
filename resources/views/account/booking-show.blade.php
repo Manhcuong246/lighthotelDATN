@@ -17,6 +17,8 @@
             @elseif($booking->status === 'confirmed') Đã xác nhận
             @elseif($booking->status === 'completed') Hoàn thành
             @elseif($booking->status === 'cancelled') Đã hủy
+            @elseif($booking->status === 'cancel_requested') Đang chờ hoàn tiền
+            @elseif($booking->status === 'refunded') Đã hoàn tiền
             @else {{ $booking->status }}
             @endif
         </span>
@@ -138,17 +140,72 @@
     </div>
 </div>
 
+@if($booking->refundRequest)
+<div class="card border-0 shadow-sm rounded-3 mt-4 overflow-hidden border-start border-4 {{ $booking->refundRequest->status === 'refunded' ? 'border-success' : ($booking->refundRequest->status === 'rejected' ? 'border-danger' : 'border-warning') }}">
+    <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2"></i>Thông tin hoàn tiền</h6>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <p class="mb-1 small text-muted text-uppercase fw-semibold">Tài khoản nhận</p>
+                <p class="mb-0 fw-bold">{{ $booking->refundRequest->account_name }}</p>
+                <p class="mb-0 small">{{ $booking->refundRequest->bank_name }} - {{ $booking->refundRequest->account_number }}</p>
+            </div>
+            <div class="col-md-4 text-md-center">
+                <p class="mb-1 small text-muted text-uppercase fw-semibold">Số tiền hoàn ({{ $booking->refundRequest->refund_percentage }}%)</p>
+                <p class="mb-0 fw-bold text-success fs-5">{{ number_format($booking->refundRequest->refund_amount, 0, ',', '.') }} ₫</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <p class="mb-1 small text-muted text-uppercase fw-semibold">Trạng thái yêu cầu</p>
+                <span class="badge {{ $booking->refundRequest->status === 'refunded' ? 'bg-success' : ($booking->refundRequest->status === 'rejected' ? 'bg-danger' : 'bg-warning') }} px-3 py-2 rounded-pill">
+                    @if($booking->refundRequest->status === 'pending_refund') Đang xử lý
+                    @elseif($booking->refundRequest->status === 'refunded') Đã hoàn tiền
+                    @elseif($booking->refundRequest->status === 'rejected') Từ chối hoàn tiền
+                    @endif
+                </span>
+            </div>
+            
+            @if($booking->refundRequest->admin_note)
+            <div class="col-12 mt-3">
+                <div class="p-3 rounded-3 bg-light border-start border-3 {{ $booking->refundRequest->status === 'refunded' ? 'border-success' : 'border-danger' }}">
+                    <p class="mb-1 small fw-bold">Phản hồi từ Admin:</p>
+                    <p class="mb-0 italic">{{ $booking->refundRequest->admin_note }}</p>
+                </div>
+            </div>
+            @endif
+
+            @if($booking->refundRequest->refund_proof_image)
+            <div class="col-12 mt-3 text-center">
+                <p class="mb-2 small fw-bold">Minh chứng chuyển khoản:</p>
+                <a href="{{ asset('storage/' . $booking->refundRequest->refund_proof_image) }}" target="_blank">
+                    <img src="{{ asset('storage/' . $booking->refundRequest->refund_proof_image) }}" class="img-fluid rounded shadow-sm border" style="max-height: 300px;" alt="Proof of Refund">
+                </a>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="mt-3 d-flex gap-2">
     @if($booking->rooms->isNotEmpty())
     <a href="{{ route('rooms.show', $booking->rooms->first()) }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-eye me-1"></i>Xem phòng
     </a>
     @endif
-    <form action="{{ route('bookings.cancel.post', $booking) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đặt phòng này?');">
-        @csrf
-        <button type="submit" class="btn btn-outline-danger btn-sm">
-            <i class="bi bi-x-circle me-1"></i>Hủy đơn
-        </button>
-    </form>
+    
+    @if($booking->status === 'confirmed')
+        <a href="{{ route('account.bookings.refund', $booking) }}" class="btn btn-danger btn-sm px-4">
+            <i class="bi bi-wallet2 me-1"></i>Hủy & Hoàn tiền
+        </a>
+    @elseif($booking->status === 'pending')
+        <form action="{{ route('bookings.cancel.post', $booking) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đặt phòng này?');">
+            @csrf
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-x-circle me-1"></i>Hủy đơn
+            </button>
+        </form>
+    @endif
 </div>
 @endsection

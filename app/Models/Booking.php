@@ -91,7 +91,12 @@ class Booking extends Model
         return $this->hasMany(BookingService::class);
     }
 
-   public function isCheckinAllowed(): bool
+    public function refundRequest()
+    {
+        return $this->hasOne(RefundRequest::class);
+    }
+
+    public function isCheckinAllowed(): bool
     {
         return $this->status === 'confirmed'
             && is_null($this->actual_check_in)

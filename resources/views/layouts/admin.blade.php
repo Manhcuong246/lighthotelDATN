@@ -288,6 +288,12 @@
                     Đặt phòng
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.refunds*') ? 'active' : '' }}" href="{{ route('admin.refunds.index') }}">
+                    <i class="bi bi-wallet2"></i>
+                    Hoàn tiền
+                </a>
+            </li>
             @endif
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
