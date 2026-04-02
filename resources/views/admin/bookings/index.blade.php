@@ -8,8 +8,8 @@
         <h1 class="text-dark fw-bold">Quản lý đặt phòng</h1>
         <div class="d-flex flex-wrap gap-2">
             @if(auth()->user()->isAdmin())
-            <a href="{{ route('admin.bookings.create') }}" class="btn btn-success btn-sm">
-                <i class="bi bi-plus-lg me-1"></i>Tạo đơn
+            <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-layers me-1"></i>Tạo đơn nhiều phòng
             </a>
             @endif
 
@@ -121,8 +121,8 @@
                                 <td>{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</td>
                                 <td class="text-center">
                                     <span class="badge bg-secondary">
-                                        {{ $booking->bookingRooms->sum(function($br) { 
-                                            return $br->adults + $br->children_0_5 + $br->children_6_11; 
+                                        {{ $booking->bookingRooms->sum(function($br) {
+                                            return $br->adults + $br->children_0_5 + $br->children_6_11;
                                         }) }}
                                     </span>
                                 </td>
