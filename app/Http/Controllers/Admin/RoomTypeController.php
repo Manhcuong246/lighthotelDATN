@@ -19,7 +19,8 @@ class RoomTypeController extends Controller
             $query->where('name', 'like', "%{$q}%");
         }
 
-        $roomTypes = $query->get();
+        $roomTypes = $query->paginate(10)->withQueryString();
+
         return view('admin.roomtypes.index', compact('roomTypes'));
     }
 
@@ -41,6 +42,7 @@ class RoomTypeController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
+            'is_non_refundable' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('image')) {
@@ -56,6 +58,7 @@ class RoomTypeController extends Controller
             'description' => $validated['description'] ?? null,
             'image' => $validated['image'] ?? null,
             'status' => $validated['status'] ?? 1,
+            'is_non_refundable' => $request->boolean('is_non_refundable'),
         ]);
 
         return redirect()->route('admin.roomtypes.index')
@@ -83,6 +86,7 @@ class RoomTypeController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
+            'is_non_refundable' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('image')) {
@@ -91,6 +95,8 @@ class RoomTypeController extends Controller
             }
             $validated['image'] = $request->file('image')->store('room_types', 'public');
         }
+
+        $validated['is_non_refundable'] = $request->boolean('is_non_refundable');
 
         $roomType->update($validated);
 

@@ -12,8 +12,10 @@ class BookingLog extends Model
 
     protected $fillable = [
         'booking_id',
+        'actor_user_id',
         'old_status',
         'new_status',
+        'note',
         'changed_at',
     ];
 
@@ -24,6 +26,11 @@ class BookingLog extends Model
     public function booking()
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function actor()
+    {
+        return $this->belongsTo(User::class, 'actor_user_id');
     }
 }
 

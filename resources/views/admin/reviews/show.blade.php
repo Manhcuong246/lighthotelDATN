@@ -3,7 +3,7 @@
 @section('title', 'Chi tiết đánh giá #' . $review->id)
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid admin-page px-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Đánh giá #{{ $review->id }}</h1>
         <div class="d-flex gap-2">

@@ -73,7 +73,11 @@
 </div>
 
 {{-- Room Detail Modal --}}
-@php $firstRoom = $type->available_rooms ? $type->available_rooms->first() : null; @endphp
+@php 
+    $firstRoom = (isset($type->available_rooms) && $type->available_rooms->isNotEmpty()) 
+                   ? $type->available_rooms->first() 
+                   : ($type->rooms->isNotEmpty() ? $type->rooms->first() : null); 
+@endphp
 @if($firstRoom)
 <div class="modal fade room-detail-modal" id="roomDetailModal{{ $firstRoom->id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">

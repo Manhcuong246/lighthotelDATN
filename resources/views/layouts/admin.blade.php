@@ -4,219 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>@yield('title', 'Admin Dashboard - Light Hotel')</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        :root {
-            --sidebar-width: 260px;
-            --sidebar-collapsed: 72px;
-            --navbar-height: 56px;
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --dark-color: #1d3557;
-            --light-color: #f8f9fa;
-        }
-
-        * { box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body {
-            background-color: #f0f2f5;
-            color: #333;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            overflow-x: hidden;
-            padding-top: var(--navbar-height);
-        }
-
-        /* Navbar */
-        .navbar-admin {
-            background: linear-gradient(90deg, var(--dark-color), var(--secondary-color));
-            height: var(--navbar-height);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-        }
-        .navbar-brand-admin { color: white !important; font-weight: 700; font-size: 1.15rem; }
-        .navbar-brand-admin i { margin-right: 8px; }
-        .toggle-btn {
-            color: white;
-            border: none;
-            background: rgba(255,255,255,0.15);
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            transition: background 0.2s;
-            cursor: pointer;
-            position: relative;
-            z-index: 1100;
-        }
-        .toggle-btn:hover { background: rgba(255,255,255,0.25); color: white; }
-
-        /* Sidebar */
-        #sidebar {
-            position: fixed;
-            top: var(--navbar-height);
-            left: 0;
-            width: var(--sidebar-width);
-            height: calc(100vh - var(--navbar-height));
-            background: linear-gradient(180deg, var(--dark-color), #14213d);
-            color: white;
-            z-index: 1025;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease;
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
-        }
-        #sidebar .sidebar-header {
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            flex-shrink: 0;
-        }
-        #sidebar .sidebar-header h4 { font-size: 1.1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #sidebar .sidebar-header p { font-size: 0.75rem; margin: 0.25rem 0 0; opacity: 0.7; }
-        #sidebar .nav-link {
-            color: rgba(255,255,255,0.85);
-            padding: 0.75rem 1.25rem;
-            margin: 0.125rem 0.75rem;
-            border-radius: 10px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            white-space: nowrap;
-        }
-        #sidebar .nav-link i {
-            width: 24px;
-            flex-shrink: 0;
-            font-size: 1.1rem;
-            margin-right: 0.75rem;
-        }
-        #sidebar .nav-link:hover, #sidebar .nav-link.active {
-            background: rgba(255,255,255,0.12);
-            color: white;
-        }
-        #sidebar .nav-item { list-style: none; }
-        #sidebar .nav { padding: 0.75rem 0; }
-
-        /* Overlay */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            top: var(--navbar-height);
-            background: rgba(0,0,0,0.5);
-            z-index: 1020;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .sidebar-overlay.show {
-            display: block;
-            opacity: 1;
-        }
-
-        /* Main content */
-        #content {
-            margin-left: var(--sidebar-width);
-            padding: 1rem;
-            min-height: calc(100vh - var(--navbar-height));
-            transition: margin-left 0.3s ease;
-        }
-
-        /* Cards */
-        .card-admin {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-            margin-bottom: 1.25rem;
-        }
-        .card-header-admin {
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: 12px 12px 0 0;
-            padding: 0.875rem 1.25rem;
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
-        .stat-card {
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-        }
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-        }
-        .bg-primary-light { background: rgba(67, 97, 238, 0.12); }
-        .bg-success-light { background: rgba(60, 186, 159, 0.12); }
-        .bg-warning-light { background: rgba(247, 183, 49, 0.12); }
-        .bg-info-light { background: rgba(23, 162, 184, 0.12); }
-        .bg-danger-light { background: rgba(231, 76, 60, 0.12); }
-        .text-primary-dark { color: #4361ee; }
-        .text-success-dark { color: #3da58a; }
-        .text-warning-dark { color: #e79427; }
-        .text-info-dark { color: #17a2b8; }
-        .text-danger-dark { color: #c0392b; }
-
-        /* Responsive tables */
-        .table-responsive { -webkit-overflow-scrolling: touch; }
-        .table th, .table td { vertical-align: middle; }
-
-        /* Page headers */
-        .page-header {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.25rem;
-        }
-        .page-header h1 { font-size: clamp(1.25rem, 3vw, 1.5rem); margin: 0; }
-        .page-header .btn-group { flex-wrap: wrap; }
-
-        /* Mobile: sidebar off-canvas */
-        @media (max-width: 991.98px) {
-            #sidebar {
-                transform: translateX(-100%);
-                box-shadow: 4px 0 20px rgba(0,0,0,0.2);
-            }
-            #sidebar.show {
-                transform: translateX(0);
-            }
-            #content { margin-left: 0; padding: 0.75rem; }
-            body { padding-top: var(--navbar-height); overflow-x: auto; }
-        }
-
-        /* Tablet */
-        @media (min-width: 992px) and (max-width: 1199.98px) {
-            :root { --sidebar-width: 220px; }
-        }
-
-        /* Safe area for notched devices */
-        @@supports (padding: max(0px)) {
-            body { padding-top: max(var(--navbar-height), env(safe-area-inset-top)); }
-            #sidebar { padding-bottom: env(safe-area-inset-bottom); }
-        }
-        /* Pagination spacing - avoid crowded look */
-        .pagination.gap-2 .page-item .page-link { margin-left: 0; border-radius: 0.375rem; }
-    </style>
+    @vite(['resources/css/admin.css'])
     @stack('styles')
 </head>
-<body>
+<body class="admin-body">
     <nav class="navbar navbar-expand-lg navbar-admin">
         <div class="container-fluid px-3 px-md-4">
             <a class="navbar-brand navbar-brand-admin" href="{{ route('admin.dashboard') }}">
@@ -235,7 +31,7 @@
             @endif
             <div class="d-flex align-items-center ms-auto">
                 <div class="dropdown">
-                    <a class="dropdown-toggle d-flex align-items-center text-decoration-none text-white" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="dropdown-toggle d-flex align-items-center text-decoration-none text-white" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         @if(auth()->user()->avatar_url)
                             <img src="{{ str_starts_with(auth()->user()->avatar_url, 'http') ? auth()->user()->avatar_url : asset('storage/' . auth()->user()->avatar_url) }}" alt="" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;border:2px solid rgba(255,255,255,0.5)">
                         @else
@@ -257,7 +53,7 @@
 
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <aside id="sidebar">
+    <aside id="sidebar" aria-label="Menu quản trị">
         <div class="sidebar-header">
             <h4><i class="bi bi-building me-2"></i>Light Hotel</h4>
             <p class="small mb-0">Quản trị hệ thống</p>
@@ -323,7 +119,7 @@
                 </a>
             </li>
             @endif
-            <li class="nav-item mt-2 pt-2 border-top border-secondary">
+            <li class="nav-item mt-2 pt-2 border-top border-secondary border-opacity-25">
                 <a class="nav-link" href="{{ route('home') }}">
                     <i class="bi bi-house-door"></i>
                     Trang chủ

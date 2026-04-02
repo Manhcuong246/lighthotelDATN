@@ -31,7 +31,7 @@ class UserAdminController extends Controller
             });
         }
 
-        $users = $query->paginate(15)->withQueryString();
+        $users = $query->paginate(10)->withQueryString();
         return view('admin.users.index', compact('users'));
     }
 

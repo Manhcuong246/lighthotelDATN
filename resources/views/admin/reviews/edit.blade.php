@@ -3,7 +3,7 @@
 @section('title', 'Chỉnh sửa đánh giá #' . $review->id)
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid admin-page px-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Chỉnh sửa đánh giá</h1>
         <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary">Quay lại</a>

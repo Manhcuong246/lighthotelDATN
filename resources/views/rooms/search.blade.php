@@ -209,7 +209,7 @@
         background-color: #fff;
     }
 
-    /* Sidebar Summary */
+    /* Sidebar Summary — cuộn nội dung, giữ tổng + nút luôn trong viewport */
     .booking-summary-card {
         background: #fff;
         border-radius: 16px;
@@ -217,34 +217,53 @@
         box-shadow: 0 4px 25px rgba(0,0,0,0.08);
         border: 1px solid var(--border-color);
         position: sticky;
-        top: 20px;
+        top: 72px;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 88px);
         overflow: hidden;
     }
     .summary-header {
         background: #1a202c;
         color: #fff;
-        padding: 20px 25px;
+        padding: 12px 16px;
         font-weight: 700;
-        font-size: 1.1rem;
+        font-size: 1rem;
+        flex-shrink: 0;
     }
-    .summary-body { padding: 25px; }
-    .summary-group-title { font-weight: 700; margin-bottom: 15px; color: #1a202c; }
-    .summary-item { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 10px; }
-    .summary-total { margin-top: 25px; padding-top: 20px; border-top: 2px solid #f7fafc; }
-    .summary-total-val { font-weight: 800; font-size: 1.5rem; color: var(--secondary-blue); }
+    .summary-body-scroll {
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: 0.75rem 1rem 0.5rem;
+        -webkit-overflow-scrolling: touch;
+    }
+    .summary-footer-sticky {
+        flex-shrink: 0;
+        padding: 12px 16px 16px;
+        background: #fff;
+        border-top: 1px solid #e2e8f0;
+        box-shadow: 0 -6px 16px rgba(15,23,42,0.06);
+    }
+    .summary-group-title { font-weight: 700; margin-bottom: 8px; color: #1a202c; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .summary-item { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; }
+    .summary-total { margin-top: 0; padding-top: 0; border-top: none; }
+    .summary-total-val { font-weight: 800; font-size: 1.35rem; color: var(--secondary-blue); }
     .btn-book-now {
         background: #2563eb;
         color: #fff;
         font-weight: 700;
-        padding: 15px;
-        border-radius: 12px;
+        padding: 12px 14px;
+        border-radius: 10px;
         border: none;
         width: 100%;
-        margin-top: 20px;
+        margin-top: 10px;
         transition: all 0.2s;
+        font-size: 0.95rem;
     }
-    .btn-book-now:hover:not(:disabled) { background: #1e40af; transform: translateY(-2px); }
+    .btn-book-now:hover:not(:disabled) { background: #1e40af; transform: translateY(-1px); }
     .btn-book-now:disabled { background: #cbd5e0; cursor: not-allowed; }
+    .booking-summary-card .form-control-sm { padding: 0.35rem 0.55rem; font-size: 0.875rem; }
 
     /* Modal Styles */
     .modal-header-custom { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-bottom: 1px solid #eee; }
@@ -506,11 +525,11 @@
         <div class="col-lg-4">
             <div class="booking-summary-card">
                 <div class="summary-header">Thông tin đặt phòng</div>
-                <div class="summary-body">
-                    <form action="{{ route('bookings.store') }}" method="POST" id="checkoutForm">
-                        @csrf
+                <form action="{{ route('bookings.store') }}" method="POST" id="checkoutForm" class="d-flex flex-column flex-grow-1 min-h-0">
+                    @csrf
+                    <div class="summary-body-scroll">
                         @if($errors->any())
-                            <div class="alert alert-danger py-2 small mb-3">
+                            <div class="alert alert-danger py-2 small mb-2">
                                 <ul class="mb-0 ps-3">
                                     @foreach($errors->all() as $error)
                                         <li>{{ $error }}</li>
@@ -521,64 +540,55 @@
                         <input type="hidden" name="payment_method" value="vnpay">
                         <div id="roomInputsContainer"></div>
 
-                        <div class="summary-group">
+                        <div class="summary-group mb-2">
                             <div class="summary-group-title">{{ $hotel->name ?? 'Light Hotel' }}</div>
-                            <div class="summary-item mb-2">
-                                <label class="small text-muted mb-1">Ngày nhận phòng</label>
-                                <input type="date" name="check_in" id="sidebar_check_in" class="form-control form-control-sm fw-bold border-0 bg-light" 
-                                       value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
-                            </div>
-                            <div class="summary-item mb-2">
-                                <label class="small text-muted mb-1">Ngày trả phòng</label>
-                                <input type="date" name="check_out" id="sidebar_check_out" class="form-control form-control-sm fw-bold border-0 bg-light" 
-                                       value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
-                            </div>
-                            <div class="summary-item mb-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted small">Thời gian nghỉ:</span>
-                                    <strong class="text-primary" id="sidebar_nights_display">{{ $nights }} đêm</strong>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="small text-muted mb-0 d-block">Nhận phòng</label>
+                                    <input type="date" name="check_in" id="sidebar_check_in" class="form-control form-control-sm border bg-light"
+                                           value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="small text-muted mb-0 d-block">Trả phòng</label>
+                                    <input type="date" name="check_out" id="sidebar_check_out" class="form-control form-control-sm border bg-light"
+                                           value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
                                 </div>
                             </div>
-                            <button type="button" id="btnUpdateDates" class="btn btn-sm btn-outline-primary w-100 rounded-pill mb-3 fw-bold">
-                                <i class="bi bi-arrow-repeat me-1"></i> Cập nhật ngày & giá
+                            <div class="d-flex justify-content-between align-items-center mt-1 mb-2 small">
+                                <span class="text-muted">Thời gian nghỉ</span>
+                                <strong class="text-primary" id="sidebar_nights_display">{{ $nights }} đêm</strong>
+                            </div>
+                            <button type="button" id="btnUpdateDates" class="btn btn-sm btn-outline-primary w-100 fw-semibold">
+                                <i class="bi bi-arrow-repeat me-1"></i>Cập nhật ngày &amp; giá
                             </button>
                         </div>
 
-                        <div class="summary-group">
-                            <div class="summary-group-title">Thông tin phòng</div>
-                            <div id="selectedRoomsList" class="mb-3">
-                                <p class="text-muted italic small">Chưa có phòng nào được chọn</p>
+                        <div class="summary-group mb-2">
+                            <div class="summary-group-title">Phòng đã chọn</div>
+                            <div id="selectedRoomsList" class="small">
+                                <p class="text-muted mb-0 fst-italic">Chưa có phòng nào được chọn</p>
                             </div>
                         </div>
 
-                        <div class="summary-group">
-                            <div class="summary-group-title">Thông tin khách hàng</div>
-                            <div class="mb-3">
-                                <label class="small text-muted mb-1">Họ tên *</label>
-                                <input type="text" name="full_name" class="form-control form-control-sm" 
-                                       value="{{ auth()->check() ? auth()->user()->full_name : old('full_name') }}" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="small text-muted mb-1">Email *</label>
-                                <input type="email" name="email" class="form-control form-control-sm" 
-                                       value="{{ auth()->check() ? auth()->user()->email : old('email') }}" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="small text-muted mb-1">Số điện thoại *</label>
-                                <input type="text" name="phone" class="form-control form-control-sm" 
-                                       value="{{ auth()->check() ? auth()->user()->phone : old('phone') }}" required>
-                            </div>
+                        @guest
+                        <div class="alert alert-light border small py-2 mb-3">
+                            <a href="{{ route('login') }}" class="alert-link fw-semibold">Đăng nhập</a> để đặt phòng — thông tin liên hệ lấy từ tài khoản của bạn.
                         </div>
+                        @else
+                        <p class="small text-muted mb-2">Đặt phòng dùng thông tin trong <a href="{{ route('account.profile') }}">hồ sơ</a> (họ tên, email, SĐT).</p>
+                        @endguest
 
-                        <div class="summary-group">
+                        <div class="summary-group mb-0">
                             <div class="summary-group-title">Mã giảm giá</div>
-                            <div class="input-group input-group-sm mb-2">
-                                <input type="text" id="couponCode" name="coupon_code" class="form-control" placeholder="Nhập mã...">
-                                <button class="btn btn-outline-primary" type="button" id="btnApplyCoupon">Áp dụng</button>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="couponCode" name="coupon_code" class="form-control form-control-sm" placeholder="Mã...">
+                                <button class="btn btn-outline-primary btn-sm" type="button" id="btnApplyCoupon">Áp dụng</button>
                             </div>
                             <div id="couponMessage" class="small mt-1"></div>
                         </div>
+                    </div>
 
+                    <div class="summary-footer-sticky">
                         <div class="summary-total">
                             <div id="discountRow" class="d-none justify-content-between align-items-center mb-1 small text-success">
                                 <span class="fw-bold">Giảm giá (<span id="discountPercent">0</span>%)</span>
@@ -589,10 +599,9 @@
                                 <span class="summary-total-val" id="totalDisplay">0 VNĐ</span>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn-book-now" id="btnBookNow" disabled>ĐẶT NGAY</button>
-                    </form>
-                </div>
+                        <button type="submit" class="btn-book-now" id="btnBookNow" disabled @guest title="Đăng nhập để đặt phòng" @endguest>Đặt ngay</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -665,13 +674,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const checkoutForm = document.getElementById('checkoutForm');
-    const inputName = document.querySelector('input[name="full_name"]');
-    const inputEmail = document.querySelector('input[name="email"]');
-    const inputPhone = document.querySelector('input[name="phone"]');
-
-    if (inputName) inputName.addEventListener('input', saveSelection);
-    if (inputEmail) inputEmail.addEventListener('input', saveSelection);
-    if (inputPhone) inputPhone.addEventListener('input', saveSelection);
 
     if (checkoutForm) {
         checkoutForm.addEventListener('submit', function() {
@@ -732,6 +734,8 @@ document.addEventListener('DOMContentLoaded', function() {
     qtySelectors.forEach(select => {
         select.addEventListener('change', updateSummary);
     });
+
+    const bookingGuestBlocked = {{ auth()->guest() ? 'true' : 'false' }};
 
     function updateSummary() {
         let subtotal = 0;
@@ -900,8 +904,9 @@ document.addEventListener('DOMContentLoaded', function() {
             btnBookNow.classList.remove('active');
         } else {
             selectedRoomsList.innerHTML = htmlSnippet;
-            btnBookNow.disabled = false;
-            btnBookNow.classList.add('active');
+            btnBookNow.disabled = bookingGuestBlocked;
+            if (!bookingGuestBlocked) btnBookNow.classList.add('active');
+            else btnBookNow.classList.remove('active');
         }
 
         totalDisplay.textContent = new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ';
@@ -919,12 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveSelection() {
         const selection = {
             room_types: {},
-            coupon: couponInput.value.trim(),
-            personal: {
-                full_name: inputName ? inputName.value : '',
-                email: inputEmail ? inputEmail.value : '',
-                phone: inputPhone ? inputPhone.value : ''
-            }
+            coupon: couponInput.value.trim()
         };
 
         qtySelectors.forEach(select => {
@@ -959,13 +959,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const selection = JSON.parse(saved);
         
-        // Restore Personal Info
-        if (selection.personal) {
-            if (inputName && selection.personal.full_name) inputName.value = selection.personal.full_name;
-            if (inputEmail && selection.personal.email) inputEmail.value = selection.personal.email;
-            if (inputPhone && selection.personal.phone) inputPhone.value = selection.personal.phone;
-        }
-
         // Restore Coupon
         if (selection.coupon) {
             couponInput.value = selection.coupon;

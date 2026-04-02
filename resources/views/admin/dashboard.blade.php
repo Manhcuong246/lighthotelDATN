@@ -3,9 +3,9 @@
 @section('title', 'Bảng điều khiển - Admin')
 
 @section('content')
-<div class="container-fluid px-0">
+<div class="container-fluid admin-page px-0">
     <div class="page-header">
-        <h1 class="text-dark fw-bold">Bảng điều khiển</h1>
+        <h1>Bảng điều khiển</h1>
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-download me-1"></i>Xuất báo cáo</a>
             @if(auth()->user()->isAdmin())
@@ -98,7 +98,7 @@
                     @if($topRoomsByRevenue->isNotEmpty())
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <div style="height: 260px; position: relative;">
+                            <div class="admin-chart-box admin-chart-box--md">
                                 <canvas id="topRoomsRevenueChart"></canvas>
                             </div>
                         </div>
@@ -173,7 +173,7 @@
                     <h6 class="m-0 fw-bold">Doanh thu 7 ngày gần nhất</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-area" style="height: 220px;">
+                    <div class="admin-chart-box admin-chart-box--sm">
                         <canvas id="monthlyRevenueChart"></canvas>
                     </div>
                 </div>
@@ -187,7 +187,7 @@
                     <h6 class="m-0 fw-bold">Tỉ lệ lấp phòng 7 ngày gần nhất</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-area" style="height: 220px;">
+                    <div class="admin-chart-box admin-chart-box--sm">
                         <canvas id="occupancyRateChart"></canvas>
                     </div>
                 </div>

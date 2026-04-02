@@ -36,8 +36,11 @@ class RoomController extends Controller
 
         $hotel = HotelInfo::first();
 
-        $query = RoomType::with(['rooms' => function($q) {
-            $q->where('status', 'available')->with('images');
+        // Load phòng (kèm ảnh) cho cả loại không còn phòng trống — luôn có ảnh đại diện trên trang chủ
+        $query = RoomType::with(['rooms' => function ($q) {
+            $q->with('images')
+                ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
+                ->orderBy('id');
         }]);
 
         // Lọc theo loại phòng
@@ -84,8 +87,8 @@ class RoomController extends Controller
 
         $roomTypesList = $query->paginate(10)->withQueryString();
         $amenities = Amenity::orderBy('name')->get();
-        // Cần truyền thêm $allRoomTypes cho bộ lọc (tránh trùng tên biến)
-        $allRoomTypes = RoomType::where('status', 'active')->orWhereNull('status')->get();
+        // Bộ lọc loại phòng: cột status là boolean (1/0), đồng bộ với admin
+        $allRoomTypes = RoomType::where('status', 1)->orderBy('name')->get();
 
         $siteContents = SiteContent::whereIn('type', ['banner','about','policy','footer'])
             ->where('is_active', true)
@@ -135,6 +138,7 @@ class RoomController extends Controller
 
         // 1. Tìm tất cả các phòng vật lý đang rảnh
         $availableRooms = Room::where('status', 'available')
+            ->with(['images', 'roomType'])
             ->whereDoesntHave('bookedDates', function ($q) use ($checkIn, $checkOut) {
                 $q->whereBetween('booked_date', [
                     $checkIn,
@@ -154,14 +158,6 @@ class RoomController extends Controller
         $roomTypes->each(function($type) use ($availableRooms) {
             $type->setRelation('available_rooms', $availableRooms->where('room_type_id', $type->id));
         });
-
-        // Debug log
-        \Illuminate\Support\Facades\Log::info('Search Debug', [
-            'check_in' => $checkIn,
-            'check_out' => $checkOut,
-            'availableRoomsCount' => $availableRooms->count(),
-            'roomTypesCount' => $roomTypes->count(),
-        ]);
 
         $hotel = HotelInfo::first();
         return view('rooms.search', [

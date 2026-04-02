@@ -3,7 +3,7 @@
 @section('title', 'Chỉnh sửa người dùng - ' . $user->full_name)
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid admin-page px-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Chỉnh sửa người dùng</h1>
         <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary">Quay lại</a>

@@ -3,26 +3,10 @@
 @section('title', 'Cài đặt hệ thống')
 
 @section('content')
-<div class="container-fluid px-0">
+<div class="container-fluid admin-page px-0">
     <div class="page-header">
-        <h1 class="text-dark fw-bold">Cài đặt hệ thống</h1>
+        <h1>Cài đặt hệ thống</h1>
     </div>
-
-    @if(session('success'))
-        <div class="alert alert-success" role="alert">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
 
     <div class="row g-3">
         <div class="col-12 col-lg-8">

@@ -22,6 +22,8 @@ class Booking extends Model
         'children',
         'total_price',
         'status',
+        'cancellation_reason',
+        'cancellation_requested_at',
         'coupon_code',
         'discount_amount',
     ];
@@ -33,7 +35,20 @@ class Booking extends Model
         'actual_check_out' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'cancellation_requested_at' => 'datetime',
     ];
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_CONFIRMED = 'confirmed';
+
+    public const STATUS_CANCELLATION_PENDING = 'cancellation_pending';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUS_REFUNDED = 'refunded';
+
+    public const STATUS_COMPLETED = 'completed';
 
     public function user()
     {
@@ -104,6 +119,38 @@ class Booking extends Model
             && !is_null($this->actual_check_in)
             && is_null($this->actual_check_out)
             && Carbon::today()->gte($this->check_out);
+    }
+
+    public function releaseBookedDates(): void
+    {
+        RoomBookedDate::where('booking_id', $this->id)->delete();
+    }
+
+    /**
+     * Số khách để form admin / validate: cột guests hoặc tổng adults từ booking_rooms (đơn đa phòng thường để guests null).
+     */
+    public function resolvedGuestCount(): int
+    {
+        if ($this->guests !== null) {
+            return max(1, (int) $this->guests);
+        }
+
+        $this->loadMissing('bookingRooms');
+
+        return max(1, (int) $this->bookingRooms->sum('adults'));
+    }
+
+    /**
+     * Tên phòng để hiển thị admin/CSV: ưu tiên quan hệ booking_rooms, fallback room_id cũ.
+     */
+    public function roomNamesLabel(): string
+    {
+        $this->loadMissing(['rooms', 'room']);
+        if ($this->rooms->isNotEmpty()) {
+            return $this->rooms->pluck('name')->filter()->values()->implode(', ');
+        }
+
+        return $this->room?->name ?: '—';
     }
 }
 
