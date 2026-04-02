@@ -1,0 +1,14 @@
+/.git
+/.idea
+/.vscode
+/.zed
+/.fleet
+/node_modules
+/vendor
+/storage
+/public/storage
+/.env
+/.env.*
+/public/hot
+/public/build
+*.log
