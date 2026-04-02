@@ -22,6 +22,12 @@ class BookingAdminController extends Controller
         $this->middleware('admin');
     }
 
+<<<<<<< HEAD
+    public function index()
+    {
+        $bookings = Booking::with(['user', 'room'])->latest()->paginate(15);
+        return view('admin.bookings.index', compact('bookings'));
+=======
     public function index(Request $request)
     {
         $query = Booking::with(['user', 'room'])->latest();
@@ -47,12 +53,16 @@ class BookingAdminController extends Controller
             'confirmed' => Booking::where('status', 'confirmed')->count(),
         ];
         return view('admin.bookings.index', compact('bookings', 'counts'));
+>>>>>>> vinam
     }
 
     public function show(Booking $booking)
     {
+<<<<<<< HEAD
+=======
         $booking->load(['user', 'room', 'payment', 'logs', 'bookingServices.service']);
 
+>>>>>>> vinam
         return view('admin.bookings.show', compact('booking'));
     }
 
@@ -201,7 +211,11 @@ class BookingAdminController extends Controller
         $validated = $request->validate([
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
+<<<<<<< HEAD
+            'guests' => 'required|integer|min:1|max:' . $booking->room->max_guests,
+=======
             'guests' => 'required|integer|min:1|max:' . ($booking->room->max_guests ?? 99),
+>>>>>>> vinam
             'total_price' => 'required|numeric|min:0',
             'status' => 'required|in:pending,confirmed,cancelled,completed',
         ]);
@@ -230,11 +244,14 @@ class BookingAdminController extends Controller
             }
 
             $booking->update($validated);
+<<<<<<< HEAD
+=======
             
             // If cancelled, release dates
             if ($booking->status === 'cancelled') {
                 RoomBookedDate::where('booking_id', $booking->id)->delete();
             }
+>>>>>>> vinam
 
             // Log status change if status was updated
             if ($old_status !== $booking->status) {
@@ -280,17 +297,24 @@ class BookingAdminController extends Controller
     public function updateStatus(Request $request, Booking $booking)
     {
         $request->validate([
+<<<<<<< HEAD
+            'status' => 'required|in:pending,confirmed,cancelled,completed,awaiting_payment',
+=======
             'status' => 'required|in:pending,confirmed,cancelled,completed',
+>>>>>>> vinam
         ]);
 
         $old = $booking->status;
         $booking->status = $request->status;
         $booking->save();
 
+<<<<<<< HEAD
+=======
         if ($booking->status === 'cancelled') {
             RoomBookedDate::where('booking_id', $booking->id)->delete();
         }
 
+>>>>>>> vinam
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,
             'old_status' => $old,
@@ -301,6 +325,95 @@ class BookingAdminController extends Controller
         return back()->with('success', 'Cập nhật trạng thái thành công.');
     }
 
+<<<<<<< HEAD
+    /**
+     * Admin yêu cầu thanh toán deposit (30%)
+     */
+    public function requestPayment(Request $request, Booking $booking)
+    {
+        // Chỉ cho phép yêu cầu thanh toán khi status = pending
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return back()->withErrors('Đơn này chưa ở trạng thái chờ xác nhận.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $oldStatus = $booking->status;
+            
+            $booking->update([
+                'payment_request_sent_at' => now(),
+                'status' => Booking::STATUS_AWAITING_PAYMENT,
+            ]);
+
+            // Tạo booking log với error handling
+            try {
+                \App\Models\BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => Booking::STATUS_AWAITING_PAYMENT,
+                    'changed_at' => now(),
+                ]);
+            } catch (\Exception $logException) {
+                // Log error but don't fail the whole operation
+                \Log::error('Failed to create booking log', [
+                    'booking_id' => $booking->id,
+                    'error' => $logException->getMessage()
+                ]);
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'Đã gửi yêu cầu thanh toán deposit cho khách hàng.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Request payment failed', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Admin xác nhận đã nhận được thanh toán deposit
+     */
+    public function confirmPayment(Booking $booking)
+    {
+        // Kiểm tra booking đã được thanh toán chưa
+        if ($booking->isDepositPaid()) {
+            return back()->withErrors('Đơn này đã được thanh toán rồi.');
+        }
+
+        if ($booking->status !== Booking::STATUS_AWAITING_PAYMENT) {
+            return back()->withErrors('Đơn này chưa ở trạng thái yêu cầu thanh toán.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $booking->update([
+                'deposit_paid_at' => now(),
+                'status' => Booking::STATUS_CONFIRMED,
+            ]);
+
+            \App\Models\BookingLog::create([
+                'booking_id' => $booking->id,
+                'old_status' => Booking::STATUS_AWAITING_PAYMENT,
+                'new_status' => Booking::STATUS_CONFIRMED,
+                'changed_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return back()->with('success', 'Đã xác nhận thanh toán deposit. Đơn đặt phòng đã được xác nhận thành công.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra, vui lòng thử lại sau.');
+        }
+    }
+
+=======
+>>>>>>> vinam
     public function checkIn(Booking $booking)
     {
         if ($booking->status !== 'confirmed' || $booking->actual_check_in) {

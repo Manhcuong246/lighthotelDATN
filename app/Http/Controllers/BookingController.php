@@ -32,7 +32,12 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request)
     {
-        if (Auth::check() && Auth::user()?->canAccessAdmin()) {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để đặt phòng.');
+        }
+
+        if ($user->canAccessAdmin()) {
             return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
         }
 

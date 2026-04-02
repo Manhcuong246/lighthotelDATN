@@ -81,7 +81,11 @@ class AdminStatisticsController extends Controller
     private function getMonthlyRevenue($startDate, $endDate)
     {
         return Payment::whereBetween('paid_at', [$startDate, $endDate])
+<<<<<<< HEAD
+            ->where('status', 'completed')
+=======
             ->where('status', 'paid')
+>>>>>>> vinam
             ->sum('amount') ?? 0;
     }
 
@@ -94,7 +98,11 @@ class AdminStatisticsController extends Controller
         $tomorrow = Carbon::now()->endOfDay();
 
         return Payment::whereBetween('paid_at', [$today, $tomorrow])
+<<<<<<< HEAD
+            ->where('status', 'completed')
+=======
             ->where('status', 'paid')
+>>>>>>> vinam
             ->sum('amount') ?? 0;
     }
 
@@ -103,7 +111,11 @@ class AdminStatisticsController extends Controller
      */
     private function getTotalRevenue()
     {
+<<<<<<< HEAD
+        return Payment::where('status', 'completed')
+=======
         return Payment::where('status', 'paid')
+>>>>>>> vinam
             ->sum('amount') ?? 0;
     }
 
@@ -180,7 +192,11 @@ class AdminStatisticsController extends Controller
             $dateString = $date->toDateString();
             
             $revenue = Payment::whereDate('paid_at', $dateString)
+<<<<<<< HEAD
+                ->where('status', 'completed')
+=======
                 ->where('status', 'paid')
+>>>>>>> vinam
                 ->sum('amount') ?? 0;
 
             $labels[] = $date->format('d/m');

@@ -24,6 +24,37 @@
         </span>
     </div>
     <div class="card-body p-4">
+        @if($booking->status === 'cancellation_pending')
+            <div class="alert alert-primary mb-4">
+                <i class="bi bi-hourglass-split me-2"></i>
+                Yêu cầu hủy đang chờ khách sạn xác nhận. Phòng vẫn được giữ trong lịch cho đến khi có quyết định.
+                @if($booking->cancellation_reason)
+                    <div class="small mt-2 mb-0"><span class="text-muted">Lý do bạn gửi:</span> {{ $booking->cancellation_reason }}</div>
+                @endif
+            </div>
+        @endif
+
+        @if(in_array($booking->status, ['pending', 'confirmed'], true) && $booking->payment?->status === 'paid' && !($nonRefundable ?? false))
+            <div class="alert alert-light border mb-4 small">
+                <strong>Chính sách hủy (ước tính):</strong>
+                Còn khoảng <strong>{{ max(0, (int) round($policy['hours_until'])) }}</strong> giờ đến giờ nhận phòng.
+                @if($policy['tier'] === 'free')
+                    Hủy miễn phí — hoàn toàn bộ số đã thanh toán.
+                @elseif($policy['tier'] === 'mid')
+                    Phí hủy dự kiến {{ $policy['penalty_percent'] }}% (≈ {{ number_format($policy['penalty_amount'], 0, ',', '.') }} ₫). Hoàn lại ≈ {{ number_format($policy['eligible_amount'], 0, ',', '.') }} ₫.
+                @else
+                    Phí hủy dự kiến {{ $policy['penalty_percent'] }}% (≈ {{ number_format($policy['penalty_amount'], 0, ',', '.') }} ₫). Hoàn lại ≈ {{ number_format($policy['eligible_amount'], 0, ',', '.') }} ₫.
+                @endif
+                Nếu có phí, hệ thống có thể gửi yêu cầu hủy để <strong>admin duyệt</strong> trước khi giải phóng phòng.
+            </div>
+        @endif
+
+        @if(($nonRefundable ?? false) && in_array($booking->status, ['pending', 'confirmed'], true))
+            <div class="alert alert-warning small">
+                Gói phòng <strong>không hoàn tiền (non-refundable)</strong> — bạn không thể tự hủy trên web. Vui lòng liên hệ khách sạn.
+            </div>
+        @endif
+
         <div class="row g-4">
             <div class="col-md-6">
                 <h6 class="text-muted text-uppercase small fw-semibold mb-2">Phòng đã đặt</h6>
@@ -193,8 +224,7 @@
     <a href="{{ route('rooms.show', $booking->rooms->first()) }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-eye me-1"></i>Xem phòng
     </a>
-    @endif
-    
+    @endif    
     @if($booking->status === 'confirmed')
         <a href="{{ route('account.bookings.refund', $booking) }}" class="btn btn-danger btn-sm px-4">
             <i class="bi bi-wallet2 me-1"></i>Hủy & Hoàn tiền

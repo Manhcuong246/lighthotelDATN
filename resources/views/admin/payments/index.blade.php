@@ -3,6 +3,16 @@
 @section('title', 'Quản lý thanh toán')
 
 @section('content')
+<<<<<<< HEAD
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark">Quản lý thanh toán</h1>
+    </div>
+
+    <div class="card card-admin shadow mb-4">
+        <div class="card-header-admin py-3">
+            <h5 class="mb-0">Danh sách thanh toán</h5>
+=======
 <div class="container-fluid px-0">
     <div class="page-header">
         <h1 class="text-dark fw-bold">Quản lý thanh toán</h1>
@@ -24,6 +34,7 @@
                 <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
                 @endif
             </form>
+>>>>>>> vinam
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -32,10 +43,18 @@
                         <tr>
                             <th>#</th>
                             <th>Khách hàng</th>
+<<<<<<< HEAD
+                            <th>Đặt phòng</th>
+=======
+>>>>>>> vinam
                             <th>Phòng</th>
                             <th>Số tiền</th>
                             <th>Phương thức</th>
                             <th>Trạng thái</th>
+<<<<<<< HEAD
+                            <th>Ngày thanh toán</th>
+=======
+>>>>>>> vinam
                             <th width="180">Hành động</th>
                         </tr>
                     </thead>
@@ -51,6 +70,18 @@
                                         <span class="text-muted">—</span>
                                     @endif
                                 </td>
+<<<<<<< HEAD
+                                <td>
+                                    @if($payment->booking)
+                                        <a href="{{ route('admin.bookings.show', $payment->booking) }}" class="text-primary text-decoration-none">
+                                            #{{ $payment->booking->id }}
+                                        </a>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+=======
+>>>>>>> vinam
                                 <td>{{ $payment->booking && $payment->booking->room ? $payment->booking->room->name : '—' }}</td>
                                 <td><strong>{{ number_format($payment->amount, 0, ',', '.') }} VNĐ</strong></td>
                                 <td>
@@ -60,8 +91,11 @@
                                         <span class="badge bg-primary">Chuyển khoản</span>
                                     @elseif($payment->method === 'cash')
                                         <span class="badge bg-secondary">Tiền mặt</span>
+<<<<<<< HEAD
+=======
                                     @elseif($payment->method === 'vnpay')
                                         <span class="badge bg-dark">VNPay</span>
+>>>>>>> vinam
                                     @else
                                         {{ $payment->method }}
                                     @endif
@@ -78,6 +112,20 @@
                                     @endif
                                 </td>
                                 <td>
+<<<<<<< HEAD
+                                    @if($payment->created_at)
+                                        @if(is_string($payment->created_at))
+                                            {{ \Carbon\Carbon::parse($payment->created_at)->format('d/m/Y H:i') }}
+                                        @else
+                                            {{ $payment->created_at->format('d/m/Y H:i') }}
+                                        @endif
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>
+=======
+>>>>>>> vinam
                                     <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
                                     <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
                                     @if(auth()->user()->isAdmin())
@@ -92,7 +140,11 @@
                             </tr>
                         @empty
                             <tr>
+<<<<<<< HEAD
+                                <td colspan="9" class="text-center py-4 text-muted">Chưa có thanh toán nào.</td>
+=======
                                 <td colspan="7" class="text-center py-4 text-muted">Chưa có thanh toán nào.</td>
+>>>>>>> vinam
                             </tr>
                         @endforelse
                     </tbody>

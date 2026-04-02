@@ -3,6 +3,16 @@
 @section('title', 'Quản lý người dùng')
 
 @section('content')
+<<<<<<< HEAD
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark">Quản lý người dùng</h1>
+    </div>
+
+    <div class="card card-admin shadow mb-4">
+        <div class="card-header-admin py-3">
+            <h5 class="mb-0">Danh sách người dùng</h5>
+=======
 <div class="container-fluid px-0">
     <div class="page-header">
         <h1 class="text-dark fw-bold">Quản lý người dùng</h1>
@@ -18,6 +28,7 @@
                 <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
                 @endif
             </form>
+>>>>>>> vinam
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -35,12 +46,20 @@
                         </tr>
                     </thead>
                     <tbody>
+<<<<<<< HEAD
+                        @forelse($users as $user)
+=======
                         @forelse ($users as $user)
+>>>>>>> vinam
                             <tr>
                                 <td>{{ $user->id }}</td>
                                 <td>
                                     @if($user->avatar_url)
+<<<<<<< HEAD
+                                        <img src="{{ $user->avatar_url }}" alt="{{ $user->full_name }}" class="rounded-circle me-2" width="32" height="32">
+=======
                                         <img src="{{ str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : asset('storage/' . $user->avatar_url) }}" alt="{{ $user->full_name }}" class="rounded-circle me-2" width="32" height="32" style="object-fit:cover;">
+>>>>>>> vinam
                                     @endif
                                     {{ $user->full_name }}
                                 </td>

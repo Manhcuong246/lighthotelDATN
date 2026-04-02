@@ -14,7 +14,11 @@
             <h5 class="mb-0">Thông tin phòng</h5>
         </div>
         <div class="card-body">
+<<<<<<< HEAD
+            <form method="POST" action="{{ route('admin.rooms.store') }}">
+=======
             <form method="POST" action="{{ route('admin.rooms.store') }}" enctype="multipart/form-data">
+>>>>>>> vinam
                 @csrf
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -41,11 +45,14 @@
                         <small class="text-muted">Tự động thêm "Phòng" và format số</small>
                     </div>
                 </div>
+<<<<<<< HEAD
+=======
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Ảnh phòng</label>
                     <input type="file" name="images[]" class="form-control" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" multiple>
                     <small class="text-muted">Có thể chọn nhiều ảnh (tối đa 4 ảnh, mỗi ảnh &lt; 2MB)</small>
                 </div>
+>>>>>>> vinam
                 <!-- Hiển thị ảnh từ loại phòng -->
                 <div class="mb-3" id="roomTypeImagePreview" style="display: none;">
                     <label class="form-label fw-semibold">Ảnh từ loại phòng:</label>
@@ -57,7 +64,11 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Giá cơ bản (VNĐ/đêm)</label>
+<<<<<<< HEAD
+                        <input type="number" name="base_price" class="form-control" value="{{ old('base_price') }}" min="0" required>
+=======
                         <input type="number" name="base_price" class="form-control" value="{{ old('base_price') }}" min="0" required readonly>
+>>>>>>> vinam
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Tối đa khách</label>

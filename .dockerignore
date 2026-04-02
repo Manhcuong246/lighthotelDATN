@@ -12,3 +12,6 @@
 /public/hot
 /public/build
 *.log
+# Tránh cache dev (Pail, …) khi build image --no-dev
+/bootstrap/cache/packages.php
+/bootstrap/cache/services.php

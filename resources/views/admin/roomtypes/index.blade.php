@@ -3,6 +3,17 @@
 @section('title', 'Quản lý loại phòng')
 
 @section('content')
+<<<<<<< HEAD
+<div class="container-fluid px-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-dark fw-bold">Quản lý loại phòng</h1>
+
+        <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-lg me-1"></i> Thêm loại phòng
+        </a>
+=======
 <div class="container-fluid px-0">
     <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h1 class="text-dark fw-bold">Quản lý loại phòng</h1>
@@ -16,6 +27,7 @@
             </form>
             <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Thêm loại phòng</a>
         </div>
+>>>>>>> vinam
     </div>
 
     <!-- Alert -->

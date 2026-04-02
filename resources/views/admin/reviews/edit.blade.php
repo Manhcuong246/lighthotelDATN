@@ -72,6 +72,8 @@
                             @enderror
                         </div>
 
+<<<<<<< HEAD
+=======
                         <div class="mb-3">
                             <label for="reply" class="form-label fw-bold">Phản hồi từ khách sạn</label>
                             <textarea class="form-control @error('reply') is-invalid @enderror"
@@ -87,6 +89,7 @@
                             </small>
                         </div>
 
+>>>>>>> vinam
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
                             <a href="{{ route('admin.reviews.show', $review) }}" class="btn btn-outline-secondary">Hủy</a>

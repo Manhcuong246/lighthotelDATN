@@ -30,7 +30,7 @@ class AdminController extends Controller
             $q->where('name', 'customer');
         })->count();
         
-        // Doanh thu (Payment status = 'paid' khi thanh toán thành công)
+// Doanh thu (Payment status = 'paid' khi thanh toán thành công)
         $totalRevenue = Payment::where('status', 'paid')->sum('amount') ?? 0;
         $monthlyRevenue = Payment::where('status', 'paid')
             ->whereMonth('paid_at', Carbon::now()->month)
@@ -76,7 +76,6 @@ class AdminController extends Controller
         $roomsAvailable = Room::where('status', 'available')->count();
         $roomsBooked = Room::where('status', 'booked')->count();
         $roomsMaintenance = Room::where('status', 'maintenance')->count();
-
         return view('admin.dashboard', compact(
             'totalRooms',
             'totalBookings',

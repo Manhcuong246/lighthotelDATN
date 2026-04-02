@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminSeeder::class,
+            GuestUserSeeder::class,
             RoomTypeSeeder::class,
             HotelDataSeeder::class,
             BookingSeeder::class, // sample bookings for testing

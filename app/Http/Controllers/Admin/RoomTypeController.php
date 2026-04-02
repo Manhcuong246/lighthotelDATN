@@ -10,6 +10,21 @@ use Illuminate\Support\Facades\Storage;
 class RoomTypeController extends Controller
 {
     // Danh sách loại phòng
+<<<<<<< HEAD
+    public function index()
+    {
+        $roomTypes = RoomType::orderBy('id', 'desc')->get();
+        return view('admin.roomtypes.index', compact('roomTypes'));
+    }
+
+    // Hiển thị chi tiết loại phòng cho user booking
+    public function show(RoomType $roomType)
+    {
+        // Đếm số phòng available của loại này
+        $availableRoomsCount = $roomType->rooms()->where('status', 'available')->count();
+        
+        return view('roomtypes.show', compact('roomType', 'availableRoomsCount'));
+=======
     public function index(Request $request)
     {
         $query = RoomType::orderBy('id', 'desc');
@@ -21,6 +36,7 @@ class RoomTypeController extends Controller
 
         $roomTypes = $query->get();
         return view('admin.roomtypes.index', compact('roomTypes'));
+>>>>>>> vinam
     }
 
     // Form thêm
@@ -43,11 +59,19 @@ class RoomTypeController extends Controller
             'status' => 'nullable|boolean',
         ]);
 
+<<<<<<< HEAD
+        // store uploaded image if provided
+=======
+>>>>>>> vinam
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('room_types', 'public');
         }
 
+<<<<<<< HEAD
+         RoomType::create([
+=======
         RoomType::create([
+>>>>>>> vinam
             'name' => $validated['name'],
             'capacity' => $validated['capacity'],
             'beds' => $validated['beds'],
@@ -86,6 +110,10 @@ class RoomTypeController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
+<<<<<<< HEAD
+            // Xóa ảnh cũ nếu có
+=======
+>>>>>>> vinam
             if ($roomType->image) {
                 Storage::disk('public')->delete($roomType->image);
             }

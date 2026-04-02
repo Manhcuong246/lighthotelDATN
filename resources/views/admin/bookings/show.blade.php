@@ -55,9 +55,18 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <p class="text-uppercase small fw-bold text-muted mb-1">👤 Khách hàng</p>
+<<<<<<< HEAD
+                            <p class="mb-0 fw-bold">{{ $booking->user?->full_name ?? '—' }}</p>
+                            <small class="text-muted">{{ $booking->user?->email ?? '—' }}</small>
+                        </div>
+                        <div class="col-md-2">
+                            <p class="text-uppercase small fw-bold text-muted mb-1">🏨 Phòng</p>
+                            <span class="badge bg-primary px-2 py-1">{{ $booking->room?->name }}</span>
+=======
                             <p class="mb-0 fw-bold text-primary">{{ $booking->user?->full_name ?? '—' }}</p>
                             <small class="text-muted d-block">{{ $booking->user?->email ?? '—' }}</small>
                             <small class="text-muted">{{ $booking->user?->phone ?? '—' }}</small>
+>>>>>>> vinam
                         </div>
                         <div class="col-md-2">
                             <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-in</p>
@@ -67,6 +76,18 @@
                             <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-out</p>
                             <p class="mb-0 fw-bold">{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</p>
                         </div>
+<<<<<<< HEAD
+                        <div class="col-md-1">
+                            <p class="text-uppercase small fw-bold text-muted mb-1">👥</p>
+                            <span class="badge bg-secondary px-2 py-1">{{ $booking->guests ?? 0 }}</span>
+                        </div>
+                        <div class="col-md-2">
+                            <p class="text-uppercase small fw-bold text-muted mb-1">💰 Tổng tiền</p>
+                            <p class="mb-0 fw-bold text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</p>
+                        </div>
+                    </div>
+
+=======
                         <div class="col-md-2">
                             <p class="text-uppercase small fw-bold text-muted mb-1">🏨 Số lượng phòng</p>
                             <span class="badge bg-primary px-3 py-2">{{ $booking->rooms->count() }} phòng</span>
@@ -146,6 +167,7 @@
                     </div>
                     @endif
 
+>>>>>>> vinam
                     @php
                         $hotelInfo = \App\Models\HotelInfo::first();
                         $payment = $booking->payment;

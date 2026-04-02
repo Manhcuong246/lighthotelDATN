@@ -13,6 +13,11 @@ class PaymentAdminController extends Controller
         $this->middleware('admin');
     }
 
+<<<<<<< HEAD
+    public function index()
+    {
+        $payments = Payment::with(['booking.user', 'booking.room'])->latest()->paginate(15);
+=======
     public function index(Request $request)
     {
         $query = Payment::with(['booking.user', 'booking.room'])->latest();
@@ -32,6 +37,7 @@ class PaymentAdminController extends Controller
         }
 
         $payments = $query->paginate(15)->withQueryString();
+>>>>>>> vinam
         return view('admin.payments.index', compact('payments'));
     }
 
