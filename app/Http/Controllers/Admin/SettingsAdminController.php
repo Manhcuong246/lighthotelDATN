@@ -23,8 +23,9 @@ class SettingsAdminController extends Controller
         $abouts = SiteContent::where('type', 'about')->get();
         $policies = SiteContent::where('type', 'policy')->get();
         $footers = SiteContent::where('type', 'footer')->get();
-        
-        return view('admin.settings.index', compact('hotelInfo', 'banners', 'abouts', 'policies', 'footers'));
+        $siteContents = SiteContent::orderBy('type')->orderBy('id')->get();
+
+        return view('admin.settings.index', compact('hotelInfo', 'banners', 'abouts', 'policies', 'footers', 'siteContents'));
     }
 
     public function updateGeneral(Request $request)
@@ -48,24 +49,50 @@ class SettingsAdminController extends Controller
 
     public function updateSiteContent(Request $request)
     {
-        $type = $request->input('type');
         $contentId = $request->input('content_id');
-        
+
         $validated = $request->validate([
+            'type' => 'required|in:banner,about,policy,footer',
             'title' => 'required|string|max:255',
             'content' => 'nullable|string',
             'image_url' => 'nullable|url',
+            'is_active' => 'nullable|boolean',
         ]);
+
+        $validated['is_active'] = $request->has('is_active') ? true : false;
 
         if ($contentId) {
             $content = SiteContent::find($contentId);
             if ($content) {
                 $content->update($validated);
+                return redirect()->back()->with('success', 'Cập nhật nội dung trang web thành công.');
             }
-        } else {
-            $content = SiteContent::create(array_merge($validated, ['type' => $type]));
+
+            return redirect()->back()->with('error', 'Nội dung không tồn tại để cập nhật.');
         }
 
-        return redirect()->back()->with('success', 'Cập nhật nội dung trang web thành công.');
+        SiteContent::create($validated);
+        return redirect()->back()->with('success', 'Thêm nội dung trang web thành công.');
+    }
+
+    public function destroySiteContent(SiteContent $siteContent)
+    {
+        $siteContent->delete();
+        return redirect()->back()->with('success', 'Xóa nội dung trang web thành công.');
+    }
+
+    public function edit(SiteContent $siteContent)
+    {
+        $hotelInfo = HotelInfo::first();
+
+        $banners = SiteContent::where('type', 'banner')->get();
+        $abouts = SiteContent::where('type', 'about')->get();
+        $policies = SiteContent::where('type', 'policy')->get();
+        $footers = SiteContent::where('type', 'footer')->get();
+        $siteContents = SiteContent::orderBy('type')->orderBy('id')->get();
+
+        return view('admin.settings.index', compact(
+            'hotelInfo', 'banners', 'abouts', 'policies', 'footers', 'siteContents', 'siteContent'
+        ));
     }
 }

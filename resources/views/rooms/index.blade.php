@@ -82,9 +82,52 @@
     </div>
 </section>
 
-{{-- ============================
-     CONTENT
-     ============================ --}}
+@php
+    $bannerContent = $siteContents->where('type', 'banner')->first();
+    $aboutContent = $siteContents->where('type', 'about')->first();
+    $policyContent = $siteContents->where('type', 'policy')->first();
+    $footerContent = $siteContents->where('type', 'footer')->first();
+@endphp
+
+@if($bannerContent)
+<section id="banner" class="lh-banner py-5" style="background-image: url('{{ $bannerContent->image_url ? asset($bannerContent->image_url) : asset('default-banner.jpg') }}'); background-size: cover; background-position: center;">
+    <div class="container text-white">
+        <h2 class="display-6 fw-bold">{{ $bannerContent->title }}</h2>
+        <p class="lead">{{ $bannerContent->content }}</p>
+    </div>
+</section>
+@endif
+
+@if($aboutContent)
+<section id="about" class="container py-5">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-7">
+            <h2 class="fw-bold">{{ $aboutContent->title }}</h2>
+            <p class="lead">{!! nl2br(e($aboutContent->content)) !!}</p>
+        </div>
+        @if($aboutContent->image_url)
+        <div class="col-lg-5">
+            <img src="{{ $aboutContent->image_url }}" alt="{{ $aboutContent->title }}" class="img-fluid rounded">
+        </div>
+        @endif
+    </div>
+</section>
+@endif
+
+@if($policyContent)
+<section id="policy" class="container py-5 bg-light rounded">
+    <h2 class="fw-bold">{{ $policyContent->title }}</h2>
+    <p>{!! nl2br(e($policyContent->content)) !!}</p>
+</section>
+@endif
+
+@if($footerContent)
+<section id="footer" class="container py-5">
+    <h3 class="fw-bold">{{ $footerContent->title }}</h3>
+    <p>{!! nl2br(e($footerContent->content)) !!}</p>
+</section>
+@endif
+
 <div class="container py-5" id="rooms-section">
 
     {{-- ============================

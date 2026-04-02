@@ -8,6 +8,7 @@ use App\Models\Service;
 use App\Models\RoomBookedDate;
 use App\Models\RoomType;
 use App\Models\Amenity;
+use App\Models\SiteContent;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -86,7 +87,13 @@ class RoomController extends Controller
         // Cần truyền thêm $allRoomTypes cho bộ lọc (tránh trùng tên biến)
         $allRoomTypes = RoomType::where('status', 'active')->orWhereNull('status')->get();
 
-        return view('rooms.index', compact('hotel', 'roomTypesList', 'allRoomTypes', 'amenities'));
+        $siteContents = SiteContent::whereIn('type', ['banner','about','policy','footer'])
+            ->where('is_active', true)
+            ->orderBy('type')
+            ->orderBy('id')
+            ->get();
+
+        return view('rooms.index', compact('hotel', 'roomTypesList', 'allRoomTypes', 'amenities', 'siteContents'));
     }
 
     public function show(Room $room)

@@ -110,7 +110,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
 
     Route::get('/settings', [SettingsAdminController::class, 'index'])->name('settings.index');
     Route::put('/settings/general', [SettingsAdminController::class, 'updateGeneral'])->name('settings.update.general');
-    Route::put('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.update.site.content');
+    Route::post('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.site.content.store');
+    Route::get('/settings/site-content/{siteContent}/edit', [SettingsAdminController::class, 'edit'])->name('settings.site.content.edit');
+    Route::put('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.site.content.update');
+    Route::delete('/settings/site-content/{siteContent}', [SettingsAdminController::class, 'destroySiteContent'])->name('settings.site.content.destroy');
 
 
       // ====== QUẢN LÝ LOẠI PHÒNG ======
