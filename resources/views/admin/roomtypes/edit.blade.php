@@ -129,6 +129,13 @@
                         </select>
                     </div>
 
+                    <div class="col-md-8 mb-3">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" name="is_non_refundable" id="is_non_refundable" value="1" {{ old('is_non_refundable', $roomType->is_non_refundable) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="is_non_refundable">Non-refundable (không cho khách tự hủy / không hoàn tiền)</label>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Button -->

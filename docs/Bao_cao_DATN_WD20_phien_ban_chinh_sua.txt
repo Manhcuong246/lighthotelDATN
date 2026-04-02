@@ -1,0 +1,170 @@
+BỘ LAO ĐỘNG THƯƠNG BINH VÀ XÃ HỘI
+TRƯỜNG CAO ĐẲNG FPT POLYTECHNIC
+------------oOo-----------
+
+BÁO CÁO DỰ ÁN TỐT NGHIỆP
+
+Đề tài:
+WEBSITE BOOKING KHÁCH SẠN LIGHT HOTEL
+
+Giáo viên hướng dẫn: Bùi Quang Ngọc
+Sinh viên thực hiện: Nguyễn Gia Bảo – PH50309
+                    Nguyễn Mạnh Cường – (bổ sung mã lớp đầy đủ)
+                    Lê Đức Trung – PH52517
+                    Vi Hoài Nam – (bổ sung mã lớp đầy đủ)
+
+Lớp: (điền mã lớp)
+
+HÀ NỘI, [cập nhật ngày nộp báo cáo]
+________________
+
+I. KHẢO SÁT DỰ ÁN
+
+1. Phân tích yêu cầu (Requirement Analysis)
+
+Dự án chia hai phân hệ chính: Khách hàng (giao diện công khai) và Quản trị viên / Nhân viên (Admin).
+
+Đối với Khách hàng (và khách vãng lai trước đăng nhập):
+• Tìm kiếm & lọc: tìm phòng theo ngày nhận/trả, loại phòng, số người; hiển thị phòng còn trống.
+• Xem chi tiết: hình ảnh, tiện nghi (Wi-Fi, điều hòa, TV…), mô tả, đánh giá.
+• Đặt phòng: chọn một hoặc nhiều phòng, nhập thông tin liên hệ, áp dụng mã giảm giá (nếu có), thanh toán trực tuyến VNPay.
+• Quản lý tài khoản: lịch sử đặt phòng, trạng thái đơn (chờ / đã xác nhận / hoàn thành / đã hủy); hủy đơn theo chính sách; nếu đã thanh toán và hủy thì gửi thông tin tài khoản nhận hoàn tiền (có thể kèm ảnh mã QR) và xem chứng từ hoàn tiền do khách sạn cung cấp.
+
+Đối với Quản trị viên / Nhân viên (Admin):
+• Quản lý loại phòng và phòng cụ thể: thêm, sửa, xóa, cập nhật giá và trạng thái.
+• Quản lý đơn đặt: xem, cập nhật trạng thái, check-in / check-out; (admin đủ quyền) tạo/sửa/xóa đơn.
+• Quản lý thanh toán: xem giao dịch, xử lý hoàn tiền (nhận thông tin TK khách, tải ảnh chứng từ chuyển khoản hoàn tiền).
+• Hóa đơn: tạo, sửa, in, đánh dấu thanh toán (theo nghiệp vụ tài chính).
+• Khuyến mãi (coupon), đánh giá (duyệt / trả lời), người dùng và phân quyền (admin / staff).
+• Nội dung website: banner, giới thiệu, chính sách (site content).
+• Thống kê – báo cáo: dashboard, biểu đồ (Chart.js), xuất dữ liệu thống kê nếu cấu hình.
+
+________________
+
+2. Thiết kế cơ sở dữ liệu (Database Design)
+
+Hệ thống dùng MySQL. Các nhóm bảng chính (khớp triển khai Laravel):
+
+• users: tài khoản (đăng nhập bằng email), thông tin cá nhân, liên kết vai trò (user_roles – roles: admin, staff, guest).
+• room_types: loại phòng (mô tả, sức chứa, giá cơ bản, hình ảnh…).
+• rooms: phòng cụ thể (gắn loại phòng), giá theo ngày (room_prices), tiện nghi (room_amenities – amenities).
+• images: ảnh liên quan phòng / nội dung.
+• bookings: đơn đặt (ngày nhận/trả, tổng tiền, trạng thái, mã giảm giá…).
+• booking_rooms: chi tiết từng phòng trong một đơn (hỗ trợ đặt nhiều phòng).
+• room_booked_dates: khóa ngày đã đặt theo phòng (tránh trùng lịch).
+• payments: thanh toán (VNPay, số tiền, trạng thái, mã giao dịch); trường phục vụ hoàn tiền (trạng thái hoàn tiền, thông tin TK khách, ảnh QR, chứng từ admin, ghi chú).
+• booking_services: dịch vụ kèm đơn.
+• invoices, invoice_items: hóa đơn.
+• reviews: đánh giá phòng.
+• coupons: mã giảm giá.
+• hotel_info, site_contents: thông tin khách sạn & nội dung trang.
+• booking_logs: nhật ký thay đổi trạng thái (hỗ trợ vận hành).
+• Các bảng hỗ trợ Laravel: sessions, cache, jobs… (theo migration).
+
+________________
+
+3. Kiến trúc hệ thống (System Architecture)
+
+Ứng dụng xây dựng trên framework Laravel (PHP), theo mô hình MVC mở rộng:
+
+• Model: Eloquent ORM, tương tác CSDL, quan hệ giữa các thực thể (booking – payment – room…).
+• View: Blade (HTML), giao diện responsive với Bootstrap 5, biểu đồ admin dùng Chart.js; tài nguyên front build qua Vite.
+• Controller: tiếp nhận HTTP request, validate, gọi model/service, trả view hoặc redirect (auth middleware, phân quyền admin/staff).
+
+Luồng triển khai: trình duyệt → Nginx (Docker) → PHP-FPM → Laravel → MySQL. Có thể chạy cục bộ bằng php artisan serve và MySQL (XAMPP/Laragon) tương đương.
+
+________________
+
+4. Công nghệ sử dụng (Tech Stack)
+
+Thành phần              | Công nghệ
+------------------------|--------------------------------------------------
+Ngôn ngữ                | PHP 8.2+
+Framework               | Laravel 12
+Cơ sở dữ liệu           | MySQL 8 (tương thích MariaDB khi import dump)
+Máy chủ / triển khai    | Docker Compose: Nginx + PHP-FPM + MySQL; hoặc Apache/Nginx + PHP trên máy cục bộ
+Frontend                | HTML5, CSS3, JavaScript, Bootstrap 5, Bootstrap Icons; Vite (build asset)
+Biểu đồ báo cáo admin   | Chart.js (CDN)
+Thanh toán              | Tích hợp cổng VNPay (sandbox / production theo cấu hình env)
+Bảo mật                 | CSRF, validation, middleware auth; chuẩn bị chống SQL injection qua ORM / prepared statements
+
+(Lưu ý: gửi email xác nhận tự động chưa triển khai trong mã nguồn hiện tại; có thể mở rộng bằng Laravel Mail sau này.)
+
+________________
+
+5. Quy trình thực hiện dự án (Steps)
+
+1) Thiết kế giao diện (UI/UX) – wireframe/Figma hoặc phác thảo.
+2) Thiết kế và tạo CSDL (migration Laravel / phpMyAdmin).
+3) Xây dựng module phòng & loại phòng (CRUD admin, hiển thị public).
+4) Xây dựng logic đặt phòng: kiểm tra trùng ngày (room_booked_dates), hỗ trợ nhiều phòng một đơn, tính giá và coupon.
+5) Tích hợp thanh toán VNPay và cập nhật trạng thái đơn/thanh toán.
+6) Xây dựng khu vực khách: tài khoản, hủy đơn, hoàn tiền (form + hiển thị chứng từ).
+7) Xây dựng admin: đặt phòng, thanh toán/hoàn tiền, hóa đơn, nội dung, thống kê.
+8) Kiểm thử chức năng và rà soát bảo mật cơ bản.
+
+________________
+
+II. PHÂN TÍCH DỰ ÁN
+
+1. Phân tích chức năng
+
+a. Danh sách chức năng dành cho Khách (Guest – chưa đăng nhập)
+
+STT | Mã      | Tên chức năng           | Mô tả chức năng
+----|---------|-------------------------|------------------------------------------------------------------
+1   | G-01    | Xem thông tin khách sạn | Giới thiệu Light Hotel: mô tả, địa chỉ, hình ảnh, tiện ích (hotel_info / site_contents).
+2   | G-02    | Xem danh sách phòng     | Danh sách phòng/loại phòng, giá, sức chứa, hình ảnh.
+3   | G-03    | Xem chi tiết phòng      | Chi tiết phòng: mô tả, tiện nghi, giá, chính sách, đánh giá.
+4   | G-04    | Tìm kiếm phòng trống   | Tìm theo ngày nhận – trả, số người; chỉ hiển thị phòng còn chỗ.
+5   | G-05    | Đăng ký tài khoản       | Tạo tài khoản để đặt phòng và quản lý đơn.
+
+b. Danh sách chức năng dành cho Khách hàng (Customer – đã đăng nhập)
+
+STT | Mã      | Tên chức năng              | Mô tả chức năng
+----|---------|----------------------------|------------------------------------------------------------------
+1   | C-01    | Đăng nhập / Đăng xuất      | Xác thực phiên làm việc.
+2   | C-02    | Đặt phòng                  | Chọn phòng (có thể nhiều phòng), ngày, số khách, áp dụng coupon, tạo đơn.
+3   | C-03    | Thanh toán trực tuyến      | Chuyển hướng VNPay; callback cập nhật thanh toán và xác nhận đơn.
+4   | C-04    | Xem danh sách đặt phòng    | Lịch sử đơn của tài khoản.
+5   | C-05    | Xem chi tiết đặt phòng     | Chi tiết đơn, dịch vụ kèm, trạng thái thanh toán.
+6   | C-06    | Hủy đặt phòng              | Hủy theo điều kiện trạng thái; giải phóng lịch phòng.
+7   | C-07    | Hoàn tiền sau hủy (đã trả tiền) | Gửi chủ TK, số TK, tùy chọn ảnh QR; theo dõi trạng thái; xem ảnh chứng từ và ghi chú từ khách sạn khi hoàn tất.
+8   | C-08    | Đánh giá phòng             | Gửi đánh giá phòng sau khi có điều kiện (theo luồng đặt phòng).
+
+c. Danh sách chức năng dành cho Quản trị viên / Nhân viên (Admin)
+
+STT | Mã      | Tên chức năng              | Mô tả chức năng
+----|---------|----------------------------|------------------------------------------------------------------
+1   | A-01    | Đăng nhập quản trị         | Đăng nhập riêng khu /admin; phân quyền admin / staff.
+2   | A-02    | Quản lý tài khoản          | Xem/sửa người dùng; xóa theo quyền admin.
+3   | A-03    | Quản lý loại phòng         | CRUD loại phòng (room types).
+4   | A-04    | Quản lý phòng              | CRUD phòng, giá, tiện nghi, ảnh.
+5   | A-05    | Quản lý đặt phòng          | Xem đơn; đổi trạng thái; check-in / check-out; (admin) tạo/sửa/xóa đơn.
+6   | A-06    | Quản lý thanh toán & hoàn tiền | Xem chi tiết giao dịch; nhận thông tin TK khách; tải chứng từ hoàn tiền, ghi chú cho khách (không sửa/xóa bừa giao dịch).
+7   | A-07    | Quản lý khuyến mãi         | CRUD mã coupon.
+8   | A-08    | Quản lý hóa đơn            | Tạo/sửa hóa đơn theo booking, in, đánh dấu thanh toán.
+9   | A-09    | Thống kê – báo cáo         | Dashboard, biểu đồ; xuất thống kê (nếu bật chức năng export).
+10  | A-10    | Quản lý nội dung website   | Banner, giới thiệu, chính sách (site content).
+11  | A-11    | Quản lý đánh giá           | Xem đánh giá, trả lời khách.
+
+________________
+
+2. Phân tích nghiệp vụ
+
+1) Nghiệp vụ Khách (Guest)
+Khách tìm hiểu khách sạn và phòng trước khi đăng ký.
+Các bước: truy cập web → xem giới thiệu → xem danh sách/chi tiết phòng → xem chính sách → tìm phòng trống theo ngày → đăng ký/đăng nhập khi cần đặt.
+
+2) Nghiệp vụ Khách hàng (Customer)
+Tập trung đặt phòng, thanh toán và theo dõi đơn.
+Các bước: đăng nhập → tìm phòng → chọn phòng và điền thông tin → áp dụng coupon (nếu có) → thanh toán VNPay → hệ thống cập nhật thanh toán và trạng thái đơn → xem đơn trong tài khoản → có thể hủy đơn; nếu đã thanh toán và hủy thì điền thông tin nhận hoàn tiền và chờ khách sạn xử lý, sau đó đối chiếu chứng từ trên hệ thống.
+(Lưu ý: khách không “chỉnh sửa toàn bộ” đơn sau khi đặt; chủ yếu xem, hủy và quy trình hoàn tiền theo quy định.)
+
+3) Nghiệp vụ Quản trị viên / Nhân viên (Admin)
+Đảm bảo dữ liệu và vận hành đúng.
+Các bước: đăng nhập admin → quản lý loại phòng và phòng → quản lý đơn (trạng thái, check-in/out) → xử lý thanh toán và hoàn tiền khi có yêu cầu → quản lý hóa đơn, coupon, đánh giá, nội dung web → theo dõi thống kê doanh thu và tình hình đặt phòng.
+
+________________
+
+Hết phiên bản chỉnh sửa (đối chiếu mã nguồn dự án Light Hotel – Laravel).

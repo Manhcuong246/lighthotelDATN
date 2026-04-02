@@ -39,6 +39,8 @@ services:
       - .:/var/www/html
       - /var/www/html/vendor
       - /var/www/html/node_modules
+      # Không mount cache từ host (dev: Pail/Sail) — trùng vendor --no-dev trong image
+      - lighthotel_bootstrap_cache:/var/www/html/bootstrap/cache
     depends_on:
       mysql:
         condition: service_healthy
@@ -54,5 +56,21 @@ services:
     depends_on:
       - app
 
+  # Cổng khác nginx (APP_PORT, mặc định 8080) — hai service không thể cùng 8080 trên host
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: lighthotel-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "${PMA_PORT:-8081}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
 volumes:
   mysql_data:
+  lighthotel_bootstrap_cache:

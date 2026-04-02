@@ -47,6 +47,14 @@
                             </div>
                         </a>
                     </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=cancellation_pending">
+                            <div class="d-flex justify-content-between">
+                                <span><strong>Chờ xử lý hủy:</strong></span>
+                                <span class="badge bg-primary">{{ $counts['cancellation_pending'] ?? 0 }}</span>
+                            </div>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -75,9 +83,11 @@
                 <select name="status" class="form-select form-select-sm" style="width: 150px;">
                     <option value="">Tất cả trạng thái</option>
                     <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Chờ xác nhận</option>
+                    <option value="cancellation_pending" {{ request('status') === 'cancellation_pending' ? 'selected' : '' }}>Chờ xử lý hủy</option>
                     <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Đã xác nhận</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Hoàn thành</option>
                     <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Đã hủy</option>
+                    <option value="refunded" {{ request('status') === 'refunded' ? 'selected' : '' }}>Đã hoàn tiền</option>
                 </select>
                 <button type="submit" class="btn btn-light btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
                 @if(request()->hasAny(['q','status']))
@@ -112,9 +122,9 @@
                                  <td>
                                     @if($booking->rooms->count() > 1)
                                         <div class="fw-bold text-primary">{{ $booking->rooms->count() }} phòng</div>
-                                        <small class="text-muted">{{ $booking->rooms->pluck('name')->implode(', ') }}</small>
+                                        <small class="text-muted">{{ $booking->roomNamesLabel() }}</small>
                                     @else
-                                        <span class="badge bg-primary">{{ $booking->rooms->first()->name ?? '—' }}</span>
+                                        <span class="badge bg-primary">{{ $booking->roomNamesLabel() }}</span>
                                     @endif
                                 </td>
                                 <td>{{ $booking->check_in?->format('d/m/Y') ?? '—' }}</td>
@@ -134,14 +144,18 @@
                                         $statusColors = [
                                             'pending' => 'warning',
                                             'confirmed' => 'info',
+                                            'cancellation_pending' => 'primary',
                                             'completed' => 'success',
                                             'cancelled' => 'danger',
+                                            'refunded' => 'success',
                                         ];
                                         $statusLabels = [
                                             'pending' => 'Chờ xác nhận',
                                             'confirmed' => 'Đã xác nhận',
+                                            'cancellation_pending' => 'Chờ xử lý hủy',
                                             'completed' => 'Hoàn thành',
                                             'cancelled' => 'Đã hủy',
+                                            'refunded' => 'Đã hoàn tiền',
                                         ];
                                     @endphp
                                     <span class="badge bg-{{ $statusColors[$booking->status] ?? 'secondary' }}">
@@ -195,7 +209,7 @@
                                                 </li>
                                                 @endif
 
-                                                @if($booking->status !== 'cancelled' && $booking->status !== 'completed')
+                                                @if(!in_array($booking->status, ['cancelled', 'completed', 'refunded', 'cancellation_pending'], true))
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <form action="{{ route('admin.bookings.updateStatus', $booking) }}" method="POST">

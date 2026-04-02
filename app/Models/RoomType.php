@@ -18,8 +18,13 @@ class RoomType extends Model
     'child_price',
     'description',
     'image',
-    'status'
+    'status',
+    'is_non_refundable',
 ];
+
+    protected $casts = [
+        'is_non_refundable' => 'boolean',
+    ];
 
     public function rooms()
     {

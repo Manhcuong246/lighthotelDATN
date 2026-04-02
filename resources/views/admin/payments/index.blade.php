@@ -6,7 +6,15 @@
 <div class="container-fluid px-0">
     <div class="page-header">
         <h1 class="text-dark fw-bold">Quản lý thanh toán</h1>
+        <p class="text-muted small mb-0">Thanh toán chỉ xem theo giao dịch thực tế; hoàn tiền khi hủy đơn đã thanh toán được xử lý trong mục chi tiết và trạng thái cột &quot;Hoàn tiền&quot;.</p>
     </div>
+
+    @if(($pendingCancellationCount ?? 0) > 0)
+    <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <span><i class="bi bi-exclamation-triangle-fill me-2"></i>Có <strong>{{ $pendingCancellationCount }}</strong> đơn đang <strong>chờ duyệt hủy</strong> (khách đã gửi yêu cầu). Vào <a href="{{ route('admin.bookings.index', ['status' => 'cancellation_pending']) }}" class="alert-link fw-semibold">Đặt phòng → lọc &quot;Chờ xử lý hủy&quot;</a> để chấp nhận / từ chối.</span>
+        <a href="{{ route('admin.bookings.index', ['status' => 'cancellation_pending']) }}" class="btn btn-sm btn-dark">Mở danh sách</a>
+    </div>
+    @endif
 
     <div class="card card-admin shadow mb-4">
         <div class="card-header-admin py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -14,13 +22,28 @@
             <form action="{{ route('admin.payments.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
                 <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm khách, mã GD..." style="width: 200px;">
                 <select name="status" class="form-select form-select-sm" style="width: 140px;">
-                    <option value="">Tất cả trạng thái</option>
+                    <option value="">TT thanh toán</option>
                     <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Chờ thanh toán</option>
                     <option value="paid" {{ request('status') === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
                     <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>Thất bại</option>
                 </select>
+                <select name="refund_status" class="form-select form-select-sm" style="width: 170px;">
+                    <option value="">TT hoàn tiền</option>
+                    <option value="none" {{ request('refund_status') === 'none' ? 'selected' : '' }}>Không áp dụng</option>
+                    <option value="awaiting_user_info" {{ request('refund_status') === 'awaiting_user_info' ? 'selected' : '' }}>Chờ khách gửi TK</option>
+                    <option value="pending_admin" {{ request('refund_status') === 'pending_admin' ? 'selected' : '' }}>Chờ KS hoàn tiền</option>
+                    <option value="completed" {{ request('refund_status') === 'completed' ? 'selected' : '' }}>Đã hoàn xong</option>
+                </select>
+                <select name="booking_status" class="form-select form-select-sm" style="width: 180px;" title="Trạng thái đơn đặt phòng">
+                    <option value="">Trạng thái đơn</option>
+                    <option value="cancellation_pending" {{ request('booking_status') === 'cancellation_pending' ? 'selected' : '' }}>Chờ xử lý hủy</option>
+                    <option value="pending" {{ request('booking_status') === 'pending' ? 'selected' : '' }}>Chờ xác nhận</option>
+                    <option value="confirmed" {{ request('booking_status') === 'confirmed' ? 'selected' : '' }}>Đã xác nhận</option>
+                    <option value="cancelled" {{ request('booking_status') === 'cancelled' ? 'selected' : '' }}>Đã hủy</option>
+                    <option value="refunded" {{ request('booking_status') === 'refunded' ? 'selected' : '' }}>Đã hoàn tiền</option>
+                </select>
                 <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
-                @if(request()->hasAny(['q','status']))
+                @if(request()->hasAny(['q','status','refund_status','booking_status']))
                 <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
                 @endif
             </form>
@@ -33,10 +56,12 @@
                             <th>#</th>
                             <th>Khách hàng</th>
                             <th>Phòng</th>
+                            <th>Trạng thái đơn</th>
                             <th>Số tiền</th>
                             <th>Phương thức</th>
-                            <th>Trạng thái</th>
-                            <th width="180">Hành động</th>
+                            <th>TT thanh toán</th>
+                            <th>Hoàn tiền</th>
+                            <th width="120">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -51,7 +76,35 @@
                                         <span class="text-muted">—</span>
                                     @endif
                                 </td>
-                                <td>{{ $payment->booking && $payment->booking->room ? $payment->booking->room->name : '—' }}</td>
+                                <td>
+                                    @if($payment->booking)
+                                        <span class="small">{{ $payment->booking->roomNamesLabel() }}</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($payment->booking)
+                                        @php
+                                            $bs = $payment->booking->status;
+                                            $bsBadge = match ($bs) {
+                                                'pending' => ['warning', 'Chờ xác nhận'],
+                                                'confirmed' => ['info', 'Đã xác nhận'],
+                                                'cancellation_pending' => ['primary', 'Chờ xử lý hủy'],
+                                                'cancelled' => ['secondary', 'Đã hủy'],
+                                                'refunded' => ['success', 'Đã hoàn tiền'],
+                                                'completed' => ['success', 'Hoàn thành'],
+                                                default => ['secondary', $bs],
+                                            };
+                                        @endphp
+                                        <span class="badge bg-{{ $bsBadge[0] }}">{{ $bsBadge[1] }}</span>
+                                        @if($bs === 'cancellation_pending' && $payment->booking->cancellation_reason)
+                                            <div class="small text-muted mt-1" style="max-width:12rem;">{{ \Illuminate\Support\Str::limit($payment->booking->cancellation_reason, 80) }}</div>
+                                        @endif
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
                                 <td><strong>{{ number_format($payment->amount, 0, ',', '.') }} VNĐ</strong></td>
                                 <td>
                                     @if($payment->method === 'credit_card')
@@ -78,21 +131,27 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-                                    <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                                    @if(auth()->user()->isAdmin())
-                                    <form action="{{ route('admin.payments.destroy', $payment) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc muốn xóa thanh toán này?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
-                                    </form>
+                                    @if(($payment->refund_status ?? 'none') === 'none')
+                                        <span class="text-muted small">—</span>
+                                    @elseif($payment->refund_status === 'awaiting_user_info')
+                                        <span class="badge bg-warning text-dark">Chờ TK khách</span>
+                                    @elseif($payment->refund_status === 'pending_admin')
+                                        <span class="badge bg-primary">Chờ hoàn tiền</span>
+                                    @elseif($payment->refund_status === 'completed')
+                                        <span class="badge bg-success">Đã hoàn</span>
+                                    @elseif($payment->refund_status === 'rejected')
+                                        <span class="badge bg-secondary">Từ chối</span>
+                                    @else
+                                        <span class="badge bg-secondary">{{ $payment->refund_status }}</span>
                                     @endif
+                                </td>
+                                <td>
+                                    <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">Chưa có thanh toán nào.</td>
+                                <td colspan="9" class="text-center py-4 text-muted">Chưa có thanh toán nào.</td>
                             </tr>
                         @endforelse
                     </tbody>

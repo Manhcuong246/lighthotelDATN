@@ -259,23 +259,6 @@ class BookingController extends Controller
         return back()->with('success', 'Check-out thành công');
     }
 
-    public function cancel(Booking $booking)
-    {
-        if (!in_array($booking->status, ['pending', 'confirmed'])) {
-            return back()->withErrors('Đơn đặt phòng này không thể hủy ở trạng thái hiện tại.');
-        }
-        DB::beginTransaction();
-        try {
-            $booking->update(['status' => 'cancelled']);
-            RoomBookedDate::where('booking_id', $booking->id)->delete();
-            DB::commit();
-            return back()->with('success', 'Đơn đặt phòng đã được hủy thành công.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors('Có lỗi xảy ra khi hủy đơn: ' . $e->getMessage());
-        }
-    }
-
     /**
      * Tính tổng giá phòng dựa trên số người và số đêm.
      * 
