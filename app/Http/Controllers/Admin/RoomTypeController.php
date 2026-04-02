@@ -10,6 +10,21 @@ use Illuminate\Support\Facades\Storage;
 class RoomTypeController extends Controller
 {
     // Danh sách loại phòng
+<<<<<<< HEAD
+    public function index()
+    {
+        $roomTypes = RoomType::orderBy('id', 'desc')->get();
+        return view('admin.roomtypes.index', compact('roomTypes'));
+    }
+
+    // Hiển thị chi tiết loại phòng cho user booking
+    public function show(RoomType $roomType)
+    {
+        // Đếm số phòng available của loại này
+        $availableRoomsCount = $roomType->rooms()->where('status', 'available')->count();
+        
+        return view('roomtypes.show', compact('roomType', 'availableRoomsCount'));
+=======
     public function index(Request $request)
     {
         $query = RoomType::orderBy('id', 'desc');
@@ -19,9 +34,9 @@ class RoomTypeController extends Controller
             $query->where('name', 'like', "%{$q}%");
         }
 
-        $roomTypes = $query->paginate(10)->withQueryString();
-
+        $roomTypes = $query->get();
         return view('admin.roomtypes.index', compact('roomTypes'));
+>>>>>>> vinam
     }
 
     // Form thêm
@@ -42,14 +57,21 @@ class RoomTypeController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
-            'is_non_refundable' => 'nullable|boolean',
         ]);
 
+<<<<<<< HEAD
+        // store uploaded image if provided
+=======
+>>>>>>> vinam
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('room_types', 'public');
         }
 
+<<<<<<< HEAD
+         RoomType::create([
+=======
         RoomType::create([
+>>>>>>> vinam
             'name' => $validated['name'],
             'capacity' => $validated['capacity'],
             'beds' => $validated['beds'],
@@ -58,7 +80,6 @@ class RoomTypeController extends Controller
             'description' => $validated['description'] ?? null,
             'image' => $validated['image'] ?? null,
             'status' => $validated['status'] ?? 1,
-            'is_non_refundable' => $request->boolean('is_non_refundable'),
         ]);
 
         return redirect()->route('admin.roomtypes.index')
@@ -86,17 +107,18 @@ class RoomTypeController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
-            'is_non_refundable' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('image')) {
+<<<<<<< HEAD
+            // Xóa ảnh cũ nếu có
+=======
+>>>>>>> vinam
             if ($roomType->image) {
                 Storage::disk('public')->delete($roomType->image);
             }
             $validated['image'] = $request->file('image')->store('room_types', 'public');
         }
-
-        $validated['is_non_refundable'] = $request->boolean('is_non_refundable');
 
         $roomType->update($validated);
 

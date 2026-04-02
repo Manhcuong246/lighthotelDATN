@@ -1,12 +1,8 @@
 @extends('layouts.admin')
 
-@section('title', 'Thống kê - Admin')
-
 @section('content')
-<div class="container-fluid admin-page px-0">
-    <div class="page-header mb-4">
-        <h1>Thống kê doanh thu &amp; tỉ lệ lấp phòng</h1>
-    </div>
+<div class="container mt-4">
+    <h1 class="mb-4">Thống Kê Doanh Thu & Tỉ Lệ Lấp Phòng</h1>
 
     <!-- Thẻ thống kê chính -->
     <div class="row mb-4">
@@ -88,28 +84,24 @@
     <div class="row">
         <!-- Biểu đồ doanh thu -->
         <div class="col-lg-6 mb-4">
-            <div class="card card-admin shadow-sm">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0">Doanh thu 7 ngày gần nhất</h6>
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Doanh Thu 7 Ngày Gần Nhất</h6>
                 </div>
                 <div class="card-body">
-                    <div class="admin-chart-box admin-chart-box--sm">
-                        <canvas id="revenueChart"></canvas>
-                    </div>
+                    <canvas id="revenueChart"></canvas>
                 </div>
             </div>
         </div>
 
         <!-- Biểu đồ tỉ lệ lấp phòng -->
         <div class="col-lg-6 mb-4">
-            <div class="card card-admin shadow-sm">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0">Tỉ lệ lấp phòng 7 ngày gần nhất</h6>
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Tỉ Lệ Lấp Phòng 7 Ngày Gần Nhất</h6>
                 </div>
                 <div class="card-body">
-                    <div class="admin-chart-box admin-chart-box--sm">
-                        <canvas id="occupancyChart"></canvas>
-                    </div>
+                    <canvas id="occupancyChart"></canvas>
                 </div>
             </div>
         </div>
@@ -203,4 +195,50 @@
         }
     });
 </script>
+
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    .border-left-secondary {
+        border-left: 0.25rem solid #858796 !important;
+    }
+    .border-left-dark {
+        border-left: 0.25rem solid #2e3338 !important;
+    }
+    .border-left-danger {
+        border-left: 0.25rem solid #e74a3b !important;
+    }
+
+    .text-primary {
+        color: #4e73df !important;
+    }
+    .text-success {
+        color: #1cc88a !important;
+    }
+    .text-info {
+        color: #36b9cc !important;
+    }
+    .text-warning {
+        color: #f6c23e !important;
+    }
+    .text-secondary {
+        color: #858796 !important;
+    }
+    .text-dark {
+        color: #2e3338 !important;
+    }
+    .text-danger {
+        color: #e74a3b !important;
+    }
+</style>
 @endsection

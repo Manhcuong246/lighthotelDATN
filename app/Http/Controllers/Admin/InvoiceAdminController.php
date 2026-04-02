@@ -37,7 +37,7 @@ class InvoiceAdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $invoices = $query->paginate(10)->withQueryString();
+        $invoices = $query->paginate(15)->withQueryString();
 
         $counts = [
             'total' => Invoice::count(),

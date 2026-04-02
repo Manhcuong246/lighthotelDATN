@@ -13,6 +13,11 @@ class ReviewAdminController extends Controller
         $this->middleware('admin');
     }
 
+<<<<<<< HEAD
+    public function index()
+    {
+        $reviews = Review::with(['user', 'room'])->latest()->paginate(15);
+=======
     public function index(Request $request)
     {
         $query = Review::with(['user', 'room'])->latest();
@@ -27,7 +32,8 @@ class ReviewAdminController extends Controller
             });
         }
 
-        $reviews = $query->paginate(10)->withQueryString();
+        $reviews = $query->paginate(15)->withQueryString();
+>>>>>>> vinam
         return view('admin.reviews.index', compact('reviews'));
     }
 
@@ -36,6 +42,8 @@ class ReviewAdminController extends Controller
         return view('admin.reviews.show', compact('review'));
     }
 
+<<<<<<< HEAD
+=======
     public function reply(Request $request, Review $review)
     {
         $validated = $request->validate([
@@ -60,6 +68,7 @@ class ReviewAdminController extends Controller
             ->with('success', 'Đã cập nhật phản hồi cho đánh giá.');
     }
 
+>>>>>>> vinam
     public function edit(Review $review)
     {
         return view('admin.reviews.edit', compact('review'));
@@ -69,11 +78,17 @@ class ReviewAdminController extends Controller
     {
         $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
+<<<<<<< HEAD
+=======
             'title' => 'nullable|string|max:255',
+>>>>>>> vinam
             'comment' => 'nullable|string',
             'reply' => 'nullable|string',
         ]);
 
+<<<<<<< HEAD
+        $review->update($validated);
+=======
         $reply = $validated['reply'] ?? null;
         if ($reply !== null) {
             $reply = trim($reply);
@@ -90,6 +105,7 @@ class ReviewAdminController extends Controller
             'reply' => $reply,
             'replied_at' => $repliedAt,
         ]);
+>>>>>>> vinam
 
         return redirect()->route('admin.reviews.index')->with('success', 'Cập nhật đánh giá thành công.');
     }

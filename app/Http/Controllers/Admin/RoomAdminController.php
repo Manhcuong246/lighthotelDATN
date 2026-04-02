@@ -3,6 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+<<<<<<< HEAD
+use App\Models\Room;
+use App\Models\RoomType;
+use Illuminate\Http\Request;
+
+class RoomAdminController extends Controller
+{
+    public function index()
+    {
+        $rooms = Room::with('roomType')->orderBy('created_at', 'desc')->paginate(15);
+=======
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\RoomType;
@@ -15,7 +26,7 @@ class RoomAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Room::with(['roomType', 'images'])->orderBy('created_at', 'desc');
+        $query = Room::with('roomType')->orderBy('created_at', 'desc');
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -30,17 +41,23 @@ class RoomAdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $rooms = $query->paginate(10)->withQueryString();
+        $rooms = $query->paginate(15)->withQueryString();
+>>>>>>> vinam
 
         return view('admin.rooms.index', compact('rooms'));
     }
 
     public function create()
     {
+<<<<<<< HEAD
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được thêm phòng mới.');
+=======
         // `admin` middleware đã cho phép cả admin và staff vào khu /admin
         // nên ở đây chỉ chặn nếu không thuộc nhóm có quyền.
         if (!auth()->user()->canAccessAdmin()) {
             abort(403, 'Bạn không có quyền thêm phòng.');
+>>>>>>> vinam
         }
         $roomTypes = RoomType::where('status', 1)->get();
         return view('admin.rooms.create', compact('roomTypes'));
@@ -48,8 +65,13 @@ class RoomAdminController extends Controller
 
     public function store(Request $request)
     {
+<<<<<<< HEAD
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được thêm phòng mới.');
+=======
         if (!auth()->user()->canAccessAdmin()) {
             abort(403, 'Bạn không có quyền thêm phòng.');
+>>>>>>> vinam
         }
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -63,8 +85,11 @@ class RoomAdminController extends Controller
             'area' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'status' => 'required|in:available,booked,maintenance',
+<<<<<<< HEAD
+=======
             'images' => 'nullable|array|max:4',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp',
+>>>>>>> vinam
         ]);
 
         // Nếu chọn room_type_id thì lấy thông tin từ room type
@@ -72,41 +97,64 @@ class RoomAdminController extends Controller
             $roomType = RoomType::find($request->room_type_id);
             if ($roomType) {
                 $data['type'] = $roomType->name;
+<<<<<<< HEAD
+                $data['base_price'] = $data['base_price'] ?: $roomType->price;
+=======
                 $data['base_price'] = $roomType->price; // Luôn lấy theo loại phòng
+>>>>>>> vinam
                 $data['max_guests'] = $data['max_guests'] ?: $roomType->capacity;
             }
         }
 
+<<<<<<< HEAD
+        Room::create($data);
+=======
         unset($data['images']);
         $room = Room::create($data);
 
         $this->saveRoomImages($room, $request->file('images'));
+>>>>>>> vinam
 
         return redirect()->route('admin.rooms.index')->with('success', 'Thêm phòng mới thành công.');
     }
 
     public function edit(Room $room)
     {
+<<<<<<< HEAD
+=======
         $room->load('images');
+>>>>>>> vinam
         $roomTypes = RoomType::where('status', 1)->get();
         return view('admin.rooms.edit', compact('room', 'roomTypes'));
     }
 
     public function update(Request $request, Room $room)
     {
+<<<<<<< HEAD
+=======
         // Admin và staff đều có thể cập nhật phòng.
+>>>>>>> vinam
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'room_number' => 'nullable|string|max:50',
             'room_type_id' => 'nullable|exists:room_types,id',
             'type' => 'nullable|string|max:100',
+<<<<<<< HEAD
+            'base_price' => 'required|numeric|min:0',
+=======
             'base_price' => 'nullable|numeric|min:0', // Để trống để lấy theo loại
+>>>>>>> vinam
             'max_guests' => 'required|integer|min:1',
             'beds' => 'required|integer|min:1',
             'baths' => 'required|integer|min:0',
             'area' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'status' => 'required|in:available,booked,maintenance',
+<<<<<<< HEAD
+        ]);
+
+        // Nếu chọn room_type_id thì lấy thông tin từ room type
+=======
             'images' => 'nullable|array|max:4',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp',
             'remove_images' => 'nullable|array',
@@ -128,10 +176,20 @@ class RoomAdminController extends Controller
         }
 
         // Lấy thông tin từ Room Type nếu có
+>>>>>>> vinam
         if ($request->filled('room_type_id')) {
             $roomType = RoomType::find($request->room_type_id);
             if ($roomType) {
                 $data['type'] = $roomType->name;
+<<<<<<< HEAD
+                $data['base_price'] = $data['base_price'] ?: $roomType->price;
+                $data['max_guests'] = $data['max_guests'] ?: $roomType->capacity;
+            }
+        }
+
+        $room->update($data);
+
+=======
                 $data['base_price'] = $roomType->price; // Ép giá theo loại phòng
             }
         }
@@ -157,6 +215,7 @@ class RoomAdminController extends Controller
         // Đảm bảo có ảnh chính
         $this->ensureRoomPrimaryImage($room);
 
+>>>>>>> vinam
         return redirect()->route('admin.rooms.index')->with('success', 'Cập nhật phòng thành công.');
     }
 
@@ -178,6 +237,8 @@ class RoomAdminController extends Controller
 
         return redirect()->route('admin.rooms.index')->with('success', 'Xóa phòng thành công.');
     }
+<<<<<<< HEAD
+=======
 
     private function saveRoomImages(Room $room, ?array $files): void
     {
@@ -207,6 +268,7 @@ class RoomAdminController extends Controller
         $firstImage = Image::where('room_id', $room->id)->first();
         $room->update(['image' => $firstImage?->image_url]);
     }
+>>>>>>> vinam
 }
 
 

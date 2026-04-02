@@ -3,7 +3,7 @@
 @section('title', 'Chi tiết người dùng - ' . $user->full_name)
 
 @section('content')
-<div class="container-fluid admin-page px-0">
+<div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">{{ $user->full_name }}</h1>
         <div class="d-flex gap-2">

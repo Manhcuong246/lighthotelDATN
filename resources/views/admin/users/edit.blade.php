@@ -3,7 +3,7 @@
 @section('title', 'Chỉnh sửa người dùng - ' . $user->full_name)
 
 @section('content')
-<div class="container-fluid admin-page px-0">
+<div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Chỉnh sửa người dùng</h1>
         <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary">Quay lại</a>
@@ -26,8 +26,12 @@
                     <h5 class="mb-0">Thông tin người dùng</h5>
                 </div>
                 <div class="card-body">
+<<<<<<< HEAD
+                    <form action="{{ route('admin.users.update', $user) }}" method="POST">
+=======
                     <form action="{{ route('admin.users.update', $user) }}" method="POST" enctype="multipart/form-data">
 
+>>>>>>> vinam
                         @csrf
                         @method('PUT')
 
@@ -82,6 +86,8 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+<<<<<<< HEAD
+=======
 +
 +                        <div class="mb-3">
 +                            <label for="avatar" class="form-label fw-bold">Ảnh đại diện</label>
@@ -122,6 +128,7 @@
 +                            </div>
 +                        </div>
 
+>>>>>>> vinam
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
@@ -132,9 +139,34 @@
             </div>
         </div>
 
+<<<<<<< HEAD
+        <div class="col-lg-4">
+            <div class="card card-admin shadow mb-4">
+                <div class="card-header-admin py-3">
+                    <h5 class="mb-0">Vai trò</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        @forelse($roles as $role)
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles[]" id="role_{{ $role->id }}" value="{{ $role->id }}"
+                                       @if($user->roles->contains($role->id)) checked @endif>
+                                <label class="form-check-label" for="role_{{ $role->id }}">
+                                    {{ ucfirst($role->name) }}
+                                </label>
+                            </div>
+                        @empty
+                            <p class="text-muted">Không có vai trò nào</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+=======
         </div>
 +        {{-- Cột Roles cũ đã dời vào form chính --}}
 
+>>>>>>> vinam
     </div>
 </div>
 @endsection

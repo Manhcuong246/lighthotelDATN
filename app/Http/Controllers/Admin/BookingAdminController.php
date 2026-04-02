@@ -9,7 +9,6 @@ use App\Models\Room;
 use App\Models\RoomBookedDate;
 use App\Models\RoomPrice;
 use App\Models\User;
-use App\Services\BookingCancellationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,16 +22,21 @@ class BookingAdminController extends Controller
         $this->middleware('admin');
     }
 
+<<<<<<< HEAD
+    public function index()
+    {
+        $bookings = Booking::with(['user', 'room'])->latest()->paginate(15);
+        return view('admin.bookings.index', compact('bookings'));
+=======
     public function index(Request $request)
     {
-        $query = Booking::with(['user', 'room', 'rooms'])->latest();
+        $query = Booking::with(['user', 'room'])->latest();
 
         if ($request->filled('q')) {
             $q = $request->q;
             $query->where(function ($qry) use ($q) {
                 $qry->whereHas('user', fn ($u) => $u->where('full_name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%"))
                     ->orWhereHas('room', fn ($r) => $r->where('name', 'like', "%{$q}%"))
-                    ->orWhereHas('rooms', fn ($r) => $r->where('name', 'like', "%{$q}%"))
                     ->orWhere('id', 'like', "%{$q}%");
             });
         }
@@ -41,21 +45,24 @@ class BookingAdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $bookings = $query->paginate(10)->withQueryString();
+        $bookings = $query->paginate(15)->withQueryString();
 
         $counts = [
             'total' => Booking::count(),
             'pending' => Booking::where('status', 'pending')->count(),
             'confirmed' => Booking::where('status', 'confirmed')->count(),
-            'cancellation_pending' => Booking::where('status', 'cancellation_pending')->count(),
         ];
         return view('admin.bookings.index', compact('bookings', 'counts'));
+>>>>>>> vinam
     }
 
     public function show(Booking $booking)
     {
-        $booking->load(['user', 'room', 'rooms', 'payment', 'logs', 'bookingServices.service']);
+<<<<<<< HEAD
+=======
+        $booking->load(['user', 'room', 'payment', 'logs', 'bookingServices.service']);
 
+>>>>>>> vinam
         return view('admin.bookings.show', compact('booking'));
     }
 
@@ -196,32 +203,21 @@ class BookingAdminController extends Controller
 
     public function edit(Booking $booking)
     {
-        $booking->load(['user', 'room', 'rooms', 'bookingRooms']);
-
         return view('admin.bookings.edit', compact('booking'));
     }
 
     public function update(Request $request, Booking $booking)
     {
-        $booking->loadMissing(['room', 'rooms', 'bookingRooms']);
-
-        // Đơn đa phòng: bookings.guests có thể null — không bắt admin nhập lại chỉ để đổi trạng thái
-        if ($request->input('guests') === null || $request->input('guests') === '') {
-            $request->merge(['guests' => $booking->resolvedGuestCount()]);
-        }
-
-        $maxGuests = $booking->room?->max_guests
-            ?? ($booking->rooms->isNotEmpty()
-                ? (int) $booking->rooms->sum('max_guests')
-                : null)
-            ?? 99;
-
         $validated = $request->validate([
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1|max:' . $maxGuests,
+<<<<<<< HEAD
+            'guests' => 'required|integer|min:1|max:' . $booking->room->max_guests,
+=======
+            'guests' => 'required|integer|min:1|max:' . ($booking->room->max_guests ?? 99),
+>>>>>>> vinam
             'total_price' => 'required|numeric|min:0',
-            'status' => 'required|in:pending,confirmed,cancellation_pending,cancelled,refunded,completed',
+            'status' => 'required|in:pending,confirmed,cancelled,completed',
         ]);
 
         $old_status = $booking->status;
@@ -236,51 +232,33 @@ class BookingAdminController extends Controller
                 // Delete old booked dates
                 RoomBookedDate::where('booking_id', $booking->id)->delete();
 
-                $roomIds = $booking->room_id
-                    ? collect([$booking->room_id])
-                    : $booking->bookingRooms()->pluck('room_id')->unique()->values();
-
-                if ($roomIds->isEmpty()) {
-                    throw new \RuntimeException('Đơn không gắn phòng (room_id / booking_rooms).');
-                }
-
-                // Create new booked dates (mỗi phòng trong đơn)
+                // Create new booked dates
                 $period = CarbonPeriod::create($newCheckIn, $newCheckOut->copy()->subDay());
-                foreach ($roomIds as $rid) {
-                    foreach ($period as $date) {
-                        RoomBookedDate::create([
-                            'room_id' => $rid,
-                            'booked_date' => $date->toDateString(),
-                            'booking_id' => $booking->id,
-                        ]);
-                    }
+                foreach ($period as $date) {
+                    RoomBookedDate::create([
+                        'room_id' => $booking->room_id,
+                        'booked_date' => $date->toDateString(),
+                        'booking_id' => $booking->id,
+                    ]);
                 }
             }
 
             $booking->update($validated);
+<<<<<<< HEAD
+=======
             
-            // If cancelled, release dates và mở luồng hoàn tiền nếu đã thanh toán
+            // If cancelled, release dates
             if ($booking->status === 'cancelled') {
                 RoomBookedDate::where('booking_id', $booking->id)->delete();
-                $booking->load('payment');
-                $p = $booking->payment;
-                if ($p && $p->status === 'paid' && $p->refund_eligible_amount === null && $p->refund_penalty_amount === null) {
-                    $p->update([
-                        'refund_penalty_amount' => 0,
-                        'refund_eligible_amount' => $p->amount,
-                    ]);
-                }
-                $booking->payment?->beginRefundFlowIfPaid();
             }
+>>>>>>> vinam
 
             // Log status change if status was updated
             if ($old_status !== $booking->status) {
                 \App\Models\BookingLog::create([
                     'booking_id' => $booking->id,
-                    'actor_user_id' => Auth::id(),
                     'old_status' => $old_status,
                     'new_status' => $booking->status,
-                    'note' => '[admin_edit]',
                     'changed_at' => now(),
                 ]);
             }
@@ -319,60 +297,123 @@ class BookingAdminController extends Controller
     public function updateStatus(Request $request, Booking $booking)
     {
         $request->validate([
-            'status' => 'required|in:pending,confirmed,cancellation_pending,cancelled,refunded,completed',
+<<<<<<< HEAD
+            'status' => 'required|in:pending,confirmed,cancelled,completed,awaiting_payment',
+=======
+            'status' => 'required|in:pending,confirmed,cancelled,completed',
+>>>>>>> vinam
         ]);
 
         $old = $booking->status;
         $booking->status = $request->status;
         $booking->save();
 
+<<<<<<< HEAD
+=======
         if ($booking->status === 'cancelled') {
             RoomBookedDate::where('booking_id', $booking->id)->delete();
-            $booking->load('payment');
-            $p = $booking->payment;
-            if ($p && $p->status === 'paid' && $p->refund_eligible_amount === null && $p->refund_penalty_amount === null) {
-                $p->update([
-                    'refund_penalty_amount' => 0,
-                    'refund_eligible_amount' => $p->amount,
-                ]);
-            }
-            $booking->payment?->beginRefundFlowIfPaid();
         }
 
+>>>>>>> vinam
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,
-            'actor_user_id' => Auth::id(),
             'old_status' => $old,
             'new_status' => $booking->status,
-            'note' => '[admin_status]',
             'changed_at' => now(),
         ]);
 
         return back()->with('success', 'Cập nhật trạng thái thành công.');
     }
 
-    public function approveCancellation(Booking $booking)
+<<<<<<< HEAD
+    /**
+     * Admin yêu cầu thanh toán deposit (30%)
+     */
+    public function requestPayment(Request $request, Booking $booking)
     {
-        app(BookingCancellationService::class)->approveCancellationByAdmin($booking, (int) Auth::id());
+        // Chỉ cho phép yêu cầu thanh toán khi status = pending
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return back()->withErrors('Đơn này chưa ở trạng thái chờ xác nhận.');
+        }
 
-        return back()->with('success', 'Đã chấp nhận hủy đơn. Lịch phòng đã được giải phóng.');
+        DB::beginTransaction();
+        try {
+            $oldStatus = $booking->status;
+            
+            $booking->update([
+                'payment_request_sent_at' => now(),
+                'status' => Booking::STATUS_AWAITING_PAYMENT,
+            ]);
+
+            // Tạo booking log với error handling
+            try {
+                \App\Models\BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => Booking::STATUS_AWAITING_PAYMENT,
+                    'changed_at' => now(),
+                ]);
+            } catch (\Exception $logException) {
+                // Log error but don't fail the whole operation
+                \Log::error('Failed to create booking log', [
+                    'booking_id' => $booking->id,
+                    'error' => $logException->getMessage()
+                ]);
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'Đã gửi yêu cầu thanh toán deposit cho khách hàng.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Request payment failed', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 
-    public function rejectCancellation(Request $request, Booking $booking)
+    /**
+     * Admin xác nhận đã nhận được thanh toán deposit
+     */
+    public function confirmPayment(Booking $booking)
     {
-        $request->validate([
-            'note' => 'nullable|string|max:2000',
-        ]);
+        // Kiểm tra booking đã được thanh toán chưa
+        if ($booking->isDepositPaid()) {
+            return back()->withErrors('Đơn này đã được thanh toán rồi.');
+        }
 
-        app(BookingCancellationService::class)->rejectCancellationByAdmin(
-            $booking,
-            (int) Auth::id(),
-            $request->input('note')
-        );
+        if ($booking->status !== Booking::STATUS_AWAITING_PAYMENT) {
+            return back()->withErrors('Đơn này chưa ở trạng thái yêu cầu thanh toán.');
+        }
 
-        return back()->with('success', 'Đã từ chối yêu cầu hủy. Đơn vẫn hiệu lực.');
+        DB::beginTransaction();
+        try {
+            $booking->update([
+                'deposit_paid_at' => now(),
+                'status' => Booking::STATUS_CONFIRMED,
+            ]);
+
+            \App\Models\BookingLog::create([
+                'booking_id' => $booking->id,
+                'old_status' => Booking::STATUS_AWAITING_PAYMENT,
+                'new_status' => Booking::STATUS_CONFIRMED,
+                'changed_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return back()->with('success', 'Đã xác nhận thanh toán deposit. Đơn đặt phòng đã được xác nhận thành công.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra, vui lòng thử lại sau.');
+        }
     }
 
+=======
+>>>>>>> vinam
     public function checkIn(Booking $booking)
     {
         if ($booking->status !== 'confirmed' || $booking->actual_check_in) {
@@ -385,10 +426,8 @@ class BookingAdminController extends Controller
 
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,
-            'actor_user_id' => Auth::id(),
             'old_status' => $old,
             'new_status' => 'checked_in',
-            'note' => '[check_in]',
             'changed_at' => now(),
         ]);
 
@@ -409,10 +448,8 @@ class BookingAdminController extends Controller
 
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,
-            'actor_user_id' => Auth::id(),
             'old_status' => $old,
             'new_status' => 'completed',
-            'note' => '[check_out]',
             'changed_at' => now(),
         ]);
 

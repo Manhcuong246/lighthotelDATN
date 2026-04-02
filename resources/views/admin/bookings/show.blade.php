@@ -3,7 +3,7 @@
 @section('title', 'Chi tiết đặt phòng')
 
 @section('content')
-<div class="container-fluid admin-page px-2 px-lg-3">
+<div class="container-fluid px-3 px-lg-4">
     <!-- Header -->
     <div class="mb-4">
         <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-secondary rounded-2 mb-3">
@@ -15,18 +15,14 @@
                 $statusColors = [
                     'pending' => 'warning',
                     'confirmed' => 'info',
-                    'cancellation_pending' => 'primary',
-                    'cancelled' => 'danger',
-                    'refunded' => 'success',
                     'completed' => 'success',
+                    'cancelled' => 'danger',
                 ];
                 $statusLabels = [
                     'pending' => 'Chờ xác nhận',
                     'confirmed' => 'Đã xác nhận',
-                    'cancellation_pending' => 'Chờ xử lý hủy',
-                    'cancelled' => 'Đã hủy',
-                    'refunded' => 'Đã hoàn tiền',
                     'completed' => 'Hoàn thành',
+                    'cancelled' => 'Đã hủy',
                 ];
             @endphp
             <span class="badge bg-{{ $statusColors[$booking->status] ?? 'secondary' }} px-4 py-2 fs-6">
@@ -59,9 +55,18 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <p class="text-uppercase small fw-bold text-muted mb-1">👤 Khách hàng</p>
+<<<<<<< HEAD
+                            <p class="mb-0 fw-bold">{{ $booking->user?->full_name ?? '—' }}</p>
+                            <small class="text-muted">{{ $booking->user?->email ?? '—' }}</small>
+                        </div>
+                        <div class="col-md-2">
+                            <p class="text-uppercase small fw-bold text-muted mb-1">🏨 Phòng</p>
+                            <span class="badge bg-primary px-2 py-1">{{ $booking->room?->name }}</span>
+=======
                             <p class="mb-0 fw-bold text-primary">{{ $booking->user?->full_name ?? '—' }}</p>
                             <small class="text-muted d-block">{{ $booking->user?->email ?? '—' }}</small>
                             <small class="text-muted">{{ $booking->user?->phone ?? '—' }}</small>
+>>>>>>> vinam
                         </div>
                         <div class="col-md-2">
                             <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-in</p>
@@ -71,6 +76,18 @@
                             <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-out</p>
                             <p class="mb-0 fw-bold">{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</p>
                         </div>
+<<<<<<< HEAD
+                        <div class="col-md-1">
+                            <p class="text-uppercase small fw-bold text-muted mb-1">👥</p>
+                            <span class="badge bg-secondary px-2 py-1">{{ $booking->guests ?? 0 }}</span>
+                        </div>
+                        <div class="col-md-2">
+                            <p class="text-uppercase small fw-bold text-muted mb-1">💰 Tổng tiền</p>
+                            <p class="mb-0 fw-bold text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</p>
+                        </div>
+                    </div>
+
+=======
                         <div class="col-md-2">
                             <p class="text-uppercase small fw-bold text-muted mb-1">🏨 Số lượng phòng</p>
                             <span class="badge bg-primary px-3 py-2">{{ $booking->rooms->count() }} phòng</span>
@@ -150,6 +167,7 @@
                     </div>
                     @endif
 
+>>>>>>> vinam
                     @php
                         $hotelInfo = \App\Models\HotelInfo::first();
                         $payment = $booking->payment;
@@ -210,36 +228,6 @@
                     </div>
                     @endif
 
-                    @if($booking->status === 'cancellation_pending')
-                    <div class="row g-3 mb-4">
-                        <div class="col-12">
-                            <div class="alert alert-primary border-0 rounded-3 mb-0">
-                                <h6 class="fw-bold mb-2">Yêu cầu hủy từ khách</h6>
-                                @if($booking->cancellation_reason)
-                                    <p class="mb-2 small"><span class="text-muted">Lý do:</span> {{ $booking->cancellation_reason }}</p>
-                                @endif
-                                @if($booking->payment && $booking->payment->refund_eligible_amount !== null)
-                                    <p class="mb-2 small">
-                                        Phí hủy dự kiến: <strong>{{ number_format((float) $booking->payment->refund_penalty_amount, 0, ',', '.') }} ₫</strong>
-                                        — Hoàn lại: <strong class="text-success">{{ number_format((float) $booking->payment->refund_eligible_amount, 0, ',', '.') }} ₫</strong>
-                                    </p>
-                                @endif
-                                <div class="d-flex flex-wrap gap-2 mt-3">
-                                    <form action="{{ route('admin.bookings.cancelApprove', $booking) }}" method="POST" onsubmit="return confirm('Chấp nhận hủy đơn #{{ $booking->id }}? Lịch phòng sẽ được giải phóng.');">
-                                        @csrf
-                                        <button type="submit" class="btn btn-success btn-sm rounded-2">Chấp nhận hủy</button>
-                                    </form>
-                                    <form action="{{ route('admin.bookings.cancelReject', $booking) }}" method="POST" class="d-flex flex-wrap align-items-center gap-2">
-                                        @csrf
-                                        <input type="text" name="note" class="form-control form-control-sm" style="min-width:200px;" placeholder="Lý do từ chối (tuỳ chọn)" maxlength="2000">
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm rounded-2">Từ chối hủy</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-
                     <!-- Actions Row -->
                     <div class="row g-3 align-items-center">
                         <div class="col-md-6">
@@ -269,10 +257,7 @@
                                 <select name="status" class="form-select form-select-sm rounded-2">
                                     <option value="pending" {{ $booking->status=='pending'?'selected':'' }}>⏳ Chờ xác nhận</option>
                                     <option value="confirmed" {{ $booking->status=='confirmed'?'selected':'' }}>✓ Đã xác nhận</option>
-                                    <option value="cancellation_pending" {{ $booking->status=='cancellation_pending'?'selected':'' }}>⏳ Chờ xử lý hủy</option>
-                                    <option value="cancelled" {{ $booking->status=='cancelled'?'selected':'' }}>✕ Đã hủy</option>
-                                    <option value="refunded" {{ $booking->status=='refunded'?'selected':'' }}>💰 Đã hoàn tiền</option>
-                                    <option value="completed" {{ $booking->status=='completed'?'selected':'' }}>✓✓ Hoàn thành</option>
+                                    <option value="cancelled" {{ $booking->status=='cancelled'?'selected':'' }}>✕ Hủy đơn</option>
                                 </select>
                                 <button type="submit" class="btn btn-outline-primary btn-sm rounded-2" title="Cập nhật">💾</button>
                             </form>

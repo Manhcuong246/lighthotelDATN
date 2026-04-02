@@ -3,20 +3,19 @@
 @section('title', 'Quản lý Mã giảm giá')
 
 @section('content')
-<div class="container-fluid admin-page px-0">
-    <div class="page-header">
-        <h1>Mã giảm giá</h1>
-        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary btn-sm">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Mã giảm giá</h1>
+        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary shadow-sm">
             <i class="bi bi-plus-lg me-1"></i>Thêm mã mới
         </a>
     </div>
 
     <div class="card card-admin">
-        <div class="card-header-admin py-3 d-flex justify-content-between align-items-center">
+        <div class="card-header card-header-admin d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Danh sách Mã giảm giá</h5>
         </div>
         <div class="card-body p-0">
-            <div class="admin-table-wrap">
+            <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -43,14 +42,14 @@
                                     @endif
                                 </td>
                                 <td class="text-end pe-4">
-                                    <div class="admin-table-actions">
+                                    <div class="btn-group">
                                         <a href="{{ route('admin.coupons.edit', $coupon) }}" class="btn btn-sm btn-outline-primary" title="Sửa">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form action="{{ route('admin.coupons.destroy', $coupon) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa mã giảm giá này?');">
+                                        <form action="{{ route('admin.coupons.destroy', $coupon) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa mã giảm giá này?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                            <button class="btn btn-sm btn-outline-danger" title="Xóa">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
@@ -72,5 +71,4 @@
             </div>
         @endif
     </div>
-</div>
 @endsection

@@ -3,9 +3,8 @@
 @section('title', 'Sửa Mã giảm giá')
 
 @section('content')
-<div class="container-fluid admin-page px-0">
     <div class="page-header mb-4">
-        <h1>
+        <h1 class="h3 mb-0 text-gray-800">
             <a href="{{ route('admin.coupons.index') }}" class="text-decoration-none text-muted fs-5 me-2">
                 <i class="bi bi-arrow-left"></i>
             </a>
@@ -13,7 +12,7 @@
         </h1>
     </div>
 
-    <div class="card card-admin mb-4">
+    <div class="card card-admin">
         <div class="card-body p-4">
             <form action="{{ route('admin.coupons.update', $coupon) }}" method="POST">
                 @csrf
@@ -55,5 +54,4 @@
             </form>
         </div>
     </div>
-</div>
 @endsection

@@ -3,10 +3,14 @@
 @section('title', 'Chi tiết đánh giá #' . $review->id)
 
 @section('content')
-<div class="container-fluid admin-page px-0">
+<div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Đánh giá #{{ $review->id }}</h1>
         <div class="d-flex gap-2">
+<<<<<<< HEAD
+            <a href="{{ route('admin.reviews.edit', $review) }}" class="btn btn-primary">Chỉnh sửa</a>
+=======
+>>>>>>> vinam
             <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary">Quay lại</a>
         </div>
     </div>
@@ -44,6 +48,8 @@
                     </div>
                     @endif
 
+<<<<<<< HEAD
+=======
                     @if($review->reply)
                     <div class="mb-3">
                         <label class="form-label fw-bold">Phản hồi từ khách sạn</label>
@@ -77,6 +83,7 @@
                         <button type="submit" class="btn btn-primary btn-sm">Lưu phản hồi</button>
                     </form>
 
+>>>>>>> vinam
                     <div class="row">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Ngày tạo</label>
@@ -109,9 +116,12 @@
                     <p class="mb-0">
                         <strong>Phòng:</strong><br>
                         {{ $review->room->name }}
+<<<<<<< HEAD
+=======
                         <a href="{{ route('rooms.show', $review->room) }}" class="btn btn-outline-primary btn-sm d-block mt-2">
                             Xem chi tiết phòng
                         </a>
+>>>>>>> vinam
                     </p>
                     @endif
                 </div>

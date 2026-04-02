@@ -7,8 +7,11 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+<<<<<<< HEAD
+=======
 use Illuminate\Support\Facades\Storage;
 
+>>>>>>> vinam
 
 class UserAdminController extends Controller
 {
@@ -18,6 +21,11 @@ class UserAdminController extends Controller
         $this->middleware('admin.only');
     }
 
+<<<<<<< HEAD
+    public function index()
+    {
+        $users = User::with('roles')->latest()->paginate(15);
+=======
     public function index(Request $request)
     {
         $query = User::with('roles')->latest();
@@ -31,7 +39,8 @@ class UserAdminController extends Controller
             });
         }
 
-        $users = $query->paginate(10)->withQueryString();
+        $users = $query->paginate(15)->withQueryString();
+>>>>>>> vinam
         return view('admin.users.index', compact('users'));
     }
 
@@ -53,6 +62,14 @@ class UserAdminController extends Controller
             'email' => 'required|string|email|max:150|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive,banned',
+<<<<<<< HEAD
+        ]);
+
+        $user->update($validated);
+
+        if ($request->filled('password')) {
+            $user->update(['password' => $request->password]);
+=======
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -68,6 +85,7 @@ class UserAdminController extends Controller
 
         if ($request->filled('password')) {
             $user->update(['password' => $request->password]); // Note: Model should handle hashing if not already
+>>>>>>> vinam
         }
 
         if ($request->filled('role_ids') && is_array($request->role_ids)) {
@@ -77,7 +95,10 @@ class UserAdminController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'Cập nhật người dùng thành công.');
     }
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> vinam
     public function destroy(User $user)
     {
         $currentUser = Auth::user();
