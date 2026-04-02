@@ -1,16 +1,8 @@
 @extends('layouts.admin')
 
-@section('title', 'Bảng điều khiển - Admin')
+@section('title', 'Bảng điều khiển')
 
 @section('content')
-<<<<<<< HEAD
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 text-dark">Bảng điều khiển Admin</h1>
-        <div class="d-flex gap-2">
-            <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary"><i class="bi bi-download me-1"></i> Xuất báo cáo</a>
-            <button class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Thêm mới</button>
-=======
 <div class="container-fluid px-0">
     <div class="page-header">
         <h1 class="text-dark fw-bold">Bảng điều khiển</h1>
@@ -19,100 +11,89 @@
             @if(auth()->user()->isAdmin())
                 <a href="{{ route('admin.bookings.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Thêm đơn</a>
             @endif
->>>>>>> vinam
         </div>
     </div>
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
     <!-- Stats Cards -->
-<<<<<<< HEAD
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
         <!-- Doanh thu hôm nay -->
-        <div class="col-xl-3 col-md-6 mb-4">
-=======
-    <div class="row g-3 g-md-4 mb-4">
-        <div class="col-12 col-sm-6 col-xl-3">
->>>>>>> vinam
-            <div class="card stat-card h-100 border-left-primary">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-admin shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-primary mb-1">Doanh thu hôm nay</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($todayRevenue, 0, ',', '.') }} ₫</div>
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Doanh thu hôm nay</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($todayRevenue, 0, ',', '.') }} ₫</div>
                         </div>
                         <div class="col-auto">
-                            <div class="stat-icon bg-primary-light text-primary-dark">
-                                <i class="bi bi-cash-stack"></i>
-                            </div>
+                            <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-<<<<<<< HEAD
 
         <!-- Doanh thu tháng -->
-        <div class="col-xl-3 col-md-6 mb-4">
-=======
-        <div class="col-12 col-sm-6 col-xl-3">
->>>>>>> vinam
-            <div class="card stat-card h-100 border-left-success">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-admin shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-success mb-1">Doanh thu tháng</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($monthlyRevenue, 0, ',', '.') }} ₫</div>
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Doanh thu tháng</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($monthlyRevenue, 0, ',', '.') }} ₫</div>
                         </div>
                         <div class="col-auto">
-                            <div class="stat-icon bg-success-light text-success-dark">
-                                <i class="bi bi-currency-dollar"></i>
-                            </div>
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-<<<<<<< HEAD
 
         <!-- Tỉ lệ lấp phòng -->
-        <div class="col-xl-3 col-md-6 mb-4">
-=======
-        <div class="col-12 col-sm-6 col-xl-3">
->>>>>>> vinam
-            <div class="card stat-card h-100 border-left-info">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-admin shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-info mb-1">Tỉ lệ lấp phòng</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $occupancyRate }}%</div>
-                            <div class="small text-muted">Tháng: {{ $monthlyOccupancyRate }}%</div>
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Lấp phòng hôm nay</div>
+                            <div class="row no-gutters align-items-center">
+                                <div class="col-auto">
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ $occupancyRate }}%</div>
+                                </div>
+                                <div class="col">
+                                    <div class="progress progress-sm mr-2">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ $occupancyRate }}%" aria-valuenow="{{ $occupancyRate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-auto">
-                            <div class="stat-icon bg-info-light text-info-dark">
-                                <i class="bi bi-pie-chart"></i>
-                            </div>
+                            <i class="fas fa-bed fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-<<<<<<< HEAD
 
         <!-- Tổng doanh thu -->
-        <div class="col-xl-3 col-md-6 mb-4">
-=======
-        <div class="col-12 col-sm-6 col-xl-3">
->>>>>>> vinam
-            <div class="card stat-card h-100 border-left-danger">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-admin shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-danger mb-1">Tổng doanh thu</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($totalRevenue, 0, ',', '.') }} ₫</div>
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Tổng doanh thu</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($totalRevenue, 0, ',', '.') }} ₫</div>
                         </div>
                         <div class="col-auto">
-                            <div class="stat-icon bg-danger-light text-danger-dark">
-                                <i class="bi bi-wallet2"></i>
-                            </div>
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -120,364 +101,111 @@
         </div>
     </div>
 
-    <!-- Charts and Tables Row -->
-<<<<<<< HEAD
-    <div class="row">
-        <!-- Recent Bookings -->
+    <!-- Charts Row -->
+    <div class="row g-3">
+        <!-- Doanh thu Chart -->
         <div class="col-xl-8 col-lg-7">
             <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Đơn đặt phòng gần đây</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Khách hàng</th>
-                                    <th>Phòng</th>
-                                    <th>Ngày nhận</th>
-                                    <th>Ngày trả</th>
-                                    <th>Trạng thái</th>
-                                    <th>Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>#BK001</td>
-                                    <td>Nguyễn Văn A</td>
-                                    <td>Phòng Deluxe</td>
-                                    <td>05/02/2026</td>
-                                    <td>07/02/2026</td>
-                                    <td><span class="badge bg-success">Hoàn tất</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                                        <a href="#" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>#BK002</td>
-                                    <td>Trần Thị B</td>
-                                    <td>Phòng Family</td>
-                                    <td>10/02/2026</td>
-                                    <td>12/02/2026</td>
-                                    <td><span class="badge bg-warning text-dark">Đang xử lý</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                                        <a href="#" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>#BK003</td>
-                                    <td>Lê Văn C</td>
-                                    <td>Phòng Suite</td>
-                                    <td>15/02/2026</td>
-                                    <td>18/02/2026</td>
-                                    <td><span class="badge bg-info">Chờ xác nhận</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                                        <a href="#" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>#BK004</td>
-                                    <td>Phạm Thị D</td>
-                                    <td>Phòng Superior</td>
-                                    <td>20/02/2026</td>
-                                    <td>22/02/2026</td>
-                                    <td><span class="badge bg-success">Hoàn tất</span></td>
-                                    <td>
-                                        <a href="#" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                                        <a href="#" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil"></i></a>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-=======
-    <div class="row g-3 g-md-4">
-        <div class="col-12 col-md-6 col-xl-6">
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Top 5 phòng có doanh thu cao nhất</h6>
-                </div>
-                <div class="card-body">
-                    @if($topRoomsByRevenue->isNotEmpty())
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <div style="height: 260px; position: relative;">
-                                <canvas id="topRoomsRevenueChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <ul class="list-unstyled mb-0">
-                                @foreach($topRoomsByRevenue as $i => $r)
-                                <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                                    <span class="text-truncate" style="max-width: 70%;">{{ $r->name }}</span>
-                                    <strong class="text-success">{{ number_format($r->total_revenue, 0, ',', '.') }} ₫</strong>
-                                </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </div>
-                    @else
-                    <p class="text-center text-muted py-5 mb-0">Chưa có dữ liệu doanh thu theo phòng.</p>
-                    @endif
->>>>>>> vinam
-                </div>
-            </div>
-        </div>
-
-<<<<<<< HEAD
-        <!-- Earnings Overview and Room Status -->
-        <div class="col-xl-4 col-lg-5">
-=======
-        <div class="col-12 col-md-6 col-xl-6">
->>>>>>> vinam
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Tình trạng phòng</h6>
-                </div>
-                <div class="card-body">
-<<<<<<< HEAD
-=======
-                    @php
-                        $totalRoomsStatus = $roomsAvailable + $roomsBooked + $roomsMaintenance ?: 1;
-                        $pctAvailable = $totalRoomsStatus > 0 ? round(($roomsAvailable / $totalRoomsStatus) * 100) : 0;
-                        $pctBooked = $totalRoomsStatus > 0 ? round(($roomsBooked / $totalRoomsStatus) * 100) : 0;
-                        $pctMaintenance = $totalRoomsStatus > 0 ? round(($roomsMaintenance / $totalRoomsStatus) * 100) : 0;
-                    @endphp
->>>>>>> vinam
-                    <div class="chart-pie pt-4 pb-2">
-                        <div class="d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span>Phòng trống</span>
-<<<<<<< HEAD
-                                <span class="badge bg-success">18</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 10px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: 75%"></div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span>Đã đặt</span>
-                                <span class="badge bg-warning text-dark">4</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 10px;">
-                                <div class="progress-bar bg-warning" role="progressbar" style="width: 17%"></div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span>Bảo trì</span>
-                                <span class="badge bg-secondary">2</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 10px;">
-                                <div class="progress-bar bg-secondary" role="progressbar" style="width: 8%"></div>
-=======
-                                <span class="badge bg-success">{{ $roomsAvailable }}</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 10px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $pctAvailable }}%"></div>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span>Đã đặt</span>
-                                <span class="badge bg-warning text-dark">{{ $roomsBooked }}</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 10px;">
-                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ $pctBooked }}%"></div>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span>Bảo trì</span>
-                                <span class="badge bg-secondary">{{ $roomsMaintenance }}</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 10px;">
-                                <div class="progress-bar bg-secondary" role="progressbar" style="width: {{ $pctMaintenance }}%"></div>
->>>>>>> vinam
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 text-center small">
-<<<<<<< HEAD
-                        <span class="me-2"><i class="fas fa-circle text-success"></i> Trống</span>
-                        <span class="me-2"><i class="fas fa-circle text-warning"></i> Đã đặt</span>
-                        <span class="me-2"><i class="fas fa-circle text-secondary"></i> Bảo trì</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Revenue Overview -->
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Doanh thu theo tháng</h6>
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 fw-bold">Biểu đồ doanh thu 7 ngày</h6>
                 </div>
                 <div class="card-body">
                     <div class="chart-area">
-=======
-                        <span class="me-2"><i class="bi bi-circle-fill text-success"></i> Trống</span>
-                        <span class="me-2"><i class="bi bi-circle-fill text-warning"></i> Đã đặt</span>
-                        <span class="me-2"><i class="bi bi-circle-fill text-secondary"></i> Bảo trì</span>
+                        <canvas id="revenueChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-md-6 col-xl-6">
-            <!-- Revenue Overview -->
+        <!-- Top phòng doanh thu -->
+        <div class="col-xl-4 col-lg-5">
             <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Doanh thu 7 ngày gần nhất</h6>
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 fw-bold">Top 5 phòng doanh thu</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-area" style="height: 220px;">
->>>>>>> vinam
-                        <canvas id="monthlyRevenueChart"></canvas>
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="topRoomsChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-<<<<<<< HEAD
-=======
-
-        <div class="col-12 col-md-6 col-xl-6">
-            <!-- Occupancy Overview -->
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Tỉ lệ lấp phòng 7 ngày gần nhất</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area" style="height: 220px;">
-                        <canvas id="occupancyRateChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
->>>>>>> vinam
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-<<<<<<< HEAD
-=======
-    // Biểu đồ tròn: Top 5 phòng doanh thu cao nhất
+    // Biểu đồ doanh thu
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: @json($revenueChart['labels']),
+            datasets: [{
+                label: 'Doanh thu',
+                data: @json($revenueChart['data']),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('vi-VN') + ' ₫';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toLocaleString('vi-VN') + ' ₫';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Biểu đồ tròn top phòng
     @if($topRoomsByRevenue->isNotEmpty())
-    const topRoomsCtx = document.getElementById('topRoomsRevenueChart');
-    if (topRoomsCtx) {
-        new Chart(topRoomsCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: {!! json_encode($topRoomsByRevenue->pluck('name')->values()) !!},
-                datasets: [{
-                    data: {!! json_encode($topRoomsByRevenue->pluck('total_revenue')->values()) !!},
-                    backgroundColor: ['#4361ee', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6'],
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) {
-                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
-                                return ctx.label + ': ' + new Intl.NumberFormat('vi-VN').format(ctx.raw) + ' ₫ (' + pct + '%)';
-                            }
+    const topRoomsCtx = document.getElementById('topRoomsChart').getContext('2d');
+    const topRoomsChart = new Chart(topRoomsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: @json($topRoomsByRevenue->pluck('name')),
+            datasets: [{
+                data: @json($topRoomsByRevenue->pluck('total_revenue')),
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB', 
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed.toLocaleString('vi-VN') + ' ₫';
                         }
                     }
                 }
             }
-        });
-    }
+        }
+    });
     @endif
-
->>>>>>> vinam
-    // Biểu đồ doanh thu 7 ngày
-    const ctx = document.getElementById('monthlyRevenueChart').getContext('2d');
-    const revenueChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: {!! json_encode($revenueChart['labels']) !!},
-            datasets: [{
-                label: 'Doanh thu (VNĐ)',
-                data: {!! json_encode($revenueChart['data']) !!},
-                borderColor: '#4361ee',
-                backgroundColor: 'rgba(67, 97, 238, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-<<<<<<< HEAD
-                    ticks: {
-                        callback: function(value) {
-                            return value.toLocaleString() + ' ₫';
-=======
-                    suggestedMax: {{ $revenueChart['suggestedMax'] ?? 1000000 }},
-                    ticks: {
-                        callback: function(value) {
-                            return new Intl.NumberFormat('vi-VN').format(value) + ' ₫';
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // Biểu đồ tỉ lệ lấp phòng 7 ngày
-    const occupancyCtx = document.getElementById('occupancyRateChart').getContext('2d');
-    const occupancyLineChart = new Chart(occupancyCtx, {
-        type: 'line',
-        data: {
-            labels: {!! json_encode($occupancyChart['labels'] ?? []) !!},
-            datasets: [{
-                label: 'Tỉ lệ lấp phòng (%)',
-                data: {!! json_encode($occupancyChart['data'] ?? []) !!},
-                borderColor: '#17a2b8',
-                backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    suggestedMax: 100,
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
->>>>>>> vinam
-                        }
-                    }
-                }
-            }
-        }
-    });
 });
 </script>
 @endsection
