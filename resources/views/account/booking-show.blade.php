@@ -175,12 +175,31 @@
             </div>
             @endif
 
-            @if($booking->refundRequest->refund_proof_image)
-            <div class="col-12 mt-3 text-center">
+            @if($booking->refundRequest && $booking->refundRequest->refund_proof_image)
+            <div class="col-12 mt-3">
                 <p class="mb-2 small fw-bold">Minh chứng chuyển khoản:</p>
-                <a href="{{ asset('storage/' . $booking->refundRequest->refund_proof_image) }}" target="_blank">
-                    <img src="{{ asset('storage/' . $booking->refundRequest->refund_proof_image) }}" class="img-fluid rounded shadow-sm border" style="max-height: 300px;" alt="Proof of Refund">
-                </a>
+                @php
+                    $imagePath = 'storage/' . $booking->refundRequest->refund_proof_image;
+                    $fullPath = public_path($imagePath);
+                @endphp
+                @if(file_exists($fullPath))
+                    <div class="text-center">
+                        <a href="{{ asset($imagePath) }}" target="_blank" class="d-inline-block">
+                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded shadow-sm border" style="max-height: 300px;" alt="Proof of Refund" onerror="this.src='https://via.placeholder.com/400x300/f8f9fa/6c757d?text=Image+Not+Found';">
+                        </a>
+                        <p class="mt-2 small text-muted">
+                            <i class="bi bi-image me-1"></i>
+                            Click để xem ảnh lớn hơn
+                        </p>
+                    </div>
+                @else
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Ảnh minh chứng không tồn tại</strong>
+                        <p class="mb-0 small text-muted">File: {{ $booking->refundRequest->refund_proof_image }}</p>
+                        <p class="mb-0 small">Vui lòng liên hệ admin để cập nhật lại ảnh minh chứng.</p>
+                    </div>
+                @endif
             </div>
             @endif
         </div>

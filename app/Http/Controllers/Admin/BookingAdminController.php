@@ -126,6 +126,7 @@ class BookingAdminController extends Controller
                 'guests' => $validated['guests'],
                 'total_price' => $totalPrice,
                 'status' => $validated['status'],
+                'payment_status' => 'pending',
             ]);
 
             // Create booked dates

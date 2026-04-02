@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\BookingCancellationController;
 use App\Http\Controllers\Admin\RoomAdminController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BookingAdminController;
@@ -42,8 +43,10 @@ Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show')
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
-Route::get('/bookings/{booking}/cancel', [BookingController::class, 'showCancelConfirmation'])->name('bookings.cancel.confirm');
-Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel.post');
+Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
+Route::get('/bookings/{booking}/cancel', [BookingCancellationController::class, 'show'])->name('bookings.cancel');
+Route::post('/bookings/{booking}/cancel', [BookingCancellationController::class, 'cancel'])->name('bookings.cancel.post');
+Route::get('/bookings/{booking}/policy', [BookingCancellationController::class, 'getPolicy'])->name('bookings.policy');
 Route::get('/bookings/{booking}/refund', [BookingController::class, 'showRefundDetails'])->name('bookings.refund.details');
 Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
 
