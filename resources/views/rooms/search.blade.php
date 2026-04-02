@@ -136,19 +136,20 @@
         text-align: center;
     }
     .price-label {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        margin-bottom: 5px;
-    }
-    .price-val {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--secondary-blue);
-    }
-    .price-unit {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         color: var(--text-muted);
         margin-bottom: 20px;
+    }
+    .price-val {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--secondary-blue);
+        line-height: 1;
+    }
+    .price-unit {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin: 10px 0 30px;
     }
     .btn-select-room {
         background: var(--primary-gold);
@@ -212,26 +213,46 @@
     /* Sidebar Summary */
     .booking-summary-card {
         background: #fff;
-        border-radius: 16px;
-        padding: 0;
-        box-shadow: 0 4px 25px rgba(0,0,0,0.08);
-        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: none;
         position: sticky;
-        top: 20px;
+        top: 24px;
+        z-index: 100;
         overflow: hidden;
     }
     .summary-header {
-        background: #1a202c;
+        background: #1e293b;
         color: #fff;
-        padding: 20px 25px;
+        padding: 18px 25px;
         font-weight: 700;
+        font-size: 1.25rem;
+    }
+    .summary-hotel-name {
+        font-weight: 800;
         font-size: 1.1rem;
+        color: #334155;
+        margin-bottom: 20px;
     }
     .summary-body { padding: 25px; }
-    .summary-group-title { font-weight: 700; margin-bottom: 15px; color: #1a202c; }
-    .summary-item { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 10px; }
-    .summary-total { margin-top: 25px; padding-top: 20px; border-top: 2px solid #f7fafc; }
-    .summary-total-val { font-weight: 800; font-size: 1.5rem; color: var(--secondary-blue); }
+    .summary-item-label { color: #94a3b8; font-size: 0.85rem; margin-bottom: 5px; }
+    .summary-item-val {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 10px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+        color: #1e293b;
+        border: 1px solid #f1f5f9;
+        margin-bottom: 15px;
+    }
+    .summary-item-val input { border: none !important; background: transparent !important; flex: 1; font-weight: 700; color: #1e293b; padding: 0; outline: none !important; box-shadow: none !important; }
+    .summary-item-val i { color: #64748b; font-size: 1.1rem; }
+    .summary-nights-info { margin-top: 10px; font-size: 0.95rem; color: #4b5563; }
+    .summary-total { margin-top: 25px; padding-top: 20px; border-top: 1px solid #f1f5f9; }
+    .summary-total-val { font-weight: 800; font-size: 1.75rem; color: var(--secondary-blue); }
     .btn-book-now {
         background: #2563eb;
         color: #fff;
@@ -385,22 +406,25 @@
                         </div>
                         <div class="room-type-info">
                             <h3 class="room-type-name">{{ $type->name }}</h3>
-                            <div class="room-type-features">
-                                <span><i class="bi bi-aspect-ratio"></i> {{ $type->available_rooms->first()->area ?? '26' }} m²</span>
-                                <span><i class="bi bi-bed"></i> {{ $type->beds ?? '1 giường King' }}</span>
+                            <div class="room-type-features mb-3">
+                                <div class="room-spec-item">
+                                    <i class="bi bi-aspect-ratio"></i>
+                                    <span>{{ $type->available_rooms->first()->area ?? '28.5' }} m²</span>
+                                </div>
+                                <div class="room-spec-item">
+                                    <i class="bi bi-person"></i>
+                                    <span>{{ $type->adult_capacity ?? 2 }}</span>
+                                </div>
                             </div>
-                            <div class="room-type-amenities">
+                            <div class="room-type-amenities mb-3">
                                 @if($type->available_rooms->isNotEmpty())
                                     @php $amenities = $type->available_rooms->first()->amenities; @endphp
-                                    @foreach($amenities->take(4) as $amenity)
+                                    @foreach($amenities->take(2) as $amenity)
                                         <span class="badge badge-amenity">{{ $amenity->name }}</span>
                                     @endforeach
-                                    @if($amenities->count() > 4)
-                                        <span class="text-muted small">+{{ $amenities->count() - 4 }}</span>
-                                    @endif
                                 @endif
                             </div>
-                            <a href="#" class="text-primary small fw-bold" data-bs-toggle="modal" data-bs-target="#policyModal{{ $type->id }}">Tiện nghi và chính sách</a>
+                            <a href="#" class="text-primary small fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#policyModal{{ $type->id }}">Tiện nghi và chính sách</a>
                         </div>
                         <div class="room-type-action">
                             @if($type->available_rooms->isNotEmpty())
@@ -498,12 +522,14 @@
             @endforelse
 
             <div class="d-flex justify-content-center mt-4">
-                {{ $roomTypes->links() }}
+                @if(method_exists($roomTypes, 'links'))
+                    {{ $roomTypes->links() }}
+                @endif
             </div>
         </div>
 
         {{-- Sidebar Summary --}}
-        <div class="col-lg-4">
+        <div class="col-lg-4" style="align-self: flex-start;">
             <div class="booking-summary-card">
                 <div class="summary-header">Thông tin đặt phòng</div>
                 <div class="summary-body">
@@ -522,27 +548,30 @@
                         <div id="roomInputsContainer"></div>
 
                         <div class="summary-group">
-                            <div class="summary-group-title">{{ $hotel->name ?? 'Light Hotel' }}</div>
-                            <div class="summary-item mb-2">
-                                <label class="small text-muted mb-1">Ngày nhận phòng</label>
-                                <input type="date" name="check_in" id="sidebar_check_in" class="form-control form-control-sm fw-bold border-0 bg-light" 
-                                       value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
-                            </div>
-                            <div class="summary-item mb-2">
-                                <label class="small text-muted mb-1">Ngày trả phòng</label>
-                                <input type="date" name="check_out" id="sidebar_check_out" class="form-control form-control-sm fw-bold border-0 bg-light" 
-                                       value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
-                            </div>
-                            <div class="summary-item mb-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted small">Thời gian nghỉ:</span>
-                                    <strong class="text-primary" id="sidebar_nights_display">{{ $nights }} đêm</strong>
+                            <div class="summary-hotel-name">{{ $hotel->name ?? 'Light Hotel' }}</div>
+                            <div class="mb-3">
+                                <div class="summary-item-label">Ngày nhận phòng</div>
+                                <div class="summary-item-val">
+                                    <input type="date" name="check_in" id="sidebar_check_in" 
+                                           value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
+                                    <i class="bi bi-calendar3"></i>
                                 </div>
                             </div>
-                            <button type="button" id="btnUpdateDates" class="btn btn-sm btn-outline-primary w-100 rounded-pill mb-3 fw-bold">
-                                <i class="bi bi-arrow-repeat me-1"></i> Cập nhật ngày & giá
-                            </button>
+                            <div class="mb-3">
+                                <div class="summary-item-label">Ngày trả phòng</div>
+                                <div class="summary-item-val">
+                                    <input type="date" name="check_out" id="sidebar_check_out" 
+                                           value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
+                                    <i class="bi bi-calendar3"></i>
+                                </div>
+                            </div>
+                            <div class="summary-nights-info mb-4">
+                                Thời gian nghỉ: <strong class="text-primary" id="sidebar_nights_display">{{ $nights }} đêm</strong>
+                            </div>
                         </div>
+                        <button type="button" id="btnUpdateDates" class="btn btn-sm btn-light w-100 rounded-pill mb-4 border py-2 fw-bold text-primary">
+                            <i class="bi bi-arrow-repeat me-1"></i> Cập nhật ngày & giá
+                        </button>
 
                         <div class="summary-group">
                             <div class="summary-group-title">Thông tin phòng</div>

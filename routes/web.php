@@ -19,6 +19,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
+use App\Http\Controllers\Admin\RefundAdminController;
 
 
 // Serve storage files (fallback when symlink fails or PHP built-in server)
@@ -41,7 +42,9 @@ Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show')
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::get('/bookings/{booking}/cancel', [BookingController::class, 'showCancelConfirmation'])->name('bookings.cancel.confirm');
 Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel.post');
+Route::get('/bookings/{booking}/refund', [BookingController::class, 'showRefundDetails'])->name('bookings.refund.details');
 Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
 
 Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
@@ -112,6 +115,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::put('/settings/general', [SettingsAdminController::class, 'updateGeneral'])->name('settings.update.general');
     Route::put('/settings/site-content', [SettingsAdminController::class, 'updateSiteContent'])->name('settings.update.site.content');
 
+    // Refund Management
+    Route::get('/refunds', [RefundAdminController::class, 'index'])->name('refunds.index');
+    Route::get('/refunds/{refundRequest}', [RefundAdminController::class, 'show'])->name('refunds.show');
+    Route::post('/refunds/{refundRequest}/process', [RefundAdminController::class, 'process'])->name('refunds.process');
 
       // ====== QUẢN LÝ LOẠI PHÒNG ======
 Route::prefix('roomtypes')->name('roomtypes.')->group(function () {
@@ -140,6 +147,10 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [AccountController::class, 'updatePassword'])->name('profile.update.password');
+
+    // Refund routes
+    Route::get('/bookings/{booking}/refund', [AccountController::class, 'refundForm'])->name('bookings.refund');
+    Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
 
