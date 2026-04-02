@@ -23,6 +23,13 @@ class Room extends Model
         'room_type_id',
         'room_number',
         'image',
+        'maintenance_note',
+        'maintenance_since',
+        'damage_report_id',
+    ];
+
+    protected $casts = [
+        'maintenance_since' => 'datetime',
     ];
 
     public function prices()
@@ -60,6 +67,62 @@ class Room extends Model
    public function roomType()
     {
         return $this->belongsTo(RoomType::class);
+    }
+
+    public function damageReports()
+    {
+        return $this->hasMany(DamageReport::class);
+    }
+
+    public function activeDamageReport()
+    {
+        return $this->belongsTo(DamageReport::class, 'damage_report_id');
+    }
+
+    /**
+     * Scope to get only available rooms (not in maintenance)
+     */
+    public function scopeAvailable($query)
+    {
+        return $query->where('status', 'available');
+    }
+
+    /**
+     * Scope to exclude maintenance rooms
+     */
+    public function scopeNotInMaintenance($query)
+    {
+        return $query->where('status', '!=', 'maintenance');
+    }
+
+    /**
+     * Check if room is in maintenance
+     */
+    public function isInMaintenance(): bool
+    {
+        return $this->status === 'maintenance';
+    }
+
+    /**
+     * Check if room can be booked
+     */
+    public function canBeBooked(): bool
+    {
+        return $this->status === 'available';
+    }
+
+    /**
+     * Get status badge HTML
+     */
+    public function getStatusBadgeAttribute(): string
+    {
+        $badges = [
+            'available' => '<span class="badge bg-success">Trống</span>',
+            'booked' => '<span class="badge bg-warning">Đã đặt</span>',
+            'maintenance' => '<span class="badge bg-danger">Bảo trì</span>',
+            'cleaning' => '<span class="badge bg-info">Đang dọn</span>',
+        ];
+        return $badges[$this->status] ?? '<span class="badge bg-secondary">' . $this->status . '</span>';
     }
 
     /**

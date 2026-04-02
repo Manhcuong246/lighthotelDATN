@@ -199,7 +199,7 @@ class BookingService
         }
 
         $extraAdultFeePerNight = $extraAdults * (0.4 * $basePrice);
-        $childFeePerNight = $chargeableChildren * (0.5 * $basePrice);
+        $childFeePerNight = $chargeableChildren * (0.3 * $basePrice); // Giảm từ 50% xuống 30%
 
         $pricePerNight = $basePrice + $extraAdultFeePerNight + $childFeePerNight;
         $subtotal = $pricePerNight * $nights;
