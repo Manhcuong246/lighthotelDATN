@@ -30,4 +30,29 @@ class RoomType extends Model
     {
         return $this->hasMany(Room::class);
     }
+
+    /**
+     * Ảnh bìa cho danh sách: ưu tiên ảnh phòng, sau đó ảnh loại phòng, cuối cùng placeholder.
+     */
+    public function resolveCoverImageUrl(string $placeholderDataUri): string
+    {
+        $this->loadMissing(['rooms.images']);
+
+        foreach ($this->rooms as $room) {
+            foreach ($room->getDisplayImageUrls() as $url) {
+                if ($url !== '') {
+                    return $url;
+                }
+            }
+        }
+
+        if ($this->image) {
+            $url = Room::resolveImageUrl($this->image);
+            if ($url) {
+                return $url;
+            }
+        }
+
+        return $placeholderDataUri;
+    }
 }

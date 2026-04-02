@@ -19,7 +19,8 @@ class RoomTypeController extends Controller
             $query->where('name', 'like', "%{$q}%");
         }
 
-        $roomTypes = $query->get();
+        $roomTypes = $query->paginate(10)->withQueryString();
+
         return view('admin.roomtypes.index', compact('roomTypes'));
     }
 

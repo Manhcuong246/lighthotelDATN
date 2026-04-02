@@ -51,7 +51,7 @@ class PaymentAdminController extends Controller
             $query->whereHas('booking', fn ($b) => $b->where('status', $request->booking_status));
         }
 
-        $payments = $query->paginate(15)->withQueryString();
+        $payments = $query->paginate(10)->withQueryString();
 
         $pendingCancellationCount = Booking::where('status', Booking::STATUS_CANCELLATION_PENDING)->count();
 

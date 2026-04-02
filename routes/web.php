@@ -40,7 +40,7 @@ Route::get('/', [RoomController::class, 'index'])->name('home');
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
-Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::post('/bookings', [BookingController::class, 'store'])->middleware('auth')->name('bookings.store');
 Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
 
 Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');

@@ -3,7 +3,7 @@
 @section('title', 'Cập nhật phòng')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid admin-page px-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Cập nhật phòng: {{ $room->name }}</h1>
         <div class="d-flex gap-2">

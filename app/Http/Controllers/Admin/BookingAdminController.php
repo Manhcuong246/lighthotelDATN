@@ -41,7 +41,7 @@ class BookingAdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $bookings = $query->paginate(15)->withQueryString();
+        $bookings = $query->paginate(10)->withQueryString();
 
         $counts = [
             'total' => Booking::count(),

@@ -3,7 +3,7 @@
 @section('title', 'Thêm loại phòng')
 
 @section('content')
-<div class="container-fluid px-4">
+<div class="container-fluid admin-page px-2 px-lg-4">
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">

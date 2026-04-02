@@ -3,10 +3,12 @@
 @section('title', 'Quản lý thanh toán')
 
 @section('content')
-<div class="container-fluid px-0">
+<div class="container-fluid admin-page px-0">
     <div class="page-header">
-        <h1 class="text-dark fw-bold">Quản lý thanh toán</h1>
-        <p class="text-muted small mb-0">Thanh toán chỉ xem theo giao dịch thực tế; hoàn tiền khi hủy đơn đã thanh toán được xử lý trong mục chi tiết và trạng thái cột &quot;Hoàn tiền&quot;.</p>
+        <div>
+            <h1>Quản lý thanh toán</h1>
+            <p class="admin-text-muted mb-0 mt-1">Thanh toán theo giao dịch thực tế; hoàn tiền khi hủy đơn đã thanh toán xử lý tại chi tiết và cột &quot;Hoàn tiền&quot;.</p>
+        </div>
     </div>
 
     @if(($pendingCancellationCount ?? 0) > 0)
@@ -27,14 +29,14 @@
                     <option value="paid" {{ request('status') === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
                     <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>Thất bại</option>
                 </select>
-                <select name="refund_status" class="form-select form-select-sm" style="width: 170px;">
+                <select name="refund_status" class="form-select form-select-sm admin-filter-field">
                     <option value="">TT hoàn tiền</option>
                     <option value="none" {{ request('refund_status') === 'none' ? 'selected' : '' }}>Không áp dụng</option>
                     <option value="awaiting_user_info" {{ request('refund_status') === 'awaiting_user_info' ? 'selected' : '' }}>Chờ khách gửi TK</option>
                     <option value="pending_admin" {{ request('refund_status') === 'pending_admin' ? 'selected' : '' }}>Chờ KS hoàn tiền</option>
                     <option value="completed" {{ request('refund_status') === 'completed' ? 'selected' : '' }}>Đã hoàn xong</option>
                 </select>
-                <select name="booking_status" class="form-select form-select-sm" style="width: 180px;" title="Trạng thái đơn đặt phòng">
+                <select name="booking_status" class="form-select form-select-sm admin-filter-field" title="Trạng thái đơn đặt phòng">
                     <option value="">Trạng thái đơn</option>
                     <option value="cancellation_pending" {{ request('booking_status') === 'cancellation_pending' ? 'selected' : '' }}>Chờ xử lý hủy</option>
                     <option value="pending" {{ request('booking_status') === 'pending' ? 'selected' : '' }}>Chờ xác nhận</option>
@@ -42,14 +44,14 @@
                     <option value="cancelled" {{ request('booking_status') === 'cancelled' ? 'selected' : '' }}>Đã hủy</option>
                     <option value="refunded" {{ request('booking_status') === 'refunded' ? 'selected' : '' }}>Đã hoàn tiền</option>
                 </select>
-                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                <button type="submit" class="btn btn-light btn-sm flex-shrink-0"><i class="bi bi-search me-1"></i>Tìm</button>
                 @if(request()->hasAny(['q','status','refund_status','booking_status']))
-                <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-light btn-sm flex-shrink-0">Xóa lọc</a>
                 @endif
             </form>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="admin-table-wrap">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -61,7 +63,7 @@
                             <th>Phương thức</th>
                             <th>TT thanh toán</th>
                             <th>Hoàn tiền</th>
-                            <th width="120">Hành động</th>
+                            <th class="text-end text-nowrap" style="min-width: 6rem;">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,8 +147,10 @@
                                         <span class="badge bg-secondary">{{ $payment->refund_status }}</span>
                                     @endif
                                 </td>
-                                <td>
-                                    <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                                <td class="text-end">
+                                    <div class="admin-table-actions">
+                                        <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -159,8 +163,8 @@
             </div>
         </div>
         @if($payments->hasPages())
-        <div class="card-footer bg-white border-0 py-2">
-            {{ $payments->links() }}
+        <div class="card-footer bg-white border-0 py-3">
+            {{ $payments->links('pagination::bootstrap-5') }}
         </div>
         @endif
     </div>

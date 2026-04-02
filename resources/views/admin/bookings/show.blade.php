@@ -3,7 +3,7 @@
 @section('title', 'Chi tiết đặt phòng')
 
 @section('content')
-<div class="container-fluid px-3 px-lg-4">
+<div class="container-fluid admin-page px-2 px-lg-3">
     <!-- Header -->
     <div class="mb-4">
         <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-secondary rounded-2 mb-3">
