@@ -175,12 +175,28 @@
                 </div>
                 @endif
 
-                @if($refundRequest->refund_proof_image)
+                @if($refundRequest && $refundRequest->refund_proof_image)
                 <div class="mb-0">
                     <p class="mb-1 text-muted small text-uppercase fw-semibold">Minh chứng thanh toán</p>
-                    <a href="{{ asset('storage/' . $refundRequest->refund_proof_image) }}" target="_blank">
-                        <img src="{{ asset('storage/' . $refundRequest->refund_proof_image) }}" class="img-fluid rounded border shadow-sm w-100" alt="Proof Image">
-                    </a>
+                    @php
+                        $imagePath = 'storage/' . $refundRequest->refund_proof_image;
+                        $fullPath = public_path($imagePath);
+                    @endphp
+                    @if(file_exists($fullPath))
+                        <a href="{{ asset($imagePath) }}" target="_blank" class="d-block">
+                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded border shadow-sm w-100" alt="Proof Image" onerror="this.src='https://via.placeholder.com/600x400/f8f9fa/6c757d?text=Image+Not+Found';">
+                        </a>
+                        <p class="mt-2 small text-muted">
+                            <i class="bi bi-image me-1"></i>
+                            Click để xem ảnh lớn hơn
+                        </p>
+                    @else
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Ảnh minh chứng không tồn tại</strong>
+                            <p class="mb-0 small text-muted">File: {{ $refundRequest->refund_proof_image }}</p>
+                        </div>
+                    @endif
                 </div>
                 @endif
             </div>

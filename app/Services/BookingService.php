@@ -137,6 +137,7 @@ class BookingService
                 'check_out'       => $checkOut->toDateString(),
                 'total_price'     => $totalPrice,
                 'status'          => 'pending',
+                'payment_status'   => 'pending',
                 'coupon_code'     => $couponCode,
                 'discount_amount' => $discountAmount,
             ]);

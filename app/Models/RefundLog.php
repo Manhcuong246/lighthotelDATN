@@ -39,4 +39,25 @@ class RefundLog extends Model
     {
         return $this->belongsTo(User::class, 'processed_by');
     }
+
+    /**
+     * Get formatted refund amount.
+     */
+    public function getFormattedRefundAmountAttribute()
+    {
+        return number_format($this->refund_amount, 0, ',', '.') . ' ₫';
+    }
+
+    /**
+     * Get refund type label in Vietnamese.
+     */
+    public function getRefundTypeLabelAttribute()
+    {
+        return match($this->refund_type) {
+            'full' => 'Hoàn tiền đầy đủ',
+            'partial' => 'Hoàn tiền một phần',
+            'none' => 'Không hoàn tiền',
+            default => 'Không xác định',
+        };
+    }
 }

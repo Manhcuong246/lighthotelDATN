@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\RefundLog;
 
 class Booking extends Model
 {
@@ -11,10 +12,18 @@ class Booking extends Model
 
     public $timestamps = true;
 
+    protected $attributes = [
+        'status' => 'pending',
+        'payment_status' => 'pending',
+        'discount_amount' => 0,
+    ];
+
     protected $fillable = [
         'user_id',
         'check_in',
         'check_out',
+        'check_in_date',
+        'check_out_date',
         'actual_check_in',
         'actual_check_out',
         'guests',
@@ -22,15 +31,21 @@ class Booking extends Model
         'children',
         'total_price',
         'status',
+        'payment_status',
         'coupon_code',
         'discount_amount',
+        'cancellation_reason',
+        'cancelled_at',
     ];
 
     protected $casts = [
         'check_in' => 'date',
         'check_out' => 'date',
+        'check_in_date' => 'datetime',
+        'check_out_date' => 'datetime',
         'actual_check_in' => 'datetime',
         'actual_check_out' => 'datetime',
+        'cancelled_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -69,6 +84,11 @@ class Booking extends Model
     public function payment()
     {
         return $this->hasOne(Payment::class);
+    }
+
+    public function refundLogs()
+    {
+        return $this->hasMany(RefundLog::class);
     }
 
     public function invoice()
