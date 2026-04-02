@@ -3,40 +3,13 @@
 @section('title', 'Cài đặt hệ thống')
 
 @section('content')
-<<<<<<< HEAD
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 text-dark">Cài đặt hệ thống</h1>
-=======
-<div class="container-fluid px-0">
+<div class="container-fluid admin-page px-0">
     <div class="page-header">
-        <h1 class="text-dark fw-bold">Cài đặt hệ thống</h1>
->>>>>>> vinam
+        <h1>Cài đặt hệ thống</h1>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success" role="alert">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-<<<<<<< HEAD
-    <div class="row">
-        <div class="col-lg-8">
-=======
     <div class="row g-3">
         <div class="col-12 col-lg-8">
->>>>>>> vinam
             <!-- General Settings -->
             <div class="card card-admin shadow mb-4">
                 <div class="card-header-admin py-3">
@@ -159,43 +132,6 @@
                 </div>
             </div>
 
-<<<<<<< HEAD
-            <!-- Site Content Settings -->
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h5 class="mb-0">Nội dung trang web</h5>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('admin.settings.update.site.content') }}" method="POST">
-                        @csrf
-                        @method('PUT')
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Tiêu đề trang chủ</label>
-                            <input type="text" 
-                                   class="form-control @error('home_title') is-invalid @enderror" 
-                                   name="home_title" 
-                                   value="{{ old('home_title') }}"
-                                   placeholder="Tiêu đề trang chủ">
-                            @error('home_title')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Mô tả trang chủ</label>
-                            <textarea class="form-control @error('home_description') is-invalid @enderror" 
-                                      name="home_description" 
-                                      rows="4"
-                                      placeholder="Mô tả trang chủ">{{ old('home_description') }}</textarea>
-                            @error('home_description')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-                    </form>
-=======
             <!-- Site Content Management -->
             <div class="card card-admin shadow mb-4">
                 <div class="card-header-admin py-3 d-flex justify-content-between align-items-center">
@@ -267,14 +203,11 @@
                             </tbody>
                         </table>
                     </div>
->>>>>>> vinam
                 </div>
             </div>
         </div>
     </div>
 </div>
-<<<<<<< HEAD
-=======
 
 <!-- Modal content manager -->
 <div class="modal fade" id="siteContentModal" tabindex="-1" aria-labelledby="siteContentModalLabel" aria-hidden="true">
@@ -589,5 +522,4 @@
 @endpush
 @endisset
 
->>>>>>> vinam
 @endsection

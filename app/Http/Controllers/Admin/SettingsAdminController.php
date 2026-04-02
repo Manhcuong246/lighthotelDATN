@@ -23,14 +23,9 @@ class SettingsAdminController extends Controller
         $abouts = SiteContent::where('type', 'about')->get();
         $policies = SiteContent::where('type', 'policy')->get();
         $footers = SiteContent::where('type', 'footer')->get();
-<<<<<<< HEAD
-        
-        return view('admin.settings.index', compact('hotelInfo', 'banners', 'abouts', 'policies', 'footers'));
-=======
         $siteContents = SiteContent::orderBy('type')->orderBy('id')->get();
 
         return view('admin.settings.index', compact('hotelInfo', 'banners', 'abouts', 'policies', 'footers', 'siteContents'));
->>>>>>> vinam
     }
 
     public function updateGeneral(Request $request)
@@ -54,48 +49,29 @@ class SettingsAdminController extends Controller
 
     public function updateSiteContent(Request $request)
     {
-<<<<<<< HEAD
-        $type = $request->input('type');
-        $contentId = $request->input('content_id');
-        
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'nullable|string',
-            'image_url' => 'nullable|url',
-        ]);
-
-=======
         $contentId = $request->input('content_id');
 
         $validated = $request->validate([
             'type' => 'required|in:banner,about,policy,footer',
             'title' => 'required|string|max:255',
-            'content' => 'nullable|string',
-            'image_url' => 'nullable|url',
+            'content' => 'required|string',
+            'type' => 'required|in:about,policy,footer',
             'is_active' => 'nullable|boolean',
         ]);
 
         $validated['is_active'] = $request->has('is_active') ? true : false;
 
->>>>>>> vinam
         if ($contentId) {
             $content = SiteContent::find($contentId);
             if ($content) {
                 $content->update($validated);
-<<<<<<< HEAD
-            }
-        } else {
-            $content = SiteContent::create(array_merge($validated, ['type' => $type]));
-        }
-
-        return redirect()->back()->with('success', 'Cập nhật nội dung trang web thành công.');
-=======
                 return redirect()->back()->with('success', 'Cập nhật nội dung trang web thành công.');
             }
 
             return redirect()->back()->with('error', 'Nội dung không tồn tại để cập nhật.');
         }
 
+        return redirect()->back()->with('success', 'Cập nhật nội dung trang web thành công.');
         SiteContent::create($validated);
         return redirect()->back()->with('success', 'Thêm nội dung trang web thành công.');
     }
@@ -119,6 +95,5 @@ class SettingsAdminController extends Controller
         return view('admin.settings.index', compact(
             'hotelInfo', 'banners', 'abouts', 'policies', 'footers', 'siteContents', 'siteContent'
         ));
->>>>>>> vinam
     }
 }

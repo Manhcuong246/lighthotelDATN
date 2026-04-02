@@ -8,6 +8,7 @@ use App\Models\Service;
 use App\Models\RoomBookedDate;
 use App\Models\RoomType;
 use App\Models\Amenity;
+use App\Models\SiteContent;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -89,7 +90,13 @@ class RoomController extends Controller
         // Bộ lọc loại phòng: cột status là boolean (1/0), đồng bộ với admin
         $allRoomTypes = RoomType::where('status', 1)->orderBy('name')->get();
 
-        return view('rooms.index', compact('hotel', 'roomTypesList', 'allRoomTypes', 'amenities'));
+        $siteContents = SiteContent::whereIn('type', ['banner','about','policy','footer'])
+            ->where('is_active', true)
+            ->orderBy('type')
+            ->orderBy('id')
+            ->get();
+
+        return view('rooms.index', compact('hotel', 'roomTypesList', 'allRoomTypes', 'amenities', 'siteContents'));
     }
 
     public function show(Room $room)
