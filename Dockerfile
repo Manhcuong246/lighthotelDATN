@@ -1,7 +1,8 @@
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+# Chưa có artisan → bỏ script post-install (package:discover chạy ở stage app)
+RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader --no-scripts
 
 FROM node:20-alpine AS assets
 WORKDIR /app
@@ -32,8 +33,14 @@ COPY . .
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build
 
+RUN php artisan package:discover --ansi
+
 RUN mkdir -p storage bootstrap/cache \
   && chown -R www-data:www-data storage bootstrap/cache
 
+COPY docker/app-entrypoint.sh /usr/local/bin/app-entrypoint.sh
+RUN chmod +x /usr/local/bin/app-entrypoint.sh
+
 EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/app-entrypoint.sh"]
 CMD ["php-fpm"]

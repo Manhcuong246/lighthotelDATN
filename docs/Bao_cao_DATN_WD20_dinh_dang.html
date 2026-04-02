@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Báo cáo dự án – Website Booking Light Hotel</title>
+  <style>
+    /* --- In & màn hình: khổ A4, căn lề chuẩn báo cáo --- */
+    @page { size: A4; margin: 2.5cm 2cm 2cm 2cm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 13pt;
+      line-height: 1.5;
+      color: #111;
+      max-width: 21cm;
+      margin: 0 auto;
+      padding: 2.5cm 2cm;
+      background: #fff;
+    }
+    @media print {
+      body { padding: 0; max-width: none; }
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; }
+    }
+
+    .cover {
+      text-align: center;
+      margin-bottom: 2em;
+    }
+    .cover .line-small { font-size: 12pt; text-transform: uppercase; letter-spacing: 0.02em; }
+    .cover .school { font-weight: bold; font-size: 13pt; margin: 0.3em 0; }
+    .cover .deco { margin: 1em 0; color: #444; }
+    .cover h1 {
+      font-size: 16pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 2em 0 1em;
+      line-height: 1.35;
+    }
+    .cover .topic { font-size: 14pt; font-weight: bold; margin: 1.5em 0; }
+    .cover .meta { text-align: left; display: inline-block; margin-top: 1.5em; font-size: 13pt; }
+    .cover .meta p { margin: 0.35em 0; }
+    .cover .place-date { margin-top: 2.5em; font-style: italic; }
+
+    h2.section {
+      font-size: 14pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 1.8em 0 0.8em;
+      border-bottom: 1px solid #333;
+      padding-bottom: 0.25em;
+    }
+    h3.sub {
+      font-size: 13pt;
+      font-weight: bold;
+      margin: 1.2em 0 0.5em;
+    }
+    p { margin: 0.5em 0; text-align: justify; }
+    ul.bullets { margin: 0.4em 0 0.6em 1.2em; padding: 0; }
+    ul.bullets li { margin: 0.25em 0; text-align: justify; }
+
+    /* Bảng có viền – Google Docs thường giữ khi copy từ trình duyệt */
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.8em 0 1.2em;
+      font-size: 12pt;
+    }
+    table.data th, table.data td {
+      border: 1px solid #333;
+      padding: 6px 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+    table.data thead th {
+      background: #e8e8e8;
+      font-weight: bold;
+      text-align: center;
+    }
+    table.data td:nth-child(1) { width: 22%; }
+    table.data.tech td:nth-child(1) { width: 28%; font-weight: 600; }
+    table.data .stt { width: 4%; text-align: center; }
+    table.data .code { width: 8%; text-align: center; white-space: nowrap; }
+    .note {
+      font-size: 12pt;
+      font-style: italic;
+      margin: 0.6em 0;
+      padding: 0.5em 0.75em;
+      background: #f5f5f5;
+      border-left: 3px solid #666;
+    }
+
+    /* Khung chèn ảnh – thay bằng hình chụp màn hình dự án */
+    figure.figure {
+      margin: 1em 0;
+      text-align: center;
+      break-inside: avoid;
+    }
+    .img-placeholder {
+      border: 2px dashed #999;
+      background: #fafafa;
+      min-height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1em;
+      color: #555;
+      font-size: 11pt;
+    }
+    figcaption {
+      font-size: 11pt;
+      font-style: italic;
+      margin-top: 0.4em;
+      color: #333;
+    }
+
+    .hint {
+      background: #fff8e6;
+      border: 1px solid #e6c200;
+      padding: 10px 12px;
+      font-size: 11pt;
+      margin: 1em 0;
+    }
+    ol.steps { margin: 0.4em 0 0.6em 1.4em; }
+    ol.steps li { margin: 0.35em 0; text-align: justify; }
+
+    /* Sơ đồ kiến trúc đơn giản (SVG) – có “ảnh” minh họa không cần file ngoài */
+    .svg-wrap { text-align: center; margin: 1em 0; }
+  </style>
+</head>
+<body>
+
+  <div class="hint no-print">
+    <strong>Hướng dẫn đưa vào Google Docs:</strong> Mở file này bằng Chrome/Edge → <strong>Ctrl+A</strong> → <strong>Ctrl+C</strong> → dán vào Google Docs. Hoặc trong Docs: <strong>Tệp → Mở → Tải lên</strong> chọn file .html (một số máy giữ được bảng; nếu lệch, dùng cách copy từ trình duyệt). Ảnh: chụp màn hình web (trang chủ, admin…) rồi thay các khung viền nét đứt bên dưới.
+  </div>
+
+  <div class="cover">
+    <p class="line-small">Bộ Lao động – Thương binh và Xã hội</p>
+    <p class="school">TRƯỜNG CAO ĐẲNG FPT POLYTECHNIC</p>
+    <p class="deco">------------oOo-----------</p>
+    <h1>Báo cáo dự án tốt nghiệp</h1>
+    <p class="topic">Đề tài: Website booking khách sạn Light Hotel</p>
+    <div class="meta">
+      <p><strong>Giáo viên hướng dẫn:</strong> Bùi Quang Ngọc</p>
+      <p><strong>Sinh viên thực hiện:</strong></p>
+      <p>Nguyễn Gia Bảo – PH50309</p>
+      <p>Nguyễn Mạnh Cường – (bổ sung mã lớp)</p>
+      <p>Lê Đức Trung – PH52517</p>
+      <p>Vi Hoài Nam – (bổ sung mã lớp)</p>
+      <p><strong>Lớp:</strong> (điền mã lớp)</p>
+    </div>
+    <p class="place-date">Hà Nội, [cập nhật ngày nộp báo cáo]</p>
+  </div>
+
+  <h2 class="section">I. Khảo sát dự án</h2>
+
+  <h3 class="sub">1. Phân tích yêu cầu (Requirement Analysis)</h3>
+  <p>Dự án chia hai phân hệ chính: Khách hàng (giao diện công khai) và Quản trị viên / Nhân viên (Admin).</p>
+  <p><strong>Đối với khách hàng</strong> (và khách vãng lai trước đăng nhập):</p>
+  <ul class="bullets">
+    <li><strong>Tìm kiếm &amp; lọc:</strong> tìm phòng theo ngày nhận/trả, loại phòng, số người; hiển thị phòng còn trống.</li>
+    <li><strong>Xem chi tiết:</strong> hình ảnh, tiện nghi (Wi-Fi, điều hòa, TV…), mô tả, đánh giá.</li>
+    <li><strong>Đặt phòng:</strong> chọn một hoặc nhiều phòng, nhập thông tin liên hệ, áp dụng mã giảm giá (nếu có), thanh toán trực tuyến VNPay.</li>
+    <li><strong>Quản lý tài khoản:</strong> lịch sử đặt phòng, trạng thái đơn; hủy đơn; nếu đã thanh toán và hủy thì gửi thông tin nhận hoàn tiền (có thể kèm ảnh mã QR) và xem chứng từ hoàn tiền.</li>
+  </ul>
+  <p><strong>Đối với quản trị viên / nhân viên:</strong></p>
+  <ul class="bullets">
+    <li>Quản lý loại phòng và phòng cụ thể (CRUD, giá, trạng thái).</li>
+    <li>Quản lý đơn: trạng thái, check-in / check-out; (admin) tạo/sửa/xóa đơn.</li>
+    <li>Thanh toán &amp; hoàn tiền; hóa đơn; coupon; đánh giá; người dùng &amp; phân quyền.</li>
+    <li>Nội dung website; thống kê – báo cáo (dashboard, Chart.js).</li>
+  </ul>
+
+  <figure class="figure">
+    <div class="img-placeholder">[Chèn ảnh: Giao diện trang chủ / danh sách phòng Light Hotel]</div>
+    <figcaption>Hình 1. Giao diện đại diện hệ thống (chụp màn hình từ website)</figcaption>
+  </figure>
+
+  <h3 class="sub">2. Thiết kế cơ sở dữ liệu (Database Design)</h3>
+  <p>Hệ thống dùng MySQL. Các nhóm bảng chính: <strong>users</strong>, <strong>roles</strong> / <strong>user_roles</strong>, <strong>room_types</strong>, <strong>rooms</strong>, <strong>room_prices</strong>, <strong>amenities</strong> / <strong>room_amenities</strong>, <strong>images</strong>, <strong>bookings</strong>, <strong>booking_rooms</strong>, <strong>room_booked_dates</strong>, <strong>payments</strong>, <strong>booking_services</strong>, <strong>invoices</strong> / <strong>invoice_items</strong>, <strong>reviews</strong>, <strong>coupons</strong>, <strong>hotel_info</strong>, <strong>site_contents</strong>, <strong>booking_logs</strong>, cùng bảng hỗ trợ Laravel (sessions, cache, jobs…).</p>
+
+  <h3 class="sub">3. Kiến trúc hệ thống (System Architecture)</h3>
+  <p>Ứng dụng Laravel theo mô hình MVC: Model (Eloquent), View (Blade, Bootstrap 5), Controller (middleware auth, phân quyền). Luồng triển khai: trình duyệt → Nginx (Docker) → PHP-FPM → Laravel → MySQL.</p>
+  <div class="svg-wrap">
+    <svg width="420" height="120" xmlns="http://www.w3.org/2000/svg" aria-label="Sơ đồ MVC">
+      <rect x="10" y="30" width="110" height="50" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5" rx="4"/>
+      <text x="65" y="60" text-anchor="middle" font-size="12" font-family="Times New Roman, serif">View (Blade)</text>
+      <rect x="155" y="30" width="110" height="50" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5" rx="4"/>
+      <text x="210" y="60" text-anchor="middle" font-size="12" font-family="Times New Roman, serif">Controller</text>
+      <rect x="300" y="30" width="110" height="50" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="4"/>
+      <text x="355" y="60" text-anchor="middle" font-size="12" font-family="Times New Roman, serif">Model (Eloquent)</text>
+      <text x="210" y="105" text-anchor="middle" font-size="11" fill="#444" font-family="Times New Roman, serif">MySQL · VNPay · Session/Auth</text>
+    </svg>
+    <figcaption style="margin-top:4px">Hình 2. Mô hình MVC tổng quát trong Laravel</figcaption>
+  </div>
+
+  <h3 class="sub">4. Công nghệ sử dụng (Tech Stack)</h3>
+  <table class="data tech" role="table">
+    <thead>
+      <tr><th>Thành phần</th><th>Công nghệ</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Ngôn ngữ</td><td>PHP 8.2+</td></tr>
+      <tr><td>Framework</td><td>Laravel 12</td></tr>
+      <tr><td>Cơ sở dữ liệu</td><td>MySQL 8 (tương thích MariaDB khi import dump)</td></tr>
+      <tr><td>Máy chủ / triển khai</td><td>Docker Compose: Nginx + PHP-FPM + MySQL; hoặc Apache/Nginx + PHP cục bộ</td></tr>
+      <tr><td>Frontend</td><td>HTML5, CSS3, JavaScript, Bootstrap 5, Bootstrap Icons; Vite (build asset)</td></tr>
+      <tr><td>Biểu đồ báo cáo admin</td><td>Chart.js (CDN)</td></tr>
+      <tr><td>Thanh toán</td><td>Tích hợp cổng VNPay (sandbox / production theo cấu hình env)</td></tr>
+      <tr><td>Bảo mật</td><td>CSRF, validation, middleware auth; ORM giảm rủi ro SQL injection</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><strong>Lưu ý:</strong> gửi email xác nhận tự động chưa triển khai trong mã nguồn hiện tại; có thể mở rộng bằng Laravel Mail sau này.</p>
+
+  <figure class="figure">
+    <div class="img-placeholder">[Chèn ảnh: Màn hình Admin – Dashboard / biểu đồ thống kê]</div>
+    <figcaption>Hình 3. Dashboard quản trị (Chart.js)</figcaption>
+  </figure>
+
+  <h3 class="sub">5. Quy trình thực hiện dự án (Steps)</h3>
+  <ol class="steps">
+    <li>Thiết kế giao diện (UI/UX) – wireframe/Figma hoặc phác thảo.</li>
+    <li>Thiết kế và tạo CSDL (migration Laravel / phpMyAdmin).</li>
+    <li>Xây dựng module phòng &amp; loại phòng (CRUD admin, hiển thị public).</li>
+    <li>Logic đặt phòng: kiểm tra trùng ngày, nhiều phòng một đơn, coupon.</li>
+    <li>Tích hợp VNPay và cập nhật trạng thái đơn/thanh toán.</li>
+    <li>Khu vực khách: tài khoản, hủy đơn, hoàn tiền.</li>
+    <li>Admin: đặt phòng, thanh toán/hoàn tiền, hóa đơn, nội dung, thống kê.</li>
+    <li>Kiểm thử và rà soát bảo mật cơ bản.</li>
+  </ol>
+
+  <div class="page-break"></div>
+
+  <h2 class="section">II. Phân tích dự án</h2>
+
+  <h3 class="sub">1. Phân tích chức năng</h3>
+
+  <p><strong>a) Khách (Guest – chưa đăng nhập)</strong></p>
+  <table class="data" role="table">
+    <thead>
+      <tr>
+        <th class="stt">STT</th>
+        <th class="code">Mã</th>
+        <th>Tên chức năng</th>
+        <th>Mô tả</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="stt">1</td><td class="code">G-01</td><td>Xem thông tin khách sạn</td><td>Giới thiệu, địa chỉ, hình ảnh, tiện ích.</td></tr>
+      <tr><td class="stt">2</td><td class="code">G-02</td><td>Xem danh sách phòng</td><td>Danh sách phòng/loại phòng, giá, sức chứa, ảnh.</td></tr>
+      <tr><td class="stt">3</td><td class="code">G-03</td><td>Xem chi tiết phòng</td><td>Mô tả, tiện nghi, giá, đánh giá.</td></tr>
+      <tr><td class="stt">4</td><td class="code">G-04</td><td>Tìm kiếm phòng trống</td><td>Theo ngày, số người; chỉ phòng còn chỗ.</td></tr>
+      <tr><td class="stt">5</td><td class="code">G-05</td><td>Đăng ký tài khoản</td><td>Tạo tài khoản để đặt phòng.</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>b) Khách hàng (Customer – đã đăng nhập)</strong></p>
+  <table class="data" role="table">
+    <thead>
+      <tr>
+        <th class="stt">STT</th>
+        <th class="code">Mã</th>
+        <th>Tên chức năng</th>
+        <th>Mô tả</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="stt">1</td><td class="code">C-01</td><td>Đăng nhập / Đăng xuất</td><td>Xác thực phiên làm việc.</td></tr>
+      <tr><td class="stt">2</td><td class="code">C-02</td><td>Đặt phòng</td><td>Nhiều phòng, coupon, tạo đơn.</td></tr>
+      <tr><td class="stt">3</td><td class="code">C-03</td><td>Thanh toán trực tuyến</td><td>VNPay, callback cập nhật đơn.</td></tr>
+      <tr><td class="stt">4</td><td class="code">C-04</td><td>Danh sách đặt phòng</td><td>Lịch sử đơn.</td></tr>
+      <tr><td class="stt">5</td><td class="code">C-05</td><td>Chi tiết đặt phòng</td><td>Chi tiết đơn, dịch vụ, thanh toán.</td></tr>
+      <tr><td class="stt">6</td><td class="code">C-06</td><td>Hủy đặt phòng</td><td>Theo điều kiện trạng thái.</td></tr>
+      <tr><td class="stt">7</td><td class="code">C-07</td><td>Hoàn tiền sau hủy</td><td>Thông tin TK, QR; xem chứng từ hoàn tiền.</td></tr>
+      <tr><td class="stt">8</td><td class="code">C-08</td><td>Đánh giá phòng</td><td>Gửi đánh giá theo luồng đặt phòng.</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>c) Quản trị viên / Nhân viên (Admin)</strong></p>
+  <table class="data" role="table">
+    <thead>
+      <tr>
+        <th class="stt">STT</th>
+        <th class="code">Mã</th>
+        <th>Tên chức năng</th>
+        <th>Mô tả</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="stt">1</td><td class="code">A-01</td><td>Đăng nhập quản trị</td><td>Khu /admin, phân quyền admin/staff.</td></tr>
+      <tr><td class="stt">2</td><td class="code">A-02</td><td>Quản lý tài khoản</td><td>Xem/sửa/xóa (theo quyền).</td></tr>
+      <tr><td class="stt">3</td><td class="code">A-03</td><td>Quản lý loại phòng</td><td>CRUD room types.</td></tr>
+      <tr><td class="stt">4</td><td class="code">A-04</td><td>Quản lý phòng</td><td>CRUD phòng, giá, tiện nghi, ảnh.</td></tr>
+      <tr><td class="stt">5</td><td class="code">A-05</td><td>Quản lý đặt phòng</td><td>Trạng thái, check-in/out, CRUD đơn (admin).</td></tr>
+      <tr><td class="stt">6</td><td class="code">A-06</td><td>Thanh toán &amp; hoàn tiền</td><td>Chi tiết giao dịch, chứng từ hoàn tiền.</td></tr>
+      <tr><td class="stt">7</td><td class="code">A-07</td><td>Khuyến mãi</td><td>CRUD coupon.</td></tr>
+      <tr><td class="stt">8</td><td class="code">A-08</td><td>Hóa đơn</td><td>Tạo/sửa/in, đánh dấu thanh toán.</td></tr>
+      <tr><td class="stt">9</td><td class="code">A-09</td><td>Thống kê – báo cáo</td><td>Dashboard, biểu đồ, export (nếu bật).</td></tr>
+      <tr><td class="stt">10</td><td class="code">A-10</td><td>Nội dung website</td><td>Banner, giới thiệu, chính sách.</td></tr>
+      <tr><td class="stt">11</td><td class="code">A-11</td><td>Đánh giá</td><td>Xem, trả lời khách.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">2. Phân tích nghiệp vụ</h3>
+  <p><strong>Nghiệp vụ khách (Guest):</strong> truy cập → giới thiệu → danh sách/chi tiết phòng → chính sách → tìm phòng → đăng ký/đăng nhập khi đặt.</p>
+  <p><strong>Nghiệp vụ khách hàng (Customer):</strong> đăng nhập → tìm &amp; chọn phòng → coupon → VNPay → theo dõi đơn → hủy; nếu đã thanh toán và hủy thì hoàn tiền và đối chiếu chứng từ. Không chỉnh sửa toàn bộ đơn sau khi đặt; chủ yếu xem, hủy, hoàn tiền.</p>
+  <p><strong>Nghiệp vụ admin:</strong> đăng nhập → quản lý loại phòng &amp; phòng → đơn (trạng thái, check-in/out) → thanh toán/hoàn tiền → hóa đơn, coupon, đánh giá, nội dung → thống kê.</p>
+
+  <figure class="figure">
+    <div class="img-placeholder">[Chèn ảnh: Luồng thanh toán VNPay hoặc màn hình chi tiết đơn / hoàn tiền]</div>
+    <figcaption>Hình 4. Minh họa nghiệp vụ thanh toán / hoàn tiền (tùy chọn)</figcaption>
+  </figure>
+
+  <p style="margin-top:2em; text-align:center; font-style:italic;">— Hết —</p>
+
+</body>
+</html>

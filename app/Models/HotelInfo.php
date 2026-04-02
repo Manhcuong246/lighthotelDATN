@@ -22,6 +22,12 @@ class HotelInfo extends Model
         'latitude',
         'longitude',
         'rating_avg',
+        'default_check_in_time',
+        'cancel_free_hours',
+        'cancel_mid_hours_low',
+        'cancel_penalty_mid_percent',
+        'cancel_penalty_short_percent',
+        'cancel_require_admin_when_penalty',
     ];
 }
 

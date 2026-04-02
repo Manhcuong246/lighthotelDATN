@@ -15,7 +15,7 @@ class RoomAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Room::with('roomType')->orderBy('created_at', 'desc');
+        $query = Room::with(['roomType', 'images'])->orderBy('created_at', 'desc');
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -30,7 +30,7 @@ class RoomAdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $rooms = $query->paginate(15)->withQueryString();
+        $rooms = $query->paginate(10)->withQueryString();
 
         return view('admin.rooms.index', compact('rooms'));
     }

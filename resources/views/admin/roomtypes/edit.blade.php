@@ -3,7 +3,7 @@
 @section('title', 'Cập nhật loại phòng')
 
 @section('content')
-<div class="container-fluid px-4">
+<div class="container-fluid admin-page px-2 px-lg-4">
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -127,6 +127,13 @@
                                 Ẩn
                             </option>
                         </select>
+                    </div>
+
+                    <div class="col-md-8 mb-3">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" name="is_non_refundable" id="is_non_refundable" value="1" {{ old('is_non_refundable', $roomType->is_non_refundable) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="is_non_refundable">Non-refundable (không cho khách tự hủy / không hoàn tiền)</label>
+                        </div>
                     </div>
 
                 </div>

@@ -21,9 +21,24 @@ class BookingController extends Controller
 {
     public function store(Request $request)
     {
-        if (Auth::check() && Auth::user()?->canAccessAdmin()) {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để đặt phòng.');
+        }
+
+        if ($user->canAccessAdmin()) {
             return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
         }
+
+        if (empty($user->phone) || strlen(preg_replace('/\D/', '', (string) $user->phone)) < 10) {
+            return back()->withErrors('Vui lòng cập nhật số điện thoại hợp lệ trong hồ sơ tài khoản trước khi đặt phòng.')->withInput();
+        }
+
+        $request->merge([
+            'full_name' => $user->full_name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+        ]);
 
         // 1. Validate dữ liệu đầu vào
         $data = $request->validate([
@@ -257,23 +272,6 @@ class BookingController extends Controller
             'status' => 'completed',
         ]);
         return back()->with('success', 'Check-out thành công');
-    }
-
-    public function cancel(Booking $booking)
-    {
-        if (!in_array($booking->status, ['pending', 'confirmed'])) {
-            return back()->withErrors('Đơn đặt phòng này không thể hủy ở trạng thái hiện tại.');
-        }
-        DB::beginTransaction();
-        try {
-            $booking->update(['status' => 'cancelled']);
-            RoomBookedDate::where('booking_id', $booking->id)->delete();
-            DB::commit();
-            return back()->with('success', 'Đơn đặt phòng đã được hủy thành công.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors('Có lỗi xảy ra khi hủy đơn: ' . $e->getMessage());
-        }
     }
 
     /**

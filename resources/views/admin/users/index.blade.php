@@ -3,24 +3,24 @@
 @section('title', 'Quản lý người dùng')
 
 @section('content')
-<div class="container-fluid px-0">
+<div class="container-fluid admin-page px-0">
     <div class="page-header">
-        <h1 class="text-dark fw-bold">Quản lý người dùng</h1>
+        <h1>Quản lý người dùng</h1>
     </div>
 
     <div class="card card-admin shadow mb-4">
         <div class="card-header-admin py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h5 class="mb-0">Danh sách người dùng</h5>
-            <form action="{{ route('admin.users.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
-                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm tên, email, SĐT..." style="width: 220px;">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+            <form action="{{ route('admin.users.index') }}" method="GET" class="admin-toolbar">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm admin-filter-field" placeholder="Tìm tên, email, SĐT...">
+                <button type="submit" class="btn btn-light btn-sm flex-shrink-0"><i class="bi bi-search me-1"></i>Tìm</button>
                 @if(request('q'))
-                <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                <a href="{{ route('admin.users.index') }}" class="btn btn-outline-light btn-sm flex-shrink-0">Xóa lọc</a>
                 @endif
             </form>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="admin-table-wrap">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -31,7 +31,7 @@
                             <th>Vai trò</th>
                             <th>Trạng thái</th>
                             <th>Ngày đăng ký</th>
-                            <th width="180">Hành động</th>
+                            <th class="text-end text-nowrap" style="min-width: 9.5rem;">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -65,17 +65,19 @@
                                     @endif
                                 </td>
                                 <td>{{ $user->created_at ? $user->created_at->format('d/m/Y') : '—' }}</td>
-                                <td>
-                                    <a href="{{ route('admin.users.show', $user) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                                    @if(auth()->user()->isAdmin())
-                                    <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc muốn xóa người dùng này?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
-                                    </form>
-                                    @endif
+                                <td class="text-end">
+                                    <div class="admin-table-actions">
+                                        <a href="{{ route('admin.users.show', $user) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                                        <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
+                                        @if(auth()->user()->isAdmin())
+                                        <form action="{{ route('admin.users.destroy', $user) }}" method="POST"
+                                              onsubmit="return confirm('Bạn có chắc muốn xóa người dùng này?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                                        </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -88,8 +90,8 @@
             </div>
         </div>
         @if($users->hasPages())
-        <div class="card-footer bg-white border-0 py-2">
-            {{ $users->links() }}
+        <div class="card-footer bg-white border-0 py-3">
+            {{ $users->links('pagination::bootstrap-5') }}
         </div>
         @endif
     </div>

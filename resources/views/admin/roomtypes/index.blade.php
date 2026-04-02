@@ -3,41 +3,31 @@
 @section('title', 'Quản lý loại phòng')
 
 @section('content')
-<div class="container-fluid px-0">
+<div class="container-fluid admin-page px-0">
     <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h1 class="text-dark fw-bold">Quản lý loại phòng</h1>
+        <h1>Quản lý loại phòng</h1>
         <div class="d-flex flex-wrap gap-2 align-items-center">
-            <form action="{{ route('admin.roomtypes.index') }}" method="GET" class="d-flex gap-2">
-                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm tên loại phòng..." style="width: 200px;">
-                <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+            <form action="{{ route('admin.roomtypes.index') }}" method="GET" class="admin-toolbar">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm admin-filter-field" placeholder="Tìm tên loại phòng...">
+                <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0"><i class="bi bi-search me-1"></i>Tìm</button>
                 @if(request('q'))
-                <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary btn-sm flex-shrink-0">Xóa lọc</a>
                 @endif
             </form>
             <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Thêm loại phòng</a>
         </div>
     </div>
 
-    <!-- Alert -->
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show shadow-sm">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-
     <!-- Card -->
-    <div class="card shadow border-0">
+    <div class="card card-admin border-0">
 
-        <!-- Card header -->
-        <div class="card-header bg-primary text-white fw-semibold">
-            Danh sách loại phòng
+        <div class="card-header-admin py-3">
+            <h5 class="mb-0">Danh sách loại phòng</h5>
         </div>
 
         <div class="card-body p-0">
 
-            <div class="table-responsive">
+            <div class="admin-table-wrap">
 
                 <table class="table table-hover align-middle mb-0">
 
@@ -49,7 +39,7 @@
                             <th>Giá phòng</th>
                             <th>Mô tả</th>
                             <th>Trạng thái</th>
-                            <th width="150" class="text-center">Hành động</th>
+                            <th class="text-end text-nowrap" style="min-width: 8.5rem;">Hành động</th>
                         </tr>
                     </thead>
 
@@ -94,35 +84,30 @@
                                 @endif
                             </td>
 
-                            <td class="text-center">
-                                <!-- Nút xem chi tiết -->
-                                <button type="button"
-                                        class="btn btn-info btn-sm mb-1"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#detailModal{{ $type->id }}">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-
-                                <!-- Nút sửa -->
-                                <a href="{{ route('admin.roomtypes.edit', $type->id) }}"
-                                   class="btn btn-warning btn-sm">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-
-                                <form action="{{ route('admin.roomtypes.destroy', $type->id) }}"
-                                      method="POST"
-                                      class="d-inline"
-                                      onsubmit="return confirm('Bạn có chắc muốn xóa loại phòng này?')">
-
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button class="btn btn-outline-danger btn-sm">
-                                        <i class="bi bi-trash"></i>
+                            <td class="text-end">
+                                <div class="admin-table-actions">
+                                    <button type="button"
+                                            class="btn btn-info btn-sm"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#detailModal{{ $type->id }}"
+                                            title="Xem">
+                                        <i class="bi bi-eye"></i>
                                     </button>
-
-                                </form>
-
+                                    <a href="{{ route('admin.roomtypes.edit', $type->id) }}"
+                                       class="btn btn-warning btn-sm"
+                                       title="Sửa">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form action="{{ route('admin.roomtypes.destroy', $type->id) }}"
+                                          method="POST"
+                                          onsubmit="return confirm('Bạn có chắc muốn xóa loại phòng này?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Xóa">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
 
                         </tr>
@@ -130,7 +115,7 @@
                         @empty
 
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 Chưa có loại phòng nào
                             </td>
                         </tr>
@@ -142,6 +127,11 @@
                 </table>
             </div>
         </div>
+        @if($roomTypes->hasPages())
+        <div class="card-footer bg-white border-0 py-3">
+            {{ $roomTypes->links('pagination::bootstrap-5') }}
+        </div>
+        @endif
     </div>
 </div>
 

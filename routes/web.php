@@ -40,8 +40,7 @@ Route::get('/', [RoomController::class, 'index'])->name('home');
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
-Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
-Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel.post');
+Route::post('/bookings', [BookingController::class, 'store'])->middleware('auth')->name('bookings.store');
 Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
 
 Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
@@ -67,6 +66,8 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/bookings', [BookingAdminController::class, 'index'])->name('bookings.index');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
+    Route::post('/bookings/{booking}/cancel-approve', [BookingAdminController::class, 'approveCancellation'])->name('bookings.cancelApprove');
+    Route::post('/bookings/{booking}/cancel-reject', [BookingAdminController::class, 'rejectCancellation'])->name('bookings.cancelReject');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
 
@@ -91,9 +92,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
 
     Route::get('/payments', [PaymentAdminController::class, 'index'])->name('payments.index');
     Route::get('/payments/{payment}', [PaymentAdminController::class, 'show'])->name('payments.show');
-    Route::get('/payments/{payment}/edit', [PaymentAdminController::class, 'edit'])->name('payments.edit');
-    Route::put('/payments/{payment}', [PaymentAdminController::class, 'update'])->name('payments.update');
-    Route::delete('/payments/{payment}', [PaymentAdminController::class, 'destroy'])->name('payments.destroy');
+    Route::post('/payments/{payment}/refund-proof', [PaymentAdminController::class, 'uploadRefundProof'])->name('payments.refundProof');
 
     Route::resource('coupons', CouponAdminController::class)->except(['show']);
 
@@ -137,6 +136,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::get('/bookings', [AccountController::class, 'bookings'])->name('bookings');
     Route::get('/bookings/{booking}', [AccountController::class, 'showBooking'])->name('bookings.show');
     Route::put('/bookings/{booking}/cancel', [AccountController::class, 'cancelBooking'])->name('bookings.cancel');
+    Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund');
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [AccountController::class, 'updatePassword'])->name('profile.update.password');

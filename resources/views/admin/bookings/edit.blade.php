@@ -3,7 +3,7 @@
 @section('title', 'Sửa đơn đặt phòng (Compact)')
 
 @section('content')
-<div class="container-fluid px-3 px-lg-4">
+<div class="container-fluid admin-page px-2 px-lg-3">
     <!-- Header -->
     <div class="mb-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
@@ -31,9 +31,9 @@
         @method('PUT')
 
         <!-- Thông tin khách hàng & phòng - Nằm ngang -->
-        <div class="card shadow-sm border-0 rounded-3 mb-3">
-            <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
-                <h5 class="mb-0 fw-bold">👤 Khách hàng & 🏨 Phòng</h5>
+        <div class="card card-admin mb-3">
+            <div class="card-header-admin">
+                <h5 class="mb-0">Khách hàng &amp; phòng</h5>
             </div>
             <div class="card-body">
                 <div class="row g-2">
@@ -46,12 +46,12 @@
                     <div class="col-sm-2">
                         <label class="form-label small fw-bold text-muted mb-1">Phòng</label>
                         <input type="text" class="form-control form-control-sm rounded-2" disabled
-                               value="{{ $booking->room?->name }}" />
+                               value="{{ $booking->roomNamesLabel() }}" />
                     </div>
                     <div class="col-sm-1">
                         <label for="guests" class="form-label small fw-bold text-muted mb-1">Khách</label>
                         <input type="number" class="form-control form-control-sm rounded-2 @error('guests') is-invalid @enderror"
-                               id="guests" name="guests" min="1" value="{{ old('guests', $booking->guests) }}" required />
+                               id="guests" name="guests" min="1" value="{{ old('guests', $booking->resolvedGuestCount()) }}" required />
                         @error('guests')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
@@ -76,9 +76,9 @@
         </div>
 
         <!-- Giá & Trạng thái - Nằm ngang -->
-        <div class="card shadow-sm border-0 rounded-3 mb-3">
-            <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
-                <h5 class="mb-0 fw-bold">💰 Giá & 📊 Trạng thái</h5>
+        <div class="card card-admin mb-3">
+            <div class="card-header-admin">
+                <h5 class="mb-0">Giá &amp; trạng thái</h5>
             </div>
             <div class="card-body">
                 <div class="row g-2 align-items-end">
@@ -92,12 +92,16 @@
                     <div class="col-sm-3">
                         <label for="status" class="form-label small fw-bold text-muted mb-1">Trạng thái</label>
                         <select class="form-select form-select-sm rounded-2 @error('status') is-invalid @enderror"
-                                id="status" name="status" required>
-                            <option value="pending" {{ old('status', $booking->status)=='pending'?'selected':'' }}>⏳ Chờ xác nhận</option>
-                            <option value="confirmed" {{ old('status', $booking->status)=='confirmed'?'selected':'' }}>✓ Đã xác nhận</option>
-                            <option value="completed" {{ old('status', $booking->status)=='completed'?'selected':'' }}>✓✓ Hoàn thành</option>
-                            <option value="cancelled" {{ old('status', $booking->status)=='cancelled'?'selected':'' }}>✕ Đã hủy</option>
+                                id="status" name="status" required
+                                aria-describedby="statusHelp">
+                            <option value="pending" {{ old('status', $booking->status)=='pending'?'selected':'' }}>🕐 Chờ xác nhận</option>
+                            <option value="confirmed" {{ old('status', $booking->status)=='confirmed'?'selected':'' }}>✅ Đã xác nhận</option>
+                            <option value="cancellation_pending" {{ old('status', $booking->status)=='cancellation_pending'?'selected':'' }}>📩 Chờ xử lý hủy</option>
+                            <option value="cancelled" {{ old('status', $booking->status)=='cancelled'?'selected':'' }}>🛑 Đã hủy</option>
+                            <option value="refunded" {{ old('status', $booking->status)=='refunded'?'selected':'' }}>💳 Đã hoàn tiền</option>
+                            <option value="completed" {{ old('status', $booking->status)=='completed'?'selected':'' }}>🏁 Hoàn thành</option>
                         </select>
+                        <small id="statusHelp" class="text-muted">Mỗi giá trị tương ứng một dòng trong bảng &quot;Ý nghĩa trạng thái&quot; bên dưới.</small>
                         @error('status')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
@@ -137,100 +141,81 @@
             </div>
         </div>
 
-        <!-- Hướng dẫn - Nằm ngang -->
-        <div class="card shadow-sm border-0 rounded-3 mb-3">
-            <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
-                <h5 class="mb-0 fw-bold">ℹ️ Hướng dẫn</h5>
+        <!-- Hướng dẫn -->
+        <div class="card card-admin mb-3">
+            <div class="card-header-admin">
+                <h5 class="mb-0">Hướng dẫn sửa đơn</h5>
             </div>
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <h6 class="fw-bold text-danger mb-2">🔒 Bị khóa (không thay đổi):</h6>
-                        <ul class="list-unstyled small">
-                            <li class="mb-1"><span class="badge bg-danger">👤</span> Khách hàng</li>
-                            <li class="mb-1"><span class="badge bg-danger">🏨</span> Phòng</li>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-danger mb-2"><i class="bi bi-lock-fill me-1"></i> Không đổi trên form này</h6>
+                        <ul class="list-unstyled small mb-0 text-muted">
+                            <li class="mb-1">Khách hàng, danh sách phòng (đổi phòng → xóa đơn &amp; tạo đơn mới hoặc xử lý ngoài hệ thống).</li>
                         </ul>
                     </div>
-                    <div class="col-md-4">
-                        <h6 class="fw-bold text-success mb-2">✏️ Được sửa:</h6>
-                        <ul class="list-unstyled small">
-                            <li class="mb-1"><span class="badge bg-success">📅</span> Check-in/out</li>
-                            <li class="mb-1"><span class="badge bg-success">👥</span> Số khách</li>
-                            <li class="mb-1"><span class="badge bg-success">💰</span> Tổng tiền</li>
-                            <li class="mb-1"><span class="badge bg-success">📊</span> Trạng thái</li>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-success mb-2"><i class="bi bi-pencil-square me-1"></i> Được sửa ở trên</h6>
+                        <ul class="list-unstyled small mb-0 text-muted">
+                            <li class="mb-1">Ngày nhận / trả, số khách, tổng tiền, <strong>trạng thái</strong> (chọn đúng theo bảng dưới).</li>
                         </ul>
                     </div>
-                    <div class="col-md-4">
-                        <h6 class="fw-bold text-info mb-2">📋 Ghi chú:</h6>
-                        <p class="small text-muted mb-0">
-                            Xóa & tạo mới để thay đổi khách hàng hoặc phòng. Các thông tin khác có thể sửa trực tiếp ở trên.
-                        </p>
-                    </div>
+                </div>
+
+                <h6 class="fw-bold mb-2"><i class="bi bi-list-columns-reverse me-1"></i> Ý nghĩa từng trạng thái (trùng với ô chọn)</h6>
+                <p class="small text-muted mb-2">Icon trong dropdown và trong bảng dưới là một — tránh nhầm <strong>Chờ xác nhận</strong> (đơn mới) với <strong>Chờ xử lý hủy</strong> (khách đã gửi yêu cầu hủy).</p>
+                <div class="admin-table-wrap">
+                    <table class="table table-sm table-bordered align-middle mb-0 booking-status-legend">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-nowrap" style="min-width: 12rem;">Trạng thái</th>
+                                <th>Khi nào dùng / Việc tiếp theo</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            <tr>
+                                <td class="text-nowrap fw-semibold">🕐 Chờ xác nhận</td>
+                                <td>Đơn vừa tạo: chưa duyệt hoặc chưa thanh toán xong. Admin có thể chuyển sang <strong>Đã xác nhận</strong> sau khi duyệt / nhận tiền.</td>
+                            </tr>
+                            <tr>
+                                <td class="text-nowrap fw-semibold">✅ Đã xác nhận</td>
+                                <td>Đơn hiệu lực: đã duyệt (và thường đã thanh toán). Chờ đến ngày nhận phòng hoặc thao tác check-in.</td>
+                            </tr>
+                            <tr class="table-warning bg-opacity-25">
+                                <td class="text-nowrap fw-semibold">📩 Chờ xử lý hủy</td>
+                                <td>Khách đã bấm hủy và hệ thống yêu cầu duyệt (có phí hủy). <strong>Chưa giải phóng phòng</strong> cho đến khi xử lý trên trang <a href="{{ route('admin.bookings.show', $booking) }}">chi tiết đơn</a> (Chấp nhận / Từ chối). Không chỉnh tay lung tung nếu không hiểu luồng.</td>
+                            </tr>
+                            <tr>
+                                <td class="text-nowrap fw-semibold">🛑 Đã hủy</td>
+                                <td>Đơn không còn hiệu lực; lịch phòng đã mở. Nếu đã thanh toán: bước hoàn tiền thủ công (khách gửi TK → admin upload chứng từ).</td>
+                            </tr>
+                            <tr>
+                                <td class="text-nowrap fw-semibold">💳 Đã hoàn tiền</td>
+                                <td>Đơn đã hủy và kế toán đã hoàn tiền xong (có chứng từ trên hệ thống). Trạng thái cuối của luồng hoàn.</td>
+                            </tr>
+                            <tr>
+                                <td class="text-nowrap fw-semibold">🏁 Hoàn thành</td>
+                                <td>Khách đã ở và check-out xong — kỳ lưu trú kết thúc bình thường (không liên quan hủy / hoàn tiền).</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="d-flex gap-2 mb-4">
-            <button type="submit" class="btn btn-primary rounded-2 fw-bold px-4">
-                💾 Lưu thay đổi
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-check-lg me-1"></i>Lưu thay đổi
             </button>
-            <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-outline-secondary rounded-2 fw-bold px-4">
-                ❌ Hủy
+            <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-outline-secondary px-4">
+                Quay lại chi tiết
             </a>
         </div>
     </form>
 </div>
 
-<style>
-    .bg-gradient {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    }
-
-    .rounded-3 {
-        border-radius: 12px !important;
-    }
-
-    .rounded-2 {
-        border-radius: 8px !important;
-    }
-
-    .form-control, .form-select, .form-control-sm, .form-select-sm {
-        border: 1px solid #dee2e6;
-        transition: border-color 0.3s, box-shadow 0.3s;
-    }
-
-    .form-control:focus, .form-select:focus, .form-control-sm:focus, .form-select-sm:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    }
-
-    .card {
-        transition: box-shadow 0.3s ease;
-    }
-
-    .card:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
-    }
-
-    /* Bootstrap validation feedback */
-    .invalid-feedback {
-        display: block;
-        color: #dc3545;
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-    }
-
-    .is-invalid {
-        border-color: #dc3545 !important;
-    }
-
-    .needs-validation.was-validated .form-control:valid,
-    .needs-validation.was-validated .form-select:valid {
-        border-color: #28a745;
-    }
-</style>
-
+@push('scripts')
 <script>
     // Bootstrap validation
     (function () {
@@ -249,4 +234,5 @@
         }, false);
     })();
 </script>
+@endpush
 @endsection

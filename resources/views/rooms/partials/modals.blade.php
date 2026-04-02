@@ -8,8 +8,8 @@
             </div>
             <div class="modal-body p-4 p-md-5">
                 @php
-                    $roomForInfo = (isset($type->available_rooms) && $type->available_rooms->isNotEmpty()) 
-                                   ? $type->available_rooms->first() 
+                    $roomForInfo = (isset($type->available_rooms) && $type->available_rooms->isNotEmpty())
+                                   ? $type->available_rooms->first()
                                    : ($type->rooms->isNotEmpty() ? $type->rooms->first() : null);
                 @endphp
 
@@ -33,7 +33,7 @@
                 {{-- Policy Section --}}
                 <div>
                     <h5 class="fw-bold mb-4 text-dark border-start border-4 border-primary ps-3">{{ $type->name }} - Chính sách & Thông tin</h5>
-                    
+
                     <div class="policy-section mb-4">
                         <div class="policy-title fs-6 fw-bold text-dark mb-2">Chính sách hoàn hủy</div>
                         <p class="text-muted mb-0">Nếu hủy, thay đổi hoặc không đến, khách sẽ trả toàn bộ giá trị tiền đặt phòng.</p>
@@ -122,7 +122,7 @@
                                 <span class="room-price-big">{{ number_format($firstRoom->base_price, 0, ',', '.') }} VNĐ</span>
                                 <span class="text-muted ms-2">/ đêm</span>
                                 <div class="room-rating-stars">
-                                    @php 
+                                    @php
                                         $avgRating = $firstRoom->reviews->avg('rating') ?: 5.0;
                                         $fullStars = floor($avgRating);
                                         $hasHalf = ($avgRating - $fullStars) >= 0.5;
@@ -139,7 +139,7 @@
                                     <span class="text-muted small ms-1">({{ number_format($avgRating, 1) }})</span>
                                 </div>
                             </div>
-                            
+
                             <div class="mb-4 d-flex flex-wrap gap-3">
                                 <div class="room-spec-item"><i class="bi bi-house"></i> {{ $firstRoom->beds }} giường</div>
                                 <div class="room-spec-item"><i class="bi bi-droplet"></i> {{ $firstRoom->baths ?? 1 }} phòng tắm</div>
@@ -184,7 +184,7 @@
                                             </div>
                                             <div class="fw-bold small mb-1">{{ $review->title ?? 'Tuyệt vời' }}</div>
                                             <p class="review-comment mb-0">{{ $review->comment }}</p>
-                                            
+
                                             @if($review->reply)
                                                 <div class="review-reply">
                                                     <div class="review-reply-label">Phản hồi từ khách sạn:</div>
