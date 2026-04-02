@@ -68,14 +68,20 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('/rooms/{room}', [RoomAdminController::class, 'destroy'])->name('rooms.destroy');
 
     Route::get('/bookings', [BookingAdminController::class, 'index'])->name('bookings.index');
+    Route::get('/bookings/create', [BookingAdminController::class, 'create'])->name('bookings.create');
+    Route::get('/bookings/create-multi', [BookingAdminController::class, 'createMulti'])->name('bookings.create-multi');
+    Route::post('/bookings', [BookingAdminController::class, 'store'])->name('bookings.store');
+    Route::post('/bookings/store-multi', [BookingAdminController::class, 'storeMulti'])->name('bookings.store-multi');
+    Route::get('/bookings/check-availability', [BookingAdminController::class, 'checkAvailability'])->name('bookings.check-availability');
+    Route::get('/bookings/validate-coupon', [BookingAdminController::class, 'validateCoupon'])->name('bookings.validate-coupon');
+    Route::get('/bookings/{booking}/payment-instruction', [BookingAdminController::class, 'paymentInstruction'])->name('bookings.payment-instruction');
+    Route::post('/bookings/{booking}/confirm-payment', [BookingAdminController::class, 'confirmPayment'])->name('bookings.confirm-payment');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
 
-    Route::middleware(['admin.only'])->group(function () {
-        Route::get('/bookings/create', [BookingAdminController::class, 'create'])->name('bookings.create');
-        Route::post('/bookings', [BookingAdminController::class, 'store'])->name('bookings.store');
+    Route::middleware(['admin_only'])->group(function () {
         Route::get('/bookings/{booking}/edit', [BookingAdminController::class, 'edit'])->name('bookings.edit');
         Route::put('/bookings/{booking}', [BookingAdminController::class, 'update'])->name('bookings.update');
         Route::delete('/bookings/{booking}', [BookingAdminController::class, 'destroy'])->name('bookings.destroy');
@@ -119,6 +125,15 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/refunds', [RefundAdminController::class, 'index'])->name('refunds.index');
     Route::get('/refunds/{refundRequest}', [RefundAdminController::class, 'show'])->name('refunds.show');
     Route::post('/refunds/{refundRequest}/process', [RefundAdminController::class, 'process'])->name('refunds.process');
+
+    // Damage Reports Management
+    Route::get('/damage-reports', [\App\Http\Controllers\Admin\DamageReportController::class, 'index'])->name('damage-reports.index');
+    Route::get('/damage-reports/create', [\App\Http\Controllers\Admin\DamageReportController::class, 'create'])->name('damage-reports.create');
+    Route::post('/damage-reports', [\App\Http\Controllers\Admin\DamageReportController::class, 'store'])->name('damage-reports.store');
+    Route::get('/damage-reports/{damageReport}', [\App\Http\Controllers\Admin\DamageReportController::class, 'show'])->name('damage-reports.show');
+    Route::post('/damage-reports/{damageReport}/status', [\App\Http\Controllers\Admin\DamageReportController::class, 'updateStatus'])->name('damage-reports.update-status');
+    Route::post('/damage-reports/{damageReport}/change-room', [\App\Http\Controllers\Admin\DamageReportController::class, 'changeRoom'])->name('damage-reports.change-room');
+    Route::post('/damage-reports/{damageReport}/refund', [\App\Http\Controllers\Admin\DamageReportController::class, 'processRefund'])->name('damage-reports.process-refund');
 
       // ====== QUẢN LÝ LOẠI PHÒNG ======
 Route::prefix('roomtypes')->name('roomtypes.')->group(function () {
