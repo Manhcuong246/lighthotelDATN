@@ -12,7 +12,7 @@
                     <h4 class="fw-bold mb-0">🏦 Hướng Dẫn Thanh Toán</h4>
                     <p class="text-muted mb-0">Đơn đặt phòng #{{ $booking->id }}</p>
                 </div>
-                <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-arrow-left"></i> Quay lại đơn
                 </a>
             </div>
@@ -154,6 +154,17 @@
                                 <td colspan="3" class="text-end fs-5"><strong>Tổng cộng:</strong></td>
                                 <td class="text-end fs-5 fw-bold text-danger">{{ number_format($booking->total_price) }}đ</td>
                             </tr>
+                            @php
+                                $calculatedTotal = $booking->bookingRooms->sum('subtotal') - ($booking->discount_amount ?? 0);
+                            @endphp
+                            @if($calculatedTotal != $booking->total_price)
+                            <tr>
+                                <td colspan="4" class="text-center text-warning">
+                                    <small><i class="bi bi-exclamation-triangle"></i> 
+                                    Tính toán lại: {{ number_format($calculatedTotal) }}đ</small>
+                                </td>
+                            </tr>
+                            @endif
                         </tfoot>
                     </table>
                 </div>

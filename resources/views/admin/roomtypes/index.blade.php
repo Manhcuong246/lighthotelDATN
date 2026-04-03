@@ -47,7 +47,6 @@
                             <th>Ảnh</th>
                             <th>Tên loại phòng</th>
                             <th>Giá phòng</th>
-                            <th>Mô tả</th>
                             <th>Trạng thái</th>
                             <th width="150" class="text-center">Hành động</th>
                         </tr>
@@ -62,11 +61,15 @@
                             <td class="text-muted">{{ $type->id }}</td>
 
                             <td>
-                                @if($type->image)
-                                    <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
+                                @if($type->image && !empty($type->image))
+                                    <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div style="width: 80px; height: 60px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; display: none; align-items: center; justify-content: center; font-size: 10px; color: #666;">
+                                        No Image
+                                    </div>
                                 @else
-                                    <!-- show placeholder image when no upload -->
-                                    <img src="{{ asset('storage/room_types/dummy.png') }}" alt="không có" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; opacity: .5;">
+                                    <div style="width: 80px; height: 60px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666;">
+                                        No Image
+                                    </div>
                                 @endif
                             </td>
 
@@ -75,11 +78,7 @@
                             </td>
 
                             <td class="fw-semibold text-danger">
-                                {{ number_format($type->price) }} VNĐ
-                            </td>
-
-                            <td class="text-muted">
-                                {{ $type->description ?? 'Không có mô tả' }}
+                                {{ number_format($type->price, 0, ',', '.') }} VNĐ
                             </td>
 
                             <td>
@@ -130,7 +129,7 @@
                         @empty
 
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 Chưa có loại phòng nào
                             </td>
                         </tr>
@@ -157,11 +156,20 @@
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        @if($type->image)
-                            <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" class="img-fluid rounded shadow-sm w-100" style="max-height: 300px; object-fit: cover;">
+                        @if($type->image && !empty($type->image))
+                            <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" class="img-fluid rounded shadow-sm w-100" style="max-height: 300px; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px; border: 2px dashed #ccc; display: none;">
+                                <div style="text-align: center; color: #666;">
+                                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+                                    <div>Không có ảnh</div>
+                                </div>
+                            </div>
                         @else
-                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px;">
-                                <span class="text-muted">Không có ảnh</span>
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px; border: 2px dashed #ccc;">
+                                <div style="text-align: center; color: #666;">
+                                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+                                    <div>Không có ảnh</div>
+                                </div>
                             </div>
                         @endif
                     </div>
