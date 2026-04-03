@@ -477,6 +477,7 @@ class BookingAdminController extends Controller
             // Calculate totals with surcharge logic
             $subtotal = 0;
             $totalGuests = 0;
+            $calculatedRoomData = []; // Store calculated values for each room type
             foreach ($validated['rooms'] as $roomData) {
                 $roomTypeId = $roomData['room_type_id'];
                 $room = Room::where('room_type_id', $roomTypeId)->first();
@@ -509,6 +510,15 @@ class BookingAdminController extends Controller
 
                 $subtotal += $roomSubtotal;
                 $totalGuests += $adults * $roomData['quantity'];
+                
+                // Store calculated values for later use in booking_rooms creation
+                $calculatedRoomData[$roomTypeId] = [
+                    'actualPricePerNight' => $actualPricePerNight,
+                    'roomSubtotalPerRoom' => $actualPricePerNight * count($dates), // Per room subtotal (not divided)
+                    'adults' => $adults,
+                    'children05' => $children05,
+                    'children611' => $children611,
+                ];
             }
 
             $discount = $validated['discount_amount'] ?? 0;
@@ -552,14 +562,19 @@ class BookingAdminController extends Controller
                 }
 
                 foreach ($availableRooms as $room) {
+                    // Use pre-calculated values for this room type
+                    $roomType = $room->roomType;
+                    $roomTypeId = $roomType->id;
+                    $calculated = $calculatedRoomData[$roomTypeId];
+                    
                     $booking->bookingRooms()->create([
                         'room_id' => $room->id,
-                        'price_per_night' => $roomData['price_per_night'],
+                        'price_per_night' => $calculated['actualPricePerNight'], // Actual price per night with fees
                         'nights' => count($dates),
-                        'subtotal' => $roomData['price_per_night'] * count($dates),
-                        'adults' => $roomData['adults'],
-                        'children_0_5' => $roomData['children_0_5'] ?? 0,
-                        'children_6_11' => $roomData['children_6_11'] ?? 0,
+                        'subtotal' => $calculated['roomSubtotalPerRoom'], // Correct subtotal per room
+                        'adults' => $calculated['adults'],
+                        'children_0_5' => $calculated['children05'],
+                        'children_6_11' => $calculated['children611'],
                     ]);
 
                     foreach ($dates as $date) {
@@ -705,8 +720,8 @@ class BookingAdminController extends Controller
      */
     public function confirmPayment(Request $request, Booking $booking)
     {
-        // Validate
-        if ($booking->payment_method !== 'bank_transfer') {
+        // Validate - chỉ kiểm tra payment_method nếu có
+        if ($booking->payment_method && $booking->payment_method !== 'bank_transfer') {
             return back()->withErrors('Phương thức thanh toán không phải chuyển khoản.');
         }
 
@@ -725,10 +740,9 @@ class BookingAdminController extends Controller
             Payment::create([
                 'booking_id' => $booking->id,
                 'amount' => $booking->total_price,
-                'payment_method' => 'bank_transfer',
+                'method' => 'bank_transfer',
                 'status' => 'paid',
                 'transaction_id' => 'BANK_' . time() . rand(1000, 9999),
-                'notes' => 'Xác nhận đã nhận tiền chuyển khoản - Admin',
                 'paid_at' => now(),
             ]);
 
@@ -750,6 +764,52 @@ class BookingAdminController extends Controller
 
             return redirect()->route('admin.bookings.show', $booking)
                 ->with('success', 'Đã xác nhận nhận tiền thành công! Đơn đặt phòng đã được thanh toán.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cancel booking with reason
+     */
+    public function cancel(Request $request, Booking $booking)
+    {
+        // Validate
+        if ($booking->status !== 'pending') {
+            return back()->withErrors('Chỉ có thể hủy các đơn đang chờ xác nhận.');
+        }
+
+        $request->validate([
+            'cancel_reason' => 'required|string|max:500',
+        ], [
+            'cancel_reason.required' => 'Vui lòng nhập lý do hủy đơn.',
+            'cancel_reason.max' => 'Lý do hủy không được vượt quá 500 ký tự.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Update booking
+            $booking->update([
+                'status' => 'cancelled',
+                'cancel_reason' => $request->cancel_reason,
+                'cancelled_at' => now(),
+            ]);
+
+            // Log
+            \App\Models\BookingLog::create([
+                'booking_id' => $booking->id,
+                'old_status' => 'pending',
+                'new_status' => 'cancelled',
+                'notes' => 'Hủy đơn: ' . $request->cancel_reason,
+                'changed_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.bookings.index')
+                ->with('success', 'Đã hủy đơn #' . $booking->id . ' thành công!');
 
         } catch (\Exception $e) {
             DB::rollBack();

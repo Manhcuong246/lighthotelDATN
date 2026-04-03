@@ -6,8 +6,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Chi tiết thanh toán #{{ $payment->id }}</h1>
-        <div class="d-flex gap-2">
-            <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-primary">Chỉnh sửa</a>
+        <div>
             <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary">Quay lại</a>
         </div>
     </div>
@@ -21,9 +20,16 @@
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Mã thanh toán</label>
-                            <p class="form-control-plaintext">{{ $payment->id }}</p>
+                            <label class="form-label fw-bold">Mã giao dịch</label>
+                            <p class="form-control-plaintext">{{ $payment->transaction_id ?? '—' }}</p>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ngày tạo</label>
+                            <p class="form-control-plaintext">{{ $payment->created_at ? (is_string($payment->created_at) ? \Carbon\Carbon::parse($payment->created_at)->format('d/m/Y H:i:s') : $payment->created_at->format('d/m/Y H:i:s')) : '—' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Trạng thái</label>
                             <p class="form-control-plaintext">
@@ -38,6 +44,16 @@
                                 @endif
                             </p>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ngày thanh toán</label>
+                            <p class="form-control-plaintext">
+                                {{ $payment->paid_at
+                                    ? (is_string($payment->paid_at)
+                                        ? \Carbon\Carbon::parse($payment->paid_at)->format('d/m/Y H:i:s')
+                                        : $payment->paid_at->format('d/m/Y H:i:s'))
+                                    : '—' }}
+                            </p>
+                        </div>
                     </div>
 
                     <div class="row mb-3">
@@ -49,11 +65,11 @@
                             <label class="form-label fw-bold">Phương thức thanh toán</label>
                             <p class="form-control-plaintext">
                                 @if($payment->method === 'credit_card')
-                                    Thẻ tín dụng
+                                    <span class="badge bg-info">Thẻ tín dụng</span>
                                 @elseif($payment->method === 'bank_transfer')
-                                    Chuyển khoản ngân hàng
+                                    <span class="badge bg-primary">Chuyển khoản ngân hàng</span>
                                 @elseif($payment->method === 'cash')
-                                    Tiền mặt
+                                    <span class="badge bg-secondary">Tiền mặt</span>
                                 @elseif($payment->method === 'vnpay')
                                     <span class="badge bg-dark">VNPay</span>
                                 @else
@@ -65,18 +81,12 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Ngày thanh toán</label>
-                            <p class="form-control-plaintext">
-                                {{ $payment->paid_at
-                                    ? (is_string($payment->paid_at)
-                                        ? \Carbon\Carbon::parse($payment->paid_at)->format('d/m/Y H:i:s')
-                                        : $payment->paid_at->format('d/m/Y H:i:s'))
-                                    : '—' }}
-                            </p>
-                        </div>
-                        <div class="col-md-6">
                             <label class="form-label fw-bold">Cập nhật lần cuối</label>
                             <p class="form-control-plaintext">{{ $payment->updated_at ? (is_string($payment->updated_at) ? \Carbon\Carbon::parse($payment->updated_at)->format('d/m/Y H:i:s') : $payment->updated_at->format('d/m/Y H:i:s')) : '—' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Mã thanh toán</label>
+                            <p class="form-control-plaintext"><code>#{{ $payment->id }}</code></p>
                         </div>
                     </div>
 

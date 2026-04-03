@@ -35,6 +35,7 @@ class Booking extends Model
         'coupon_code',
         'discount_amount',
         'cancellation_reason',
+        'cancel_reason',
         'cancelled_at',
     ];
 

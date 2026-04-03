@@ -20,7 +20,7 @@
                 ];
                 $statusLabels = [
                     'pending' => 'Chờ xác nhận',
-                    'confirmed' => 'Đã xác nhận',
+                    'confirmed' => 'Đã thanh toán',
                     'completed' => 'Hoàn thành',
                     'cancelled' => 'Đã hủy',
                 ];
@@ -60,11 +60,11 @@
                             <small class="text-muted">{{ $booking->user?->phone ?? '—' }}</small>
                         </div>
                         <div class="col-md-2">
-                            <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-in</p>
+                            <p class="text-uppercase small fw-bold text-muted mb-1">📅 Ngày nhận phòng</p>
                             <p class="mb-0 fw-bold">{{ $booking->check_in?->format('d/m/Y') ?? '—' }}</p>
                         </div>
                         <div class="col-md-2">
-                            <p class="text-uppercase small fw-bold text-muted mb-1">📅 Check-out</p>
+                            <p class="text-uppercase small fw-bold text-muted mb-1">📅 Ngày trả phòng</p>
                             <p class="mb-0 fw-bold">{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</p>
                         </div>
                         <div class="col-md-2">
@@ -190,13 +190,13 @@
                                     </div>
                                     @if($booking->actual_check_in)
                                     <div class="col-auto">
-                                        <small class="text-muted">Check-in:</small>
+                                        <small class="text-muted">Ngày nhận phòng:</small>
                                         <strong>{{ $booking->actual_check_in->format('d/m H:i') }}</strong>
                                     </div>
                                     @endif
                                     @if($booking->actual_check_out)
                                     <div class="col-auto">
-                                        <small class="text-muted">Check-out:</small>
+                                        <small class="text-muted">Ngày trả phòng:</small>
                                         <strong>{{ $booking->actual_check_out->format('d/m H:i') }}</strong>
                                     </div>
                                     @endif
@@ -213,18 +213,16 @@
                                 @if($booking->isCheckinAllowed())
                                 <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-success btn-sm rounded-2">🚪 Check-in Khách</button>
+                                    <button type="submit" class="btn btn-success btn-sm rounded-2">🚪 Nhận phòng</button>
                                 </form>
                                 @endif
 
                                 @if($booking->isCheckoutAllowed())
                                 <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-warning btn-sm rounded-2">🚪 Check-out Khách</button>
+                                    <button type="submit" class="btn btn-warning btn-sm rounded-2">🚪 Trả phòng</button>
                                 </form>
                                 @endif
-
-                                <a href="{{ route('admin.bookings.edit', $booking) }}" class="btn btn-outline-primary btn-sm rounded-2">✏️ Sửa thông tin</a>
                             </div>
                         </div>
 
@@ -235,7 +233,7 @@
                                 <select name="status" class="form-select form-select-sm rounded-2">
                                     <option value="pending" {{ $booking->status=='pending'?'selected':'' }}>⏳ Chờ xác nhận</option>
                                     <option value="confirmed" {{ $booking->status=='confirmed'?'selected':'' }}>✓ Đã xác nhận</option>
-                                    <option value="cancelled" {{ $booking->status=='cancelled'?'selected':'' }}>✕ Hủy đơn</option>
+                                    <option value="cancelled" {{ $booking->status=='cancelled'?'selected':'' }}>✕ Đã hủy</option>
                                 </select>
                                 <button type="submit" class="btn btn-outline-primary btn-sm rounded-2" title="Cập nhật">💾</button>
                             </form>

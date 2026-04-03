@@ -93,8 +93,8 @@
                             <th style="width: 50px;">#</th>
                             <th style="width: 180px;">👤 Khách hàng</th>
                             <th style="width: 120px;">🏨 Phòng</th>
-                            <th style="width: 100px;">📅 Check-in</th>
-                            <th style="width: 100px;">📅 Check-out</th>
+                            <th style="width: 100px;">📅 Ngày nhận phòng</th>
+                            <th style="width: 100px;">📅 Ngày trả phòng</th>
                             <th style="width: 50px;" class="text-center">👥</th>
                             <th style="width: 120px;" class="text-end">💰 Tổng tiền</th>
                             <th style="width: 110px;">📊 Trạng thái</th>
@@ -139,7 +139,7 @@
                                         ];
                                         $statusLabels = [
                                             'pending' => 'Chờ xác nhận',
-                                            'confirmed' => 'Đã xác nhận',
+                                            'confirmed' => 'Đã thanh toán',
                                             'completed' => 'Hoàn thành',
                                             'cancelled' => 'Đã hủy',
                                         ];
@@ -195,16 +195,12 @@
                                                 </li>
                                                 @endif
 
-                                                @if($booking->status !== 'cancelled' && $booking->status !== 'completed')
+                                                @if($booking->status === 'pending')
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
-                                                    <form action="{{ route('admin.bookings.updateStatus', $booking) }}" method="POST">
-                                                        @csrf
-                                                        <input type="hidden" name="status" value="cancelled">
-                                                        <button class="dropdown-item text-danger">
-                                                            <i class="bi bi-x-circle me-2"></i> Hủy đơn
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#cancelModal{{ $booking->id }}">
+                                                        <i class="bi bi-x-circle me-2"></i> Hủy đơn
+                                                    </button>
                                                 </li>
                                                 @endif
 
@@ -272,4 +268,62 @@
         font-size: 0.8rem;
     }
 </style>
+
+<!-- Modal Hủy Đơn -->
+@foreach($bookings as $booking)
+<div class="modal fade" id="cancelModal{{ $booking->id }}" tabindex="-1" aria-labelledby="cancelModalLabel{{ $booking->id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="cancelModalLabel{{ $booking->id }}">
+                    <i class="bi bi-x-circle me-2"></i>Xác nhận hủy đơn #{{ $booking->id }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('admin.bookings.cancel', $booking) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Bạn có chắc muốn hủy đơn đặt phòng này?</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cancelReason{{ $booking->id }}" class="form-label fw-bold">
+                            Lý do hủy đơn <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="cancel_reason" id="cancelReason{{ $booking->id }}" class="form-control" rows="4" 
+                                  placeholder="Nhập lý do hủy đơn đặt phòng..." required></textarea>
+                        <div class="form-text">Lý do sẽ được hiển thị cho khách hàng trong lịch sử đặt phòng.</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Khách hàng:</strong><br>
+                            {{ $booking->user?->full_name ?? '—' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Phòng:</strong><br>
+                            @if($booking->rooms->count() > 1)
+                                {{ $booking->rooms->count() }} phòng
+                            @else
+                                {{ $booking->rooms->first()->name ?? '—' }}
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Đóng
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Xác nhận hủy
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endforeach
+
 @endsection

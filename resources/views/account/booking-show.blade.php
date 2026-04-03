@@ -14,7 +14,7 @@
         <h5 class="mb-0 fw-bold">Đơn đặt phòng #{{ $booking->id }}</h5>
         <span class="badge {{ $booking->status === 'pending' ? 'bg-warning text-dark' : ($booking->status === 'confirmed' ? 'bg-info' : ($booking->status === 'completed' ? 'bg-success' : 'bg-secondary')) }} px-3 py-2">
             @if($booking->status === 'pending') Chờ xác nhận
-            @elseif($booking->status === 'confirmed') Đã xác nhận
+            @elseif($booking->status === 'confirmed') Đã thanh toán
             @elseif($booking->status === 'completed') Hoàn thành
             @elseif($booking->status === 'cancelled') Đã hủy
             @elseif($booking->status === 'cancel_requested') Đang chờ hoàn tiền
@@ -132,6 +132,19 @@
         @if($booking->actual_check_out)
         <p class="mb-0">Check-out: {{ $booking->actual_check_out->format('d/m/Y H:i') }}</p>
         @endif
+        @endif
+
+        @if($booking->status === 'cancelled' && $booking->cancel_reason)
+        <hr class="my-4">
+        <div class="alert alert-danger">
+            <h6 class="alert-heading">
+                <i class="bi bi-x-circle me-2"></i>Đơn đã bị hủy
+            </h6>
+            <p class="mb-0"><strong>Lý do hủy:</strong> {{ $booking->cancel_reason }}</p>
+            @if($booking->cancelled_at)
+            <p class="mb-0 mt-2"><small class="text-muted">Thời gian hủy: {{ $booking->cancelled_at->format('d/m/Y H:i') }}</small></p>
+            @endif
+        </div>
         @endif
 
         <div class="mt-4 pt-3 border-top">

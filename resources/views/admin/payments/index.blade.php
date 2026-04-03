@@ -32,7 +32,6 @@
                         <tr>
                             <th>#</th>
                             <th>Khách hàng</th>
-                            <th>Phòng</th>
                             <th>Số tiền</th>
                             <th>Phương thức</th>
                             <th>Trạng thái</th>
@@ -51,7 +50,6 @@
                                         <span class="text-muted">—</span>
                                     @endif
                                 </td>
-                                <td>{{ $payment->booking && $payment->booking->room ? $payment->booking->room->name : '—' }}</td>
                                 <td><strong>{{ number_format($payment->amount, 0, ',', '.') }} VNĐ</strong></td>
                                 <td>
                                     @if($payment->method === 'credit_card')
@@ -79,20 +77,11 @@
                                 </td>
                                 <td>
                                     <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-                                    <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                                    @if(auth()->user()->isAdmin())
-                                    <form action="{{ route('admin.payments.destroy', $payment) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc muốn xóa thanh toán này?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
-                                    </form>
-                                    @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">Chưa có thanh toán nào.</td>
+                                <td colspan="6" class="text-center py-4 text-muted">Chưa có thanh toán nào.</td>
                             </tr>
                         @endforelse
                     </tbody>
