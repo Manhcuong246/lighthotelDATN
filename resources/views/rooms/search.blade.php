@@ -50,7 +50,7 @@
         font-weight: 700;
         color: var(--text-dark);
     }
-    
+
     .room-type-card {
         background: #fff;
         border-radius: 16px;
@@ -199,7 +199,7 @@
     .rate-title { font-weight: 700; color: #d32f2f; margin-bottom: 5px; }
     .rate-benefit { font-size: 0.85rem; color: #16a34a; list-style: none; padding: 0; margin: 0; }
     .rate-benefit li { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-    
+
     .room-qty-select {
         width: 130px;
         padding: 10px;
@@ -278,7 +278,7 @@
     .room-rating-stars { color: #f59e0b; margin: 0 10px; }
     .room-spec-item { display: inline-flex; align-items: center; gap: 8px; margin-right: 20px; color: #64748b; font-size: 0.9rem; }
     .room-spec-item i { font-size: 1.1rem; color: #3b82f6; }
-    
+
     .detail-card { background: #fff; border-radius: 15px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 20px; border: 1px solid #edf2f7; }
     .detail-section-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 15px; color: #1a202c; display: flex; align-items: center; gap: 10px; }
     .detail-section-title::before { content: ""; width: 4px; height: 20px; background: #3b82f6; border-radius: 2px; }
@@ -297,7 +297,7 @@
     .review-reply-label { font-weight: 700; color: #64748b; margin-bottom: 5px; font-size: 0.8rem; text-transform: uppercase; }
     .policy-section { margin-bottom: 20px; }
     .policy-title { font-weight: 700; margin-bottom: 8px; }
- 
+
     /* Guest Selector CSS */
     .guest-selector-card {
         background: #f8fafc;
@@ -314,7 +314,7 @@
         display: flex;
         justify-content: space-between;
     }
- 
+
     .btn-remove-room {
         color: #ef4444;
         cursor: pointer;
@@ -346,8 +346,8 @@
             <i class="bi bi-calendar-check"></i>
             <div>
                 <div class="search-info-label">Ngày nhận phòng</div>
-                <input type="date" name="check_in" id="search_check_in" 
-                       class="form-control form-control-sm border-0 fw-bold p-0" 
+                <input type="date" name="check_in" id="search_check_in"
+                       class="form-control form-control-sm border-0 fw-bold p-0"
                        value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
             </div>
         </div>
@@ -355,8 +355,8 @@
             <i class="bi bi-calendar-x"></i>
             <div>
                 <div class="search-info-label">Ngày trả phòng</div>
-                <input type="date" name="check_out" id="search_check_out" 
-                       class="form-control form-control-sm border-0 fw-bold p-0" 
+                <input type="date" name="check_out" id="search_check_out"
+                       class="form-control form-control-sm border-0 fw-bold p-0"
                        value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
             </div>
         </div>
@@ -397,9 +397,9 @@
                                 $placeholder = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80';
                                 if (str_contains(strtolower($type->name), 'deluxe')) $placeholder = 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80';
                                 if (str_contains(strtolower($type->name), 'suite')) $placeholder = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=400&q=80';
-                                
-                                $imageUrl = $type->image ? asset('storage/' . $type->image) : 
-                                           ($type->available_rooms->isNotEmpty() && $type->available_rooms->first()->getDisplayImageUrls() ? 
+
+                                $imageUrl = $type->image ? asset('storage/' . $type->image) :
+                                           ($type->available_rooms->isNotEmpty() && $type->available_rooms->first()->getDisplayImageUrls() ?
                                             $type->available_rooms->first()->getDisplayImageUrls()[0] : $placeholder);
                             @endphp
                             <img src="{{ $imageUrl }}" alt="{{ $type->name }}" onerror="this.src='{{ $placeholder }}'">
@@ -435,7 +435,7 @@
                             <button class="btn btn-select-room toggle-selection" data-target="selection{{ $type->id }}">Chọn phòng</button>
                         </div>
                     </div>
-                    
+
                     {{-- Selection Area --}}
                     <div class="room-selection-area" id="selection{{ $type->id }}">
                         <table class="selection-table">
@@ -483,8 +483,8 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <select class="room-qty-select" 
-                                                data-type-id="{{ $type->id }}" 
+                                        <select class="room-qty-select"
+                                                data-type-id="{{ $type->id }}"
                                                 data-type-name="{{ $type->name }}"
                                                 data-price="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->base_price : 0 }}"
                                                 data-max-guests="{{ $type->available_rooms->first()->max_guests ?? 2 }}"
@@ -552,7 +552,7 @@
                             <div class="mb-3">
                                 <div class="summary-item-label">Ngày nhận phòng</div>
                                 <div class="summary-item-val">
-                                    <input type="date" name="check_in" id="sidebar_check_in" 
+                                    <input type="date" name="check_in" id="sidebar_check_in"
                                            value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
                                     <i class="bi bi-calendar3"></i>
                                 </div>
@@ -560,7 +560,7 @@
                             <div class="mb-3">
                                 <div class="summary-item-label">Ngày trả phòng</div>
                                 <div class="summary-item-val">
-                                    <input type="date" name="check_out" id="sidebar_check_out" 
+                                    <input type="date" name="check_out" id="sidebar_check_out"
                                            value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
                                     <i class="bi bi-calendar3"></i>
                                 </div>
@@ -584,17 +584,17 @@
                             <div class="summary-group-title">Thông tin khách hàng</div>
                             <div class="mb-3">
                                 <label class="small text-muted mb-1">Họ tên *</label>
-                                <input type="text" name="full_name" class="form-control form-control-sm" 
+                                <input type="text" name="full_name" class="form-control form-control-sm"
                                        value="{{ auth()->check() ? auth()->user()->full_name : old('full_name') }}" required>
                             </div>
                             <div class="mb-3">
                                 <label class="small text-muted mb-1">Email *</label>
-                                <input type="email" name="email" class="form-control form-control-sm" 
+                                <input type="email" name="email" class="form-control form-control-sm"
                                        value="{{ auth()->check() ? auth()->user()->email : old('email') }}" required>
                             </div>
                             <div class="mb-3">
                                 <label class="small text-muted mb-1">Số điện thoại *</label>
-                                <input type="text" name="phone" class="form-control form-control-sm" 
+                                <input type="text" name="phone" class="form-control form-control-sm"
                                        value="{{ auth()->check() ? auth()->user()->phone : old('phone') }}" required>
                             </div>
                         </div>
@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (diff > 0) {
             if(sidebarNightsDisp) sidebarNightsDisp.textContent = diff + ' đêm';
             // update the global nights variable for pricing logic
-            nights = diff; 
+            nights = diff;
             updateSummary();
         }
     }
@@ -781,14 +781,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const maxAdults = parseInt(select.getAttribute('data-max-adults'));
             const maxChildren = parseInt(select.getAttribute('data-max-children'));
             const roomIds = JSON.parse(select.getAttribute('data-room-ids'));
-            
+
             const guestRow = document.getElementById(`guestRow${typeId}`);
             const guestContainer = document.getElementById(`guestSelectors${typeId}`);
             let typeLimitExceeded = false;
 
             if (qty > 0) {
                 guestRow.classList.remove('d-none');
-                
+
                 // Keep sync with UI: check if we need to add/remove containers
                 let currentContainers = guestContainer.querySelectorAll('.guest-selector-item').length;
                 if (currentContainers !== qty) {
@@ -804,17 +804,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="row g-2">
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Người lớn</label>
-                                            <input type="number" class="form-control form-control-sm guest-count adults-count" 
+                                            <input type="number" class="form-control form-control-sm guest-count adults-count"
                                                    data-type-id="${typeId}" value="1" min="1" max="10">
                                         </div>
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Trẻ 0-5</label>
-                                            <input type="number" class="form-control form-control-sm guest-count child-05-count" 
+                                            <input type="number" class="form-control form-control-sm guest-count child-05-count"
                                                    data-type-id="${typeId}" value="0" min="0" max="10">
                                         </div>
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Trẻ 6-11</label>
-                                            <input type="number" class="form-control form-control-sm guest-count child-611-count" 
+                                            <input type="number" class="form-control form-control-sm guest-count child-611-count"
                                                    data-type-id="${typeId}" value="0" min="0" max="10">
                                         </div>
                                     </div>
@@ -823,7 +823,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `;
                     }
                     guestContainer.innerHTML = containerHtml;
-                    
+
                     // Re-bind events to new inputs
                     guestContainer.querySelectorAll('.guest-count').forEach(s => {
                         s.addEventListener('input', updateSummary);
@@ -842,7 +842,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Logic mới theo yêu cầu:
                     const extraAdults = Math.max(0, adults - maxAdults);
-                    
+
                     // Tổng số trẻ em để kiểm tra giới hạn +2
                     const totalChildren = c05 + c611;
                     const extraChildrenLimit = Math.max(0, totalChildren - maxChildren);
@@ -856,9 +856,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     const extraAdultFee = extraAdults * (0.4 * basePrice);
-                    // Phụ thu trẻ em: mỗi trẻ em (6-11) vượt hạn x 50% base_price
-                    const childFee = chargeableChildren * (0.5 * basePrice);
-                    
+                    // Phụ thu trẻ em: mỗi trẻ em (6-11) vượt hạn x 30% base_price (giảm từ 50%)
+                    const childFee = chargeableChildren * (0.3 * basePrice);
+
                     const roomPricePerNight = basePrice + extraAdultFee + childFee;
                     const roomSubtotal = roomPricePerNight * nights;
                     subtotal += roomSubtotal;
@@ -987,7 +987,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!saved) return;
 
         const selection = JSON.parse(saved);
-        
+
         // Restore Personal Info
         if (selection.personal) {
             if (inputName && selection.personal.full_name) inputName.value = selection.personal.full_name;
@@ -1009,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Ensure we don't exceed current availability
                 const maxAvailable = select.options.length - 1;
                 select.value = Math.min(data.qty, maxAvailable);
-                
+
                 if (select.value > 0) {
                     // Force update to create guest inputs
                     updateSummary();
