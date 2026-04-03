@@ -190,9 +190,9 @@
                             @endif
                         </div>
                         <div class="booking-details">
-                            <span><i class="bi bi-calendar-check"></i>{{ $b->check_in ? $b->check_in->format('d/m/Y') : '—' }}</span>
+                            <span><i class="bi bi-calendar-check"></i>Ngày nhận phòng: {{ $b->check_in ? $b->check_in->format('d/m/Y') : '—' }}</span>
                             <span><i class="bi bi-arrow-right"></i></span>
-                            <span><i class="bi bi-calendar-x"></i>{{ $b->check_out ? $b->check_out->format('d/m/Y') : '—' }}</span>
+                            <span><i class="bi bi-calendar-x"></i>Ngày trả phòng: {{ $b->check_out ? $b->check_out->format('d/m/Y') : '—' }}</span>
                             <span><i class="bi bi-people"></i>{{ $b->guests ?? '—' }} khách</span>
                             @if(($b->booking_services_count ?? 0) > 0)
                             <span><i class="bi bi-bag-check"></i>{{ $b->booking_services_count }} dịch vụ kèm</span>
@@ -203,7 +203,7 @@
                         <span class="booking-price">{{ $b->total_price ? number_format($b->total_price, 0, ',', '.') . ' ₫' : '—' }}</span>
                         <span class="booking-status {{ $b->status }}">
                             @if($b->status === 'pending') Chờ xác nhận
-                            @elseif($b->status === 'confirmed') Đã xác nhận
+                            @elseif($b->status === 'confirmed') Đã thanh toán
                             @elseif($b->status === 'completed') Hoàn thành
                             @elseif($b->status === 'cancelled') Đã hủy
                             @else {{ $b->status }}

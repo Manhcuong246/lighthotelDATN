@@ -55,13 +55,13 @@
                         @error('guests')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="check_in" class="form-label small fw-bold text-muted mb-1">Check-in</label>
+                        <label for="check_in" class="form-label small fw-bold text-muted mb-1">Ngày nhận phòng</label>
                         <input type="date" class="form-control form-control-sm rounded-2 @error('check_in') is-invalid @enderror"
                                id="check_in" name="check_in" value="{{ old('check_in', $booking->check_in?->format('Y-m-d')) }}" required />
                         @error('check_in')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="check_out" class="form-label small fw-bold text-muted mb-1">Check-out</label>
+                        <label for="check_out" class="form-label small fw-bold text-muted mb-1">Ngày trả phòng</label>
                         <input type="date" class="form-control form-control-sm rounded-2 @error('check_out') is-invalid @enderror"
                                id="check_out" name="check_out" value="{{ old('check_out', $booking->check_out?->format('Y-m-d')) }}" required />
                         @error('check_out')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
@@ -121,13 +121,13 @@
                     <div class="row g-2">
                         @if($booking->actual_check_in)
                         <div class="col-sm-6">
-                            <small class="text-muted d-block">✓ Check-in thực tế</small>
+                            <small class="text-muted d-block">✓ Ngày nhận phòng thực tế</small>
                             <code class="text-dark">{{ $booking->actual_check_in->format('d/m/Y H:i') }}</code>
                         </div>
                         @endif
                         @if($booking->actual_check_out)
                         <div class="col-sm-6">
-                            <small class="text-muted d-block">✓ Check-out thực tế</small>
+                            <small class="text-muted d-block">✓ Ngày trả phòng thực tế</small>
                             <code class="text-dark">{{ $booking->actual_check_out->format('d/m/Y H:i') }}</code>
                         </div>
                         @endif
@@ -154,7 +154,7 @@
                     <div class="col-md-4">
                         <h6 class="fw-bold text-success mb-2">✏️ Được sửa:</h6>
                         <ul class="list-unstyled small">
-                            <li class="mb-1"><span class="badge bg-success">📅</span> Check-in/out</li>
+                            <li class="mb-1"><span class="badge bg-success">📅</span> Ngày nhận/trả phòng</li>
                             <li class="mb-1"><span class="badge bg-success">👥</span> Số khách</li>
                             <li class="mb-1"><span class="badge bg-success">💰</span> Tổng tiền</li>
                             <li class="mb-1"><span class="badge bg-success">📊</span> Trạng thái</li>
