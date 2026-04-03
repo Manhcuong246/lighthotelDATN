@@ -35,7 +35,7 @@
         ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
     @endphp
     <div id="bank-config" data-config="{{ $bankConfigJson }}" hidden></div>
-    
+
     <form action="{{ route('admin.bookings.store') }}" method="POST" class="needs-validation" novalidate>
         @csrf
 
@@ -92,22 +92,28 @@
                         @error('room_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="check_in" class="form-label small fw-bold text-muted mb-1">Check-in *</label>
+                        <label for="check_in" class="form-label small fw-bold text-muted mb-1">Ngày nhận phòng *</label>
                         <input type="date" class="form-control form-control-sm rounded-2 @error('check_in') is-invalid @enderror"
                                id="check_in" name="check_in" value="{{ old('check_in') }}" required min="{{ date('Y-m-d') }}" />
                         @error('check_in')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="check_out" class="form-label small fw-bold text-muted mb-1">Check-out *</label>
+                        <label for="check_out" class="form-label small fw-bold text-muted mb-1">Ngày trả phòng *</label>
                         <input type="date" class="form-control form-control-sm rounded-2 @error('check_out') is-invalid @enderror"
                                id="check_out" name="check_out" value="{{ old('check_out') }}" required />
                         @error('check_out')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="guests" class="form-label small fw-bold text-muted mb-1">Số khách *</label>
-                        <input type="number" class="form-control form-control-sm rounded-2 @error('guests') is-invalid @enderror"
-                               id="guests" name="guests" min="1" value="{{ old('guests', 1) }}" required />
-                        @error('guests')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                        <label for="adults" class="form-label small fw-bold text-muted mb-1">Số người lớn *</label>
+                        <input type="number" class="form-control form-control-sm rounded-2 @error('adults') is-invalid @enderror"
+                               id="adults" name="adults" min="1" value="{{ old('adults', 1) }}" required />
+                        @error('adults')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="col-sm-2">
+                        <label for="children" class="form-label small fw-bold text-muted mb-1">Số trẻ em</label>
+                        <input type="number" class="form-control form-control-sm rounded-2 @error('children') is-invalid @enderror"
+                               id="children" name="children" min="0" value="{{ old('children', 0) }}" />
+                        @error('children')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
                         <label for="status" class="form-label small fw-bold text-muted mb-1">Trạng thái *</label>
@@ -277,13 +283,27 @@
     .is-invalid {
         border-color: #dc3545 !important;
     }
+
+    /* QR Code center alignment */
+    #qr-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #qr-image {
+        display: block;
+        margin: 0 auto;
+    }
 </style>
 
 <script>
 const roomSelect = document.getElementById('room_id');
 const checkInInput = document.getElementById('check_in');
 const checkOutInput = document.getElementById('check_out');
-const guestsInput = document.getElementById('guests');
+const adultsInput = document.getElementById('adults');
+const childrenInput = document.getElementById('children');
 const pricePreview = document.getElementById('price-preview');
 
 const paymentMethodSelect = document.getElementById('payment_method');
@@ -314,10 +334,10 @@ function updatePricePreview() {
     const basePrice = parseFloat(selectedOption.dataset.price) || 0;
     const maxGuests = parseInt(selectedOption.getAttribute('data-max-guests')) || 1;
 
-    guestsInput.max = maxGuests;
+    adultsInput.max = maxGuests;
 
-    if (parseInt(guestsInput.value) > maxGuests) {
-        guestsInput.value = maxGuests;
+    if (parseInt(adultsInput.value) > maxGuests) {
+        adultsInput.value = maxGuests;
     }
 
     const startDate = new Date(checkIn);
@@ -403,13 +423,80 @@ function generateQR() {
 
     const description = roomNumber + '-' + Date.now();
 
+    // Mapping bank names to VietQR codes
+    const bankMapping = {
+        'vietcombank': 'vietcombank',
+        'vcb': 'vietcombank',
+        'techcombank': 'techcombank',
+        'tcb': 'techcombank',
+        'bidv': 'bidv',
+        'vietinbank': 'vietinbank',
+        'agribank': 'agribank',
+        'mb': 'mb',
+        'mb bank': 'mb',
+        'mbbank': 'mb',
+        'tpbank': 'tpbank',
+        'acb': 'acb',
+        'vpbank': 'vpbank',
+        'sacombank': 'sacombank',
+        'hdbank': 'hdbank',
+        'vib': 'vib',
+        'shb': 'shb',
+        'seabank': 'seabank',
+        'msb': 'msb',
+        'ocb': 'ocb',
+        'eximbank': 'eximbank',
+        'lienvietpostbank': 'lienvietpostbank',
+        'lpbank': 'lienvietpostbank',
+    };
+
+    // Get bank ID and map to VietQR code
+    let bankId = bankConfig.bankId.toLowerCase().trim();
+    bankId = bankMapping[bankId] || bankId;
+
+    const accountNo = bankConfig.accountNo.trim();
+    const template = bankConfig.template || 'compact';
+    const accountName = (bankConfig.accountName || '').trim();
+
+    // Log for debugging
+    console.log('Bank ID:', bankId);
+    console.log('Account No:', accountNo);
+
     const qrUrl =
-        `https://img.vietqr.io/image/${bankConfig.bankId}-${bankConfig.accountNo}-${bankConfig.template}.png` +
+        `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png` +
         `?amount=${displayAmount}` +
         `&addInfo=${encodeURIComponent(description)}` +
-        `&accountName=${encodeURIComponent(bankConfig.accountName)}`;
+        `&accountName=${encodeURIComponent(accountName)}`;
 
-    document.getElementById('qr-image').src = qrUrl;
+    console.log('QR URL:', qrUrl);
+
+    const qrImage = document.getElementById('qr-image');
+    const qrContainer = document.getElementById('qr-container');
+
+    // Clear previous error state
+    qrImage.style.display = 'block';
+
+    qrImage.src = qrUrl;
+
+    // Handle image load error
+    qrImage.onerror = function() {
+        qrImage.style.display = 'none';
+        qrContainer.innerHTML += `
+            <div class="alert alert-warning mt-2" id="qr-error">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Không thể tạo mã QR.</strong><br>
+                <small>Vui lòng kiểm tra cấu hình ngân hàng:<br>
+                - Bank Id phải là mã vietqr (vd: vietcombank, techcombank)<br>
+                - Số tài khoản phải chính xác</small>
+            </div>
+        `;
+    };
+
+    qrImage.onload = function() {
+        const errorDiv = document.getElementById('qr-error');
+        if (errorDiv) errorDiv.remove();
+        qrImage.alt = 'QR Code';
+    };
 
     document.getElementById('qr-amount').textContent =
         new Intl.NumberFormat('vi-VN').format(displayAmount) + 'đ';
