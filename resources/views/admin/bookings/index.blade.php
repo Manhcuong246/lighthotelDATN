@@ -69,9 +69,14 @@
     <!-- Table Card -->
     <div class="card shadow-sm border-0">
         <div class="card-header py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: linear-gradient(90deg, #3b49d6 0%, #4b3bd6 100%);">
-            <h5 class="mb-0 text-white fw-semibold">Danh sách đơn đặt phòng</h5>
+            <h5 class="mb-0 text-white fw-semibold">{{ request('checkin_checkout') ? 'Check-in / Check-out' : 'Danh sách đơn đặt phòng' }}</h5>
             <form action="{{ route('admin.bookings.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+                <input type="hidden" name="checkin_checkout" value="{{ request('checkin_checkout') }}">
                 <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm khách, phòng, mã đơn..." style="width: 200px;">
+                <input type="date" name="check_in_from" value="{{ request('check_in_from') }}" class="form-control form-control-sm" style="width: 170px;" title="Từ ngày nhận phòng">
+                <input type="date" name="check_in_to" value="{{ request('check_in_to') }}" class="form-control form-control-sm" style="width: 170px;" title="Đến ngày nhận phòng">
+                <input type="date" name="check_out_from" value="{{ request('check_out_from') }}" class="form-control form-control-sm" style="width: 170px;" title="Từ ngày trả phòng">
+                <input type="date" name="check_out_to" value="{{ request('check_out_to') }}" class="form-control form-control-sm" style="width: 170px;" title="Đến ngày trả phòng">
                 <select name="status" class="form-select form-select-sm" style="width: 150px;">
                     <option value="">Tất cả trạng thái</option>
                     <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Chờ xác nhận</option>
@@ -149,6 +154,28 @@
                                     </span>
                                 </td>
                                 <td>
+                                    @if(request('checkin_checkout'))
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @if($booking->isCheckinAllowed())
+                                                <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST">
+                                                    @csrf
+                                                    <button class="btn btn-sm btn-success text-white fw-bold"><i class="bi bi-box-arrow-in-right me-1"></i>Xác nhận Check-in</button>
+                                                </form>
+                                            @elseif($booking->isCheckoutAllowed())
+                                                <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST">
+                                                    @csrf
+                                                    <button class="btn btn-sm btn-warning text-dark fw-bold"><i class="bi bi-box-arrow-right me-1"></i>Xác nhận Check-out</button>
+                                                </form>
+                                            @endif
+
+                                            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" data-bs-toggle="modal" data-bs-target="#surchargeModal{{ $booking->id }}" title="Lập phiếu phát sinh phụ thu (Ví dụ: Thêm người)">
+                                                <i class="bi bi-plus-circle me-1"></i>Phát sinh
+                                            </button>
+                                            <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary" title="Xem chi tiết đơn">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    @else
                                     <div class="d-flex gap-1">
                                         <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary" title="Xem">
                                             <i class="bi bi-eye"></i>
@@ -219,6 +246,7 @@
                                             </ul>
                                         </div>
                                     </div>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -318,6 +346,65 @@
                     </button>
                     <button type="submit" class="btn btn-danger">
                         <i class="bi bi-x-circle me-1"></i>Xác nhận hủy
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endforeach
+
+<!-- Modal Surcharge (Phiếu Phát Sinh) -->
+@foreach($bookings as $booking)
+<div class="modal fade" id="surchargeModal{{ $booking->id }}" tabindex="-1" aria-labelledby="surchargeModalLabel{{ $booking->id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="surchargeModalLabel{{ $booking->id }}">
+                    <i class="bi bi-plus-circle me-2"></i>Lập phiếu phát sinh đơn #{{ $booking->id }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('admin.bookings.storeSurcharge', $booking) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Nhập lý do phụ thu (như số lượng người thêm, dịch vụ ngoài, v.v...) và số tiền tương ứng.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reason{{ $booking->id }}" class="form-label fw-bold">
+                            Lý do phát sinh <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="reason" id="reason{{ $booking->id }}" class="form-control" rows="3" 
+                                  placeholder="Ví dụ: Phụ thu thêm 1 người lớn, Đền bù ly vỡ..." required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="amount{{ $booking->id }}" class="form-label fw-bold">
+                            Số tiền phụ thu (VNĐ) <span class="text-danger">*</span>
+                        </label>
+                        <input type="number" name="amount" id="amount{{ $booking->id }}" class="form-control" min="0" required placeholder="Ví dụ: 200000">
+                    </div>
+                    
+                    <div class="row bg-light rounded p-2 m-0 mt-3 align-items-center">
+                        <div class="col-md-6 mb-2 mb-md-0">
+                            <span class="text-muted d-block small">Khách hàng:</span>
+                            <strong>{{ $booking->user?->full_name ?? '—' }}</strong>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <span class="text-muted d-block small">Tổng tiền gốc đang có:</span>
+                            <strong class="text-success">{{ number_format($booking->total_price, 0, ',', '.') }} ₫</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer pb-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Hủy bỏ
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-plus-circle me-1"></i>Lưu phiếu phát sinh
                     </button>
                 </div>
             </form>

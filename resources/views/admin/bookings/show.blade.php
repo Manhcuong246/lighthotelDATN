@@ -146,6 +146,34 @@
                     </div>
                     @endif
 
+                    @if($booking->surcharges && $booking->surcharges->isNotEmpty())
+                    <div class="row mt-3 pt-3 border-top">
+                        <div class="col-12">
+                            <p class="text-uppercase small fw-bold text-muted mb-2">🔥 Phiếu phát sinh (Phụ thu)</p>
+                            <div class="table-responsive rounded-2 border border-danger bg-white">
+                                <table class="table table-sm mb-0 align-middle">
+                                    <thead class="table-danger text-danger">
+                                        <tr>
+                                            <th class="ps-3">Lý do phụ thu</th>
+                                            <th class="text-end">Ngày giờ lập</th>
+                                            <th class="text-end pe-3">Số tiền thu thêm</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($booking->surcharges as $surcharge)
+                                        <tr>
+                                            <td class="ps-3 fw-bold text-dark">{{ $surcharge->reason }}</td>
+                                            <td class="text-end text-muted">{{ $surcharge->created_at->format('d/m/Y H:i') }}</td>
+                                            <td class="text-end pe-3 fw-semibold text-danger">+ {{ number_format($surcharge->amount, 0, ',', '.') }} ₫</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     @php
                         $hotelInfo = \App\Models\HotelInfo::first();
                         $payment = $booking->payment;
@@ -222,6 +250,12 @@
                                     @csrf
                                     <button type="submit" class="btn btn-warning btn-sm rounded-2">🚪 Trả phòng</button>
                                 </form>
+                                @endif
+
+                                @if(!$booking->invoice)
+                                <a href="{{ route('admin.invoices.create', $booking) }}" class="btn btn-outline-secondary btn-sm rounded-2">🧾 Phiếu phát sinh</a>
+                                @else
+                                <a href="{{ route('admin.invoices.show', $booking->invoice) }}" class="btn btn-outline-secondary btn-sm rounded-2">🧾 Xem hóa đơn</a>
                                 @endif
                             </div>
                         </div>
