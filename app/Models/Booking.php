@@ -117,6 +117,11 @@ class Booking extends Model
         return $this->hasOne(RefundRequest::class);
     }
 
+    public function surcharges()
+    {
+        return $this->hasMany(BookingSurcharge::class);
+    }
+
     public function isCheckinAllowed(): bool
     {
         return $this->status === 'confirmed'
