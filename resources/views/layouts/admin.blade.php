@@ -283,9 +283,15 @@
             </li>
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.bookings*') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
+                <a class="nav-link {{ request()->routeIs('admin.bookings.index') && !request('checkin_checkout') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
                     <i class="bi bi-calendar-check"></i>
                     Đặt phòng
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.bookings.index') && request('checkin_checkout') ? 'active' : '' }}" href="{{ route('admin.bookings.index', ['checkin_checkout' => 1]) }}">
+                    <i class="bi bi-door-open"></i>
+                    Check-in / Check-out
                 </a>
             </li>
             <li class="nav-item">

@@ -14,9 +14,6 @@ return new class extends Migration
         Schema::table('bookings', function (Blueprint $table) {
             // Update status column to longer length to accommodate cancel_requested
             $table->string('status', 20)->change();
-            
-            // Update payment_status column to longer length
-            $table->string('payment_status', 20)->change();
         });
     }
 
@@ -27,7 +24,6 @@ return new class extends Migration
     {
         Schema::table('bookings', function (Blueprint $table) {
             $table->string('status', 15)->change();
-            $table->string('payment_status', 15)->change();
         });
     }
 };

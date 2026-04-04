@@ -42,6 +42,26 @@ class BookingAdminController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('check_in_from')) {
+            $query->whereDate('check_in', '>=', $request->check_in_from);
+        }
+
+        if ($request->filled('check_in_to')) {
+            $query->whereDate('check_in', '<=', $request->check_in_to);
+        }
+
+        if ($request->filled('check_out_from')) {
+            $query->whereDate('check_out', '>=', $request->check_out_from);
+        }
+
+        if ($request->filled('check_out_to')) {
+            $query->whereDate('check_out', '<=', $request->check_out_to);
+        }
+
+        if ($request->filled('checkin_checkout') && !$request->filled('status')) {
+            $query->where('status', 'confirmed');
+        }
+
         $bookings = $query->paginate(15)->withQueryString();
 
         $counts = [
@@ -54,7 +74,7 @@ class BookingAdminController extends Controller
 
     public function show(Booking $booking)
     {
-        $booking->load(['user', 'room', 'payment', 'logs', 'bookingServices.service']);
+        $booking->load(['user', 'room', 'payment', 'logs', 'bookingServices.service', 'surcharges']);
 
         return view('admin.bookings.show', compact('booking'));
     }
@@ -816,5 +836,45 @@ class BookingAdminController extends Controller
             return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Store Surcharge/Phiếu phát sinh
+     */
+    public function storeSurcharge(Request $request, Booking $booking)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $surcharge = $booking->surcharges()->create([
+                'reason' => $request->reason,
+                'amount' => $request->amount,
+            ]);
+
+            // Update total price of the booking
+            $booking->total_price += $surcharge->amount;
+            $booking->save();
+
+            // Log
+            \App\Models\BookingLog::create([
+                'booking_id' => $booking->id,
+                'old_status' => $booking->status,
+                'new_status' => $booking->status,
+                'notes' => 'Tạo phiếu phát sinh: ' . $surcharge->reason . ' - ' . number_format($surcharge->amount) . 'đ',
+                'changed_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return back()->with('success', 'Đã thêm phiếu phát sinh thành công!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors('Có lỗi khi tạo phiếu phát sinh: ' . $e->getMessage());
+        }
+    }
 }
+
 
