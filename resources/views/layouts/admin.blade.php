@@ -276,6 +276,15 @@
                 </a>
             </li>
             <li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('admin.roomtypes.services*') ? 'active' : '' }}" 
+       href="{{ route('admin.roomtypes.services.index') }}">
+       
+        <i class="bi bi-cone-striped"></i>
+        Dịch vụ
+
+    </a>
+</li>
+            <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.rooms*') ? 'active' : '' }}" href="{{ route('admin.rooms.index') }}">
                     <i class="bi bi-door-open"></i>
                     Quản lý phòng

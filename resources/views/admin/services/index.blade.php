@@ -10,7 +10,7 @@
         Quản lý dịch vụ
     </h3>
 
-    <a href="{{ route('admin.services.create') }}" 
+    <a href="{{route('admin.roomtypes.services.create') }}" 
        class="btn btn-primary">
         <i class="bi bi-plus-circle me-1"></i>
         Thêm dịch vụ
@@ -60,14 +60,14 @@ Hành động
 
 <td class="text-center">
 
-<a href="{{ route('admin.services.edit', $service->id) }}"
+<a href="{{route('admin.roomtypes.services.edit', $service->id) }}"
    class="btn btn-sm btn-warning">
 
 <i class="bi bi-pencil-square"></i>
 
 </a>
 
-<form action="{{ route('admin.services.destroy', $service->id) }}"
+<form action="{{ route('admin.roomtypes.services.destroy', $service->id) }}"
       method="POST"
       class="d-inline"
       onsubmit="return confirm('Bạn có chắc muốn xóa dịch vụ này?');">
