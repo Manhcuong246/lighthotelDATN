@@ -127,7 +127,12 @@
                     <!-- Action Buttons -->
                     <div class="text-center mt-4">
                         @if(in_array($booking->status, ['pending', 'confirmed'], true))
-                            <a href="{{ route('bookings.cancel', $booking->id) }}" class="btn btn-danger me-2">
+                            @php
+                                $cancelHref = Auth::check() && (int) Auth::id() === (int) $booking->user_id
+                                    ? route('bookings.cancel', $booking)
+                                    : $booking->signedPublicCancelUrl();
+                            @endphp
+                            <a href="{{ $cancelHref }}" class="btn btn-danger me-2">
                                 <i class="fas fa-times me-2"></i>
                                 Hủy Booking
                             </a>

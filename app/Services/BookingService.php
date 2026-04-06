@@ -117,8 +117,9 @@ class BookingService
             if (Auth::check()) {
                 $userId = (int) Auth::id();
             } else {
+                $email = Str::lower(trim((string) $data['email']));
                 $user = User::firstOrCreate(
-                    ['email' => $data['email']],
+                    ['email' => $email],
                     [
                         'full_name' => $data['full_name'],
                         'phone'     => $data['phone'] ?? null,
@@ -126,6 +127,7 @@ class BookingService
                     ]
                 );
                 $user->forceFill([
+                    'email'     => $email,
                     'full_name' => $data['full_name'],
                     'phone'     => $data['phone'] ?? $user->phone,
                 ])->save();

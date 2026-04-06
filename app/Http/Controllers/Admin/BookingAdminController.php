@@ -133,8 +133,9 @@ class BookingAdminController extends Controller
         DB::beginTransaction();
         try {
             // Find or create user (đồng bộ họ tên / SĐT khi admin đặt hộ hoặc khách đã có tài khoản shadow)
+            $guestEmail = Str::lower(trim((string) $validated['email']));
             $user = User::firstOrCreate(
-                ['email' => $validated['email']],
+                ['email' => $guestEmail],
                 [
                     'full_name' => $validated['full_name'],
                     'phone' => $validated['phone'] ?? null,
@@ -142,6 +143,7 @@ class BookingAdminController extends Controller
                 ]
             );
             $user->forceFill([
+                'email' => $guestEmail,
                 'full_name' => $validated['full_name'],
                 'phone' => $validated['phone'] ?? $user->phone,
             ])->save();
@@ -493,8 +495,9 @@ class BookingAdminController extends Controller
         DB::beginTransaction();
         try {
             // Find or create user — cập nhật tên/SĐT khi đặt hộ lại cho cùng email
+            $guestEmail = Str::lower(trim((string) $validated['email']));
             $user = User::firstOrCreate(
-                ['email' => $validated['email']],
+                ['email' => $guestEmail],
                 [
                     'full_name' => $validated['full_name'],
                     'phone' => $validated['phone'] ?? null,
@@ -502,6 +505,7 @@ class BookingAdminController extends Controller
                 ]
             );
             $user->forceFill([
+                'email' => $guestEmail,
                 'full_name' => $validated['full_name'],
                 'phone' => $validated['phone'] ?? $user->phone,
             ])->save();
@@ -908,6 +912,12 @@ class BookingAdminController extends Controller
                 'cancel_reason' => $request->cancel_reason,
                 'cancelled_at' => now(),
             ]);
+
+            RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+            \App\Models\Payment::where('booking_id', $booking->id)
+                ->where('status', 'pending')
+                ->update(['status' => 'failed']);
 
             // Log
             \App\Models\BookingLog::create([

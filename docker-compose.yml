@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: lighthotel-mysql
+    # Không đặt container_name cố định — cho phép chạy song song nhiều bản copy (vd. DATN vs datn2)
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-hotel_booking}
@@ -24,7 +24,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: lighthotel-app
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
@@ -39,13 +38,14 @@ services:
       - .:/var/www/html
       - /var/www/html/vendor
       - /var/www/html/node_modules
+      # Dev: OPcache luôn soi lại file — tránh cảm giác "sửa Blade/PHP mà không đổi"
+      - ./docker/php/zz-opcache-dev.ini:/usr/local/etc/php/conf.d/zz-opcache-dev.ini:ro
     depends_on:
       mysql:
         condition: service_healthy
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: lighthotel-nginx
     ports:
       - "${APP_PORT:-8080}:80"
     volumes:
@@ -56,7 +56,6 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:5-apache
-    container_name: lighthotel-phpmyadmin
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
