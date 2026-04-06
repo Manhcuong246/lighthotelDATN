@@ -9,17 +9,20 @@ use App\Models\Service;
 class ServiceController extends Controller
 {
     /**
-     * Hiển thị danh sách dịch vụ
+     * Danh sách dịch vụ
      */
     public function index()
     {
         $services = Service::orderBy('id', 'desc')->paginate(10);
 
-        return view('admin.services.index', compact('services'));
+        return view(
+            'admin.services.index',
+            compact('services')
+        );
     }
 
     /**
-     * Hiển thị form thêm dịch vụ
+     * Form thêm
      */
     public function create()
     {
@@ -27,7 +30,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Lưu dịch vụ mới
+     * Lưu
      */
     public function store(Request $request)
     {
@@ -35,10 +38,6 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string'
-        ], [
-            'name.required' => 'Vui lòng nhập tên dịch vụ',
-            'price.required' => 'Vui lòng nhập giá',
-            'price.numeric' => 'Giá phải là số'
         ]);
 
         Service::create([
@@ -48,22 +47,25 @@ class ServiceController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.services.index')
+            ->route('admin.roomtypes.services.index')
             ->with('success', 'Thêm dịch vụ thành công!');
     }
 
     /**
-     * Hiển thị form sửa
+     * Form sửa
      */
     public function edit($id)
     {
         $service = Service::findOrFail($id);
 
-        return view('admin.services.edit', compact('service'));
+        return view(
+            'admin.services.edit',
+            compact('service')
+        );
     }
 
     /**
-     * Cập nhật dịch vụ
+     * Update
      */
     public function update(Request $request, $id)
     {
@@ -82,12 +84,12 @@ class ServiceController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.services.index')
+            ->route('admin.roomtypes.services.index')
             ->with('success', 'Cập nhật dịch vụ thành công!');
     }
 
     /**
-     * Xóa dịch vụ
+     * Delete
      */
     public function destroy($id)
     {
@@ -96,7 +98,7 @@ class ServiceController extends Controller
         $service->delete();
 
         return redirect()
-            ->route('admin.services.index')
+            ->route('admin.roomtypes.services.index')
             ->with('success', 'Xóa dịch vụ thành công!');
     }
 }
