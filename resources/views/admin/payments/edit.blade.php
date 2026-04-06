@@ -65,6 +65,7 @@
                                 <option value="pending" @selected(old('status', $payment->status) === 'pending')>Chờ thanh toán</option>
                                 <option value="paid" @selected(old('status', $payment->status) === 'paid')>Đã thanh toán</option>
                                 <option value="failed" @selected(old('status', $payment->status) === 'failed')>Thất bại</option>
+                                <option value="refunded" @selected(old('status', $payment->status) === 'refunded')>Đã hoàn tiền</option>
                             </select>
                             @error('status')
                                 <div class="invalid-feedback">{{ $message }}</div>

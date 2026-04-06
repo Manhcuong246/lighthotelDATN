@@ -3,32 +3,28 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header-custom">
-                <h5 class="modal-title-custom">{{ $type->name }} - Tiện nghi & Chính sách</h5>
+                <h5 class="modal-title-custom">{{ $type->name }} - Dịch vụ kèm &amp; chính sách</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 p-md-5">
-                @php
-                    $roomForInfo = (isset($type->available_rooms) && $type->available_rooms->isNotEmpty())
-                                   ? $type->available_rooms->first()
-                                   : ($type->rooms->isNotEmpty() ? $type->rooms->first() : null);
-                @endphp
-
-                {{-- Amenities Section --}}
-                @if($roomForInfo)
+                {{-- Dịch vụ đi kèm theo loại phòng (danh mục dịch vụ) --}}
                 <div class="mb-5">
-                    <h5 class="fw-bold mb-4 text-dark border-start border-4 border-primary ps-3">Tiện nghi phòng: {{ $type->name }}</h5>
-                    <div class="row g-4 mb-4">
-                        @foreach($roomForInfo->amenities as $amenity)
-                            <div class="col-6 col-md-4">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-patch-check-fill text-primary fs-5"></i>
-                                    <span class="text-secondary">{{ $amenity->name }}</span>
+                    <h5 class="fw-bold mb-4 text-dark border-start border-4 border-primary ps-3">Dịch vụ đi kèm: {{ $type->name }}</h5>
+                    @if($type->services->isNotEmpty())
+                        <div class="row g-4 mb-4">
+                            @foreach($type->services as $svc)
+                                <div class="col-6 col-md-4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-bag-check-fill text-primary fs-5"></i>
+                                        <span class="text-secondary">{{ $svc->name }}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        @endforeach
-                    </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-muted small mb-0">Loại phòng này chưa gắn dịch vụ đi kèm trong quản trị.</p>
+                    @endif
                 </div>
-                @endif
 
                 {{-- Policy Section --}}
                 <div>
@@ -119,11 +115,14 @@
                         <div class="room-detail-header-info">
                             <h2 class="fw-bold mb-2">{{ $firstRoom->name }}</h2>
                             <div class="d-flex align-items-center mb-3">
-                                <span class="room-price-big">{{ number_format($firstRoom->base_price, 0, ',', '.') }} VNĐ</span>
+                                <span class="room-price-big">{{ number_format($firstRoom->catalogueBasePrice(), 0, ',', '.') }} VNĐ</span>
                                 <span class="text-muted ms-2">/ đêm</span>
                                 <div class="room-rating-stars">
                                     @php
-                                        $avgRating = $firstRoom->reviews->avg('rating') ?: 5.0;
+                                        $roomIdsForTypeModal = $type->rooms->pluck('id')->filter()->values();
+                                        $avgRating = $roomIdsForTypeModal->isNotEmpty()
+                                            ? (\App\Models\Review::whereIn('room_id', $roomIdsForTypeModal)->avg('rating') ?: 5.0)
+                                            : ($firstRoom->reviews->avg('rating') ?: 5.0);
                                         $fullStars = floor($avgRating);
                                         $hasHalf = ($avgRating - $fullStars) >= 0.5;
                                     @endphp
@@ -143,7 +142,7 @@
                             <div class="mb-4 d-flex flex-wrap gap-3">
                                 <div class="room-spec-item"><i class="bi bi-house"></i> {{ $firstRoom->beds }} giường</div>
                                 <div class="room-spec-item"><i class="bi bi-droplet"></i> {{ $firstRoom->baths ?? 1 }} phòng tắm</div>
-                                <div class="room-spec-item"><i class="bi bi-people"></i> Tối đa {{ $firstRoom->max_guests }} khách</div>
+                                <div class="room-spec-item"><i class="bi bi-people"></i> Tối đa {{ $firstRoom->catalogueMaxGuests() }} khách</div>
                                 <div class="room-spec-item"><i class="bi bi-aspect-ratio"></i> {{ $firstRoom->area }} m²</div>
                             </div>
 
@@ -153,30 +152,42 @@
                             </div>
 
                             <div class="detail-card">
-                                <div class="detail-section-title">Tiện ích</div>
+                                <div class="detail-section-title">Dịch vụ đi kèm (theo loại phòng)</div>
                                 <div class="d-flex flex-wrap gap-2">
-                                    @foreach($firstRoom->amenities as $amenity)
-                                        <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill small">{{ $amenity->name }}</span>
-                                    @endforeach
+                                    @forelse($type->services as $svc)
+                                        <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill small">{{ $svc->name }}</span>
+                                    @empty
+                                        <span class="text-muted small">Chưa cấu hình dịch vụ kèm cho loại phòng.</span>
+                                    @endforelse
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Reviews Section --}}
+                {{-- Reviews Section (gom theo cùng loại phòng — các đánh giá lưu theo room_id thuộc loại) --}}
+                @php
+                    $roomIdsForTypeReviews = $type->rooms->pluck('id')->filter()->values();
+                    $modalTypeReviews = $roomIdsForTypeReviews->isNotEmpty()
+                        ? \App\Models\Review::with(['user', 'room'])->whereIn('room_id', $roomIdsForTypeReviews)->latest()->limit(20)->get()
+                        : collect();
+                @endphp
                 <div class="mt-4">
-                    <div class="detail-section-title">Đánh giá</div>
+                    <div class="detail-section-title">Đánh giá theo loại phòng</div>
+                    <p class="small text-muted mb-3">Hiển thị đánh giá từ mọi phòng vật lý thuộc <strong>{{ $type->name }}</strong> (kể cả số phòng khác nhau).</p>
                     <div class="row g-3">
-                        @forelse($firstRoom->reviews as $review)
+                        @forelse($modalTypeReviews as $review)
                             <div class="col-12">
                                 <div class="review-card">
                                     <div class="d-flex gap-3">
                                         <div class="review-user-avatar">
-                                            {{ strtoupper(substr($review->user->name ?? 'G', 0, 1)) }}
+                                            {{ strtoupper(substr($review->user->full_name ?? $review->user->name ?? 'G', 0, 1)) }}
                                         </div>
                                         <div class="flex-grow-1">
-                                            <div class="review-user-name">{{ $review->user->name ?? 'Guest' }}</div>
+                                            <div class="review-user-name">{{ $review->user->full_name ?? $review->user->name ?? 'Guest' }}</div>
+                                            @if($review->room)
+                                                <div class="text-muted small mb-1">{{ $review->room->name }}</div>
+                                            @endif
                                             <div class="text-warning small mb-2">
                                                 @for($i = 0; $i < 5; $i++)
                                                     <i class="bi bi-star{{ $i < $review->rating ? '-fill' : '' }}"></i>
@@ -198,14 +209,13 @@
                             </div>
                         @empty
                             <div class="col-12">
-                                <p class="text-muted text-center py-4 bg-white rounded-4 border">Chưa có đánh giá nào cho phòng này.</p>
+                                <p class="text-muted text-center py-4 bg-white rounded-4 border">Chưa có đánh giá nào cho loại phòng này.</p>
                             </div>
                         @endforelse
                     </div>
 
                     <div class="mt-4 p-4 bg-white rounded-4 border text-center">
-                        <p class="text-muted mb-3">Bạn muốn để lại đánh giá? Vui lòng đăng nhập.</p>
-                        <a href="{{ route('login') }}" class="btn btn-outline-primary rounded-pill px-4 btn-sm">Đăng nhập để viết đánh giá</a>
+                        @include('rooms.partials.review-write-form', ['room' => $firstRoom])
                     </div>
                 </div>
             </div>

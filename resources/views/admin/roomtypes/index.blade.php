@@ -149,20 +149,13 @@
                     <div class="row">
                     <div class="col-md-6 mb-3">
                         @if($type->image_url)
-                            <img src="{{ $type->image_url }}" alt="{{ $type->name }}" class="img-fluid rounded shadow-sm w-100" style="max-height: 300px; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px; border: 2px dashed #ccc; display: none;">
-                                <div style="text-align: center; color: #666;">
-                                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
-                                    <div>Không có ảnh</div>
-                                </div>
+                            <div class="rounded overflow-hidden shadow-sm bg-light" style="max-height: 300px;">
+                                <img src="{{ $type->image_url }}" alt="{{ $type->name }}" class="img-fluid w-100 d-block" style="max-height: 300px; object-fit: cover;"
+                                     onerror="this.style.display='none'; document.getElementById('roomtype-img-fb-{{ $type->id }}')?.classList.remove('d-none');">
                             </div>
+                            <p id="roomtype-img-fb-{{ $type->id }}" class="text-muted small mb-0 mt-2 d-none">Không tải được ảnh.</p>
                         @else
-                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px; border: 2px dashed #ccc;">
-                                <div style="text-align: center; color: #666;">
-                                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
-                                    <div>Không có ảnh</div>
-                                </div>
-                            </div>
+                            <p class="text-muted small fst-italic mb-0">Chưa có ảnh đại diện.</p>
                         @endif
                     </div>
                     <div class="col-md-6">

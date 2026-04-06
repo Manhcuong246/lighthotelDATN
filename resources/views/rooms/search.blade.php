@@ -401,10 +401,10 @@
                         </select>
                     </div>
                     <div class="col-lg-3 col-md-6">
-                        <label class="form-label small text-muted mb-1">Tiện nghi</label>
-                        <div class="position-relative" id="amenitiesWrapper">
-                            <button class="btn btn-sm bk-amenities-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="amenities-filter-toggle" onclick="toggleAmenitiesPopup(event)">
-                                <span id="amenities-text">Chọn tiện nghi</span>
+                        <label class="form-label small text-muted mb-1">Dịch vụ đi kèm</label>
+                        <div class="position-relative" id="includedServicesWrapper">
+                            <button class="btn btn-sm bk-amenities-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="included-services-filter-toggle" onclick="toggleIncludedServicesPopup(event)">
+                                <span id="included-services-text">Chọn dịch vụ</span>
                                 <i class="bi bi-chevron-down small"></i>
                             </button>
                         </div>
@@ -418,11 +418,11 @@
                 </div>
             </div>
         </div>
-        {{-- Hidden amenities checkboxes (synced by JS) --}}
-        <div style="display:none;" id="amenitiesHiddenInForm">
-            @foreach($amenities as $amenity)
-                <input type="checkbox" name="amenities[]" value="{{ $amenity->id }}" id="am_{{ $amenity->id }}"
-                       {{ in_array($amenity->id, (array)request('amenities')) ? 'checked' : '' }}>
+        {{-- Hidden included_services checkboxes (synced by JS) --}}
+        <div style="display:none;" id="includedServicesHiddenInForm">
+            @foreach($catalogServices as $svc)
+                <input type="checkbox" name="included_services[]" value="{{ $svc->id }}" id="isearch_h_{{ $svc->id }}"
+                       {{ in_array($svc->id, (array) request('included_services')) ? 'checked' : '' }}>
             @endforeach
         </div>
     </form>
@@ -485,19 +485,16 @@
                                 </div>
                             </div>
                             <div class="room-type-amenities mb-3">
-                                @if($type->available_rooms->isNotEmpty())
-                                    @php $amenities = $type->available_rooms->first()->amenities; @endphp
-                                    @foreach($amenities->take(2) as $amenity)
-                                        <span class="badge badge-amenity">{{ $amenity->name }}</span>
-                                    @endforeach
-                                @endif
+                                @foreach($type->services->take(3) as $svc)
+                                    <span class="badge badge-amenity">{{ $svc->name }}</span>
+                                @endforeach
                             </div>
-                            <a href="#" class="text-primary small fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#policyModal{{ $type->id }}">Tiện nghi và chính sách</a>
+                            <a href="#" class="text-primary small fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#policyModal{{ $type->id }}">Dịch vụ kèm &amp; chính sách</a>
                         </div>
                         <div class="room-type-action">
                             @if($type->available_rooms->isNotEmpty())
                                 <div class="price-label">Giá chỉ từ</div>
-                                <div class="price-val">{{ number_format($type->available_rooms->first()->base_price, 0, ',', '.') }} VNĐ</div>
+                                <div class="price-val">{{ number_format($type->available_rooms->first()->catalogueBasePrice(), 0, ',', '.') }} VNĐ</div>
                                 <div class="price-unit">/ đêm</div>
                             @endif
                             <button class="btn btn-select-room toggle-selection" data-target="selection{{ $type->id }}">Chọn phòng</button>
@@ -545,16 +542,16 @@
                                     </td>
                                     <td>
                                         @if($type->available_rooms->isNotEmpty())
-                                            <div class="text-muted text-decoration-line-through small">{{ number_format($type->available_rooms->first()->base_price * 1.2, 0, ',', '.') }} VNĐ / đêm</div>
-                                            <div class="fw-bold fs-5 text-primary">{{ number_format($type->available_rooms->first()->base_price, 0, ',', '.') }} VNĐ / đêm</div>
+                                            <div class="text-muted text-decoration-line-through small">{{ number_format($type->available_rooms->first()->catalogueBasePrice() * 1.2, 0, ',', '.') }} VNĐ / đêm</div>
+                                            <div class="fw-bold fs-5 text-primary">{{ number_format($type->available_rooms->first()->catalogueBasePrice(), 0, ',', '.') }} VNĐ / đêm</div>
                                         @endif
                                     </td>
                                     <td>
                                         <select class="room-qty-select"
                                                 data-type-id="{{ $type->id }}"
                                                 data-type-name="{{ $type->name }}"
-                                                data-price="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->base_price : 0 }}"
-                                                data-max-guests="{{ $type->available_rooms->first()->max_guests ?? 6 }}"
+                                                data-price="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->catalogueBasePrice() : 0 }}"
+                                                data-max-guests="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->catalogueMaxGuests() : 6 }}"
                                                 data-adult-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::adultSurchargeRate($type) }}"
                                                 data-child-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::childSurchargeRate($type) }}"
                                                 data-room-ids="{{ json_encode($type->available_rooms->pluck('id')->toArray()) }}">
@@ -670,21 +667,21 @@
     </div>
 </div>
 
-{{-- Amenities popup — nằm ngoài mọi container để không bị clip --}}
-<div id="amenitiesPopup" class="amenities-popup" style="display:none;">
+{{-- Popup lọc dịch vụ đi kèm — nằm ngoài mọi container để không bị clip --}}
+<div id="includedServicesPopup" class="amenities-popup" style="display:none;">
     <div class="amenities-popup-content">
-        @forelse($amenities as $amenity)
+        @forelse($catalogServices as $svc)
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox"
-                       value="{{ $amenity->id }}" id="ampop_{{ $amenity->id }}"
-                       {{ in_array($amenity->id, (array)request('amenities')) ? 'checked' : '' }}
-                       onchange="syncAmenityCheckbox(this)">
-                <label class="form-check-label small" for="ampop_{{ $amenity->id }}">
-                    {{ $amenity->name }}
+                       value="{{ $svc->id }}" id="isearch_pop_{{ $svc->id }}"
+                       {{ in_array($svc->id, (array) request('included_services')) ? 'checked' : '' }}
+                       onchange="syncIncludedServiceCheckbox(this)">
+                <label class="form-check-label small" for="isearch_pop_{{ $svc->id }}">
+                    {{ $svc->name }}
                 </label>
             </div>
         @empty
-            <p class="small text-muted mb-0">Chưa có tiện nghi.</p>
+            <p class="small text-muted mb-0">Chưa có dịch vụ trong danh mục.</p>
         @endforelse
     </div>
 </div>
@@ -715,11 +712,11 @@ function applyPriceRange(select) {
     }
 }
 
-function toggleAmenitiesPopup(e) {
+function toggleIncludedServicesPopup(e) {
     e.stopPropagation();
-    var popup = document.getElementById('amenitiesPopup');
+    var popup = document.getElementById('includedServicesPopup');
     if (popup.style.display === 'none' || !popup.style.display) {
-        var btn = document.getElementById('amenities-filter-toggle');
+        var btn = document.getElementById('included-services-filter-toggle');
         var rect = btn.getBoundingClientRect();
         popup.style.top = (rect.bottom + 4) + 'px';
         popup.style.left = rect.left + 'px';
@@ -729,29 +726,30 @@ function toggleAmenitiesPopup(e) {
     }
 }
 
-function syncAmenityCheckbox(cb) {
+function syncIncludedServiceCheckbox(cb) {
     var val = cb.value;
-    var hidden = document.querySelector('#amenitiesHiddenInForm input[value="' + val + '"]');
+    var hidden = document.querySelector('#includedServicesHiddenInForm input[value="' + val + '"]');
     if (hidden) hidden.checked = cb.checked;
-    updateAmenitiesText();
+    updateIncludedServicesFilterText();
 }
 
-function updateAmenitiesText() {
-    var checkedAmenities = document.querySelectorAll('#amenitiesPopup input[type="checkbox"]:checked');
-    var textElement = document.getElementById('amenities-text');
-    if (checkedAmenities.length === 0) {
-        textElement.textContent = 'Chọn tiện nghi';
-    } else if (checkedAmenities.length === 1) {
-        var lbl = document.querySelector('label[for="' + checkedAmenities[0].id + '"]');
-        textElement.textContent = lbl ? lbl.textContent.trim() : '1 tiện nghi';
+function updateIncludedServicesFilterText() {
+    var checked = document.querySelectorAll('#includedServicesPopup input[type="checkbox"]:checked');
+    var textElement = document.getElementById('included-services-text');
+    if (!textElement) return;
+    if (checked.length === 0) {
+        textElement.textContent = 'Chọn dịch vụ';
+    } else if (checked.length === 1) {
+        var lbl = document.querySelector('label[for="' + checked[0].id + '"]');
+        textElement.textContent = lbl ? lbl.textContent.trim() : '1 dịch vụ';
     } else {
-        textElement.textContent = checkedAmenities.length + ' tiện nghi đã chọn';
+        textElement.textContent = checked.length + ' dịch vụ đã chọn';
     }
 }
 
 document.addEventListener('click', function(e) {
-    var popup = document.getElementById('amenitiesPopup');
-    var toggle = document.getElementById('amenities-filter-toggle');
+    var popup = document.getElementById('includedServicesPopup');
+    var toggle = document.getElementById('included-services-filter-toggle');
     if (popup && popup.style.display !== 'none') {
         if (!popup.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
             popup.style.display = 'none';
@@ -957,7 +955,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const child05Arr = guestContainer.querySelectorAll('.child-05-count');
                 const child611Arr = guestContainer.querySelectorAll('.child-611-count');
 
+                if (qty > roomIds.length) {
+                    typeLimitExceeded = true;
+                }
+
                 for (let i = 0; i < qty; i++) {
+                    const roomIdForSlot = roomIds[i];
+                    if (roomIdForSlot == null || roomIdForSlot === '') {
+                        typeLimitExceeded = true;
+                        continue;
+                    }
+
                     const adults = parseInt(adultsArr[i].value || 0);
                     const c05 = parseInt(child05Arr[i].value || 0);
                     const c611 = parseInt(child611Arr[i].value || 0);
@@ -992,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
 
                     hiddenInputs += `
-                        <input type="hidden" name="room_ids[]" value="${roomIds[i]}">
+                        <input type="hidden" name="room_ids[]" value="${roomIdForSlot}">
                         <input type="hidden" name="adults[]" value="${adults}">
                         <input type="hidden" name="children_0_5[]" value="${c05}">
                         <input type="hidden" name="children_6_11[]" value="${c611}">
@@ -1147,8 +1155,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Call restore on load
     setTimeout(restoreSelection, 100);
 
-    // Init amenities text on load
-    updateAmenitiesText();
+    // Init dịch vụ filter label on load
+    updateIncludedServicesFilterText();
 
     // Init Bootstrap tooltips
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {

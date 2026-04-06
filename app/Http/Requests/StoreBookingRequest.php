@@ -36,7 +36,19 @@ class StoreBookingRequest extends FormRequest
         }
 
         return [
-            'room_ids'       => 'required|array|min:1',
+            'room_ids'       => [
+                'required',
+                'array',
+                'min:1',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_array($value)) {
+                        return;
+                    }
+                    if (count($value) !== count(array_unique($value))) {
+                        $fail('Trong một đơn không được chọn trùng cùng một phòng.');
+                    }
+                },
+            ],
             'room_ids.*'     => 'required|integer|exists:rooms,id',
             'full_name'      => 'required|string|max:150|min:2',
             'email'          => $emailRules,

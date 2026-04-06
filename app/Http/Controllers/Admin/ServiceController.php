@@ -47,7 +47,7 @@ class ServiceController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.roomtypes.services.index')
+            ->route('admin.services.index')
             ->with('success', 'Thêm dịch vụ thành công!');
     }
 
@@ -84,7 +84,7 @@ class ServiceController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.roomtypes.services.index')
+            ->route('admin.services.index')
             ->with('success', 'Cập nhật dịch vụ thành công!');
     }
 
@@ -98,7 +98,7 @@ class ServiceController extends Controller
         $service->delete();
 
         return redirect()
-            ->route('admin.roomtypes.services.index')
+            ->route('admin.services.index')
             ->with('success', 'Xóa dịch vụ thành công!');
     }
 }

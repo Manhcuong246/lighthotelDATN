@@ -34,7 +34,7 @@ class VnPayController extends Controller
         }
 
         $txnRef = 'LIGHT'.$booking->id;
-        $amountVnd = (int) round($booking->total_price);
+        $amountVnd = (int) round((float) ($booking->total_price ?? 0));
         $orderInfo = 'Dat phong Light Hotel #'.$booking->id;
         $paymentUrl = $this->vnPayService->createPaymentUrl(
             $txnRef,

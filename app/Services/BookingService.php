@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\Payment;
-use App\Models\RefundLog;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
 use App\Models\User;
@@ -14,7 +13,6 @@ use App\Support\RoomOccupancyPricing;
 use App\Exceptions\BookingException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -41,6 +39,10 @@ class BookingService
             throw new BookingException('Bạn chỉ có thể đặt phòng tối đa 30 đêm.');
         }
 
+        if (count($data['room_ids']) !== count(array_unique($data['room_ids']))) {
+            throw new BookingException('Trong một đơn không được chọn trùng cùng một phòng.');
+        }
+
         // 1. Lấy danh sách phòng và kiểm tra tính hợp lệ
         $rooms = [];
         foreach ($data['room_ids'] as $id) {
@@ -58,7 +60,8 @@ class BookingService
         // 3. Kiểm tra conflict (phòng đã có người đặt)
         $uniqueRoomIds = array_unique($data['room_ids']);
         foreach ($uniqueRoomIds as $rid) {
-            $conflict = RoomBookedDate::where('room_id', $rid)
+            $conflict = RoomBookedDate::query()
+                ->where('room_id', $rid)
                 ->whereIn('booked_date', $dates)
                 ->exists();
             if ($conflict) {
@@ -114,7 +117,7 @@ class BookingService
 
         // 6. Thực hiện giao dịch DB
         return DB::transaction(function () use ($data, $checkIn, $checkOut, $totalPrice, $discountAmount, $couponCode, $roomPriceDetails, $dates) {
-            // Một đơn luôn gắn user_id (tài khoản đăng nhập hoặc tài khoản shadow theo email).
+            // Một đơn luôn gắn user_id (đăng nhập hoặc user tạm theo email — chưa gắn role guest, xem User::isProvisionalGuestAccount).
             if (Auth::check()) {
                 $userId = (int) Auth::id();
             } else {
@@ -189,7 +192,7 @@ class BookingService
      */
     private function calculateRoomPrice(Room $room, int $nights, int $adults, int $children_0_5, int $children_6_11): array
     {
-        $basePrice = (float) $room->base_price;
+        $basePrice = (float) $room->catalogueBasePrice();
         $roomType = $room->roomType;
 
         try {
@@ -207,214 +210,6 @@ class BookingService
             'price_per_night' => $t['price_per_night'],
             'subtotal'        => $t['grand_total'],
             'nights'          => $nights,
-        ];
-    }
-
-    /**
-     * Refund calculation constants
-     */
-    const REFUND_FULL = 'full';
-    const REFUND_PARTIAL = 'partial';
-    const REFUND_NONE = 'none';
-
-    /**
-     * Cancel a booking and calculate refund based on cancellation timing.
-     *
-     * @param int $bookingId
-     * @param string|null $reason
-     * @return array
-     * @throws \Exception
-     */
-    public function cancelBooking(int $bookingId, ?string $reason = null): array
-    {
-        try {
-            DB::beginTransaction();
-
-            $booking = Booking::find($bookingId);
-
-            if (!$booking) {
-                throw new \Exception('Không tìm thấy đơn đặt phòng.', 404);
-            }
-
-            if ($booking->status === 'cancelled') {
-                throw new \Exception('Đơn đặt phòng này đã được hủy trước đó.', 400);
-            }
-
-            if ($booking->status === 'completed') {
-                throw new \Exception('Không thể hủy đơn đặt phòng đã hoàn thành.', 400);
-            }
-
-            $refundResult = $this->calculateRefund($booking);
-
-            $booking->status = 'cancelled';
-            $booking->payment_status = $this->getPaymentStatusFromRefund($refundResult['type']);
-            $booking->cancelled_at = now();
-            $booking->cancellation_reason = $reason;
-            $booking->refund_amount = $refundResult['amount'];
-            $booking->save();
-
-            // Create refund log
-            RefundLog::create([
-                'booking_id' => $booking->id,
-                'refund_amount' => $refundResult['amount'],
-                'refund_type' => $refundResult['type'],
-                'reason' => $reason ?? $refundResult['message'],
-                'processed_by' => Auth::id(),
-                'refunded_at' => now(),
-            ]);
-
-            DB::commit();
-
-            Log::info('Booking cancelled successfully', [
-                'booking_id' => $booking->id,
-                'refund_amount' => $refundResult['amount'],
-                'refund_type' => $refundResult['type'],
-                'user_id' => Auth::id(),
-            ]);
-
-            return [
-                'success' => true,
-                'booking_id' => $booking->id,
-                'refund_amount' => $refundResult['amount'],
-                'refund_type' => $refundResult['type'],
-                'message' => $refundResult['message'],
-                'details' => [
-                    'total_price' => $booking->total_price,
-                    'check_in_date' => Carbon::parse($booking->check_in_date ?? $booking->check_in)->format('d/m/Y H:i'),
-                    'cancellation_time' => now()->format('d/m/Y H:i'),
-                    'hours_before_checkin' => $this->getHoursBeforeCheckIn($booking),
-                ],
-            ];
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Booking cancellation failed', [
-                'booking_id' => $bookingId,
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id(),
-            ]);
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Calculate refund amount based on cancellation timing.
-     *
-     * Business Logic:
-     * - > 24h before check-in: 100% refund
-     * - 0-24h before check-in: 50% refund
-     * - After check-in: 0% refund
-     *
-     * @param Booking $booking
-     * @return array
-     */
-    protected function calculateRefund(Booking $booking): array
-    {
-        $now = Carbon::now();
-        $checkInDate = Carbon::parse($booking->check_in_date ?? $booking->check_in);
-        $totalPrice = $booking->total_price;
-
-        $hoursBeforeCheckIn = $now->diffInHours($checkInDate, false);
-
-        // Case 1: More than 24 hours before check-in → Full refund (100%)
-        if ($hoursBeforeCheckIn > 24) {
-            return [
-                'amount' => $totalPrice,
-                'type' => self::REFUND_FULL,
-                'message' => sprintf(
-                    'Hoàn tiền 100%% (%,.0f VNĐ) vì hủy trước %d giờ.',
-                    $totalPrice,
-                    ceil($hoursBeforeCheckIn)
-                ),
-            ];
-        }
-
-        // Case 2: Between 0 and 24 hours before check-in → Partial refund (50%)
-        if ($hoursBeforeCheckIn > 0 && $hoursBeforeCheckIn <= 24) {
-            $refundAmount = $totalPrice * 0.5;
-            return [
-                'amount' => $refundAmount,
-                'type' => self::REFUND_PARTIAL,
-                'message' => sprintf(
-                    'Hoàn tiền 50%% (%,.0f VNĐ) vì hủy trong vòng 24 giờ trước nhận phòng.',
-                    $refundAmount
-                ),
-            ];
-        }
-
-        // Case 3: After check-in time → No refund (0%)
-        return [
-            'amount' => 0,
-            'type' => self::REFUND_NONE,
-            'message' => 'Không hoàn tiền vì đã quá thời hạn nhận phòng.',
-        ];
-    }
-
-    /**
-     * Get hours before check-in for display purposes.
-     *
-     * @param Booking $booking
-     * @return float
-     */
-    protected function getHoursBeforeCheckIn(Booking $booking): float
-    {
-        $now = Carbon::now();
-        $checkInDate = Carbon::parse($booking->check_in_date ?? $booking->check_in);
-
-        return $now->diffInHours($checkInDate, false);
-    }
-
-    /**
-     * Get payment status based on refund type.
-     *
-     * @param string $refundType
-     * @return string
-     */
-    protected function getPaymentStatusFromRefund(string $refundType): string
-    {
-        return match ($refundType) {
-            self::REFUND_FULL => 'refunded',
-            self::REFUND_PARTIAL => 'partial_refunded',
-            self::REFUND_NONE => 'paid',
-            default => 'paid',
-        };
-    }
-
-    /**
-     * Check if a booking can be cancelled (preview without actual cancellation).
-     *
-     * @param int $bookingId
-     * @return array
-     * @throws \Exception
-     */
-    public function previewCancellation(int $bookingId): array
-    {
-        $booking = Booking::find($bookingId);
-
-        if (!$booking) {
-            throw new \Exception('Không tìm thấy đơn đặt phòng.', 404);
-        }
-
-        if ($booking->status === 'cancelled') {
-            throw new \Exception('Đơn đặt phòng này đã được hủy trước đó.', 400);
-        }
-
-        if ($booking->status === 'completed') {
-            throw new \Exception('Không thể hủy đơn đặt phòng đã hoàn thành.', 400);
-        }
-
-        $refundResult = $this->calculateRefund($booking);
-        $hoursBefore = $this->getHoursBeforeCheckIn($booking);
-
-        return [
-            'can_cancel' => true,
-            'booking_id' => $booking->id,
-            'refund_preview' => $refundResult,
-            'hours_before_checkin' => $hoursBefore,
-            'check_in_date' => Carbon::parse($booking->check_in_date ?? $booking->check_in)->format('d/m/Y H:i'),
-            'total_price' => $booking->total_price,
         ];
     }
 }

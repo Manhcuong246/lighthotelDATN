@@ -31,7 +31,7 @@
                             <th>Vai trò</th>
                             <th>Trạng thái</th>
                             <th>Ngày đăng ký</th>
-                            <th width="180">Hành động</th>
+                            <th width="130">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -67,8 +67,7 @@
                                 <td>{{ $user->created_at ? $user->created_at->format('d/m/Y') : '—' }}</td>
                                 <td>
                                     <div class="admin-action-row">
-                                        <a href="{{ route('admin.users.show', $user) }}" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
-                                        <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-warning btn-admin-icon" title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                                        <a href="{{ route('admin.users.show', $user) }}" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Xem &amp; chỉnh sửa"><i class="bi bi-person-lines-fill"></i></a>
                                         @if(auth()->user()->isAdmin())
                                         <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline"
                                               onsubmit="return confirm('Bạn có chắc muốn xóa người dùng này?');">

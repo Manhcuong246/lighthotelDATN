@@ -7,8 +7,14 @@
     <!-- Header -->
     <div class="mb-4">
         <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-secondary btn-admin-icon rounded-2 mb-3" title="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h1 class="h2 fw-bold mb-0">📋 Đơn #{{ $booking->id }}</h1>
+            <div class="d-flex align-items-center gap-2">
+                @if($booking->isPaidAndCheckedOutForInvoice())
+                <a href="{{ route('admin.bookings.invoice', $booking) }}" class="btn btn-sm btn-outline-dark no-print" target="_blank" rel="noopener">
+                    <i class="bi bi-receipt-cutoff me-1"></i>Biên lai
+                </a>
+                @endif
             @php
                 $statusColors = [
                     'pending' => 'warning',
@@ -26,6 +32,7 @@
             <span class="badge bg-{{ $statusColors[$booking->status] ?? 'secondary' }} px-4 py-2 fs-6">
                 {{ $statusLabels[$booking->status] ?? '—' }}
             </span>
+            </div>
         </div>
     </div>
 
@@ -62,17 +69,17 @@
                                 <small class="text-muted">{{ $booking->user?->phone ?? '—' }}</small>
                             </div>
                             <div class="col-md-2">
-                                <label for="check_in" class="text-uppercase small fw-bold text-muted mb-1 d-block">Nhận phòng</label>
+                                <label for="check_in" class="text-uppercase small fw-bold text-muted mb-1 d-block">Nhận</label>
                                 <input type="date" class="form-control form-control-sm" id="check_in" name="check_in"
                                        value="{{ $booking->check_in?->format('Y-m-d') }}">
                             </div>
                             <div class="col-md-2">
-                                <label for="check_out" class="text-uppercase small fw-bold text-muted mb-1 d-block">Trả phòng</label>
+                                <label for="check_out" class="text-uppercase small fw-bold text-muted mb-1 d-block">Trả</label>
                                 <input type="date" class="form-control form-control-sm" id="check_out" name="check_out"
                                        value="{{ $booking->check_out?->format('Y-m-d') }}">
                             </div>
                             <div class="col-md-2">
-                                <label for="total_price" class="text-uppercase small fw-bold text-muted mb-1 d-block">Tổng tiền</label>
+                                <label for="total_price" class="text-uppercase small fw-bold text-muted mb-1 d-block">Tổng</label>
                                 <div class="input-group input-group-sm">
                                     <input type="number" class="form-control form-control-sm" id="total_price" name="total_price"
                                            min="0" step="1000" value="{{ $booking->total_price }}">
@@ -88,7 +95,7 @@
                             </div>
                             <div class="col-md-auto">
                                 <button type="submit" class="btn btn-sm btn-outline-primary rounded-2">
-                                    <i class="bi bi-check-lg me-1"></i>Lưu
+                                    <i class="bi bi-check-lg me-1"></i>Lưu ngày &amp; tổng
                                 </button>
                             </div>
                         </div>
@@ -97,7 +104,7 @@
                     <!-- Room List Table -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <p class="text-uppercase small fw-bold text-muted mb-2">🏨 Chi tiết phòng</p>
+                            <p class="text-uppercase small fw-bold text-muted mb-2">Phòng</p>
                             <div class="table-responsive rounded-2 border shadow-sm">
                                 <table class="table table-hover mb-0 align-middle">
                                     <thead class="table-light">
@@ -131,11 +138,12 @@
                         </div>
                     </div>
 
-                    @if($booking->bookingServices->isNotEmpty())
-                    <div class="row mt-3 pt-3 border-top">
+                    <div id="booking-extras" class="row mt-3 pt-3 border-top" style="scroll-margin-top: 5rem;">
                         <div class="col-12">
-                            <p class="text-uppercase small fw-bold text-muted mb-2">Dịch vụ kèm theo</p>
-                            <div class="table-responsive rounded-2 border bg-white">
+                            <p class="text-uppercase small fw-bold text-muted mb-2">Dịch vụ &amp; phụ phí</p>
+
+                            @if($booking->bookingServices->isNotEmpty())
+                            <div class="table-responsive rounded-2 border bg-white mb-3">
                                 <table class="table table-sm mb-0 align-middle">
                                     <thead class="table-light">
                                         <tr>
@@ -160,27 +168,30 @@
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    </div>
-                    @endif
+                            @else
+                                <p class="small text-muted mb-2">Chưa có dịch vụ danh mục.</p>
+                            @endif
 
-                    @if($booking->surcharges && $booking->surcharges->isNotEmpty())
-                    <div class="row mt-3 pt-3 border-top">
-                        <div class="col-12">
-                            <p class="text-uppercase small fw-bold text-muted mb-2">🔥 Phiếu phát sinh (Phụ thu)</p>
-                            <div class="table-responsive rounded-2 border border-danger bg-white">
+                            @if($booking->surcharges && $booking->surcharges->isNotEmpty())
+                            <p class="text-uppercase small fw-bold text-muted mb-2">Phụ phí đã ghi</p>
+                            <div class="table-responsive rounded-2 border border-danger bg-white mb-3">
                                 <table class="table table-sm mb-0 align-middle">
                                     <thead class="table-danger text-danger">
                                         <tr>
-                                            <th class="ps-3">Lý do phụ thu</th>
+                                            <th class="ps-3">Nội dung</th>
                                             <th class="text-end">Ngày giờ lập</th>
-                                            <th class="text-end pe-3">Số tiền thu thêm</th>
+                                            <th class="text-end pe-3">Số tiền</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($booking->surcharges as $surcharge)
                                         <tr>
-                                            <td class="ps-3 fw-bold text-dark">{{ $surcharge->reason }}</td>
+                                            <td class="ps-3 text-dark">
+                                                <div class="fw-semibold">{{ $surcharge->reason }}</div>
+                                                @if($surcharge->service)
+                                                    <div class="small text-muted mt-1">(cũ: {{ $surcharge->service->name }})</div>
+                                                @endif
+                                            </td>
                                             <td class="text-end text-muted">{{ $surcharge->created_at->format('d/m/Y H:i') }}</td>
                                             <td class="text-end pe-3 fw-semibold text-danger">+ {{ number_format($surcharge->amount, 0, ',', '.') }} ₫</td>
                                         </tr>
@@ -188,9 +199,30 @@
                                     </tbody>
                                 </table>
                             </div>
+                            @endif
+
+                            @if($booking->status !== 'cancelled')
+                            <div id="booking-extras-form" class="border rounded-3 p-3 bg-light">
+                                <form action="{{ route('admin.bookings.storeExtras', $booking) }}" method="POST">
+                                    @csrf
+                                    @if($services->isNotEmpty())
+                                        <p class="small fw-bold text-muted mb-1">Dịch vụ danh mục</p>
+                                        <p class="small text-muted mb-2">Muốn lưu dịch vụ kèm: <strong>phải chọn tên dịch vụ</strong> trong ô xổ (không để dòng mặc định). Chỉ thêm phụ phí thì bỏ qua phần này.</p>
+                                        @include('admin.bookings.partials.booking-catalog-service-lines', ['services' => $services])
+                                    @else
+                                        <p class="small text-muted mb-3">Chưa có dịch vụ trong danh mục — chỉ thêm phụ phí bên dưới, hoặc <a href="{{ route('admin.services.create') }}">tạo dịch vụ</a>.</p>
+                                    @endif
+                                    <hr class="my-3">
+                                    <p class="small fw-bold text-muted mb-2">Phụ phí</p>
+                                    @include('admin.bookings.partials.surcharge-form-fields', ['suffix' => 'extras'])
+                                    <button type="submit" class="btn btn-primary btn-sm rounded-2 mt-3">
+                                        <i class="bi bi-check-lg me-1"></i>Lưu dịch vụ &amp; phụ phí
+                                    </button>
+                                </form>
+                            </div>
+                            @endif
                         </div>
                     </div>
-                    @endif
 
                     @php
                         $hotelInfo = \App\Models\HotelInfo::first();
@@ -200,7 +232,7 @@
                     <!-- QR Code Payment Section -->
                     <div class="row mt-4 pt-3 border-top">
                         <div class="col-12">
-                            <h6 class="fw-bold mb-3">📱 Thanh toán qua QR Code</h6>
+                            <h6 class="fw-bold mb-3">QR thanh toán</h6>
                             <div class="row">
                                 <div class="col-md-4 text-center">
                                     @php
@@ -216,9 +248,6 @@
                                         <p class="mb-2"><strong>Số tiền:</strong> <span class="text-success fw-bold">{{ number_format($payment->amount, 0, ',', '.') }} ₫</span></p>
                                         <p class="mb-0"><strong>Nội dung CK:</strong> <code>BOOKING{{ $booking->id }}</code></p>
                                     </div>
-                                    <div class="mt-3">
-                                        <small class="text-muted">Khách hàng có thể quét mã QR bằng ứng dụng ngân hàng để thanh toán nhanh chóng.</small>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -232,17 +261,17 @@
                             <div class="bg-light p-3 rounded-2">
                                 <div class="row g-3">
                                     <div class="col-auto">
-                                        <small class="text-uppercase fw-bold text-muted">⏱️ Thực tế:</small>
+                                        <small class="text-uppercase fw-bold text-muted">CI / CO</small>
                                     </div>
                                     @if($booking->actual_check_in)
                                     <div class="col-auto">
-                                        <small class="text-muted">Ngày nhận phòng:</small>
+                                        <small class="text-muted">Nhận:</small>
                                         <strong>{{ $booking->actual_check_in->format('d/m H:i') }}</strong>
                                     </div>
                                     @endif
                                     @if($booking->actual_check_out)
                                     <div class="col-auto">
-                                        <small class="text-muted">Ngày trả phòng:</small>
+                                        <small class="text-muted">Trả:</small>
                                         <strong>{{ $booking->actual_check_out->format('d/m H:i') }}</strong>
                                     </div>
                                     @endif
@@ -255,72 +284,60 @@
                     <!-- Trạng thái đơn & thanh toán (chỉnh thủ công) — neo #payment-booking-settings từ màn Thanh toán -->
                     <div id="payment-booking-settings" class="row g-3 mt-2 pt-3 border-top" style="scroll-margin-top: 5rem;">
                         <div class="col-12">
-                            <h6 class="fw-bold mb-2">⚙️ Tiến trình đặt phòng &amp; ghi nhận thanh toán</h6>
-                            <p class="small text-muted mb-3">
-                                <strong>Hai cột khác nhau:</strong> <em>Tiến trình đơn</em> = đơn có được <strong>xác nhận giữ phòng</strong> hay chưa, có <strong>hoàn thành lưu trú</strong> hay <strong>hủy</strong>.
-                                <em>Thu tiền / thanh toán</em> = đã <strong>ghi nhận tiền vào sổ</strong> hay vẫn <strong>chờ thu</strong> (có thể lệch với bản ghi VNPay đang pending).
-                                <br>
-                                <strong>Nghiệp vụ:</strong> Khách đổi cách trả (ví dụ có link VNPay nhưng trả <strong>tiền mặt</strong>): chọn <strong>Tiền mặt</strong>, đổi tiến trình sang <strong>Đã xác nhận</strong> và cột thanh toán sang <strong>Đã ghi nhận thanh toán</strong>, rồi <strong>Lưu</strong>.
-                                Đơn <strong>đã hủy</strong> không khôi phục giữ phòng tại đây — cần đơn mới. Không chỉnh khi đơn đã <strong>hoàn tiền</strong>.
-                            </p>
+                            <h6 class="fw-bold mb-2">Trạng thái &amp; thanh toán</h6>
+                            <p class="small text-muted mb-3">Tiến trình đơn khác ghi nhận tiền. Hoàn tiền: không sửa.</p>
                             @php
                                 $paymentLocked = in_array((string) $booking->payment_status, ['refunded', 'partial_refunded'], true);
                                 $isCancelled = $booking->status === 'cancelled';
                             @endphp
                             @if($paymentLocked)
-                                <div class="alert alert-warning mb-0">Đơn có hoàn tiền — không chỉnh thanh toán tại đây.</div>
+                                <div class="alert alert-warning mb-0 small py-2">Đã hoàn tiền — khóa chỉnh sửa.</div>
                             @else
                             @if($booking->status === 'confirmed' && $booking->payment_status === 'pending')
-                                <div class="alert alert-warning py-2 mb-3">
-                                    Dữ liệu đang <strong>lệch</strong>: tiến trình là <strong>Đã xác nhận</strong> nhưng thanh toán vẫn <strong>Chưa ghi nhận</strong>.
-                                    Hãy chỉnh cho khớp rồi Lưu (thường là chọn <strong>Đã ghi nhận thanh toán</strong> nếu khách đã trả).
-                                </div>
+                                <div class="alert alert-warning py-2 mb-3 small">Đơn đã xác nhận nhưng chưa ghi nhận thanh toán — chỉnh cho khớp.</div>
                             @endif
                             <form action="{{ route('admin.bookings.update-payment-settings', $booking) }}" method="POST" class="row g-3 align-items-end">
                                 @csrf
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">Tiến trình đơn</label>
-                                    <span class="d-block small text-muted mb-1">Đặt phòng: chờ TT → xác nhận giữ phòng → hoàn thành / hủy</span>
                                     @if($isCancelled)
                                         <input type="hidden" name="booking_status" value="cancelled">
-                                        <input type="text" class="form-control form-control-sm bg-light" value="Đã hủy (không khôi phục giữ phòng)" disabled>
+                                        <input type="text" class="form-control form-control-sm bg-light" value="Đã hủy" disabled>
                                     @else
                                         <select name="booking_status" class="form-select form-select-sm" required>
-                                            <option value="pending" @selected($booking->status === 'pending')>Chờ xác nhận (chưa giữ phòng)</option>
-                                            <option value="confirmed" @selected($booking->status === 'confirmed')>Đã xác nhận — giữ phòng</option>
-                                            <option value="completed" @selected($booking->status === 'completed')>Hoàn thành lưu trú</option>
-                                            <option value="cancelled" @selected($booking->status === 'cancelled')>Hủy — mở ngày phòng</option>
+                                            <option value="pending" @selected($booking->status === 'pending')>Chờ xác nhận</option>
+                                            <option value="confirmed" @selected($booking->status === 'confirmed')>Đã xác nhận</option>
+                                            <option value="completed" @selected($booking->status === 'completed')>Hoàn thành</option>
+                                            <option value="cancelled" @selected($booking->status === 'cancelled')>Hủy</option>
                                         </select>
                                     @endif
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label small fw-bold">Ghi nhận thanh toán</label>
-                                    <span class="d-block small text-muted mb-1">Sổ quỹ: tiền đã thu đủ hay vẫn chờ (độc lập bản ghi VNPay)</span>
+                                    <label class="form-label small fw-bold">Thanh toán (sổ)</label>
                                     <select name="payment_status" class="form-select form-select-sm" required>
-                                        <option value="pending" @selected($booking->payment_status === 'pending')>Chưa ghi nhận thanh toán</option>
-                                        <option value="paid" @selected($booking->payment_status === 'paid')>Đã ghi nhận thanh toán</option>
+                                        <option value="pending" @selected($booking->payment_status === 'pending')>Chưa thu</option>
+                                        <option value="paid" @selected($booking->payment_status === 'paid')>Đã thu</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label small fw-bold">Phương thức thanh toán</label>
+                                    <label class="form-label small fw-bold">PTTT</label>
                                     <select name="payment_method" class="form-select form-select-sm" required>
                                         <option value="cash" @selected($booking->payment_method === 'cash')>Tiền mặt</option>
                                         <option value="vnpay" @selected($booking->payment_method === 'vnpay')>VNPay</option>
-                                        <option value="bank_transfer" @selected($booking->payment_method === 'bank_transfer')>Chuyển khoản (đơn cũ)</option>
+                                        <option value="bank_transfer" @selected($booking->payment_method === 'bank_transfer')>Chuyển khoản</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100 rounded-2">
-                                        <i class="bi bi-check2-lg me-1"></i>Lưu thay đổi
-                                    </button>
+                                    <label class="form-label small fw-bold d-block">&nbsp;</label>
+                                    <button type="submit" class="btn btn-outline-primary btn-sm w-100 rounded-2">Lưu trạng thái &amp; thanh toán</button>
                                 </div>
                                 @if(!empty($latestPayment))
                                 <div class="col-12 small text-muted border-top pt-2">
-                                    Bản ghi thanh toán mới nhất: mã <code>{{ $latestPayment->transaction_id ?? '—' }}</code>,
-                                    số tiền <strong>{{ number_format((float) ($latestPayment->amount ?? 0), 0, ',', '.') }} ₫</strong>,
-                                    PTTT <strong>{{ $latestPayment->method }}</strong> / trạng thái <strong>{{ $latestPayment->status }}</strong>
+                                    TT gần nhất: <code>{{ $latestPayment->transaction_id ?? '—' }}</code>
+                                    · {{ number_format((float) ($latestPayment->amount ?? 0), 0, ',', '.') }} ₫
+                                    · {{ $latestPayment->method }} / {{ $latestPayment->status }}
                                     @if($latestPayment->paid_at)
-                                        / lúc {{ $latestPayment->paid_at->format('d/m/Y H:i') }}
+                                        · {{ $latestPayment->paid_at->format('d/m/Y H:i') }}
                                     @endif
                                 </div>
                                 @endif
@@ -347,10 +364,10 @@
                                 </form>
                                 @endif
 
-                                @if(!$booking->invoice)
-                                <a href="{{ route('admin.invoices.create', $booking) }}" class="btn btn-outline-secondary btn-sm rounded-2 btn-admin-icon" title="Tạo hóa đơn"><i class="bi bi-receipt"></i></a>
-                                @else
+                                @if($booking->invoice)
                                 <a href="{{ route('admin.invoices.show', $booking->invoice) }}" class="btn btn-outline-secondary btn-sm rounded-2 btn-admin-icon" title="Xem hóa đơn"><i class="bi bi-receipt-cutoff"></i></a>
+                                @elseif($booking->isPaidAndCheckedOutForInvoice())
+                                <a href="{{ route('admin.invoices.create', $booking) }}" class="btn btn-outline-secondary btn-sm rounded-2 btn-admin-icon" title="Tạo hóa đơn"><i class="bi bi-receipt"></i></a>
                                 @endif
                             </div>
                         </div>

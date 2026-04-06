@@ -114,6 +114,7 @@
                                 $lp = $booking->latestPayment;
                                 $method = $lp ? $lp->method : $booking->payment_method;
                                 $paySt  = $lp ? $lp->status : ($booking->payment_status ?? 'pending');
+                                $ledgerPs = (string) ($booking->payment_status ?? 'pending');
 
                                 $methodLabels = [
                                     'vnpay'         => ['text' => 'VNPay',       'color' => 'dark'],
@@ -176,13 +177,26 @@
                                         <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Đã hủy</span>
                                     @elseif($booking->status === 'completed')
                                         <span class="badge bg-success"><i class="bi bi-check-all me-1"></i>Hoàn thành</span>
-                                    @elseif($paySt === 'paid' || $booking->status === 'confirmed')
-                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã thanh toán</span>
+                                    @elseif(in_array($ledgerPs, ['refunded', 'partial_refunded'], true))
+                                        <span class="badge bg-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>{{ $ledgerPs === 'partial_refunded' ? 'Hoàn tiền một phần' : 'Đã hoàn tiền' }}</span>
+                                    @elseif($ledgerPs === 'paid')
+                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã ghi nhận thanh toán</span>
+                                        @if($method && isset($methodLabels[$method]))
+                                            <br><span class="badge bg-{{ $methodLabels[$method]['color'] }} mt-1" style="font-size:.7rem">{{ $methodLabels[$method]['text'] }}</span>
+                                        @endif
+                                    @elseif($ledgerPs === 'partial')
+                                        <span class="badge bg-info text-dark"><i class="bi bi-piggy-bank me-1"></i>Đặt cọc / một phần</span>
                                         @if($method && isset($methodLabels[$method]))
                                             <br><span class="badge bg-{{ $methodLabels[$method]['color'] }} mt-1" style="font-size:.7rem">{{ $methodLabels[$method]['text'] }}</span>
                                         @endif
                                     @elseif($paySt === 'failed')
                                         <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>TT thất bại</span>
+                                    @elseif($paySt === 'paid' && $ledgerPs === 'pending')
+                                        <span class="badge bg-info text-dark"><i class="bi bi-bank me-1"></i>Cổng đã thanh toán</span>
+                                        <br><small class="text-muted" style="font-size:.65rem">Chưa ghi nhận sổ</small>
+                                        @if($method && isset($methodLabels[$method]))
+                                            <br><span class="badge bg-{{ $methodLabels[$method]['color'] }} mt-1" style="font-size:.7rem">{{ $methodLabels[$method]['text'] }}</span>
+                                        @endif
                                     @else
                                         <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Chờ thanh toán</span>
                                         @if($method && isset($methodLabels[$method]))
@@ -234,9 +248,9 @@
 
                                                 @if($booking->status !== 'cancelled')
                                                 <li>
-                                                    <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#surchargeModal{{ $booking->id }}">
+                                                    <a class="dropdown-item" href="{{ route('admin.bookings.show', $booking) }}#booking-extras-form">
                                                         <i class="bi bi-plus-circle me-2"></i> Phát sinh / phụ thu
-                                                    </button>
+                                                    </a>
                                                 </li>
                                                 @endif
 
@@ -244,7 +258,7 @@
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#cancelModal{{ $booking->id }}">
-                                                        <i class="bi bi-x-circle me-2"></i> Hủy đơn
+                                                        <i class="bi bi-x-circle me-2"></i> Hủy đơn chưa thanh toán
                                                     </button>
                                                 </li>
                                                 @endif
@@ -314,7 +328,7 @@
     }
 </style>
 
-<!-- Modal Hủy Đơn -->
+<!-- Modal: hủy đơn chờ (chưa thanh toán) — đơn đã thanh toán xử lý qua Quản lý hoàn tiền -->
 @if(isset($bookings) && $bookings->count())
 @foreach($bookings as $booking)
 <div class="modal fade" id="cancelModal{{ $booking->id }}" tabindex="-1" aria-labelledby="cancelModalLabel{{ $booking->id }}" aria-hidden="true">
@@ -322,7 +336,7 @@
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title" id="cancelModalLabel{{ $booking->id }}">
-                    <i class="bi bi-x-circle me-2"></i>Xác nhận hủy đơn #{{ $booking->id }}
+                    <i class="bi bi-x-circle me-2"></i>Hủy đơn chưa thanh toán #{{ $booking->id }}
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -331,7 +345,7 @@
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Bạn có chắc muốn hủy đơn đặt phòng này?</strong>
+                        <strong>Chỉ dùng cho đơn chờ xác nhận / chưa thanh toán.</strong> Đơn khách đã trả tiền: xử lý hoàn tiền trong mục Hoàn tiền.
                     </div>
                     
                     <div class="mb-3">
@@ -361,63 +375,6 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary btn-admin-icon" data-bs-dismiss="modal" title="Đóng"><i class="bi bi-x-lg"></i></button>
                     <button type="submit" class="btn btn-danger btn-admin-icon" title="Xác nhận hủy"><i class="bi bi-x-octagon"></i></button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endforeach
-@endif
-
-<!-- Modal Surcharge (Phiếu Phát Sinh) -->
-@if(isset($bookings) && $bookings->count())
-@foreach($bookings as $booking)
-<div class="modal fade" id="surchargeModal{{ $booking->id }}" tabindex="-1" aria-labelledby="surchargeModalLabel{{ $booking->id }}" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="surchargeModalLabel{{ $booking->id }}">
-                    <i class="bi bi-plus-circle me-2"></i>Lập phiếu phát sinh đơn #{{ $booking->id }}
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ route('admin.bookings.storeSurcharge', $booking) }}" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        Nhập lý do phụ thu (như số lượng người thêm, dịch vụ ngoài, v.v...) và số tiền tương ứng.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="reason{{ $booking->id }}" class="form-label fw-bold">
-                            Lý do phát sinh <span class="text-danger">*</span>
-                        </label>
-                        <textarea name="reason" id="reason{{ $booking->id }}" class="form-control" rows="3" 
-                                  placeholder="Ví dụ: Phụ thu thêm 1 người lớn, Đền bù ly vỡ..." required></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="amount{{ $booking->id }}" class="form-label fw-bold">
-                            Số tiền phụ thu (VNĐ) <span class="text-danger">*</span>
-                        </label>
-                        <input type="number" name="amount" id="amount{{ $booking->id }}" class="form-control" min="0" required placeholder="Ví dụ: 200000">
-                    </div>
-                    
-                    <div class="row bg-light rounded p-2 m-0 mt-3 align-items-center">
-                        <div class="col-md-6 mb-2 mb-md-0">
-                            <span class="text-muted d-block small">Khách hàng:</span>
-                            <strong>{{ $booking->user?->full_name ?? '—' }}</strong>
-                        </div>
-                        <div class="col-md-6 text-md-end">
-                            <span class="text-muted d-block small">Tổng tiền gốc đang có:</span>
-                            <strong class="text-success">{{ number_format($booking->total_price, 0, ',', '.') }} ₫</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer pb-2">
-                    <button type="button" class="btn btn-outline-secondary btn-admin-icon" data-bs-dismiss="modal" title="Hủy"><i class="bi bi-x-lg"></i></button>
-                    <button type="submit" class="btn btn-danger btn-admin-icon" title="Lưu phiếu phát sinh"><i class="bi bi-plus-circle"></i></button>
                 </div>
             </form>
         </div>

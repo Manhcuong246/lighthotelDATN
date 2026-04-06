@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RoomType extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'name',
         'capacity',
@@ -31,6 +34,12 @@ class RoomType extends Model
     public function rooms()
     {
         return $this->hasMany(Room::class);
+    }
+
+    /** Dịch vụ đi kèm có sẵn (danh mục dịch vụ). */
+    public function services()
+    {
+        return $this->belongsToMany(Service::class, 'room_type_service');
     }
 
     /**

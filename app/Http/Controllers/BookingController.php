@@ -6,7 +6,6 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\RefundLog;
 use App\Models\Room;
-use App\Models\RoomBookedDate;
 use App\Models\RoomPrice;
 use App\Models\User;
 use App\Models\Service;
@@ -106,76 +105,6 @@ class BookingController extends Controller
             'status' => 'completed',
         ]);
         return back()->with('success', 'Check-out thành công');
-    }
-
-    /**
-     * Show cancellation confirmation page with refund preview.
-     *
-     * @param Booking $booking
-     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
-     */
-    public function showCancelConfirmation(Booking $booking)
-    {
-        // Kiểm tra quyền sở hữu booking
-        if ($booking->user_id !== Auth::id()) {
-            return redirect()->route('home')
-                ->withErrors('Bạn không có quyền hủy đơn đặt phòng này.');
-        }
-
-        try {
-            $preview = $this->bookingService->previewCancellation($booking->id);
-
-            return view('bookings.cancel-confirm', [
-                'booking' => $booking,
-                'preview' => $preview,
-            ]);
-        } catch (\Exception $e) {
-            return redirect()->route('bookings.show', $booking)
-                ->withErrors($e->getMessage());
-        }
-    }
-
-    /**
-     * Cancel booking with refund calculation.
-     *
-     * @param Request $request
-     * @param Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function cancel(Request $request, Booking $booking)
-    {
-        // Kiểm tra quyền sở hữu booking
-        if ($booking->user_id !== Auth::id()) {
-            return back()->withErrors('Bạn không có quyền hủy đơn đặt phòng này.');
-        }
-
-        // Validate lý do hủy (tùy chọn)
-        $request->validate([
-            'reason' => 'nullable|string|max:500',
-        ]);
-
-        try {
-            $reason = $request->input('reason');
-            $result = $this->bookingService->cancelBooking($booking->id, $reason);
-
-            // Xóa các ngày đã đặt
-            RoomBookedDate::where('booking_id', $booking->id)->delete();
-
-            // Build success message
-            $message = 'Đơn đặt phòng đã được hủy thành công.';
-            if ($result['refund_amount'] > 0) {
-                $message .= ' ' . $result['message'];
-            } else {
-                $message .= ' Không có khoản hoàn tiền nào.';
-            }
-
-            return redirect()->route('bookings.show', $booking)
-                ->with('success', $message)
-                ->with('refund_details', $result);
-
-        } catch (\Exception $e) {
-            return back()->withErrors('Có lỗi xảy ra khi hủy đơn: ' . $e->getMessage());
-        }
     }
 
     /**

@@ -134,7 +134,7 @@
                             @endphp
                             <a href="{{ $cancelHref }}" class="btn btn-danger me-2">
                                 <i class="fas fa-times me-2"></i>
-                                Hủy Booking
+                                Hủy &amp; hoàn tiền (theo chính sách)
                             </a>
                         @endif
                         

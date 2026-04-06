@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Room extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'rooms';
 
     public $timestamps = false;
@@ -64,9 +67,52 @@ class Room extends Model
         return $this->hasMany(Review::class);
     }
 
-   public function roomType()
+    public function roomType()
     {
         return $this->belongsTo(RoomType::class);
+    }
+
+    /**
+     * Sức chứa hiển thị / nghiệp vụ: ưu tiên loại phòng khi phòng gắn room_type_id.
+     */
+    public function catalogueMaxGuests(): int
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (int) ($this->roomType->capacity ?? $this->max_guests ?? 1);
+        }
+
+        return (int) ($this->max_guests ?? 1);
+    }
+
+    public function catalogueBasePrice(): float
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (float) ($this->roomType->price ?? $this->base_price ?? 0);
+        }
+
+        return (float) ($this->base_price ?? 0);
+    }
+
+    public function catalogueBeds(): int
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (int) ($this->roomType->beds ?? $this->beds ?? 1);
+        }
+
+        return (int) ($this->beds ?? 1);
+    }
+
+    public function catalogueBaths(): int
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (int) ($this->roomType->baths ?? $this->baths ?? 0);
+        }
+
+        return (int) ($this->baths ?? 0);
     }
 
     public function damageReports()
@@ -177,6 +223,16 @@ class Room extends Model
             }
         }
         return $urls;
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Room $room): void {
+            if ($room->isForceDeleting()) {
+                return;
+            }
+            $room->images()->delete();
+        });
     }
 }
 

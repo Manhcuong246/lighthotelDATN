@@ -176,13 +176,10 @@
                 @if($refundRequest && $refundRequest->refund_proof_image)
                 <div class="mb-0">
                     <p class="mb-1 text-muted small text-uppercase fw-semibold">Minh chứng thanh toán</p>
-                    @php
-                        $imagePath = 'storage/' . $refundRequest->refund_proof_image;
-                        $fullPath = public_path($imagePath);
-                    @endphp
-                    @if(file_exists($fullPath))
-                        <a href="{{ asset($imagePath) }}" target="_blank" class="d-block">
-                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded border shadow-sm w-100" alt="Proof Image" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22400%22%3E%3Crect fill=%22%23f8f9fa%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%236c757d%22 font-family=%22system-ui,sans-serif%22 font-size=%2216%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EImage Not Found%3C/text%3E%3C/svg%3E'">
+                    @if($refundRequest->refundProofFileExists())
+                        @php $proofUrl = $refundRequest->refundProofPublicUrl(); @endphp
+                        <a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="d-block">
+                            <img src="{{ $proofUrl }}" class="img-fluid rounded border shadow-sm w-100" alt="Minh chứng hoàn tiền">
                         </a>
                         <p class="mt-2 small text-muted">
                             <i class="bi bi-image me-1"></i>
@@ -191,8 +188,8 @@
                     @else
                         <div class="alert alert-warning">
                             <i class="bi bi-exclamation-triangle me-2"></i>
-                            <strong>Ảnh minh chứng không tồn tại</strong>
-                            <p class="mb-0 small text-muted">File: {{ $refundRequest->refund_proof_image }}</p>
+                            <strong>Ảnh minh chứng không tồn tại trên máy chủ</strong>
+                            <p class="mb-0 small text-muted">Đường dẫn lưu: {{ $refundRequest->refund_proof_image }}</p>
                         </div>
                     @endif
                 </div>
