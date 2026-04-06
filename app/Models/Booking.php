@@ -160,6 +160,28 @@ class Booking extends Model
             now()->addDays($days)
         );
     }
+
+    public function signedPublicCancelUrl(?int $ttlDays = null): string
+    {
+        $days = $ttlDays ?? max(1, (int) config('booking.signed_booking_show_ttl_days', 90));
+
+        return URL::signedRoute(
+            'bookings.cancel',
+            ['booking' => $this->id],
+            now()->addDays($days)
+        );
+    }
+
+    public function signedPublicPolicyUrl(?int $ttlDays = null): string
+    {
+        $days = $ttlDays ?? max(1, (int) config('booking.signed_booking_show_ttl_days', 90));
+
+        return URL::signedRoute(
+            'bookings.policy',
+            ['booking' => $this->id],
+            now()->addDays($days)
+        );
+    }
 }
 
 

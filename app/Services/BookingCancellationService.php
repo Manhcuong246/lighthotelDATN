@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\RefundLog;
+use App\Models\RoomBookedDate;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -38,13 +39,25 @@ class BookingCancellationService
             // Calculate refund based on timing
             $refundResult = $this->calculateRefund($booking);
 
-            // Update booking status
+            $paymentStatus = match ($refundResult['refund_type']) {
+                'full' => 'refunded',
+                'partial' => 'partial_refunded',
+                default => $booking->payment_status ?? 'pending',
+            };
+
+            // Update booking status + giải phóng lịch phòng (tránh ghost block)
             $booking->update([
                 'status' => 'cancelled',
-                'payment_status' => $refundResult['payment_status'],
+                'payment_status' => $paymentStatus,
                 'cancelled_at' => Carbon::now(),
                 'cancellation_reason' => $reason,
             ]);
+
+            RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+            if ($booking->payment && $booking->payment->status === 'paid' && $refundResult['refund_type'] === 'full') {
+                $booking->payment->update(['status' => 'refunded']);
+            }
 
             // Create refund log
             RefundLog::create([
@@ -94,17 +107,16 @@ class BookingCancellationService
     private function calculateRefund(Booking $booking): array
     {
         $now = Carbon::now();
-        $checkInDate = Carbon::parse($booking->check_in_date);
-        
+        $checkInAt = $this->resolvePolicyCheckIn($booking);
+
         // Calculate hours difference
-        $hoursUntilCheckIn = $now->diffInHours($checkInDate, false);
+        $hoursUntilCheckIn = $now->diffInHours($checkInAt, false);
 
         // Case 1: More than 24 hours before check-in
         if ($hoursUntilCheckIn > 24) {
             return [
                 'refund_amount' => $booking->total_price,
                 'refund_type' => 'full',
-                'payment_status' => 'refunded',
                 'message' => 'Hủy thành công. Hoàn lại 100% số tiền (' . number_format($booking->total_price, 0, ',', '.') . ' ₫).',
             ];
         }
@@ -115,7 +127,6 @@ class BookingCancellationService
             return [
                 'refund_amount' => $partialRefund,
                 'refund_type' => 'partial',
-                'payment_status' => 'partial_refunded',
                 'message' => 'Hủy thành công. Hoàn lại 50% số tiền (' . number_format($partialRefund, 0, ',', '.') . ' ₫) do hủy trong vòng 24 giờ trước nhận phòng.',
             ];
         }
@@ -125,7 +136,6 @@ class BookingCancellationService
             return [
                 'refund_amount' => 0,
                 'refund_type' => 'none',
-                'payment_status' => 'refunded', // Still mark as refunded for consistency
                 'message' => 'Hủy thành công. Không hoàn tiền do đã qua thời gian nhận phòng.',
             ];
         }
@@ -134,7 +144,6 @@ class BookingCancellationService
         return [
             'refund_amount' => 0,
             'refund_type' => 'none',
-            'payment_status' => 'refunded',
             'message' => 'Không thể xác định chính sách hoàn tiền.',
         ];
     }
@@ -148,7 +157,7 @@ class BookingCancellationService
     public function getCancellationPolicy(Booking $booking): array
     {
         $now = Carbon::now();
-        $checkInDate = Carbon::parse($booking->check_in_date);
+        $checkInDate = $this->resolvePolicyCheckIn($booking);
         $hoursUntilCheckIn = $now->diffInHours($checkInDate, false);
 
         $policy = [
@@ -175,5 +184,15 @@ class BookingCancellationService
         }
 
         return $policy;
+    }
+
+    /**
+     * Cùng quy tắc với RefundService: mốc nhận phòng 14:00; ưu tiên check_in_date nếu có.
+     */
+    private function resolvePolicyCheckIn(Booking $booking): Carbon
+    {
+        $base = $booking->check_in_date ?? $booking->check_in;
+
+        return Carbon::parse($base)->setTime(14, 0, 0);
     }
 }

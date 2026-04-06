@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use App\Models\User;
 
 class AuthController extends Controller
@@ -21,12 +22,16 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        $request->merge(['email' => Str::lower(trim((string) $request->email))]);
+
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::query()
+            ->whereRaw('LOWER(email) = ?', [$request->email])
+            ->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
             // Ngăn admin/staff đăng nhập qua trang user
@@ -47,6 +52,8 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        $request->merge(['email' => Str::lower(trim((string) $request->email))]);
+
         $request->validate([
             'full_name' => 'required|string|max:150',
             'email' => 'required|string|email|max:150|unique:users',

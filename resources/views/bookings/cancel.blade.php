@@ -21,8 +21,8 @@
                             <p class="mb-1"><strong>Mã booking:</strong> #{{ $booking->id }}</p>
                             <p class="mb-1"><strong>Phòng:</strong> {{ $booking->room?->name }}</p>
                             <p class="mb-1"><strong>Loại phòng:</strong> {{ $booking->room?->roomType?->name }}</p>
-                            <p class="mb-1"><strong>Ngày nhận phòng:</strong> {{ \Carbon\Carbon::parse($booking->check_in_date)->format('d/m/Y H:i') }}</p>
-                            <p class="mb-1"><strong>Ngày trả phòng:</strong> {{ \Carbon\Carbon::parse($booking->check_out_date)->format('d/m/Y H:i') }}</p>
+                            <p class="mb-1"><strong>Ngày nhận phòng:</strong> {{ \Carbon\Carbon::parse($booking->check_in_date ?? $booking->check_in)->format('d/m/Y') }}</p>
+                            <p class="mb-1"><strong>Ngày trả phòng:</strong> {{ \Carbon\Carbon::parse($booking->check_out_date ?? $booking->check_out)->format('d/m/Y') }}</p>
                         </div>
                         <div class="col-md-6">
                             <h6 class="text-muted">Thông tin thanh toán</h6>
@@ -84,7 +84,7 @@
 
                     <!-- Cancellation Form -->
                     @if($policy['can_cancel'])
-                        <form id="cancelForm" method="POST" action="{{ route('bookings.cancel', $booking->id) }}">
+                        <form id="cancelForm" method="POST" action="{{ $cancelPostUrl }}">
                             @csrf
                             <div class="mb-3">
                                 <label for="reason" class="form-label">
@@ -102,7 +102,7 @@
                             </div>
 
                             <div class="d-flex justify-content-between">
-                                <a href="{{ route('bookings.show', $booking->id) }}" class="btn btn-secondary">
+                                <a href="{{ $bookingShowUrl }}" class="btn btn-secondary">
                                     <i class="fas fa-arrow-left me-2"></i>
                                     Quay lại
                                 </a>
@@ -114,7 +114,7 @@
                         </form>
                     @else
                         <div class="text-center">
-                            <a href="{{ route('bookings.show', $booking->id) }}" class="btn btn-secondary">
+                            <a href="{{ $bookingShowUrl }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>
                                 Quay lại chi tiết booking
                             </a>
