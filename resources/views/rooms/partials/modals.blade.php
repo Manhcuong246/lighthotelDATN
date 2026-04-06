@@ -89,13 +89,17 @@
                         <div id="carouselRoom{{ $firstRoom->id }}" class="carousel slide room-detail-carousel mb-4" data-bs-ride="carousel">
                             <div class="carousel-inner">
                                 @php $images = $firstRoom->getDisplayImageUrls(); @endphp
+                                @php
+                                    $modalPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400'%3E%3Crect fill='%23e2e8f0' width='100%25' height='100%25'/%3E%3Ctext fill='%23475569' font-family='system-ui,sans-serif' font-size='18' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3ELight Hotel%3C/text%3E%3C/svg%3E";
+                                @endphp
                                 @forelse($images as $index => $url)
                                     <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
-                                        <img src="{{ $url }}" class="d-block w-100" alt="Room Image">
+                                        <img src="{{ $url }}" class="d-block w-100" alt="Room Image"
+                                             onerror="this.onerror=null;this.src='{{ $modalPlaceholder }}'">
                                     </div>
                                 @empty
                                     <div class="carousel-item active">
-                                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80" class="d-block w-100" alt="Placeholder">
+                                        <img src="{{ $modalPlaceholder }}" class="d-block w-100" alt="Placeholder">
                                     </div>
                                 @endforelse
                             </div>

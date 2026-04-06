@@ -24,11 +24,11 @@
     <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
         <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold text-primary">Yêu cầu hoàn tiền</h5>
-            <div class="d-flex gap-2">
-                <a href="{{ route('admin.refunds.index') }}?status=pending_refund" class="btn btn-sm {{ request('status') === 'pending_refund' ? 'btn-warning' : 'btn-outline-warning' }}">Đang chờ</a>
-                <a href="{{ route('admin.refunds.index') }}?status=refunded" class="btn btn-sm {{ request('status') === 'refunded' ? 'btn-success' : 'btn-outline-success' }}">Đã hoàn</a>
-                <a href="{{ route('admin.refunds.index') }}?status=rejected" class="btn btn-sm {{ request('status') === 'rejected' ? 'btn-danger' : 'btn-outline-danger' }}">Đã từ chối</a>
-                <a href="{{ route('admin.refunds.index') }}" class="btn btn-sm btn-light">Tất cả</a>
+            <div class="admin-action-row">
+                <a href="{{ route('admin.refunds.index') }}?status=pending_refund" class="btn btn-sm {{ request('status') === 'pending_refund' ? 'btn-warning' : 'btn-outline-warning' }} btn-admin-icon" title="Đang chờ"><i class="bi bi-hourglass-split"></i></a>
+                <a href="{{ route('admin.refunds.index') }}?status=refunded" class="btn btn-sm {{ request('status') === 'refunded' ? 'btn-success' : 'btn-outline-success' }} btn-admin-icon" title="Đã hoàn"><i class="bi bi-check2-circle"></i></a>
+                <a href="{{ route('admin.refunds.index') }}?status=rejected" class="btn btn-sm {{ request('status') === 'rejected' ? 'btn-danger' : 'btn-outline-danger' }} btn-admin-icon" title="Đã từ chối"><i class="bi bi-x-octagon"></i></a>
+                <a href="{{ route('admin.refunds.index') }}" class="btn btn-sm btn-admin-icon {{ !request()->filled('status') ? 'btn-secondary' : 'btn-outline-secondary' }}" title="Tất cả"><i class="bi bi-list-ul"></i></a>
             </div>
         </div>
         <div class="card-body p-0">
@@ -73,9 +73,7 @@
                                 @endif
                             </td>
                             <td class="text-end pe-4">
-                                <a href="{{ route('admin.refunds.show', $request) }}" class="btn btn-primary btn-sm px-3">
-                                    <i class="bi bi-eye me-1"></i>Chi tiết
-                                </a>
+                                <a href="{{ route('admin.refunds.show', $request) }}" class="btn btn-outline-primary btn-sm btn-admin-icon" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
                             </td>
                         </tr>
                         @empty

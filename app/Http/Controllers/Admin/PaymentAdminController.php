@@ -15,24 +15,12 @@ class PaymentAdminController extends Controller
 
     public function index(Request $request)
     {
-        $query = Payment::with(['booking.user', 'booking.room'])->latest();
+        $query = array_filter([
+            'q' => $request->input('q'),
+            'payment_status' => $request->input('payment_status') ?: $request->input('status'),
+        ], fn ($v) => $v !== null && $v !== '');
 
-        if ($request->filled('q')) {
-            $q = $request->q;
-            $query->where(function ($qry) use ($q) {
-                $qry->where('transaction_id', 'like', "%{$q}%")
-                    ->orWhereHas('booking', function ($b) use ($q) {
-                        $b->whereHas('user', fn ($u) => $u->where('full_name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%"));
-                    });
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $payments = $query->paginate(15)->withQueryString();
-        return view('admin.payments.index', compact('payments'));
+        return redirect()->route('admin.bookings.index', $query);
     }
 
     public function show(Payment $payment)
@@ -55,7 +43,7 @@ class PaymentAdminController extends Controller
 
         $payment->update($validated);
 
-        return redirect()->route('admin.payments.index')->with('success', 'Cập nhật thanh toán thành công.');
+        return redirect()->route('admin.bookings.index')->with('success', 'Cập nhật thanh toán thành công.');
     }
 
     public function destroy(Payment $payment)
@@ -65,6 +53,6 @@ class PaymentAdminController extends Controller
         }
         $payment->delete();
 
-        return redirect()->route('admin.payments.index')->with('success', 'Xóa thanh toán thành công.');
+        return redirect()->route('admin.bookings.index')->with('success', 'Xóa thanh toán thành công.');
     }
 }

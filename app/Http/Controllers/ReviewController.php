@@ -21,13 +21,11 @@ class ReviewController extends Controller
             'comment' => 'required|string|max:2000',
         ]);
 
-        $hasCompletedBooking = \App\Models\Booking::where('user_id', auth()->id())
-            ->where('room_id', $room->id)
-            ->where('status', 'completed')
-            ->exists();
-
-        if (!$hasCompletedBooking) {
-            return back()->with('error', 'Bạn chỉ có thể đánh giá phòng này sau khi đã trải nghiệm và hoàn thành kỳ nghỉ.');
+        if (! \App\Models\Booking::userHasCheckedOutRoom((int) auth()->id(), (int) $room->id)) {
+            return back()->with(
+                'error',
+                'Chỉ khách đã đặt phòng này và đã check-out mới được đánh giá và bình luận.'
+            );
         }
 
         $existing = Review::where('room_id', $room->id)

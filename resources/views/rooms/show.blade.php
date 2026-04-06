@@ -7,8 +7,6 @@
     $placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%231e293b'/%3E%3Cstop offset='100%25' style='stop-color:%230f172a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='800' height='500'/%3E%3Ctext fill='%2394a3b8' font-family='system-ui,sans-serif' font-size='20' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3ELight Hotel%3C/text%3E%3C/svg%3E";
     $avgRating = $room->reviews()->avg('rating');
     $reviewCount = $room->reviews()->count();
-    $userHasReviewed = auth()->check() && $room->reviews()->where('user_id', auth()->id())->exists();
-    $hasCompletedBooking = auth()->check() ? \App\Models\Booking::where('user_id', auth()->id())->where('room_id', $room->id)->where('status', 'completed')->exists() : false;
 @endphp
 
 @section('content')

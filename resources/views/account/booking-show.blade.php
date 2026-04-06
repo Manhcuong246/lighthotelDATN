@@ -13,7 +13,7 @@
     <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="mb-0 fw-bold">Đơn đặt phòng #{{ $booking->id }}</h5>
         <span class="badge {{ $booking->status === 'pending' ? 'bg-warning text-dark' : ($booking->status === 'confirmed' ? 'bg-info' : ($booking->status === 'completed' ? 'bg-success' : 'bg-secondary')) }} px-3 py-2">
-            @if($booking->status === 'pending') Chờ xác nhận
+            @if($booking->status === 'pending') Chờ thanh toán
             @elseif($booking->status === 'confirmed') Đã thanh toán
             @elseif($booking->status === 'completed') Hoàn thành
             @elseif($booking->status === 'cancelled') Đã hủy
@@ -38,7 +38,9 @@
                             <small class="text-info d-block">
                                 <i class="bi bi-people me-1"></i>
                                 {{ $room->pivot->adults }} Người lớn,
-                                {{ $room->pivot->children_0_5 + $room->pivot->children_6_11 }} Trẻ em
+                                @if($room->pivot->children_6_11 > 0){{ $room->pivot->children_6_11 }} Trẻ 6–11t @endif
+                                @if($room->pivot->children_0_5 > 0){{ $room->pivot->children_0_5 }} Trẻ 0–5t @endif
+                                @if($room->pivot->children_6_11 + $room->pivot->children_0_5 === 0) 0 Trẻ em @endif
                             </small>
                         </div>
                     </li>
@@ -198,7 +200,7 @@
                 @if(file_exists($fullPath))
                     <div class="text-center">
                         <a href="{{ asset($imagePath) }}" target="_blank" class="d-inline-block">
-                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded shadow-sm border" style="max-height: 300px;" alt="Proof of Refund" onerror="this.src='https://via.placeholder.com/400x300/f8f9fa/6c757d?text=Image+Not+Found';">
+                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded shadow-sm border" style="max-height: 300px;" alt="Proof of Refund" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23f8f9fa%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%236c757d%22 font-family=%22system-ui,sans-serif%22 font-size=%2214%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EImage Not Found%3C/text%3E%3C/svg%3E'">
                         </a>
                         <p class="mt-2 small text-muted">
                             <i class="bi bi-image me-1"></i>

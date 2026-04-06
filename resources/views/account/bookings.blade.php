@@ -202,7 +202,7 @@
                     <div class="booking-side">
                         <span class="booking-price">{{ $b->total_price ? number_format($b->total_price, 0, ',', '.') . ' ₫' : '—' }}</span>
                         <span class="booking-status {{ $b->status }}">
-                            @if($b->status === 'pending') Chờ xác nhận
+                            @if($b->status === 'pending') Chờ thanh toán
                             @elseif($b->status === 'confirmed') Đã thanh toán
                             @elseif($b->status === 'completed') Hoàn thành
                             @elseif($b->status === 'cancelled') Đã hủy

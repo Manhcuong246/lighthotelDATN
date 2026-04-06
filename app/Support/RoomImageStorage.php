@@ -28,6 +28,14 @@ class RoomImageStorage
         return self::baseDir().'/'.$sub;
     }
 
+    /** Thư mục chứa ảnh tải hàng loạt trước khi gán cho phòng (storage/app/public/...). */
+    public static function poolDir(): string
+    {
+        $sub = trim((string) config('room_images.subdirs.pool', 'pool'), '/');
+
+        return self::baseDir().'/'.$sub;
+    }
+
     /**
      * Tên file cố định cho gallery phòng (đồng bộ với lệnh tải ảnh).
      */
@@ -41,5 +49,6 @@ class RoomImageStorage
         $disk = Storage::disk('public');
         $disk->makeDirectory(self::roomsDir());
         $disk->makeDirectory(self::roomTypesDir());
+        $disk->makeDirectory(self::poolDir());
     }
 }

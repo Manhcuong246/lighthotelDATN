@@ -2,10 +2,22 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 
 class VnPayService
 {
+    /**
+     * Redirect sang cổng VNPay — luôn dùng response không cache để trình duyệt/proxy
+     * không giữ URL cũ (CreateDate/ExpireDate đã quá hạn) khi khách bấm link sau.
+     */
+    public function redirectAwayNoCache(string $paymentUrl): RedirectResponse
+    {
+        return redirect()->away($paymentUrl)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, private')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+
     public function createPaymentUrl(
         string $txnRef,
         int $amount,
@@ -19,9 +31,10 @@ class VnPayService
         $vnpTmnCode = config('vnpay.tmn_code');
         $vnpHashSecret = config('vnpay.hash_secret');
 
-        // vnp_CreateDate / vnp_ExpireDate gắn với lần gọi hàm này (khi redirect sang VNPay sau khi khách bấm link).
-        $createDate = Carbon::now('Asia/Ho_Chi_Minh');
-        $expireMinutes = max(5, (int) config('vnpay.transaction_expire_minutes', 15));
+        // Thời điểm tạo phiên = lúc gọi hàm (khách vừa bấm “Đặt” hoặc vừa mở link thanh toán).
+        // App timezone (config/app.php) phải là GMT+7 theo tài liệu VNPay cho yyyyMMddHHmmss.
+        $createDate = now();
+        $expireMinutes = max(5, min(1440, (int) config('vnpay.transaction_expire_minutes', 30)));
         $expireDate = $createDate->copy()->addMinutes($expireMinutes);
 
         $inputData = [

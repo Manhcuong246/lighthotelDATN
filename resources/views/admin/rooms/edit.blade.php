@@ -7,8 +7,8 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Cập nhật phòng: {{ $room->name }}</h1>
         <div class="d-flex gap-2">
-            <button type="submit" form="room-edit-form" class="btn btn-primary d-none d-md-inline-block">Cập nhật</button>
-            <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+            <button type="submit" form="room-edit-form" class="btn btn-primary btn-admin-icon d-none d-md-inline-block" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
+            <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
         </div>
     </div>
 
@@ -32,7 +32,7 @@
                                     data-price="{{ $rt->price }}"
                                     data-beds="{{ $rt->beds }}"
                                     data-baths="{{ $rt->baths }}"
-                                    data-image="{{ $rt->image }}"
+                                    data-image="{{ $rt->image_url ?? '' }}"
                                     {{ old('room_type_id', $room->room_type_id) == $rt->id ? 'selected' : '' }}>
                                     {{ $rt->name }}
                                 </option>
@@ -51,7 +51,7 @@
                     <div class="d-flex flex-wrap gap-2 mb-2">
                         @foreach($room->images as $img)
                         <div class="position-relative d-inline-block room-image-item" style="width: 80px;">
-                            <img src="{{ $img->image_url && !str_starts_with($img->image_url, 'http') ? asset('storage/' . $img->image_url) : $img->image_url }}"
+                            <img src="{{ \App\Models\Room::resolveImageUrl($img->image_url) ?? '' }}"
                                  alt=""
                                  class="img-thumbnail room-image-thumb"
                                  style="width: 80px; height: 60px; object-fit: cover;">
@@ -123,8 +123,8 @@
                         <option value="maintenance" {{ old('status', $room->status) === 'maintenance' ? 'selected' : '' }}>Bảo trì</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Cập nhật</button>
-                <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary">Quay lại</a>
+                <button type="submit" class="btn btn-primary btn-admin-icon" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
+                <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
             </form>
         </div>
     </div>

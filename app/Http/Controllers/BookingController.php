@@ -72,9 +72,7 @@ class BookingController extends Controller
                 $bankCode
             );
 
-            // Khách không đăng nhập vẫn đặt được: không ép đăng nhập trước khi sang VNPay.
-
-            return redirect()->away($paymentUrl);
+            return $vnPayService->redirectAwayNoCache($paymentUrl);
 
         } catch (BookingException $e) {
             return back()->withErrors($e->getMessage())->withInput();

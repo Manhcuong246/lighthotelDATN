@@ -19,6 +19,7 @@
         }
 
         * { box-sizing: border-box; }
+        .cursor-help { cursor: help; }
         html { scroll-behavior: smooth; }
         body {
             background-color: #f0f2f5;
@@ -214,6 +215,38 @@
         }
         /* Pagination spacing - avoid crowded look */
         .pagination.gap-2 .page-item .page-link { margin-left: 0; border-radius: 0.375rem; }
+
+        /* Unified icon-first buttons (admin lists & toolbars); use title="" for accessibility */
+        .btn-admin-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            padding: 0;
+            line-height: 1;
+            border-radius: 0.5rem;
+        }
+        .btn-admin-icon i { font-size: 1.05rem; pointer-events: none; }
+        .btn.btn-sm.btn-admin-icon {
+            width: 2rem;
+            height: 2rem;
+        }
+        .btn.btn-sm.btn-admin-icon i { font-size: 0.95rem; }
+        .admin-action-row {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .btn-admin-icon.dropdown-toggle::after {
+            display: none;
+        }
+        /* Full-width icon buttons (forms) */
+        .btn-admin-icon.w-100 {
+            width: 100% !important;
+            max-width: none;
+        }
     </style>
     @stack('styles')
 </head>
@@ -237,10 +270,22 @@
             <div class="d-flex align-items-center ms-auto">
                 <div class="dropdown">
                     <a class="dropdown-toggle d-flex align-items-center text-decoration-none text-white" href="#" role="button" data-bs-toggle="dropdown">
-                        @if(auth()->user()->avatar_url)
-                            <img src="{{ str_starts_with(auth()->user()->avatar_url, 'http') ? auth()->user()->avatar_url : asset('storage/' . auth()->user()->avatar_url) }}" alt="" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;border:2px solid rgba(255,255,255,0.5)">
+                        @php
+                            $adminAvatarInitial = strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1));
+                            $adminAvatarSrc = null;
+                            if (auth()->user()->avatar_url) {
+                                $adminAvatarSrc = str_starts_with(auth()->user()->avatar_url, 'http')
+                                    ? auth()->user()->avatar_url
+                                    : '/storage/' . auth()->user()->avatar_url . '?v=' . config('room_images.cache_version', '1');
+                            }
+                        @endphp
+                        @if($adminAvatarSrc)
+                            {{-- Không dùng d-inline-flex trên span ẩn: utility !important sẽ thắng display:none và hiện 2 avatar --}}
+                            <img src="{{ $adminAvatarSrc }}" alt="" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;border:2px solid rgba(255,255,255,0.5)"
+                                 onerror="var s=this.nextElementSibling; this.remove(); if(s){ s.style.display='inline-flex'; }">
+                            <span class="rounded-circle me-2 align-items-center justify-content-center text-white fw-bold" style="display:none;width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.9rem">{{ $adminAvatarInitial }}</span>
                         @else
-                            <span class="rounded-circle me-2 d-inline-flex align-items-center justify-content-center text-white fw-bold" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.9rem">{{ strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1)) }}</span>
+                            <span class="rounded-circle me-2 d-inline-flex align-items-center justify-content-center text-white fw-bold" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.9rem">{{ $adminAvatarInitial }}</span>
                         @endif
                         <span class="d-none d-md-inline small">{{ auth()->user()->isAdmin() ? 'Quản trị viên' : 'Nhân viên' }}</span>
                     </a>
@@ -284,21 +329,23 @@
             </li>
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.bookings.index') && !request('checkin_checkout') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
+                <a class="nav-link {{ request()->routeIs('admin.bookings.index') || request()->routeIs('admin.payments.show') || request()->routeIs('admin.payments.edit') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
                     <i class="bi bi-calendar-check"></i>
-                    Đặt phòng
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.bookings.index') && request('checkin_checkout') ? 'active' : '' }}" href="{{ route('admin.bookings.index', ['checkin_checkout' => 1]) }}">
-                    <i class="bi bi-door-open"></i>
-                    Check-in / Check-out
+                    Đặt phòng &amp; thanh toán
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.refunds*') ? 'active' : '' }}" href="{{ route('admin.refunds.index') }}">
                     <i class="bi bi-wallet2"></i>
                     Hoàn tiền
+                </a>
+            </li>
+            @endif
+            @if(!auth()->user()->isAdmin())
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.bookings.index') || request()->routeIs('admin.payments.show') || request()->routeIs('admin.payments.edit') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
+                    <i class="bi bi-credit-card"></i>
+                    Đơn &amp; thanh toán
                 </a>
             </li>
             @endif
@@ -314,12 +361,6 @@
                 <a class="nav-link {{ request()->routeIs('admin.reviews*') ? 'active' : '' }}" href="{{ route('admin.reviews.index') }}">
                     <i class="bi bi-chat-square-text"></i>
                     Đánh giá
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.payments*') ? 'active' : '' }}" href="{{ route('admin.payments.index') }}">
-                    <i class="bi bi-credit-card"></i>
-                    Thanh toán
                 </a>
             </li>
             <li class="nav-item">
@@ -406,5 +447,10 @@
         })();
     </script>
     @stack('scripts')
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+    </script>
 </body>
 </html>

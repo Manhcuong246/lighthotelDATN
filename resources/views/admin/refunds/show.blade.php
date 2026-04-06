@@ -5,9 +5,7 @@
 @section('content')
 <div class="mb-4 d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center">
-        <a href="{{ route('admin.refunds.index') }}" class="btn btn-sm btn-outline-secondary me-3">
-            <i class="bi bi-arrow-left me-1"></i>Danh sách
-        </a>
+        <a href="{{ route('admin.refunds.index') }}" class="btn btn-sm btn-outline-secondary btn-admin-icon me-3" title="Danh sách"><i class="bi bi-arrow-left"></i></a>
         <h4 class="mb-0 fw-bold pe-3 border-end">Chi tiết hoàn tiền #{{ $refundRequest->booking_id }}</h4>
         <span class="ms-3 badge {{ $refundRequest->status === 'pending_refund' ? 'bg-warning text-dark' : ($refundRequest->status === 'refunded' ? 'bg-success' : 'bg-danger') }} rounded-pill px-3 py-2">
             @if($refundRequest->status === 'pending_refund') Đang chờ xử lý
@@ -108,13 +106,13 @@
                         <label class="form-label small fw-bold text-muted text-uppercase mb-2">Quyết định xử lý</label>
                         <div class="d-flex gap-3">
                             <input type="radio" class="btn-check" name="action" id="approve" value="approve" checked autocomplete="off">
-                            <label class="btn btn-outline-success flex-fill border-2 py-2" for="approve">
-                                <i class="bi bi-check2 me-1"></i> Chấp nhận
+                            <label class="btn btn-outline-success flex-fill border-2 py-3 d-flex align-items-center justify-content-center" for="approve" title="Chấp nhận">
+                                <i class="bi bi-check2 fs-4"></i>
                             </label>
 
                             <input type="radio" class="btn-check" name="action" id="reject" value="reject" autocomplete="off">
-                            <label class="btn btn-outline-danger flex-fill border-2 py-2" for="reject">
-                                <i class="bi bi-x me-1"></i> Từ chối
+                            <label class="btn btn-outline-danger flex-fill border-2 py-3 d-flex align-items-center justify-content-center" for="reject" title="Từ chối">
+                                <i class="bi bi-x-lg fs-4"></i>
                             </label>
                         </div>
                     </div>
@@ -137,8 +135,8 @@
                         <span><strong>Lưu ý:</strong> Khi chấp nhận, đơn đặt phòng sẽ bị hủy vĩnh viễn và ngày đặt sẽ được giải phóng. Hành động này không thể hoàn tác.</span>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm" onclick="return confirm('Bạn có chắc chắn muốn xử lý yêu cầu này?')">
-                        Xác nhận và Cập nhật
+                    <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm d-flex align-items-center justify-content-center" title="Xử lý yêu cầu" onclick="return confirm('Bạn có chắc chắn muốn xử lý yêu cầu này?')">
+                        <i class="bi bi-check2-circle fs-3"></i>
                     </button>
                 </form>
             </div>
@@ -184,7 +182,7 @@
                     @endphp
                     @if(file_exists($fullPath))
                         <a href="{{ asset($imagePath) }}" target="_blank" class="d-block">
-                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded border shadow-sm w-100" alt="Proof Image" onerror="this.src='https://via.placeholder.com/600x400/f8f9fa/6c757d?text=Image+Not+Found';">
+                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded border shadow-sm w-100" alt="Proof Image" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22400%22%3E%3Crect fill=%22%23f8f9fa%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext fill=%22%236c757d%22 font-family=%22system-ui,sans-serif%22 font-size=%2216%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EImage Not Found%3C/text%3E%3C/svg%3E'">
                         </a>
                         <p class="mt-2 small text-muted">
                             <i class="bi bi-image me-1"></i>

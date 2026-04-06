@@ -9,9 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark fw-bold">Thêm loại phòng</h1>
 
-        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-secondary shadow-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại
-        </a>
+        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary shadow-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
 
@@ -129,13 +127,10 @@
                 <div class="d-flex justify-content-end gap-2 mt-3">
 
                     <a href="{{ route('admin.roomtypes.index') }}"
-                       class="btn btn-light border">
-                        Hủy
-                    </a>
+                       class="btn btn-outline-secondary btn-admin-icon"
+                       title="Hủy"><i class="bi bi-x-lg"></i></a>
 
-                    <button class="btn btn-success px-4">
-                        <i class="bi bi-save"></i> Lưu loại phòng
-                    </button>
+                    <button type="submit" class="btn btn-success btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
 
                 </div>
 
