@@ -80,10 +80,10 @@
                             <option value="">-- Chọn số phòng --</option>
                             @foreach($rooms as $room)
                                 <option value="{{ $room->id }}"
-                                        data-price="{{ $room->base_price }}"
-                                        data-max-guests="{{ $room->max_guests }}"
+                                        data-price="{{ $room->catalogueBasePrice() }}"
+                                        data-max-guests="{{ $room->catalogueMaxGuests() }}"
                                         {{ old('room_id') == $room->id ? 'selected' : '' }}>
-                                    Phòng {{ $room->room_number }} - {{ $room->roomType->name ?? 'Không xác định' }} - {{ number_format($room->base_price, 0, ',', '.') }}đ/đêm (Tối đa {{ $room->max_guests }} khách)
+                                    Phòng {{ $room->room_number }} - {{ $room->roomType->name ?? 'Không xác định' }} - {{ number_format($room->catalogueBasePrice(), 0, ',', '.') }}đ/đêm (Tối đa {{ $room->catalogueMaxGuests() }} khách)
                                 </option>
                             @endforeach
                         </select>

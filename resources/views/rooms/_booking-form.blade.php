@@ -185,7 +185,7 @@
                     </div>
                     <div class="room-booking-summary-row">
                         <span>Giá/đêm</span>
-                        <strong id="pricePerNightDisplay">{{ number_format($room->base_price, 0, ',', '.') }} ₫</strong>
+                        <strong id="pricePerNightDisplay">{{ number_format($room->catalogueBasePrice(), 0, ',', '.') }} ₫</strong>
                     </div>
                     <div class="room-booking-summary-row total">
                         <span>Tổng tiền</span>
@@ -209,7 +209,7 @@
         const nightsCount  = document.getElementById('nightsCount');
         const totalPriceEl = document.getElementById('totalPrice');
         const submitBtn    = document.getElementById('submitBtn');
-        const basePrice    = Number('{{ $room->base_price ?? 0 }}');
+        const basePrice    = Number('{{ $room->catalogueBasePrice() }}');
         const bookedDates  = @json($bookedDates ?? []);
 
         const fpCheckIn = flatpickr(checkInEl, {

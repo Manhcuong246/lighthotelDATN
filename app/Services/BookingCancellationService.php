@@ -192,6 +192,9 @@ class BookingCancellationService
     private function resolvePolicyCheckIn(Booking $booking): Carbon
     {
         $base = $booking->check_in_date ?? $booking->check_in;
+        if ($base === null || $base === '') {
+            return Carbon::now();
+        }
 
         return Carbon::parse($base)->setTime(14, 0, 0);
     }

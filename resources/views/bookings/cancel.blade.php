@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Hủy Booking #' . $booking->id)
+@section('title', 'Hủy & hoàn tiền #' . $booking->id)
 
 @section('content')
 <div class="container py-5">
@@ -10,7 +10,7 @@
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-times-circle me-2"></i>
-                        Xác nhận hủy booking
+                        Xác nhận hủy &amp; hoàn tiền
                     </h5>
                 </div>
                 <div class="card-body">
@@ -108,7 +108,7 @@
                                 </a>
                                 <button type="submit" class="btn btn-danger" id="cancelBtn">
                                     <i class="fas fa-times me-2"></i>
-                                    Xác nhận hủy booking
+                                    Xác nhận hủy &amp; hoàn tiền
                                 </button>
                             </div>
                         </form>
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Reset button
                     cancelBtn.disabled = false;
-                    cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy booking';
+                    cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy &amp; hoàn tiền';
                 }
             })
             .catch(error => {
@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Reset button
                 cancelBtn.disabled = false;
-                cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy booking';
+                cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy &amp; hoàn tiền';
             });
         });
     }

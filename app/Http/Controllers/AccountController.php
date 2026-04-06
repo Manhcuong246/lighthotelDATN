@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\User;
+use App\Support\BookingInvoiceViewData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -27,7 +28,7 @@ class AccountController extends Controller
 
         $bookings = $user
             ->bookings()
-            ->with('room')
+            ->with(['room', 'rooms.roomType', 'bookingRooms', 'payment'])
             ->withCount('bookingServices')
             ->latest('id')
             ->paginate(10);
@@ -47,30 +48,40 @@ class AccountController extends Controller
         if ($booking->user_id !== Auth::id()) {
             abort(403);
         }
-        $booking->load(['room.roomType', 'payment', 'bookingServices.service']);
+        $booking->load([
+            'room.roomType',
+            'rooms.roomType',
+            'bookingRooms',
+            'payment',
+            'bookingServices.service',
+            'surcharges.service',
+        ]);
         return view('account.booking-show', compact('booking'));
     }
 
-    public function cancelBooking(Booking $booking)
+    /**
+     * Hóa đơn / biên lai chuẩn sau khi checkout (đủ phòng, dịch vụ, phụ phí, thanh toán).
+     */
+    public function bookingInvoice(Booking $booking)
     {
         /** @var User $user */
         $user = Auth::user();
 
-        if ($user?->canAccessAdmin() || $booking->user_id !== Auth::id()) {
+        if ($user?->canAccessAdmin()) {
             abort(403);
         }
 
-        if (!in_array($booking->status, ['pending', 'confirmed'])) {
-            return back()->with('error', 'Không thể hủy đơn đặt phòng này.');
+        if ($booking->user_id !== Auth::id()) {
+            abort(403);
         }
 
-        $booking->update([
-            'status' => 'cancelled'
-        ]);
+        if (! BookingInvoiceViewData::customerCanView($booking)) {
+            return redirect()
+                ->route('account.bookings.show', $booking)
+                ->with('error', 'Hóa đơn chỉ xem được khi đơn đã checkout và đã thanh toán.');
+        }
 
-        \App\Models\RoomBookedDate::where('booking_id', $booking->id)->delete();
-
-        return back()->with('success', 'Hủy đơn đặt phòng thành công.');
+        return view('account.booking-invoice', BookingInvoiceViewData::make($booking));
     }
 
     public function profile()

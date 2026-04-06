@@ -10,6 +10,7 @@
                     <h2 class="h4 mb-3 text-center">Tạo tài khoản mới</h2>
                     <p class="text-muted text-center mb-4 small">
                         Đăng ký để nhận ưu đãi độc quyền và quản lý đặt phòng nhanh chóng.
+                        Nếu bạn đã từng đặt phòng bằng email này (khách vãng lai), chỉ cần đăng ký với cùng email — hệ thống sẽ gắn các đơn cũ vào tài khoản.
                     </p>
 
                     <form method="POST" action="{{ route('register.submit') }}">

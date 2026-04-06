@@ -64,7 +64,7 @@ class ImportSqlCommand extends Command
     private function dropTables(): void
     {
         $tables = [
-            'room_amenities', 'room_booked_dates', 'booking_logs', 'payments',
+            'room_type_service', 'room_amenities', 'room_booked_dates', 'booking_logs', 'payments',
             'reviews', 'images', 'room_prices', 'bookings', 'rooms',
             'room_types', 'amenities', 'services', 'site_contents', 'coupons',
             'hotel_info', 'user_roles', 'roles', 'users',

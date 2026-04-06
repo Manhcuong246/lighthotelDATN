@@ -128,25 +128,25 @@
                             </select>
                         </div>
                         <div class="col-lg-3 col-md-6">
-                            <label class="form-label small text-muted mb-1">Tiện nghi</label>
+                            <label class="form-label small text-muted mb-1">Dịch vụ đi kèm</label>
                             <div class="dropdown">
-                                <button class="btn btn-sm bk-amenities-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="amenities-filter-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-haspopup="true" aria-controls="amenities-filter-menu">
-                                    <span id="amenities-text">Chọn tiện nghi</span>
+                                <button class="btn btn-sm bk-amenities-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="included-services-filter-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-haspopup="true" aria-controls="included-services-filter-menu">
+                                    <span id="included-services-text">Chọn dịch vụ</span>
                                     <i class="bi bi-chevron-down small"></i>
                                 </button>
-                                <div class="dropdown-menu bk-amenities-menu p-3 shadow" id="amenities-filter-menu" role="menu" aria-labelledby="amenities-filter-toggle" onclick="event.stopPropagation()">
-                                    @forelse($amenities as $amenity)
+                                <div class="dropdown-menu bk-amenities-menu p-3 shadow" id="included-services-filter-menu" role="menu" aria-labelledby="included-services-filter-toggle" onclick="event.stopPropagation()">
+                                    @forelse($catalogServices as $svc)
                                         <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" name="amenities[]"
-                                                   value="{{ $amenity->id }}" id="am_{{ $amenity->id }}"
-                                                   {{ in_array($amenity->id, (array)request('amenities')) ? 'checked' : '' }}
-                                                   onchange="updateAmenitiesText()">
-                                            <label class="form-check-label small" for="am_{{ $amenity->id }}">
-                                                {{ $amenity->name }}
+                                            <input class="form-check-input" type="checkbox" name="included_services[]"
+                                                   value="{{ $svc->id }}" id="isvc_{{ $svc->id }}"
+                                                   {{ in_array($svc->id, (array) request('included_services')) ? 'checked' : '' }}
+                                                   onchange="updateIncludedServicesFilterText()">
+                                            <label class="form-check-label small" for="isvc_{{ $svc->id }}">
+                                                {{ $svc->name }}
                                             </label>
                                         </div>
                                     @empty
-                                        <p class="small text-muted mb-0">Chưa có danh mục tiện nghi trong hệ thống.</p>
+                                        <p class="small text-muted mb-0">Chưa có dịch vụ trong danh mục.</p>
                                     @endforelse
                                 </div>
                             </div>
@@ -378,7 +378,7 @@
         <div class="lh-cta-band-inner row align-items-center g-3">
             <div class="col-lg-8">
                 <h3 class="h4 mb-2">Sẵn sàng chọn phòng?</h3>
-                <p class="mb-0">Chọn ngày trong thanh tìm kiếm phía trên, lọc theo loại phòng và tiện nghi — bấm vào ảnh phòng bên dưới để đặt nhanh.</p>
+                <p class="mb-0">Chọn ngày trong thanh tìm kiếm phía trên, lọc theo loại phòng và dịch vụ đi kèm — bấm vào ảnh phòng bên dưới để đặt nhanh.</p>
             </div>
             <div class="col-lg-4 text-lg-end">
                 <a href="#rooms-section" class="btn btn-light rounded-pill px-4">Xem danh sách phòng</a>
@@ -664,7 +664,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Khởi tạo nút +/- phòng
     updateRoomsBtnState();
-    updateAmenitiesText();
+    updateIncludedServicesFilterText();
 });
 
 function changeRooms(delta) {
@@ -775,17 +775,18 @@ function resetGuests() {
     updateGuestSummary();
 }
 
-function updateAmenitiesText() {
-    var checkedAmenities = document.querySelectorAll('input[name="amenities[]"]:checked');
-    var textElement = document.getElementById('amenities-text');
+function updateIncludedServicesFilterText() {
+    var checked = document.querySelectorAll('input[name="included_services[]"]:checked');
+    var textElement = document.getElementById('included-services-text');
+    if (!textElement) return;
 
-    if (checkedAmenities.length === 0) {
-        textElement.textContent = 'Chọn tiện nghi';
-    } else if (checkedAmenities.length === 1) {
-        var label = document.querySelector('label[for="' + checkedAmenities[0].id + '"]').textContent;
-        textElement.textContent = label;
+    if (checked.length === 0) {
+        textElement.textContent = 'Chọn dịch vụ';
+    } else if (checked.length === 1) {
+        var lbl = document.querySelector('label[for="' + checked[0].id + '"]');
+        textElement.textContent = lbl ? lbl.textContent.trim() : '1 dịch vụ';
     } else {
-        textElement.textContent = checkedAmenities.length + ' tiện nghi đã chọn';
+        textElement.textContent = checked.length + ' dịch vụ đã chọn';
     }
 }
 

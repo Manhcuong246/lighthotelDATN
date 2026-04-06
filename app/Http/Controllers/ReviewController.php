@@ -21,19 +21,18 @@ class ReviewController extends Controller
             'comment' => 'required|string|max:2000',
         ]);
 
-        if (! \App\Models\Booking::userHasCheckedOutRoom((int) auth()->id(), (int) $room->id)) {
+        $userId = (int) auth()->id();
+        $roomId = (int) $room->id;
+
+        if (! \App\Models\Booking::userHasCheckedOutRoom($userId, $roomId)) {
             return back()->with(
                 'error',
-                'Chỉ khách đã đặt phòng này và đã check-out mới được đánh giá và bình luận.'
+                'Chỉ khách đã thanh toán đơn này, đã đặt đúng phòng và đã check-out mới được đánh giá.'
             );
         }
 
-        $existing = Review::where('room_id', $room->id)
-            ->where('user_id', auth()->id())
-            ->first();
-
-        if ($existing) {
-            return back()->with('error', 'Bạn đã đánh giá phòng này rồi. Chỉ có thể sửa qua quản trị.');
+        if (Review::userHasReviewedRoom($userId, $roomId)) {
+            return back()->with('error', 'Bạn đã đánh giá phòng này rồi. Mỗi tài khoản chỉ được gửi một đánh giá cho một phòng.');
         }
 
         Review::create([
