@@ -5,9 +5,7 @@
 @section('content')
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Mã giảm giá</h1>
-        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-lg me-1"></i>Thêm mã mới
-        </a>
+        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary shadow-sm btn-admin-icon" title="Thêm mã mới"><i class="bi bi-plus-lg"></i></a>
     </div>
 
     <div class="card card-admin">
@@ -42,14 +40,14 @@
                                     @endif
                                 </td>
                                 <td class="text-end pe-4">
-                                    <div class="btn-group">
-                                        <a href="{{ route('admin.coupons.edit', $coupon) }}" class="btn btn-sm btn-outline-primary" title="Sửa">
-                                            <i class="bi bi-pencil"></i>
+                                    <div class="admin-action-row justify-content-end">
+                                        <a href="{{ route('admin.coupons.edit', $coupon) }}" class="btn btn-sm btn-outline-warning btn-admin-icon" title="Sửa">
+                                            <i class="bi bi-pencil-square"></i>
                                         </a>
                                         <form action="{{ route('admin.coupons.destroy', $coupon) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa mã giảm giá này?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="btn btn-sm btn-outline-danger" title="Xóa">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger btn-admin-icon" title="Xóa">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>

@@ -46,7 +46,7 @@ class VnPayController extends Controller
             null
         );
 
-        return redirect()->away($paymentUrl);
+        return $this->vnPayService->redirectAwayNoCache($paymentUrl);
     }
 
     public function return(Request $request)

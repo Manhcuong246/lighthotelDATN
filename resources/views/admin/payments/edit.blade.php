@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Chỉnh sửa thanh toán #{{ $payment->id }}</h1>
-        <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+        <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     @if ($errors->any())
@@ -72,8 +72,8 @@
                         </div>
 
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-                            <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-outline-secondary">Hủy</a>
+                            <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                            <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-outline-secondary btn-admin-icon" title="Hủy"><i class="bi bi-x-lg"></i></a>
                         </div>
                     </form>
                 </div>

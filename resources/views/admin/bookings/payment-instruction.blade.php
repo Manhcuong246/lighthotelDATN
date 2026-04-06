@@ -12,9 +12,7 @@
                     <h4 class="fw-bold mb-0">🏦 Hướng Dẫn Thanh Toán</h4>
                     <p class="text-muted mb-0">Đơn đặt phòng #{{ $booking->id }}</p>
                 </div>
-                <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-arrow-left"></i> Quay lại đơn
-                </a>
+                <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
             </div>
 
             @if(session('success'))
@@ -53,13 +51,11 @@
                     <p class="text-muted small mb-2">Số tiền: <strong class="text-danger fs-5">{{ number_format($booking->total_price) }}đ</strong></p>
                     <div class="input-group mb-3">
                         <input type="text" class="form-control font-monospace small" id="vnpayLinkInput" readonly value="{{ $vnpayPayUrl }}">
-                        <button class="btn btn-outline-primary" type="button" onclick="copyToClipboard(document.getElementById('vnpayLinkInput').value)">
-                            <i class="bi bi-clipboard"></i> Sao chép
+                        <button class="btn btn-outline-primary btn-admin-icon" type="button" title="Sao chép link" onclick="copyToClipboard(document.getElementById('vnpayLinkInput').value)">
+                            <i class="bi bi-clipboard"></i>
                         </button>
                     </div>
-                    <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">
-                        <i class="bi bi-box-arrow-up-right me-1"></i> Mở thanh toán (thử)
-                    </a>
+                    <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener" class="btn btn-primary btn-lg btn-admin-icon" style="width: auto; min-height: 3rem; min-width: 3rem;" title="Mở VNPay"><i class="bi bi-box-arrow-up-right fs-4"></i></a>
                 </div>
             </div>
             @else
@@ -90,7 +86,7 @@
                                     <td class="text-muted">Số tài khoản:</td>
                                     <td class="fw-bold fs-5 text-primary">
                                         {{ $hotelInfo->bank_account ?? '1234567890' }}
-                                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyToClipboard('{{ $hotelInfo->bank_account ?? '1234567890' }}')">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-admin-icon ms-2" title="Sao chép STK" onclick="copyToClipboard('{{ $hotelInfo->bank_account ?? '1234567890' }}')">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
                                     </td>
@@ -111,7 +107,7 @@
                                     <td class="text-muted">Nội dung CK:</td>
                                     <td>
                                         <span class="fw-bold text-primary">BOOKING_{{ $booking->id }}</span>
-                                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyToClipboard('BOOKING_{{ $booking->id }}')">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-admin-icon ms-2" title="Sao chép nội dung CK" onclick="copyToClipboard('BOOKING_{{ $booking->id }}')">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
                                     </td>
@@ -226,9 +222,8 @@
                         </div>
                         <form action="{{ route('admin.bookings.confirm-payment', $booking) }}" method="POST" class="ms-4">
                             @csrf
-                            <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Bạn có chắc đã nhận được tiền chuyển khoản?')">
-                                <i class="bi bi-check-lg me-2"></i>
-                                Xác nhận đã nhận tiền
+                            <button type="submit" class="btn btn-success btn-lg btn-admin-icon" style="width: auto; min-height: 3rem; min-width: 3rem;" title="Xác nhận đã nhận tiền" onclick="return confirm('Bạn có chắc đã nhận được tiền chuyển khoản?')">
+                                <i class="bi bi-check-lg fs-3"></i>
                             </button>
                         </form>
                     </div>

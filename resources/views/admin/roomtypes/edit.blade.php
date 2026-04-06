@@ -9,9 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark fw-bold">Cập nhật loại phòng</h1>
 
-        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-secondary shadow-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại
-        </a>
+        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary shadow-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
 
@@ -105,9 +103,9 @@
                     <!-- Ảnh đại diện -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-semibold">Ảnh đại diện</label>
-                        @if($roomType->image)
+                        @if($roomType->image_url)
                             <div class="mb-2">
-                                <img src="{{ asset('storage/' . $roomType->image) }}" alt="{{ $roomType->name }}" class="img-thumbnail" style="max-width: 200px;">
+                                <img src="{{ $roomType->image_url }}" alt="{{ $roomType->name }}" class="img-thumbnail" style="max-width: 200px;">
                             </div>
                         @endif
                         <input type="file" name="image" class="form-control" accept="image/*">
@@ -135,13 +133,10 @@
                 <div class="d-flex justify-content-end gap-2 mt-3">
 
                     <a href="{{ route('admin.roomtypes.index') }}"
-                       class="btn btn-light border">
-                        Hủy
-                    </a>
+                       class="btn btn-outline-secondary btn-admin-icon"
+                       title="Hủy"><i class="bi bi-x-lg"></i></a>
 
-                    <button type="submit" class="btn btn-success px-4">
-                        <i class="bi bi-save"></i> Cập nhật
-                    </button>
+                    <button type="submit" class="btn btn-success btn-admin-icon" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
 
                 </div>
 

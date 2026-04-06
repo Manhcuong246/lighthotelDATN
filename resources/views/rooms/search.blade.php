@@ -12,43 +12,51 @@
         --border-color: #edf2f7;
     }
 
-    .search-summary-bar {
+    /* Override: trên trang search (nền sáng) */
+    .booking-container .bk-search-stack {
+        border: 3px solid #febb02 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.12) !important;
+        background: #fff !important;
+        overflow: visible !important;
+        position: relative;
+        z-index: 50;
+    }
+    .booking-container .bk-search-bar.bk-search-bar--in-stack {
+        border-radius: 9px 9px 0 0 !important;
+        overflow: visible !important;
+    }
+    .booking-container .bk-filter-row {
+        overflow: visible !important;
+        border-radius: 0 0 9px 9px;
+        position: relative;
+    }
+    .booking-container .bk-filter-row .col-lg-3,
+    .booking-container .bk-filter-row .col-md-6,
+    .booking-container .bk-filter-row .dropdown {
+        overflow: visible !important;
+    }
+    .booking-container .bk-search-btn {
+        background: #0071c2 !important;
+        border-radius: 0 9px 0 0 !important;
+    }
+    .booking-container .bk-search-btn:hover {
+        background: #005fa3 !important;
+    }
+
+    /* Amenities popup — fixed overlay */
+    .amenities-popup {
+        position: fixed;
+        z-index: 9999;
         background: #fff;
-        border-radius: 12px;
-        padding: 20px 30px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        display: flex;
-        align-items: center;
-        gap: 40px;
-        margin-bottom: 30px;
-        border: 1px solid var(--border-color);
-    }
-    .search-info-item {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    .search-info-item i {
-        font-size: 1.5rem;
-        color: var(--secondary-blue);
-        background: #eff6ff;
-        width: 45px;
-        height: 45px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        border: 1px solid #e5e7eb;
         border-radius: 10px;
-    }
-    .search-info-label {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-    .search-info-val {
-        font-weight: 700;
-        color: var(--text-dark);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        padding: 16px 20px;
+        min-width: 240px;
+        max-width: 340px;
+        max-height: 320px;
+        overflow-y: auto;
     }
 
     .room-type-card {
@@ -228,29 +236,7 @@
         font-weight: 700;
         font-size: 1.25rem;
     }
-    .summary-hotel-name {
-        font-weight: 800;
-        font-size: 1.1rem;
-        color: #334155;
-        margin-bottom: 20px;
-    }
     .summary-body { padding: 25px; }
-    .summary-item-label { color: #94a3b8; font-size: 0.85rem; margin-bottom: 5px; }
-    .summary-item-val {
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 10px 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: 700;
-        color: #1e293b;
-        border: 1px solid #f1f5f9;
-        margin-bottom: 15px;
-    }
-    .summary-item-val input { border: none !important; background: transparent !important; flex: 1; font-weight: 700; color: #1e293b; padding: 0; outline: none !important; box-shadow: none !important; }
-    .summary-item-val i { color: #64748b; font-size: 1.1rem; }
-    .summary-nights-info { margin-top: 10px; font-size: 0.95rem; color: #4b5563; }
     .summary-total { margin-top: 25px; padding-top: 20px; border-top: 1px solid #f1f5f9; }
     .summary-total-val { font-weight: 800; font-size: 1.75rem; color: var(--secondary-blue); }
     .btn-book-now {
@@ -333,43 +319,111 @@
 
 @section('content')
 <div class="booking-container py-4">
-    {{-- Search Info Bar --}}
-    <form action="{{ route('rooms.search') }}" method="GET" class="search-summary-bar">
-        <div class="search-info-item">
-            <i class="bi bi-geo-alt"></i>
-            <div>
-                <div class="search-info-label">Bạn muốn nghỉ dưỡng ở đâu?</div>
-                <div class="search-info-val">{{ $hotel->name ?? 'Light Hotel' }}</div>
+    {{-- Search Bar — y hệt trang chủ --}}
+    <form action="{{ route('rooms.search') }}" method="GET" id="searchTopBar" class="mb-4" novalidate>
+        <div class="bk-search-stack">
+            <div class="bk-search-bar bk-search-bar--in-stack">
+                {{-- Điểm đến --}}
+                <div class="bk-seg bk-seg-dest">
+                    <i class="bi bi-building bk-seg-icon"></i>
+                    <div class="bk-seg-content">
+                        <div class="bk-seg-label">Điểm đến</div>
+                        <input type="text" class="bk-input" value="{{ $hotel->name ?? 'Light Hotel' }}" readonly style="cursor: default;">
+                    </div>
+                </div>
+                <div class="bk-sep"></div>
+                {{-- Nhận phòng - Trả phòng --}}
+                <div class="bk-seg bk-seg-dates">
+                    <i class="bi bi-calendar-event bk-seg-icon"></i>
+                    <div class="bk-seg-content">
+                        <div class="bk-seg-label">Nhận phòng - Trả phòng</div>
+                        <div class="d-flex align-items-center gap-1">
+                            <input type="date" name="check_in" id="search_check_in" class="bk-date-input"
+                                   value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
+                            <span class="text-muted">→</span>
+                            <input type="date" name="check_out" id="search_check_out" class="bk-date-input"
+                                   value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="bk-sep"></div>
+                {{-- Số phòng --}}
+                <div class="bk-seg">
+                    <i class="bi bi-door-open bk-seg-icon"></i>
+                    <div class="bk-seg-content">
+                        <div class="bk-seg-label">Số phòng</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="guest-btn" onclick="changeRooms(-1)" id="rooms-minus-btn">−</button>
+                            <input type="number" name="rooms" id="rooms-input"
+                                   value="{{ request('rooms', 1) }}" min="1" max="20"
+                                   class="guest-count-input" readonly
+                                   style="width: 40px; text-align: center; border: none; background: transparent; font-weight: 600; font-size: 1rem;">
+                            <button type="button" class="guest-btn" onclick="changeRooms(1)" id="rooms-plus-btn">+</button>
+                        </div>
+                    </div>
+                </div>
+                {{-- Nút Tìm --}}
+                <button type="submit" class="bk-search-btn">Tìm</button>
+            </div>
+
+            {{-- Bộ lọc --}}
+            <div class="bk-filter-row">
+                <div class="row g-2 align-items-end">
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label small text-muted mb-1">Loại phòng</label>
+                        <select name="room_type" class="form-select form-select-sm">
+                            <option value="">Tất cả loại phòng</option>
+                            @foreach($allRoomTypes as $rt)
+                                <option value="{{ $rt->id }}" {{ request('room_type') == $rt->id ? 'selected' : '' }}>
+                                    {{ $rt->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label small text-muted mb-1">Khoảng giá</label>
+                        <select id="price_range_select" class="form-select form-select-sm" onchange="applyPriceRange(this)">
+                            <option value="">Tất cả mức giá</option>
+                            <option value="0-500000" {{ request('min_price') == 0 && request('max_price') == 500000 ? 'selected' : '' }}>Dưới 500.000đ</option>
+                            <option value="500000-1000000" {{ request('min_price') == 500000 && request('max_price') == 1000000 ? 'selected' : '' }}>500.000đ - 1.000.000đ</option>
+                            <option value="1000000-2000000" {{ request('min_price') == 1000000 && request('max_price') == 2000000 ? 'selected' : '' }}>1.000.000đ - 2.000.000đ</option>
+                            <option value="2000000-" {{ request('min_price') == 2000000 && !request('max_price') ? 'selected' : '' }}>Trên 2.000.000đ</option>
+                        </select>
+                        <input type="hidden" name="min_price" id="min_price_input" value="{{ request('min_price') }}">
+                        <input type="hidden" name="max_price" id="max_price_input" value="{{ request('max_price') }}">
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label small text-muted mb-1">Sắp xếp theo</label>
+                        <select name="sort_by" class="form-select form-select-sm">
+                            <option value="price_asc" {{ request('sort_by', 'price_asc') == 'price_asc' ? 'selected' : '' }}>Giá thấp → cao</option>
+                            <option value="price_desc" {{ request('sort_by') == 'price_desc' ? 'selected' : '' }}>Giá cao → thấp</option>
+                            <option value="name_asc" {{ request('sort_by') == 'name_asc' ? 'selected' : '' }}>Tên A → Z</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label small text-muted mb-1">Tiện nghi</label>
+                        <div class="position-relative" id="amenitiesWrapper">
+                            <button class="btn btn-sm bk-amenities-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="amenities-filter-toggle" onclick="toggleAmenitiesPopup(event)">
+                                <span id="amenities-text">Chọn tiện nghi</span>
+                                <i class="bi bi-chevron-down small"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-lg-1 col-md-12">
+                        <label class="form-label small text-muted mb-1 d-none d-lg-block">&nbsp;</label>
+                        <a href="{{ route('home') }}" class="btn btn-outline-danger btn-sm w-100">
+                            <i class="bi bi-x-lg"></i> Xóa
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="search-info-item">
-            <i class="bi bi-calendar-check"></i>
-            <div>
-                <div class="search-info-label">Ngày nhận phòng</div>
-                <input type="date" name="check_in" id="search_check_in"
-                       class="form-control form-control-sm border-0 fw-bold p-0"
-                       value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
-            </div>
-        </div>
-        <div class="search-info-item">
-            <i class="bi bi-calendar-x"></i>
-            <div>
-                <div class="search-info-label">Ngày trả phòng</div>
-                <input type="date" name="check_out" id="search_check_out"
-                       class="form-control form-control-sm border-0 fw-bold p-0"
-                       value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
-            </div>
-        </div>
-        <div class="search-info-item">
-            <i class="bi bi-door-open"></i>
-            <div>
-                <div class="search-info-label">Thời gian nghỉ</div>
-                <div class="search-info-val text-primary" id="search_nights_display">{{ $nights }} đêm</div>
-            </div>
-        </div>
-        <div class="ms-auto d-flex gap-2">
-            <button type="submit" class="btn btn-warning btn-sm rounded-pill fw-bold px-4">Cập nhật</button>
-            <a href="{{ route('home') }}" class="btn btn-outline-secondary btn-sm rounded-pill">Quay lại</a>
+        {{-- Hidden amenities checkboxes (synced by JS) --}}
+        <div style="display:none;" id="amenitiesHiddenInForm">
+            @foreach($amenities as $amenity)
+                <input type="checkbox" name="amenities[]" value="{{ $amenity->id }}" id="am_{{ $amenity->id }}"
+                       {{ in_array($amenity->id, (array)request('amenities')) ? 'checked' : '' }}>
+            @endforeach
         </div>
     </form>
 
@@ -394,15 +448,29 @@
                     <div class="room-type-main">
                         <div class="room-type-img">
                             @php
-                                $placeholder = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80';
-                                if (str_contains(strtolower($type->name), 'deluxe')) $placeholder = 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80';
-                                if (str_contains(strtolower($type->name), 'suite')) $placeholder = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=400&q=80';
+                                $phLabel = \Illuminate\Support\Str::limit($type->name, 28);
+                                $svgFallback = 'data:image/svg+xml,'.rawurlencode(
+                                    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260">'
+                                    .'<rect fill="#e2e8f0" width="100%" height="100%"/>'
+                                    .'<text fill="#475569" font-family="system-ui,sans-serif" font-size="13" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">'
+                                    .htmlspecialchars($phLabel, ENT_XML1 | ENT_QUOTES, 'UTF-8')
+                                    .'</text></svg>'
+                                );
 
-                                $imageUrl = $type->image ? asset('storage/' . $type->image) :
-                                           ($type->available_rooms->isNotEmpty() && $type->available_rooms->first()->getDisplayImageUrls() ?
-                                            $type->available_rooms->first()->getDisplayImageUrls()[0] : $placeholder);
+                                $imageUrl = null;
+                                if ($type->available_rooms->isNotEmpty()) {
+                                    foreach ($type->available_rooms as $ar) {
+                                        $urls = $ar->getDisplayImageUrls();
+                                        if (! empty($urls)) {
+                                            $imageUrl = $urls[0];
+                                            break;
+                                        }
+                                    }
+                                }
+                                $imageUrl = $imageUrl ?? $type->image_url;
+                                $imageUrl = $imageUrl ?? $svgFallback;
                             @endphp
-                            <img src="{{ $imageUrl }}" alt="{{ $type->name }}" onerror="this.src='{{ $placeholder }}'">
+                            <img src="{{ $imageUrl }}" alt="{{ $type->name }}" onerror='this.onerror=null;this.src={!! json_encode($svgFallback) !!}'>
                         </div>
                         <div class="room-type-info">
                             <h3 class="room-type-name">{{ $type->name }}</h3>
@@ -452,8 +520,12 @@
                                     <td>
                                         <div class="rate-title">Free Cancellation 2026</div>
                                         <ul class="rate-benefit">
-                                            <li><i class="bi bi-check-lg"></i> Đã bao gồm ăn sáng</li>
-                                            <li><i class="bi bi-check-lg"></i> Không hoàn trả phí khi hủy phòng</li>
+                                            <li><i class="bi bi-check-lg"></i> Bao gồm ăn sáng</li>
+                                            <li>
+                                                <i class="bi bi-check-lg"></i> Tối đa 3 khách/phòng
+                                                <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" title="Tiêu chuẩn 3 người (tính cả trẻ 0–5). Từ người thứ 4: phụ thu NL 25%, trẻ 6–11 12.5% giá phòng/đêm. Trẻ 0–5 miễn phụ thu nhưng tính sức chứa (tối đa 3 bé). Tối đa 6 người/phòng."></i>
+                                            </li>
+                                            <li><i class="bi bi-check-lg"></i> Không hoàn phí khi hủy</li>
                                         </ul>
                                         @php $firstRoom = $type->available_rooms->first(); @endphp
                                         @if($firstRoom)
@@ -468,12 +540,7 @@
                                             @for($i = 0; $i < ($type->child_capacity ?? 0); $i++)
                                                 <i class="bi bi-person-fill fs-6" style="opacity: 0.6;"></i>
                                             @endfor
-                                            <span class="ms-1 small">
-                                                {{ $type->adult_capacity ?? 2 }} Người lớn
-                                                @if($type->child_capacity > 0)
-                                                    , {{ $type->child_capacity }} Trẻ em
-                                                @endif
-                                            </span>
+                                            <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" title="TC 3 · Tối đa 6 (tính cả trẻ 0–5). Trẻ 0–5 miễn phụ thu. Vượt 3 người → phụ thu NL/trẻ 6–11."></i>
                                         </div>
                                     </td>
                                     <td>
@@ -487,10 +554,9 @@
                                                 data-type-id="{{ $type->id }}"
                                                 data-type-name="{{ $type->name }}"
                                                 data-price="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->base_price : 0 }}"
-                                                data-max-guests="{{ $type->available_rooms->first()->max_guests ?? 2 }}"
-                                                data-max-adults="{{ $type->adult_capacity ?? 2 }}"
-                                                data-max-children="{{ $type->child_capacity ?? 0 }}"
-                                                data-adult-price="{{ $type->adult_price ?? 0 }}"
+                                                data-max-guests="{{ $type->available_rooms->first()->max_guests ?? 6 }}"
+                                                data-adult-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::adultSurchargeRate($type) }}"
+                                                data-child-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::childSurchargeRate($type) }}"
                                                 data-room-ids="{{ json_encode($type->available_rooms->pluck('id')->toArray()) }}">
                                             <option value="0">0 Phòng</option>
                                             @for($i = 1; $i <= min($type->available_rooms->count(), 5); $i++)
@@ -545,33 +611,9 @@
                             </div>
                         @endif
                         <input type="hidden" name="payment_method" value="vnpay">
+                        <input type="hidden" name="check_in" value="{{ $check_in }}">
+                        <input type="hidden" name="check_out" value="{{ $check_out }}">
                         <div id="roomInputsContainer"></div>
-
-                        <div class="summary-group">
-                            <div class="summary-hotel-name">{{ $hotel->name ?? 'Light Hotel' }}</div>
-                            <div class="mb-3">
-                                <div class="summary-item-label">Ngày nhận phòng</div>
-                                <div class="summary-item-val">
-                                    <input type="date" name="check_in" id="sidebar_check_in"
-                                           value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
-                                    <i class="bi bi-calendar3"></i>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="summary-item-label">Ngày trả phòng</div>
-                                <div class="summary-item-val">
-                                    <input type="date" name="check_out" id="sidebar_check_out"
-                                           value="{{ $check_out }}" min="{{ date('Y-m-d', strtotime($check_in . ' +1 day')) }}">
-                                    <i class="bi bi-calendar3"></i>
-                                </div>
-                            </div>
-                            <div class="summary-nights-info mb-4">
-                                Thời gian nghỉ: <strong class="text-primary" id="sidebar_nights_display">{{ $nights }} đêm</strong>
-                            </div>
-                        </div>
-                        <button type="button" id="btnUpdateDates" class="btn btn-sm btn-light w-100 rounded-pill mb-4 border py-2 fw-bold text-primary">
-                            <i class="bi bi-arrow-repeat me-1"></i> Cập nhật ngày & giá
-                        </button>
 
                         <div class="summary-group">
                             <div class="summary-group-title">Thông tin phòng</div>
@@ -628,7 +670,122 @@
     </div>
 </div>
 
+{{-- Amenities popup — nằm ngoài mọi container để không bị clip --}}
+<div id="amenitiesPopup" class="amenities-popup" style="display:none;">
+    <div class="amenities-popup-content">
+        @forelse($amenities as $amenity)
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox"
+                       value="{{ $amenity->id }}" id="ampop_{{ $amenity->id }}"
+                       {{ in_array($amenity->id, (array)request('amenities')) ? 'checked' : '' }}
+                       onchange="syncAmenityCheckbox(this)">
+                <label class="form-check-label small" for="ampop_{{ $amenity->id }}">
+                    {{ $amenity->name }}
+                </label>
+            </div>
+        @empty
+            <p class="small text-muted mb-0">Chưa có tiện nghi.</p>
+        @endforelse
+    </div>
+</div>
 <script>
+function changeRooms(delta) {
+    var input = document.getElementById('rooms-input');
+    if (!input) return;
+    var val = parseInt(input.value) + delta;
+    if (val < 1) val = 1;
+    if (val > 20) val = 20;
+    input.value = val;
+    var minusBtn = document.getElementById('rooms-minus-btn');
+    var plusBtn  = document.getElementById('rooms-plus-btn');
+    if (minusBtn) minusBtn.disabled = (val <= 1);
+    if (plusBtn) plusBtn.disabled = (val >= 20);
+}
+
+function applyPriceRange(select) {
+    var value = select.value;
+    var minPriceInput = document.getElementById('min_price_input');
+    var maxPriceInput = document.getElementById('max_price_input');
+    minPriceInput.value = '';
+    maxPriceInput.value = '';
+    if (value) {
+        var parts = value.split('-');
+        minPriceInput.value = parts[0] || '';
+        maxPriceInput.value = parts[1] || '';
+    }
+}
+
+function toggleAmenitiesPopup(e) {
+    e.stopPropagation();
+    var popup = document.getElementById('amenitiesPopup');
+    if (popup.style.display === 'none' || !popup.style.display) {
+        var btn = document.getElementById('amenities-filter-toggle');
+        var rect = btn.getBoundingClientRect();
+        popup.style.top = (rect.bottom + 4) + 'px';
+        popup.style.left = rect.left + 'px';
+        popup.style.display = 'block';
+    } else {
+        popup.style.display = 'none';
+    }
+}
+
+function syncAmenityCheckbox(cb) {
+    var val = cb.value;
+    var hidden = document.querySelector('#amenitiesHiddenInForm input[value="' + val + '"]');
+    if (hidden) hidden.checked = cb.checked;
+    updateAmenitiesText();
+}
+
+function updateAmenitiesText() {
+    var checkedAmenities = document.querySelectorAll('#amenitiesPopup input[type="checkbox"]:checked');
+    var textElement = document.getElementById('amenities-text');
+    if (checkedAmenities.length === 0) {
+        textElement.textContent = 'Chọn tiện nghi';
+    } else if (checkedAmenities.length === 1) {
+        var lbl = document.querySelector('label[for="' + checkedAmenities[0].id + '"]');
+        textElement.textContent = lbl ? lbl.textContent.trim() : '1 tiện nghi';
+    } else {
+        textElement.textContent = checkedAmenities.length + ' tiện nghi đã chọn';
+    }
+}
+
+document.addEventListener('click', function(e) {
+    var popup = document.getElementById('amenitiesPopup');
+    var toggle = document.getElementById('amenities-filter-toggle');
+    if (popup && popup.style.display !== 'none') {
+        if (!popup.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+            popup.style.display = 'none';
+        }
+    }
+});
+
+const __BP = @json(config('booking.pricing'));
+/**
+ * Đồng bộ với App\Support\RoomOccupancyPricing
+ *
+ * totalOcc = adults + c611 + c05  (TẤT CẢ tính sức chứa)
+ * standardCap = 3  → ≤3 ko phụ phí; >3 phụ phí; >6 từ chối
+ * Trẻ 0–5 chiếm slot tiêu chuẩn (miễn phí), slot còn lại cho NL + trẻ 6–11
+ * Phụ phí = % giá phòng/đêm cho NL / trẻ 6–11 vượt slot
+ */
+function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate) {
+    const stdCap = Number(__BP.standard_capacity) || 3;
+    const maxCap = Number(__BP.max_capacity) || 6;
+    const maxC05 = Number(__BP.max_children_05) || 3;
+    const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
+    const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
+    const total = adults + c611 + c05;
+    const billableSlots = Math.max(0, stdCap - c05);
+    const extraAdults = Math.max(0, adults - billableSlots);
+    const remainingSlots = Math.max(0, billableSlots - adults);
+    const extraChildren = Math.max(0, c611 - remainingSlots);
+    const adultFee = extraAdults * aRate * base;
+    const childFee = extraChildren * cRate * base;
+    const surcharge = adultFee + childFee;
+    const perNight = base + surcharge;
+    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap, maxCap, maxC05, allowed: total <= maxCap && c05 <= maxC05 };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const toggles = document.querySelectorAll('.toggle-selection');
     const qtySelectors = document.querySelectorAll('.room-qty-select');
@@ -639,60 +796,24 @@ document.addEventListener('DOMContentLoaded', function() {
     let nights = {{ $nights }};
     let currentDiscountPercent = 0;
 
-    // Date Sync & Logic (Sync between Top bar and Sidebar)
-    const sidebarCi = document.getElementById('sidebar_check_in');
-    const sidebarCo = document.getElementById('sidebar_check_out');
-    const sidebarNightsDisp = document.getElementById('sidebar_nights_display');
-    const btnUpdateDates = document.getElementById('btnUpdateDates');
+    // Top bar date change → auto-update nights & re-calculate pricing
+    const topCi = document.getElementById('search_check_in');
+    const topCo = document.getElementById('search_check_out');
 
-    function syncDateInputs(sourceId, targetId) {
-        const source = document.getElementById(sourceId);
-        const target = document.getElementById(targetId);
-        if (source && target) {
-            source.addEventListener('change', () => {
-                target.value = source.value;
-                // Trigger change on target to keep it consistent
-                const event = new Event('change');
-                target.dispatchEvent(event);
-            });
-        }
-    }
-
-    // Top to Sidebar sync
-    syncDateInputs('search_check_in', 'sidebar_check_in');
-    syncDateInputs('search_check_out', 'sidebar_check_out');
-    // Sidebar to Top sync
-    syncDateInputs('sidebar_check_in', 'search_check_in');
-    syncDateInputs('sidebar_check_out', 'search_check_out');
-
-    if (sidebarCi && sidebarCo) {
-        sidebarCi.addEventListener('change', function() {
-            sidebarCo.min = this.value;
-            // Additional update display
-            updateSidebarNights();
-        });
-        sidebarCo.addEventListener('change', updateSidebarNights);
-    }
-
-    function updateSidebarNights() {
-        let ci = new Date(sidebarCi.value);
-        let co = new Date(sidebarCo.value);
-        let diff = Math.ceil((co - ci) / (1000 * 60 * 60 * 24));
+    function updateNightsFromTopBar() {
+        if (!topCi || !topCo || !topCi.value || !topCo.value) return;
+        const diff = Math.ceil((new Date(topCo.value) - new Date(topCi.value)) / 86400000);
         if (diff > 0) {
-            if(sidebarNightsDisp) sidebarNightsDisp.textContent = diff + ' đêm';
-            // update the global nights variable for pricing logic
             nights = diff;
             updateSummary();
         }
     }
 
-    if (btnUpdateDates) {
-        btnUpdateDates.addEventListener('click', function() {
-            // Submit the top bar search form to refresh availability
-            const topForm = document.querySelector('.search-summary-bar');
-            if (topForm) topForm.submit();
-        });
-    }
+    if (topCi) topCi.addEventListener('change', function() {
+        if (topCo) topCo.min = this.value;
+        updateNightsFromTopBar();
+    });
+    if (topCo) topCo.addEventListener('change', updateNightsFromTopBar);
 
     const checkoutForm = document.getElementById('checkoutForm');
     const inputName = document.querySelector('input[name="full_name"]');
@@ -779,8 +900,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const typeId = select.getAttribute('data-type-id');
             const typeName = select.getAttribute('data-type-name');
             const basePrice = parseFloat(select.getAttribute('data-price'));
-            const maxAdults = parseInt(select.getAttribute('data-max-adults'));
-            const maxChildren = parseInt(select.getAttribute('data-max-children'));
+            const adultSurchargeRate = parseFloat(select.getAttribute('data-adult-surcharge-rate')) || null;
+            const childSurchargeRate = parseFloat(select.getAttribute('data-child-surcharge-rate')) || null;
             const roomIds = JSON.parse(select.getAttribute('data-room-ids'));
 
             const guestRow = document.getElementById(`guestRow${typeId}`);
@@ -797,26 +918,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     for (let i = 1; i <= qty; i++) {
                         containerHtml += `
                             <div class="col-md-6 guest-selector-item">
-                                <div class="guest-selector-card">
+                                        <div class="guest-selector-card">
                                     <div class="guest-selector-title">
                                         <span>Phòng ${i}</span>
-                                        <span class="text-muted small">Tiêu chuẩn: ${maxAdults} Người lớn${maxChildren > 0 ? `, ${maxChildren} Trẻ em` : ''}</span>
+                                        <span class="text-muted small">Tiêu chuẩn 3 người (tính cả trẻ 0–5); trẻ 0–5 miễn phí nhưng tính sức chứa</span>
                                     </div>
                                     <div class="row g-2">
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Người lớn</label>
                                             <input type="number" class="form-control form-control-sm guest-count adults-count"
-                                                   data-type-id="${typeId}" value="1" min="1" max="10">
+                                                   data-type-id="${typeId}" value="1" min="1" max="6">
                                         </div>
                                         <div class="col-4">
-                                            <label style="font-size: 0.65rem; color: #718096;">Trẻ 0-5</label>
+                                            <label style="font-size: 0.65rem; color: #718096;" title="Trẻ dưới 6 tuổi: miễn phí nhưng tính vào sức chứa phòng (tối đa 3)">Trẻ 0–5 tuổi</label>
                                             <input type="number" class="form-control form-control-sm guest-count child-05-count"
-                                                   data-type-id="${typeId}" value="0" min="0" max="10">
+                                                   data-type-id="${typeId}" value="0" min="0" max="3">
                                         </div>
                                         <div class="col-4">
-                                            <label style="font-size: 0.65rem; color: #718096;">Trẻ 6-11</label>
+                                            <label style="font-size: 0.65rem; color: #718096;" title="50% giá phòng/đêm mỗi em">Trẻ 6–11t</label>
                                             <input type="number" class="form-control form-control-sm guest-count child-611-count"
-                                                   data-type-id="${typeId}" value="0" min="0" max="10">
+                                                   data-type-id="${typeId}" value="0" min="0" max="5">
                                         </div>
                                     </div>
                                 </div>
@@ -841,26 +962,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     const c05 = parseInt(child05Arr[i].value || 0);
                     const c611 = parseInt(child611Arr[i].value || 0);
 
-                    // Logic mới theo yêu cầu:
-                    const extraAdults = Math.max(0, adults - maxAdults);
+                    const br = bookingPriceBreakdown(basePrice, adults, c05, c611, adultSurchargeRate, childSurchargeRate);
 
-                    // Tổng số trẻ em để kiểm tra giới hạn +2
-                    const totalChildren = c05 + c611;
-                    const extraChildrenLimit = Math.max(0, totalChildren - maxChildren);
-
-                    // Trẻ em 6-11 tính phí khi vượt giới hạn của phòng
-                    const chargeableChildren = Math.max(0, c611 - maxChildren);
-
-                    // Kiểm tra giới hạn +2
-                    if (extraAdults > 2 || extraChildrenLimit > 2) {
+                    if (!br.allowed) {
                         typeLimitExceeded = true;
                     }
-
-                    const extraAdultFee = extraAdults * (0.4 * basePrice);
-                    // Phụ thu trẻ em: mỗi trẻ em (6-11) vượt hạn x 30% base_price (giảm từ 50%)
-                    const childFee = chargeableChildren * (0.3 * basePrice);
-
-                    const roomPricePerNight = basePrice + extraAdultFee + childFee;
+                    const roomPricePerNight = br.perNight;
+                    const extraAdultFee = br.adultFee;
+                    const childFee = br.childFee;
                     const roomSubtotal = roomPricePerNight * nights;
                     subtotal += roomSubtotal;
 
@@ -872,8 +981,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <div class="small text-muted mb-1" style="font-size: 0.7rem;">
                                 <div>Cơ bản: ${new Intl.NumberFormat('vi-VN').format(basePrice)}đ</div>
-                                ${extraAdultFee > 0 ? `<div class="text-danger">Phụ thu người lớn: +${new Intl.NumberFormat('vi-VN').format(extraAdultFee)}đ</div>` : ''}
-                                ${childFee > 0 ? `<div class="text-danger">Phụ thu trẻ em: +${new Intl.NumberFormat('vi-VN').format(childFee)}đ</div>` : ''}
+                                ${extraAdultFee > 0 ? `<div class="text-danger">Phụ thu NL thêm (${br.extraAdults} người): +${new Intl.NumberFormat('vi-VN').format(extraAdultFee)}đ/đêm</div>` : ''}
+                                ${childFee > 0 ? `<div class="text-danger">Phụ thu trẻ 6–11 thêm (${br.extraChildren} em): +${new Intl.NumberFormat('vi-VN').format(childFee)}đ/đêm</div>` : ''}
                             </div>
                             <div class="d-flex justify-content-between small" style="font-size: 0.75rem;">
                                 <span>${nights} đêm x ${new Intl.NumberFormat('vi-VN').format(roomPricePerNight)}đ</span>
@@ -900,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="col-12 limit-error">
                         <div class="alert alert-danger py-2 small mb-2">
                             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            Số lượng người vượt quá giới hạn của phòng, vui lòng đặt thêm phòng.
+                            Phòng tối đa 6 người (bao gồm trẻ em) và tối đa 3 trẻ 0–5 tuổi, vui lòng đặt thêm phòng.
                         </div>
                     </div>
                 `);
@@ -1037,6 +1146,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Call restore on load
     setTimeout(restoreSelection, 100);
+
+    // Init amenities text on load
+    updateAmenitiesText();
+
+    // Init Bootstrap tooltips
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        new bootstrap.Tooltip(el);
+    });
 });
 </script>
 @endsection

@@ -8,20 +8,33 @@
         <h1 class="text-dark fw-bold">Quản lý thanh toán</h1>
     </div>
 
+    <div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
+        <div class="d-flex gap-2 align-items-start">
+            <i class="bi bi-info-circle fs-5 flex-shrink-0 mt-1"></i>
+            <div>
+                <strong>Sửa trạng thái đơn / phương thức thanh toán (tiền mặt, VNPay…)?</strong>
+                <p class="mb-0 small mt-1">
+                    Phần đó nằm ở <strong>Đặt phòng → mở chi tiết đơn #...</strong>, kéo xuống mục <strong>«Trạng thái đơn &amp; thanh toán»</strong>.
+                    Từ bảng dưới đây, dùng nút <span class="badge bg-primary">Đơn</span> để nhảy thẳng tới chỗ chỉnh.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <div class="card card-admin shadow mb-4">
         <div class="card-header-admin py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h5 class="mb-0">Danh sách thanh toán</h5>
-            <form action="{{ route('admin.payments.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+            <form action="{{ route('admin.bookings.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
                 <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm khách, mã GD..." style="width: 200px;">
-                <select name="status" class="form-select form-select-sm" style="width: 140px;">
+                <select name="payment_status" class="form-select form-select-sm" style="width: 140px;">
                     <option value="">Tất cả trạng thái</option>
-                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Chờ thanh toán</option>
-                    <option value="paid" {{ request('status') === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
-                    <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>Thất bại</option>
+                    <option value="pending" {{ request('payment_status') === 'pending' ? 'selected' : '' }}>Chờ thanh toán</option>
+                    <option value="paid" {{ request('payment_status') === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
+                    <option value="failed" {{ request('payment_status') === 'failed' ? 'selected' : '' }}>Thất bại</option>
                 </select>
-                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
-                @if(request()->hasAny(['q','status']))
-                <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Tìm"><i class="bi bi-search"></i></button>
+                @if(request()->hasAny(['q','payment_status']))
+                <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
                 @endif
             </form>
         </div>
@@ -75,8 +88,11 @@
                                         <span class="badge bg-secondary">{{ $payment->status }}</span>
                                     @endif
                                 </td>
-                                <td>
-                                    <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                                <td class="text-nowrap">
+                                    <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Xem thanh toán"><i class="bi bi-eye"></i></a>
+                                    @if($payment->booking_id)
+                                        <a href="{{ route('admin.bookings.show', $payment->booking_id) }}#payment-booking-settings" class="btn btn-sm btn-primary btn-admin-icon" title="Sửa trạng thái đơn &amp; thanh toán trên đơn"><i class="bi bi-pencil-square"></i><span class="d-none d-xl-inline ms-1 small">Đơn</span></a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

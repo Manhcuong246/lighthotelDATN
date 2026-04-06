@@ -9,17 +9,60 @@ class RoomImageDownloadService
     public function downloadFromUrl(string $url): ?string
     {
         try {
-            $response = Http::timeout(20)
+            $response = Http::timeout(35)
+                ->connectTimeout(15)
+                ->withOptions(['allow_redirects' => ['max' => 5]])
                 ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept' => 'image/*',
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept' => 'image/jpeg,image/png,image/*;q=0.8,*/*;q=0.5',
                 ])
                 ->get($url);
 
-            if ($response->successful()) {
-                return $response->body();
+            if (! $response->successful()) {
+                return null;
             }
+            $body = $response->body();
+            if ($body === '' || ! $this->isProbableImageBody($body)) {
+                return null;
+            }
+
+            return $body;
         } catch (\Throwable) {
+        }
+
+        return null;
+    }
+
+    /** Có đủ byte và magic header ảnh; loại HTML/JSON lỗi. */
+    public function isProbableImageBody(string $body): bool
+    {
+        $len = strlen($body);
+        if ($len < 500) {
+            return false;
+        }
+        $t = ltrim($body);
+        if ($t !== '' && ($t[0] === '<' || str_starts_with($t, '{') || str_starts_with($t, '['))) {
+            return false;
+        }
+        $h = substr($body, 0, 16);
+
+        return str_starts_with($h, "\xFF\xD8\xFF")
+            || str_starts_with($h, "\x89PNG\r\n\x1a\n")
+            || (str_starts_with($h, 'RIFF') && str_contains(substr($body, 0, 24), 'WEBP'));
+    }
+
+    /**
+     * Thử lần lượt nhiều URL cho đến khi có ảnh hợp lệ.
+     *
+     * @param  list<string>  $urls
+     */
+    public function downloadFirstOk(array $urls): ?string
+    {
+        foreach (array_values(array_unique(array_filter($urls))) as $url) {
+            $body = $this->downloadFromUrl($url);
+            if ($body !== null) {
+                return $body;
+            }
         }
 
         return null;
@@ -53,20 +96,29 @@ class RoomImageDownloadService
         return $content ?: $this->createMinimalJpeg();
     }
 
+    /**
+     * JPEG 1×1 pixel hợp lệ, dùng khi không có GD hoặc GD lỗi.
+     */
     public function createMinimalJpeg(): string
     {
-        $img = imagecreatetruecolor(1, 1);
-        if ($img === false) {
-            return '';
+        if (extension_loaded('gd')) {
+            $img = imagecreatetruecolor(1, 1);
+            if ($img !== false) {
+                $bg = imagecolorallocate($img, 200, 200, 200);
+                imagefill($img, 0, 0, $bg);
+                ob_start();
+                imagejpeg($img, null, 85);
+                $content = ob_get_clean();
+                imagedestroy($img);
+                if ($content !== false && $content !== '') {
+                    return $content;
+                }
+            }
         }
-        $bg = imagecolorallocate($img, 200, 200, 200);
-        imagefill($img, 0, 0, $bg);
-        ob_start();
-        imagejpeg($img, null, 85);
-        $content = ob_get_clean();
-        imagedestroy($img);
 
-        return $content ?? '';
+        $b64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDAREAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=';
+
+        return base64_decode($b64, true) ?: '';
     }
 
     /** @return list<string> */

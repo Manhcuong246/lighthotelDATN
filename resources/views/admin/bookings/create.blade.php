@@ -7,9 +7,7 @@
     <!-- Header -->
     <div class="mb-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
-            <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-secondary rounded-2">
-                <span class="me-1">←</span> Quay lại
-            </a>
+            <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-secondary btn-admin-icon rounded-2" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
             <h1 class="h4 fw-bold mb-0">➕ Tạo đơn đặt phòng cho khách</h1>
         </div>
     </div>
@@ -119,7 +117,7 @@
                         <label for="status" class="form-label small fw-bold text-muted mb-1">Trạng thái *</label>
                         <select class="form-select form-select-sm rounded-2 @error('status') is-invalid @enderror"
                                 id="status" name="status" required>
-                            <option value="confirmed" selected>✓ Đã xác nhận</option>
+                            <option value="confirmed" selected>✓ Đã thanh toán</option>
                         </select>
                         @error('status')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
@@ -215,8 +213,8 @@
                                 <p class="mb-0"><strong>Số tiền:</strong> <span id="bank-amount" class="text-success fw-bold">0đ</span></p>
                             </div>
                             <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="generateQR()">
-                                    <i class="bi bi-arrow-clockwise"></i> Tạo lại mã QR
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Tạo lại mã QR" onclick="generateQR()">
+                                    <i class="bi bi-arrow-clockwise"></i>
                                 </button>
                             </div>
                         </div>
@@ -231,13 +229,9 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="d-flex gap-2 mb-4">
-            <button type="submit" class="btn btn-primary rounded-2 fw-bold px-4">
-                💾 Tạo đơn đặt phòng
-            </button>
-            <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary rounded-2 fw-bold px-4">
-                ❌ Hủy
-            </a>
+        <div class="admin-action-row mb-4">
+            <button type="submit" class="btn btn-primary rounded-2 btn-admin-icon" title="Tạo đơn"><i class="bi bi-check2-lg"></i></button>
+            <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary rounded-2 btn-admin-icon" title="Hủy"><i class="bi bi-x-lg"></i></a>
         </div>
     </form>
 </div>

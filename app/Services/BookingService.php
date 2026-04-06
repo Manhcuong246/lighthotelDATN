@@ -10,6 +10,7 @@ use App\Models\RoomBookedDate;
 use App\Models\User;
 use App\Models\Coupon;
 use App\Models\BookingRoom;
+use App\Support\RoomOccupancyPricing;
 use App\Exceptions\BookingException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -191,32 +192,21 @@ class BookingService
         $basePrice = (float) $room->base_price;
         $roomType = $room->roomType;
 
-        $maxAdults = $roomType->adult_capacity ?? $room->max_guests ?? 2;
-        $maxChildren = $roomType->child_capacity ?? 0;
-
-        $extraAdults = max(0, $adults - $maxAdults);
-        $totalChildren = $children_0_5 + $children_6_11;
-        $extraChildrenLimit = max(0, $totalChildren - $maxChildren);
-        $chargeableChildren = max(0, $children_6_11 - $maxChildren);
-
-        // Giới hạn +2
-        if ($extraAdults > 2 || $extraChildrenLimit > 2) {
-            throw new \Exception("Số lượng người vượt quá giới hạn của phòng \"{$room->name}\", vui lòng đặt thêm phòng.");
+        try {
+            RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5);
+        } catch (\InvalidArgumentException $e) {
+            throw new \Exception("Phòng \"{$room->name}\": " . $e->getMessage());
         }
 
-        $extraAdultFeePerNight = $extraAdults * (0.4 * $basePrice);
-        $childFeePerNight = $chargeableChildren * (0.3 * $basePrice); // Giảm từ 50% xuống 30%
-
-        $pricePerNight = $basePrice + $extraAdultFeePerNight + $childFeePerNight;
-        $subtotal = $pricePerNight * $nights;
+        $t = RoomOccupancyPricing::total($basePrice, $nights, $adults, $children_6_11, $children_0_5, $roomType);
 
         return [
             'base_price'      => $basePrice,
-            'extra_adult_fee' => $extraAdultFeePerNight * $nights,
-            'child_fee'       => $childFeePerNight * $nights,
-            'price_per_night' => $pricePerNight,
-            'subtotal'        => $subtotal,
-            'nights'          => $nights
+            'extra_adult_fee' => $t['adult_surcharge_per_night'] * $nights,
+            'child_fee'       => $t['child_surcharge_per_night'] * $nights,
+            'price_per_night' => $t['price_per_night'],
+            'subtotal'        => $t['grand_total'],
+            'nights'          => $nights,
         ];
     }
 

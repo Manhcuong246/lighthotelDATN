@@ -133,11 +133,21 @@ class Room extends Model
         if (empty($path)) {
             return null;
         }
-        $path = ltrim($path, '/');
+        $path = ltrim((string) $path, '/');
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;
         }
-        return asset('storage/' . $path);
+        // DB đôi khi lưu thừa "storage/..." → URL sẽ thành /storage/storage/... (404).
+        while (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+        if (str_starts_with($path, 'public/')) {
+            $path = substr($path, strlen('public/'));
+        }
+        if ($path === '') {
+            return null;
+        }
+        return '/storage/'.$path.'?v='.config('room_images.cache_version', '1');
     }
 
     /**

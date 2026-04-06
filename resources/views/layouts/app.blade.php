@@ -1605,10 +1605,21 @@
                 @auth
                 <div class="dropdown dropdown-user">
                     <a class="d-flex align-items-center text-decoration-none text-white dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        @if(auth()->user()->avatar_url)
-                            <img src="{{ str_starts_with(auth()->user()->avatar_url, 'http') ? auth()->user()->avatar_url : asset('storage/' . auth()->user()->avatar_url) }}" alt="" class="avatar-header me-2">
+                        @php
+                            $avatarInitial = strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1));
+                            $avatarSrc = null;
+                            if (auth()->user()->avatar_url) {
+                                $avatarSrc = str_starts_with(auth()->user()->avatar_url, 'http')
+                                    ? auth()->user()->avatar_url
+                                    : '/storage/' . auth()->user()->avatar_url . '?v=' . config('room_images.cache_version', '1');
+                            }
+                        @endphp
+                        @if($avatarSrc)
+                            <img src="{{ $avatarSrc }}" alt="" class="avatar-header me-2"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <span class="avatar-placeholder me-2" style="display:none;">{{ $avatarInitial }}</span>
                         @else
-                            <span class="avatar-placeholder me-2">{{ strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1)) }}</span>
+                            <span class="avatar-placeholder me-2">{{ $avatarInitial }}</span>
                         @endif
                         <span class="d-none d-md-inline fw-medium">{{ auth()->user()->full_name }}</span>
                     </a>
