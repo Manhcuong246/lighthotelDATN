@@ -1,7 +1,7 @@
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader --no-scripts
 
 FROM node:20-alpine AS assets
 WORKDIR /app
@@ -31,6 +31,8 @@ RUN apk add --no-cache \
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build
+
+RUN php artisan package:discover --ansi
 
 RUN mkdir -p storage bootstrap/cache \
   && chown -R www-data:www-data storage bootstrap/cache

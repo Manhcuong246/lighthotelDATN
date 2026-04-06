@@ -76,13 +76,6 @@ class RefundService
                 'changed_at' => now(),
             ]);
 
-            // 5. Send Email to User
-            try {
-                \Illuminate\Support\Facades\Mail::to($booking->user->email)->send(new \App\Mail\RefundProcessedMail($refundRequest));
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Mail error: ' . $e->getMessage());
-            }
-
             return true;
         });
     }
@@ -111,13 +104,6 @@ class RefundService
                 'new_status' => 'confirmed',
                 'changed_at' => now(),
             ]);
-
-            // 4. Send Email to User
-            try {
-                \Illuminate\Support\Facades\Mail::to($booking->user->email)->send(new \App\Mail\RefundProcessedMail($refundRequest));
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Mail error: ' . $e->getMessage());
-            }
 
             return true;
         });

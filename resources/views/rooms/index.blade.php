@@ -8,7 +8,7 @@
      HERO SECTION
      ============================ --}}
 <section class="lh-hero mb-0">
-    <div class="lh-hero-bg"></div>
+    <div class="lh-hero-mesh" aria-hidden="true"></div>
     <div class="container lh-hero-inner">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
@@ -17,7 +17,12 @@
                     Đặt phòng thẳng,<br>
                     <em>nhận ưu đãi tốt nhất.</em>
                 </h1>
-                <p class="lh-hero-sub">Không qua trung gian · Giá tốt nhất · Hủy miễn phí</p>
+                <p class="lh-hero-sub">Không qua trung gian · Giá tốt nhất · Hủy linh hoạt theo chính sách</p>
+                <div class="lh-hero-feature-row">
+                    <span class="lh-hero-pill"><i class="bi bi-wifi"></i> Wi‑Fi tốc độ cao</span>
+                    <span class="lh-hero-pill"><i class="bi bi-shield-check"></i> Thanh toán an toàn</span>
+                    <span class="lh-hero-pill"><i class="bi bi-headset"></i> Hỗ trợ 24/7</span>
+                </div>
             </div>
             <div class="col-lg-4 d-none d-lg-flex justify-content-end">
                 <div class="lh-rating-chip">
@@ -32,51 +37,126 @@
              ============================ --}}
         <form method="GET" action="{{ route('rooms.search') }}" id="search-form" novalidate class="mt-5" onsubmit="return validateSearchForm(this)">
             <input type="hidden" name="search" value="1">
-            <div class="bk-search-bar">
-                {{-- Destination --}}
-                <div class="bk-seg bk-seg-dest">
-                    <i class="bi bi-building bk-seg-icon"></i>
-                    <div class="bk-seg-content">
-                        <div class="bk-seg-label">Điểm đến</div>
-                        <input type="text" class="bk-input" value="Light Hotel Đà Nẵng" readonly style="cursor: default;">
+            <input type="hidden" name="adults" value="{{ request('adults', 1) }}">
+            <input type="hidden" name="children" value="{{ request('children', 0) }}">
+            @if(request('child_ages'))
+                @foreach(request('child_ages') as $age)
+                    <input type="hidden" name="child_ages[]" value="{{ $age }}">
+                @endforeach
+            @endif
+
+            <div class="bk-search-stack">
+                <div class="bk-search-bar bk-search-bar--in-stack">
+                    {{-- Destination --}}
+                    <div class="bk-seg bk-seg-dest">
+                        <i class="bi bi-building bk-seg-icon"></i>
+                        <div class="bk-seg-content">
+                            <div class="bk-seg-label">Điểm đến</div>
+                            <input type="text" class="bk-input" value="Light Hotel Đà Nẵng" readonly style="cursor: default;">
+                        </div>
                     </div>
+                    <div class="bk-sep"></div>
+                    {{-- Dates --}}
+                    <div class="bk-seg bk-seg-dates">
+                        <i class="bi bi-calendar-event bk-seg-icon"></i>
+                        <div class="bk-seg-content">
+                            <div class="bk-seg-label">Nhận phòng - Trả phòng</div>
+                            <div class="d-flex align-items-center gap-1">
+                                <input type="date" name="check_in" id="check_in_input" class="bk-date-input"
+                                       value="{{ request('check_in', date('Y-m-d')) }}" min="{{ date('Y-m-d') }}">
+                                <span class="text-muted">→</span>
+                                <input type="date" name="check_out" id="check_out_input" class="bk-date-input"
+                                       value="{{ request('check_out', date('Y-m-d', strtotime('+1 day'))) }}"
+                                       min="{{ date('Y-m-d', strtotime('+1 day')) }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bk-sep"></div>
+                    {{-- Số phòng --}}
+                    <div class="bk-seg">
+                        <i class="bi bi-door-open bk-seg-icon"></i>
+                        <div class="bk-seg-content">
+                            <div class="bk-seg-label">Số phòng</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="guest-btn" onclick="changeRooms(-1)" id="rooms-minus-btn">−</button>
+                                <input type="number" name="rooms" id="rooms-input"
+                                       value="{{ request('rooms', 1) }}" min="1" max="20"
+                                       class="guest-count-input" readonly
+                                       style="width: 40px; text-align: center; border: none; background: transparent; font-weight: 600; font-size: 1rem;">
+                                <button type="button" class="guest-btn" onclick="changeRooms(1)" id="rooms-plus-btn">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    {{-- Submit --}}
+                    <button type="submit" class="bk-search-btn">
+                        Tìm
+                    </button>
                 </div>
-                <div class="bk-sep"></div>
-                {{-- Dates --}}
-                <div class="bk-seg bk-seg-dates">
-                    <i class="bi bi-calendar-event bk-seg-icon"></i>
-                    <div class="bk-seg-content">
-                        <div class="bk-seg-label">Nhận phòng - Trả phòng</div>
-                        <div class="d-flex align-items-center gap-1">
-                            <input type="date" name="check_in" id="check_in_input" class="bk-date-input"
-                                   value="{{ request('check_in', date('Y-m-d')) }}" min="{{ date('Y-m-d') }}">
-                            <span class="text-muted">→</span>
-                            <input type="date" name="check_out" id="check_out_input" class="bk-date-input"
-                                   value="{{ request('check_out', date('Y-m-d', strtotime('+1 day'))) }}"
-                                   min="{{ date('Y-m-d', strtotime('+1 day')) }}">
+
+                {{-- Bộ lọc (cùng form — chỉ gửi bằng nút Tìm) --}}
+                <div class="bk-filter-row">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label small text-muted mb-1">Loại phòng</label>
+                            <select name="room_type" class="form-select form-select-sm">
+                                <option value="">Tất cả loại phòng</option>
+                                @foreach($allRoomTypes as $rt)
+                                    <option value="{{ $rt->id }}" {{ request('room_type') == $rt->id ? 'selected' : '' }}>
+                                        {{ $rt->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label small text-muted mb-1">Khoảng giá</label>
+                            <select id="price_range_select" class="form-select form-select-sm" onchange="applyPriceRange(this)">
+                                <option value="">Tất cả mức giá</option>
+                                <option value="0-500000" {{ request('min_price') == 0 && request('max_price') == 500000 ? 'selected' : '' }}>Dưới 500.000đ</option>
+                                <option value="500000-1000000" {{ request('min_price') == 500000 && request('max_price') == 1000000 ? 'selected' : '' }}>500.000đ - 1.000.000đ</option>
+                                <option value="1000000-2000000" {{ request('min_price') == 1000000 && request('max_price') == 2000000 ? 'selected' : '' }}>1.000.000đ - 2.000.000đ</option>
+                                <option value="2000000-" {{ request('min_price') == 2000000 && !request('max_price') ? 'selected' : '' }}>Trên 2.000.000đ</option>
+                            </select>
+                            <input type="hidden" name="min_price" id="min_price_input" value="{{ request('min_price') }}">
+                            <input type="hidden" name="max_price" id="max_price_input" value="{{ request('max_price') }}">
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label small text-muted mb-1">Sắp xếp theo</label>
+                            <select name="sort_by" class="form-select form-select-sm">
+                                <option value="price_asc" {{ request('sort_by', 'price_asc') == 'price_asc' ? 'selected' : '' }}>Giá thấp → cao</option>
+                                <option value="price_desc" {{ request('sort_by') == 'price_desc' ? 'selected' : '' }}>Giá cao → thấp</option>
+                                <option value="name_asc" {{ request('sort_by') == 'name_asc' ? 'selected' : '' }}>Tên A → Z</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label small text-muted mb-1">Tiện nghi</label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span id="amenities-text">Chọn tiện nghi</span>
+                                    <i class="bi bi-chevron-down small"></i>
+                                </button>
+                                <div class="dropdown-menu p-3 shadow" style="min-width: 250px;" onclick="event.stopPropagation()">
+                                    @foreach($amenities->take(6) as $amenity)
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" name="amenities[]"
+                                                   value="{{ $amenity->id }}" id="am_{{ $amenity->id }}"
+                                                   {{ in_array($amenity->id, (array)request('amenities')) ? 'checked' : '' }}
+                                                   onchange="updateAmenitiesText()">
+                                            <label class="form-check-label small" for="am_{{ $amenity->id }}">
+                                                {{ $amenity->name }}
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-1 col-md-12">
+                            <label class="form-label small text-muted mb-1 d-none d-lg-block">&nbsp;</label>
+                            <a href="{{ route('home') }}" class="btn btn-outline-danger btn-sm w-100">
+                                <i class="bi bi-x-lg"></i> Xóa
+                            </a>
                         </div>
                     </div>
                 </div>
-                <div class="bk-sep"></div>
-                {{-- Số phòng --}}
-                <div class="bk-seg">
-                    <i class="bi bi-door-open bk-seg-icon"></i>
-                    <div class="bk-seg-content">
-                        <div class="bk-seg-label">Số phòng</div>
-                        <div class="d-flex align-items-center gap-2">
-                            <button type="button" class="guest-btn" onclick="changeRooms(-1)" id="rooms-minus-btn">−</button>
-                            <input type="number" name="rooms" id="rooms-input"
-                                   value="{{ request('rooms', 1) }}" min="1" max="20"
-                                   class="guest-count-input" readonly
-                                   style="width: 40px; text-align: center; border: none; background: transparent; font-weight: 600; font-size: 1rem;">
-                            <button type="button" class="guest-btn" onclick="changeRooms(1)" id="rooms-plus-btn">+</button>
-                        </div>
-                    </div>
-                </div>
-                {{-- Submit --}}
-                <button type="submit" class="bk-search-btn">
-                    Tìm
-                </button>
             </div>
         </form>
     </div>
@@ -85,106 +165,8 @@
 {{-- ============================
      CONTENT
      ============================ --}}
+<div class="lh-home-content-wrap">
 <div class="container py-5" id="rooms-section">
-
-    {{-- ============================
-         QUICK FILTER BAR (moved down)
-         ============================ --}}
-    <section class="bg-white border rounded p-3 mb-4 shadow-sm">
-        <form method="GET" action="{{ route('rooms.search') }}" id="quick-filter-form">
-            <input type="hidden" name="search" value="1">
-            <input type="hidden" name="check_in" value="{{ request('check_in', date('Y-m-d')) }}">
-            <input type="hidden" name="check_out" value="{{ request('check_out', date('Y-m-d', strtotime('+1 day'))) }}">
-            <input type="hidden" name="adults" value="{{ request('adults', 1) }}">
-            <input type="hidden" name="children" value="{{ request('children', 0) }}">
-            <input type="hidden" name="rooms" value="{{ request('rooms', 1) }}">
-            @if(request('child_ages'))
-                @foreach(request('child_ages') as $age)
-                    <input type="hidden" name="child_ages[]" value="{{ $age }}">
-                @endforeach
-            @endif
-
-            <div class="row g-2 align-items-end">
-                {{-- Room Type Filter --}}
-                <div class="col-lg-3 col-md-6">
-                    <label class="form-label small text-muted mb-1">Loại phòng</label>
-                    <select name="room_type" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">Tất cả loại phòng</option>
-                        @foreach($allRoomTypes as $rt)
-                            <option value="{{ $rt->id }}" {{ request('room_type') == $rt->id ? 'selected' : '' }}>
-                                {{ $rt->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Price Range Filter --}}
-                <div class="col-lg-3 col-md-6">
-                    <label class="form-label small text-muted mb-1">Khoảng giá</label>
-                    <select name="price_range" class="form-select form-select-sm" onchange="applyPriceRange(this)">
-                        <option value="">Tất cả mức giá</option>
-                        <option value="0-500000" {{ request('min_price') == 0 && request('max_price') == 500000 ? 'selected' : '' }}>Dưới 500.000đ</option>
-                        <option value="500000-1000000" {{ request('min_price') == 500000 && request('max_price') == 1000000 ? 'selected' : '' }}>500.000đ - 1.000.000đ</option>
-                        <option value="1000000-2000000" {{ request('min_price') == 1000000 && request('max_price') == 2000000 ? 'selected' : '' }}>1.000.000đ - 2.000.000đ</option>
-                        <option value="2000000-" {{ request('min_price') == 2000000 && !request('max_price') ? 'selected' : '' }}>Trên 2.000.000đ</option>
-                    </select>
-                    <input type="hidden" name="min_price" id="min_price_input" value="{{ request('min_price') }}">
-                    <input type="hidden" name="max_price" id="max_price_input" value="{{ request('max_price') }}">
-                </div>
-
-                {{-- Sort By --}}
-                <div class="col-lg-2 col-md-6">
-                    <label class="form-label small text-muted mb-1">Sắp xếp theo</label>
-                    <select name="sort_by" class="form-select form-select-sm">
-                        <option value="price_asc" {{ request('sort_by', 'price_asc') == 'price_asc' ? 'selected' : '' }}>Giá thấp → cao</option>
-                        <option value="price_desc" {{ request('sort_by') == 'price_desc' ? 'selected' : '' }}>Giá cao → thấp</option>
-                        <option value="name_asc" {{ request('sort_by') == 'name_asc' ? 'selected' : '' }}>Tên A → Z</option>
-                    </select>
-                </div>
-
-                {{-- Amenities Quick Filter --}}
-                <div class="col-lg-3 col-md-6">
-                    <label class="form-label small text-muted mb-1">Tiện nghi</label>
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary btn-sm w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown">
-                            <span id="amenities-text">Chọn tiện nghi</span>
-                            <i class="bi bi-chevron-down small"></i>
-                        </button>
-                        <div class="dropdown-menu p-3 shadow" style="min-width: 250px;" onclick="event.stopPropagation()">
-                            @foreach($amenities->take(6) as $amenity)
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="amenities[]"
-                                           value="{{ $amenity->id }}" id="am_{{ $amenity->id }}"
-                                           {{ in_array($amenity->id, (array)request('amenities')) ? 'checked' : '' }}
-                                           onchange="updateAmenitiesText()">
-                                    <label class="form-check-label small" for="am_{{ $amenity->id }}">
-                                        {{ $amenity->name }}
-                                    </label>
-                                </div>
-                            @endforeach
-                            <div class="mt-2 pt-2 border-top">
-                                <button type="button" class="btn btn-primary btn-sm w-100" onclick="applyAmenitiesFilter()">Áp dụng</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Reset Button --}}
-                <div class="col-lg-1 col-md-12">
-                    <a href="{{ route('home') }}" class="btn btn-outline-danger btn-sm w-100">
-                        <i class="bi bi-x-lg"></i> Xóa
-                    </a>
-                </div>
-
-                {{-- Apply Button --}}
-                <div class="col-lg-1 col-md-12">
-                    <button type="button" class="btn btn-primary btn-sm w-100" onclick="applyQuickFilters()">
-                        Áp dụng
-                    </button>
-                </div>
-            </div>
-        </form>
-    </section>
 
     @if(request('search'))
 
@@ -287,9 +269,9 @@
 
             {{-- ========= RESULTS ========= --}}
             <div class="col-lg-9">
-                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div class="lh-section-header">
                     <div>
-                        <h2 class="h5 mb-0 fw-bold">
+                        <h2 class="h5 mb-1 fw-bold text-dark">
                             {{ $roomTypesList->total() }} loại phòng hiện có
                             @if(request('check_in') && request('check_out'))
                                 <span class="text-muted fw-normal fs-6">·
@@ -324,7 +306,13 @@
                             <div class="row g-0 h-100">
                                 <div class="col-md-4 col-sm-5">
                                     <div class="lh-result-img-wrap" style="height: 200px;">
-                                        <img src="{{ $type->rooms->flatMap->images->first()->image_url ?? $type->image ?? $placeholderSvg }}"
+                                        @php
+                                            $firstImg = $type->rooms->flatMap->images->first();
+                                            $searchListImg = ($firstImg && $firstImg->image_url)
+                                                ? \App\Models\Room::resolveImageUrl($firstImg->image_url)
+                                                : ($type->image ? \App\Models\Room::resolveImageUrl($type->image) : $placeholderSvg);
+                                        @endphp
+                                        <img src="{{ $searchListImg ?? $placeholderSvg }}"
                                              class="lh-result-img w-100 h-100" style="object-fit: cover;"
                                              alt="{{ $type->name }}">
                                     </div>
@@ -363,12 +351,14 @@
         {{-- ============================
              HOME: Room Grid
              ============================ --}}
-        <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
+        <div class="lh-section-header">
             <div>
                 <p class="lh-section-eyebrow mb-1">Bộ sưu tập phòng</p>
-                <h2 class="h4 fw-bold mb-0">Chọn không gian lý tưởng cho bạn</h2>
+                <h2 class="h4 fw-bold mb-0 text-dark">Chọn không gian lý tưởng cho bạn</h2>
             </div>
-            <div class="text-muted">{{ $roomTypesList->total() }} loại phòng hiện có</div>
+            <div class="badge rounded-pill px-3 py-2 bg-white text-primary border border-primary border-opacity-25 shadow-sm fw-semibold">
+                {{ $roomTypesList->total() }} loại phòng
+            </div>
         </div>
 
         @php
@@ -439,6 +429,7 @@
 
     @endif
 </div>
+</div>
 
 @push('scripts')
 <script>
@@ -459,6 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Khởi tạo nút +/- phòng
     updateRoomsBtnState();
+    updateAmenitiesText();
 });
 
 function changeRooms(delta) {
@@ -569,66 +561,6 @@ function resetGuests() {
     updateGuestSummary();
 }
 
-function applyQuickFilters() {
-    // Get all form data from search form
-    var searchForm = document.getElementById('search-form');
-    var formData = new FormData(searchForm);
-
-    // Get quick filter form data
-    var quickFilterForm = document.getElementById('quick-filter-form');
-    var quickFormData = new FormData(quickFilterForm);
-
-    // Get checked amenities
-    var checkedAmenities = [];
-    document.querySelectorAll('input[name="amenities[]"]:checked').forEach(function(cb) {
-        checkedAmenities.push(cb.value);
-    });
-
-    // Get price range from dropdown
-    var priceRangeSelect = quickFilterForm.querySelector('select[name="price_range"]');
-    var priceRange = priceRangeSelect ? priceRangeSelect.value : '';
-
-    // Build URL with all parameters
-    var url = new URL(window.location);
-
-    // Clear all filter parameters first
-    url.searchParams.delete('room_type');
-    url.searchParams.delete('min_price');
-    url.searchParams.delete('max_price');
-    url.searchParams.delete('sort_by');
-    url.searchParams.delete('amenities[]');
-    url.searchParams.set('search', '1');
-
-    // Add search form parameters
-    for (var pair of formData.entries()) {
-        if (pair[0] !== 'search') {
-            url.searchParams.set(pair[0], pair[1]);
-        }
-    }
-
-    // Add quick filter parameters
-    for (var pair of quickFormData.entries()) {
-        if (pair[0] !== 'search' && pair[0] !== 'child_ages[]' && pair[0] !== 'price_range') {
-            url.searchParams.set(pair[0], pair[1]);
-        }
-    }
-
-    // Add price range from dropdown
-    if (priceRange) {
-        var parts = priceRange.split('-');
-        url.searchParams.set('min_price', parts[0] || '');
-        url.searchParams.set('max_price', parts[1] || '');
-    }
-
-    // Add amenities
-    checkedAmenities.forEach(function(amenity) {
-        url.searchParams.append('amenities[]', amenity);
-    });
-
-    // Redirect
-    window.location.href = url.toString();
-}
-
 function updateAmenitiesText() {
     var checkedAmenities = document.querySelectorAll('input[name="amenities[]"]:checked');
     var textElement = document.getElementById('amenities-text');
@@ -641,70 +573,6 @@ function updateAmenitiesText() {
     } else {
         textElement.textContent = checkedAmenities.length + ' tiện nghi đã chọn';
     }
-}
-
-function applyAmenitiesFilter() {
-    // Get all form data from search form
-    var searchForm = document.getElementById('search-form');
-    var formData = new FormData(searchForm);
-
-    // Get checked amenities
-    var checkedAmenities = [];
-    document.querySelectorAll('input[name="amenities[]"]:checked').forEach(function(cb) {
-        checkedAmenities.push(cb.value);
-    });
-
-    // Build URL with all parameters
-    var url = new URL(window.location);
-    url.searchParams.delete('amenities[]');
-    url.searchParams.set('search', '1');
-
-    // Add search form parameters
-    for (var pair of formData.entries()) {
-        if (pair[0] !== 'search') {
-            url.searchParams.set(pair[0], pair[1]);
-        }
-    }
-
-    // Add amenities
-    checkedAmenities.forEach(function(amenity) {
-        url.searchParams.append('amenities[]', amenity);
-    });
-
-    // Redirect
-    window.location.href = url.toString();
-}
-
-function updateQuickFilter(checkbox) {
-    // Get all form data from search form
-    var searchForm = document.getElementById('search-form');
-    var formData = new FormData(searchForm);
-
-    // Get checked amenities
-    var checkedAmenities = [];
-    document.querySelectorAll('input[name="amenities[]"]:checked').forEach(function(cb) {
-        checkedAmenities.push(cb.value);
-    });
-
-    // Build URL with all parameters
-    var url = new URL(window.location);
-    url.searchParams.delete('amenities[]');
-    url.searchParams.set('search', '1');
-
-    // Add search form parameters
-    for (var pair of formData.entries()) {
-        if (pair[0] !== 'search') {
-            url.searchParams.set(pair[0], pair[1]);
-        }
-    }
-
-    // Add amenities
-    checkedAmenities.forEach(function(amenity) {
-        url.searchParams.append('amenities[]', amenity);
-    });
-
-    // Redirect
-    window.location.href = url.toString();
 }
 
 function applyPriceRange(select) {
@@ -725,7 +593,9 @@ function applyPriceRange(select) {
 }
 
 function validateSearchForm(form) {
-    var children = parseInt(document.getElementById('guest-children').value);
+    var guestChildren = document.getElementById('guest-children');
+    if (!guestChildren) return true;
+    var children = parseInt(guestChildren.value, 10);
     if (children > 0) {
         var childAgeSelects = form.querySelectorAll('select[name="child_ages[]"]');
         for (var i = 0; i < childAgeSelects.length; i++) {

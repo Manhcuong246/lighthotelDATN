@@ -39,6 +39,10 @@ Route::get('/storage/{path}', function (string $path) {
 
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
+Route::view('/lien-he', 'pages.contact')->name('pages.contact');
+Route::view('/tro-giup', 'pages.help')->name('pages.help');
+Route::view('/chinh-sach', 'pages.policy')->name('pages.policy');
+
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
@@ -51,6 +55,10 @@ Route::get('/bookings/{booking}/refund', [BookingController::class, 'showRefundD
 Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
 
 Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
+
+Route::get('/payment/vnpay/pay/{booking}', [VnPayController::class, 'pay'])
+    ->name('payment.vnpay.pay')
+    ->middleware('signed');
 
 Route::get('/payment/vnpay/return', [VnPayController::class, 'return'])->name('payment.vnpay.return');
 Route::get('/payment/success/{booking}', [PaymentController::class, 'success'])->name('payment.success');

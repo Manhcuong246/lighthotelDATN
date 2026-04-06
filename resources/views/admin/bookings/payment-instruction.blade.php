@@ -21,11 +21,48 @@
                 <div class="alert alert-success">{{ session('success') }}</div>
             @endif
 
+            @if(session('info'))
+                <div class="alert alert-info">{{ session('info') }}</div>
+            @endif
+
+            @if(session('warning'))
+                <div class="alert alert-warning">{{ session('warning') }}</div>
+            @endif
+
             @if(session('error'))
                 <div class="alert alert-danger">{{ session('error') }}</div>
             @endif
 
             <!-- Payment Status Alert -->
+            @if(!empty($vnpayPayUrl))
+            <div class="alert alert-info">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-credit-card-2-front fs-4 me-3"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">VNPay — chờ khách thanh toán online</h6>
+                        <p class="mb-0 small">Đơn <strong>chờ xác nhận</strong> đến khi khách thanh toán xong trên VNPay. <strong>~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút</strong> trên cổng VNPay được tính từ lúc khách <strong>bấm link</strong> (mở trang thanh toán), không phải từ lúc gửi email. Link dưới đây là link an toàn có chữ ký — mỗi lần bấm sẽ tạo phiên VNPay mới.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-lg border-0 mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-link-45deg me-2"></i>Link vào thanh toán VNPay (gửi cho khách)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted small mb-2">Số tiền: <strong class="text-danger fs-5">{{ number_format($booking->total_price) }}đ</strong></p>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control font-monospace small" id="vnpayLinkInput" readonly value="{{ $vnpayPayUrl }}">
+                        <button class="btn btn-outline-primary" type="button" onclick="copyToClipboard(document.getElementById('vnpayLinkInput').value)">
+                            <i class="bi bi-clipboard"></i> Sao chép
+                        </button>
+                    </div>
+                    <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener" class="btn btn-primary btn-lg">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Mở thanh toán (thử)
+                    </a>
+                </div>
+            </div>
+            @else
             <div class="alert alert-warning">
                 <div class="d-flex align-items-center">
                     <i class="bi bi-clock-history fs-4 me-3"></i>
@@ -97,6 +134,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             <!-- Customer Info -->
             <div class="card shadow-sm border-0 mb-4">
@@ -170,7 +208,8 @@
                 </div>
             </div>
 
-            <!-- Admin Actions -->
+            <!-- Admin Actions (chuyển khoản thủ công) -->
+            @if(empty($vnpayPayUrl))
             <div class="card shadow-lg border-success">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-check-circle me-2"></i>Xác Nhận Thanh Toán</h5>
@@ -195,6 +234,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
         </div>
     </div>

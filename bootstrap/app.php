@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'admin_only' => \App\Http\Middleware\AdminOnlyMiddleware::class,
+            'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

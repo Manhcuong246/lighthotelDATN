@@ -13,8 +13,8 @@
                         Chi tiết Booking #{{ $booking->id }}
                     </h5>
                     <div>
-                        <span class="badge bg-{{ $booking->status === 'booked' ? 'success' : ($booking->status === 'cancelled' ? 'danger' : 'warning') }}">
-                            {{ $booking->status === 'booked' ? 'Đã đặt' : ($booking->status === 'cancelled' ? 'Đã hủy' : 'Khác') }}
+                        <span class="badge bg-{{ in_array($booking->status, ['confirmed', 'pending'], true) ? 'success' : ($booking->status === 'cancelled' ? 'danger' : 'warning') }}">
+                            @if($booking->status === 'confirmed') Đã xác nhận @elseif($booking->status === 'pending') Chờ xác nhận @elseif($booking->status === 'cancelled') Đã hủy @else {{ $booking->status }} @endif
                         </span>
                         <span class="badge bg-{{ $booking->payment_status === 'paid' ? 'info' : 'secondary' }}">
                             {{ $booking->payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' }}
@@ -126,7 +126,7 @@
 
                     <!-- Action Buttons -->
                     <div class="text-center mt-4">
-                        @if($booking->status === 'booked')
+                        @if(in_array($booking->status, ['pending', 'confirmed'], true))
                             <a href="{{ route('bookings.cancel', $booking->id) }}" class="btn btn-danger me-2">
                                 <i class="fas fa-times me-2"></i>
                                 Hủy Booking

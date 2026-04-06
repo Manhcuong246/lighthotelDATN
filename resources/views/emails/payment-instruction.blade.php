@@ -1,277 +1,153 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
     <meta charset="utf-8">
-    <title>Thông tin thanh toán - {{ $hotelInfo->name ?? 'Light Hotel' }}</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
-        }
-        .content {
-            padding: 30px;
-        }
-        .booking-info {
-            background-color: #f8fafc;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-        .booking-info h3 {
-            margin: 0 0 15px 0;
-            color: #1e3a8a;
-            font-size: 18px;
-        }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px dashed #e2e8f0;
-        }
-        .info-row:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        .info-label {
-            color: #64748b;
-        }
-        .info-value {
-            font-weight: 600;
-            color: #1e293b;
-        }
-        .payment-box {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border: 2px solid #f59e0b;
-            border-radius: 12px;
-            padding: 25px;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .payment-box h2 {
-            margin: 0 0 20px 0;
-            color: #92400e;
-            font-size: 20px;
-        }
-        .amount {
-            font-size: 32px;
-            font-weight: 700;
-            color: #dc2626;
-            margin-bottom: 20px;
-        }
-        .bank-info {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: left;
-            margin-bottom: 20px;
-        }
-        .bank-info-row {
-            display: flex;
-            margin-bottom: 12px;
-        }
-        .bank-info-row:last-child {
-            margin-bottom: 0;
-        }
-        .bank-label {
-            width: 120px;
-            color: #64748b;
-            font-weight: 500;
-        }
-        .bank-value {
-            flex: 1;
-            font-weight: 600;
-            color: #1e293b;
-        }
-        .transfer-content {
-            background-color: #dbeafe;
-            border: 2px dashed #3b82f6;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .transfer-content-label {
-            color: #1e40af;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-        .transfer-content-value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1e40af;
-            font-family: monospace;
-        }
-        .qr-section {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .qr-section h4 {
-            color: #1e3a8a;
-            margin-bottom: 15px;
-        }
-        .qr-code {
-            display: inline-block;
-            padding: 15px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .qr-code img {
-            max-width: 250px;
-            height: auto;
-        }
-        .note {
-            background-color: #fef2f2;
-            border-left: 4px solid #ef4444;
-            padding: 15px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 25px;
-        }
-        .note-title {
-            color: #dc2626;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        .note-content {
-            color: #7f1d1d;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        .footer {
-            background-color: #f8fafc;
-            padding: 20px 30px;
-            text-align: center;
-            border-top: 1px solid #e2e8f0;
-        }
-        .footer p {
-            margin: 0 0 8px 0;
-            color: #64748b;
-            font-size: 14px;
-        }
-        .hotel-name {
-            font-weight: 600;
-            color: #1e3a8a;
-        }
-        .contact-info {
-            margin-top: 10px;
-            font-size: 13px;
-        }
-        .highlight {
-            color: #dc2626;
-            font-weight: 600;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Thanh toán đơn #{{ $booking->id }}</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Thông Tin Thanh Toán</h1>
-            <p>{{ $hotelInfo->name ?? 'Light Hotel' }}</p>
-        </div>
+<body style="margin:0; padding:0; background-color:#eef1f6; -webkit-text-size-adjust:100%;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef1f6;">
+        <tr>
+            <td align="center" style="padding:24px 12px 40px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(26,43,74,0.08);">
+                    {{-- Header --}}
+                    <tr>
+                        <td bgcolor="#1a2b4a" style="background:linear-gradient(135deg,#1a2b4a 0%,#2d4a7c 100%); background-color:#1a2b4a; padding:28px 28px 24px; text-align:center;">
+                            <p style="margin:0 0 6px; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:600; color:#ffffff; letter-spacing:0.5px;">Light Hotel</p>
+                            <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:rgba(255,255,255,0.85);">Đà Nẵng</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:28px 28px 8px; font-family:Arial,Helvetica,sans-serif;">
+                            <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#334155;">
+                                Xin chào <strong style="color:#1a2b4a;">{{ $booking->user->full_name ?? 'Quý khách' }}</strong>,
+                            </p>
 
-        <div class="content">
-            <div class="booking-info">
-                <h3>Chi tiết đơn đặt phòng #{{ $booking->id }}</h3>
-                <div class="info-row">
-                    <span class="info-label">Khách hàng:</span>
-                    <span class="info-value">{{ $booking->user->full_name ?? $booking->user->name }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Email:</span>
-                    <span class="info-value">{{ $booking->user->email }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Ngày nhận phòng:</span>
-                    <span class="info-value">{{ \Carbon\Carbon::parse($booking->check_in)->format('d/m/Y') }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Ngày trả phòng:</span>
-                    <span class="info-value">{{ \Carbon\Carbon::parse($booking->check_out)->format('d/m/Y') }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Số đêm:</span>
-                    <span class="info-value">{{ $nights }} đêm</span>
-                </div>
-            </div>
+                            @if(!empty($vnpayPayUrl))
+                                <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#475569;">
+                                    Đơn <strong style="color:#1a2b4a;">#{{ $booking->id }}</strong> đang chờ thanh toán qua <strong>VNPay</strong>.
+                                </p>
 
-            <div class="payment-box">
-                <h2>Số tiền cần thanh toán</h2>
-                <div class="amount">{{ number_format($booking->total_price, 0, ',', '.') }}đ</div>
+                                {{-- Gợi ý thời hạn — không hiển thị URL --}}
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f7ff; border-radius:12px; border:1px solid #bfdbfe;">
+                                    <tr>
+                                        <td style="padding:16px 18px; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:1.55; color:#1e40af;">
+                                            Phiên thanh toán (~<strong>{{ $vnpayTxnMinutes }} phút</strong>) tính từ khi bạn bấm nút bên dưới — không phải từ lúc email được gửi. Link mở trang thanh toán có hiệu lực khoảng <strong>{{ $payLinkDays }} ngày</strong>; mỗi lần bấm sẽ tạo phiên VNPay mới.
+                                        </td>
+                                    </tr>
+                                </table>
 
-                <div class="bank-info">
-                    <div class="bank-info-row">
-                        <span class="bank-label">Ngân hàng:</span>
-                        <span class="bank-value">{{ $hotelInfo->bank_name ?? 'Vietcombank' }}</span>
-                    </div>
-                    <div class="bank-info-row">
-                        <span class="bank-label">Số tài khoản:</span>
-                        <span class="bank-value">{{ $hotelInfo->bank_account ?? '0326083913' }}</span>
-                    </div>
-                    <div class="bank-info-row">
-                        <span class="bank-label">Chủ tài khoản:</span>
-                        <span class="bank-value">{{ $hotelInfo->bank_account_name ?? 'LE DUC TRUNG' }}</span>
-                    </div>
-                </div>
+                                {{-- Tổng tiền mini --}}
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:20px;">
+                                    <tr>
+                                        <td style="padding:14px 16px; background:#fafbfc; border-radius:10px; border:1px solid #e2e8f0; font-family:Arial,Helvetica,sans-serif;">
+                                            <span style="font-size:13px; color:#64748b;">Số tiền thanh toán</span><br>
+                                            <span style="font-size:22px; font-weight:700; color:#1a2b4a; letter-spacing:-0.5px;">{{ number_format($booking->total_price, 0, ',', '.') }}&nbsp;₫</span>
+                                        </td>
+                                    </tr>
+                                </table>
 
-                <div class="transfer-content">
-                    <div class="transfer-content-label">Nội dung chuyển khoản</div>
-                    <div class="transfer-content-value">BOOKING {{ $booking->id }}</div>
-                </div>
+                                {{-- CTA: nút chính + “ảnh” banner (table cell giả ảnh, link bọc cả khối) --}}
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:26px;">
+                                    <tr>
+                                        <td align="center" style="padding:0 0 8px;">
+                                            <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; text-decoration:none;">
+                                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(220,38,38,0.35);">
+                                                    <tr>
+                                                        <td align="center" bgcolor="#dc2626" style="background:linear-gradient(180deg,#ef4444 0%,#dc2626 55%,#b91c1c 100%); background-color:#dc2626; padding:18px 40px; font-family:Arial,Helvetica,sans-serif;">
+                                                            <span style="display:block; font-size:12px; color:rgba(255,255,255,0.92); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:6px;">Thanh toán an toàn</span>
+                                                            <span style="display:block; font-size:18px; font-weight:700; color:#ffffff;">💳 Thanh toán qua VNPay</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="center" style="padding:8px 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#94a3b8;">
+                                            Bấm vào khối đỏ phía trên để mở trang thanh toán.
+                                        </td>
+                                    </tr>
+                                </table>
 
-                @if($qrCodeUrl)
-                <div class="qr-section">
-                    <h4>Quét mã QR để thanh toán nhanh</h4>
-                    <div class="qr-code">
-                        <img src="{{ $qrCodeUrl }}" alt="QR Code">
-                    </div>
-                </div>
-                @endif
-            </div>
+                            @else
+                                <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:#475569;">
+                                    Vui lòng chuyển khoản theo thông tin sau cho đơn <strong style="color:#1a2b4a;">#{{ $booking->id }}</strong>:
+                                </p>
 
-            <div class="note">
-                <div class="note-title">Lưu ý quan trọng:</div>
-                <div class="note-content">
-                    <p>1. Vui lòng chuyển khoản đúng số tiền và nội dung như trên.</p>
-                    <p>2. Sau khi chuyển khoản, vui lòng gửi ảnh chụp màn hình giao dịch qua Zalo/Email để được xác nhận nhanh nhất.</p>
-                    <p>3. Đơn đặt phòng sẽ được giữ trong vòng <span class="highlight">24 giờ</span> kể từ khi tạo. Sau thời gian này nếu chưa thanh toán, đơn có thể bị hủy.</p>
-                </div>
-            </div>
-        </div>
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                                    <tr style="background:#f8fafc;">
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; width:42%; border-bottom:1px solid #e2e8f0;">Ngân hàng</td>
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:14px; color:#1e293b; border-bottom:1px solid #e2e8f0;">{{ $hotelInfo->bank_name ?? '—' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; border-bottom:1px solid #e2e8f0;">Số tài khoản</td>
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:15px; font-weight:600; color:#1a2b4a; letter-spacing:0.5px; border-bottom:1px solid #e2e8f0;">{{ $hotelInfo->bank_account ?? '—' }}</td>
+                                    </tr>
+                                    <tr style="background:#f8fafc;">
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; border-bottom:1px solid #e2e8f0;">Chủ tài khoản</td>
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:14px; color:#1e293b; border-bottom:1px solid #e2e8f0;">{{ $hotelInfo->bank_account_name ?? '—' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; border-bottom:1px solid #e2e8f0;">Số tiền</td>
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:17px; font-weight:700; color:#059669; border-bottom:1px solid #e2e8f0;">{{ number_format($booking->total_price, 0, ',', '.') }} đ</td>
+                                    </tr>
+                                    <tr style="background:#fffbeb;">
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#92400e;">Nội dung CK</td>
+                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:15px; font-weight:700; color:#b45309;">BOOKING_{{ $booking->id }}</td>
+                                    </tr>
+                                </table>
 
-        <div class="footer">
-            <p class="hotel-name">{{ $hotelInfo->name ?? 'Light Hotel' }}</p>
-            <p>Hotline: {{ $hotelInfo->phone ?? '1900 xxxx' }} | Email: {{ $hotelInfo->email ?? 'booking@lighthouse.com' }}</p>
-            <p class="contact-info">Địa chỉ: {{ $hotelInfo->address ?? 'Đà Nẵng, Việt Nam' }}</p>
-        </div>
-    </div>
+                                @if(!empty($qrCodeUrl))
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:22px;">
+                                        <tr>
+                                            <td align="center" style="padding:20px; background:#ffffff; border:1px dashed #cbd5e1; border-radius:12px;">
+                                                <p style="margin:0 0 12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b;">Quét mã để chuyển khoản nhanh</p>
+                                                <img src="{{ $qrCodeUrl }}" alt="Mã QR chuyển khoản" width="240" height="auto" style="display:block; margin:0 auto; max-width:240px; height:auto; border-radius:8px;">
+                                            </td>
+                                        </tr>
+                                    </table>
+                                @endif
+                            @endif
+
+                            @if(!empty($signedBookingViewUrl))
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:22px;">
+                                    <tr>
+                                        <td align="center" style="padding:0;">
+                                            <a href="{{ $signedBookingViewUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; background:#1a2b4a; color:#ffffff; font-family:Arial,Helvetica,sans-serif; font-size:14px; font-weight:600; text-decoration:none; padding:12px 24px; border-radius:10px;">Xem chi tiết đơn đặt phòng</a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="center" style="padding:10px 8px 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#94a3b8; line-height:1.4;">
+                                            Không cần đăng nhập — link có hiệu lực giới hạn thời gian.
+                                        </td>
+                                    </tr>
+                                </table>
+                            @endif
+
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px; padding-top:20px; border-top:1px solid #e2e8f0;">
+                                <tr>
+                                    <td style="font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; line-height:1.6;">
+                                        <strong style="color:#334155;">Tóm tắt:</strong>
+                                        Tổng thanh toán <strong style="color:#1a2b4a;">{{ number_format($booking->total_price, 0, ',', '.') }} đ</strong>
+                                        · {{ $nights }} đêm
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:20px 0 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:1.6; color:#94a3b8;">
+                                Trân trọng,<br>
+                                <span style="color:#64748b;">Light Hotel Đà Nẵng</span>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+                <p style="margin:16px 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#94a3b8; text-align:center; max-width:560px;">
+                    Email tự động — vui lòng không trả lời trực tiếp.
+                </p>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
