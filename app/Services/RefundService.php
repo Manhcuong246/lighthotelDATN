@@ -62,8 +62,15 @@ class RefundService
                 'refund_proof_image' => $data['refund_proof_image'] ?? null,
             ]);
 
-            // 2. Update Booking Status
-            $booking->update(['status' => 'cancelled']);
+            // 2. Update Booking + payment flags
+            $booking->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+            ]);
+
+            if ($booking->payment) {
+                $booking->payment->update(['status' => 'refunded']);
+            }
 
             // 3. RELEASE ROOM DATES - Logic quan trọng nhất
             RoomBookedDate::where('booking_id', $booking->id)->delete();

@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer(
             ['layouts.app', 'pages.*'],
             function ($view) {
-                $view->with('hotelInfo', once(fn () => HotelInfo::first()));
+                $view->with('hotelInfo', HotelInfo::first());
             }
         );
     }

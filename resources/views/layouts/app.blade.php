@@ -8,12 +8,19 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        html, body {
+        /* Không cho trượt/cuộn ngang toàn trang (full-bleed 100vw hay block quá rộng) */
+        html {
             margin: 0;
             padding: 0;
+            max-width: 100%;
+            overflow-x: hidden;
         }
         body {
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
+            max-width: 100%;
+            overflow-x: hidden;
             background: #f5f7fb;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             display: flex;
@@ -158,6 +165,8 @@
         .dropdown-user .dropdown-toggle::after { margin-left: 0.4rem; }
         main {
             flex: 1 0 auto;
+            min-width: 0;
+            max-width: 100%;
         }
         footer {
             flex-shrink: 0;
@@ -304,11 +313,12 @@
            LIGHT HOTEL — PREMIUM LAYOUT STYLES
            ===================================================== */
 
-        /* Hero */
+        /* Hero — z-index trên section (không chỉ .lh-hero-inner) để khối dưới margin âm không đè cả hero + dropdown */
         .lh-hero {
             background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 60%, #1e40af 100%);
             padding: 56px 0 80px;
             position: relative;
+            z-index: 5;
             overflow: visible;
         }
         .lh-hero::before {
@@ -321,6 +331,17 @@
             opacity: 0.18;
         }
         .lh-hero-inner { position: relative; z-index: 2; overflow: visible; }
+        /* Thêm lề ngang — tránh chữ và chip sát mép viewport */
+        .lh-hero .container.lh-hero-inner,
+        .lh-home-content-wrap .container.lh-home-landing-container {
+            --bs-gutter-x: 2rem;
+        }
+        @media (min-width: 1200px) {
+            .lh-hero .container.lh-hero-inner,
+            .lh-home-content-wrap .container.lh-home-landing-container {
+                --bs-gutter-x: 2.5rem;
+            }
+        }
         .lh-hero-eyebrow {
             font-size: 0.78rem;
             font-weight: 600;
@@ -345,6 +366,9 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            flex-shrink: 0;
+            width: fit-content;
+            max-width: 100%;
             background: rgba(255,255,255,0.12);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.2);
@@ -357,6 +381,14 @@
             font-weight: 800;
             color: #fbbf24;
             line-height: 1;
+        }
+        .lh-hero-rating-wrap .lh-rating-chip {
+            align-self: flex-start;
+        }
+        @media (min-width: 992px) {
+            .lh-hero-rating-wrap .lh-rating-chip {
+                align-self: center;
+            }
         }
 
         /* Search bar */
@@ -952,7 +984,7 @@
         }
         .lh-home-content-wrap {
             position: relative;
-            z-index: 2;
+            z-index: 1;
             margin-top: -28px;
             padding-top: 2.5rem;
             background: linear-gradient(180deg, #eef2ff 0%, #f5f7fb 10%, #f5f7fb 100%);
@@ -963,7 +995,7 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
-            align-items: flex-end;
+            align-items: center;
             gap: 1rem;
             margin-bottom: 1.75rem;
             padding-bottom: 1rem;
@@ -972,11 +1004,20 @@
         .bk-search-stack {
             border: 2px solid rgba(255,255,255,0.35);
             border-radius: 16px;
-            overflow: hidden;
+            /* Hàng lọc + dropdown: không clip; hàng tìm kiếm dùng overflow riêng */
+            overflow: visible;
             box-shadow: 0 24px 60px rgba(0,0,0,0.22);
             background: rgba(255,255,255,0.98);
+            position: relative;
+            z-index: 10;
         }
+        /* Bo trùng khung ngoài (16px − 2px viền): tránh góc vuông/góc tròn chồng lên nhau */
         .bk-search-bar.bk-search-bar--in-stack {
+            border-radius: 14px 14px 0 0;
+            overflow: hidden;
+            background: #fff;
+        }
+        .bk-search-bar.bk-search-bar--in-stack .bk-seg-dest {
             border-radius: 0;
         }
         .bk-search-bar {
@@ -986,7 +1027,7 @@
         }
         .bk-search-btn {
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            border-radius: 0 !important;
+            border-radius: 0;
         }
         .bk-search-btn:hover {
             background: linear-gradient(135deg, #1d4ed8, #1e40af);
@@ -994,12 +1035,539 @@
         .bk-filter-row {
             background: linear-gradient(180deg, #f8fafc, #f1f5f9);
             border-top: 1px solid #e2e8f0;
+            border-radius: 0 0 14px 14px;
+            overflow: visible;
+        }
+        @media (max-width: 767px) {
+            .bk-search-bar.bk-search-bar--in-stack {
+                border-radius: 14px 14px 0 0;
+            }
+            .bk-search-bar.bk-search-bar--in-stack .bk-search-btn {
+                border-radius: 0;
+            }
+        }
+        /* Dropdown trong filter (chủ yếu tiện nghi): không dùng width/min-width % khi Popper strategy=fixed — % = theo viewport → full màn hình */
+        .bk-filter-row .dropdown-menu {
+            max-height: min(320px, 70vh);
+            overflow-y: auto;
+        }
+        .bk-amenities-menu {
+            /* Cao hơn khối nội dung (.lh-home-content-wrap) và navbar; cùng tầng popover BS (~1070) */
+            z-index: 1070 !important;
+            min-width: 240px;
+            max-width: min(380px, calc(100vw - 1.5rem)) !important;
+            width: auto !important;
+            box-sizing: border-box;
+        }
+        /* Giống form-select: tránh nút outline-secondary bị tối/xám trên một số theme/trình duyệt */
+        .bk-amenities-toggle {
+            --bs-btn-color: #212529;
+            --bs-btn-bg: #fff;
+            --bs-btn-border-color: #ced4da;
+            --bs-btn-hover-color: #212529;
+            --bs-btn-hover-bg: #f8f9fa;
+            --bs-btn-hover-border-color: #adb5bd;
+            --bs-btn-focus-shadow-rgb: 13, 110, 253;
+            --bs-btn-active-color: #212529;
+            --bs-btn-active-bg: #f8f9fa;
+            --bs-btn-active-border-color: #86b7fe;
+            border-radius: 0.25rem;
+            min-height: calc(1.5em + 0.5rem + 2px);
+            padding: 0.25rem 0.5rem;
+            line-height: 1.5;
+        }
+        .bk-filter-row .dropdown-menu:not(.show) {
+            display: none !important;
         }
         .navbar .nav-link.active {
             color: #fbbf24 !important;
         }
+
+        /* ----- Marketing / landing sections (home & inner pages) ----- */
+        .lh-page-hero--photo::before {
+            background:
+                linear-gradient(135deg, rgba(12, 18, 34, 0.88) 0%, rgba(30, 58, 138, 0.78) 50%, rgba(29, 78, 216, 0.72) 100%),
+                url('https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=1920') center/cover no-repeat;
+            opacity: 1;
+        }
+        .lh-stat-strip {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 8px 40px rgba(15, 23, 42, 0.08);
+            border: 1px solid #e2e8f0;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+        .lh-stat-item {
+            text-align: center;
+            padding: 0.5rem;
+        }
+        .lh-stat-value {
+            font-size: clamp(1.35rem, 3vw, 1.85rem);
+            font-weight: 800;
+            color: #1d4ed8;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+        .lh-stat-label {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 0.35rem;
+        }
+        .lh-split-section {
+            margin-bottom: 3rem;
+        }
+        .lh-split-img {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);
+            min-height: 280px;
+        }
+        .lh-split-img img {
+            width: 100%;
+            height: 100%;
+            min-height: 280px;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+        .lh-split-img:hover img {
+            transform: scale(1.03);
+        }
+        .lh-split-copy {
+            padding: 0.5rem 0;
+        }
+        .lh-split-copy .lh-eyebrow {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #2563eb;
+            margin-bottom: 0.75rem;
+        }
+        .lh-split-copy h2 {
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .lh-split-copy p {
+            color: #475569;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+        .lh-check-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .lh-check-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            margin-bottom: 0.65rem;
+            color: #334155;
+            font-size: 0.95rem;
+        }
+        .lh-check-list li i {
+            color: #16a34a;
+            margin-top: 0.15rem;
+            flex-shrink: 0;
+        }
+        .lh-service-card {
+            background: #fff;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+        }
+        .lh-service-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+        }
+        .lh-service-card-img-wrap {
+            height: 160px;
+            overflow: hidden;
+            background: linear-gradient(145deg, #e2e8f0 0%, #f1f5f9 100%);
+            position: relative;
+        }
+        .lh-service-card-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+        .lh-service-card-body {
+            padding: 1.25rem 1.35rem 1.4rem;
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .lh-service-card-body h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+        .lh-service-card-body p {
+            font-size: 0.88rem;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.55;
+            flex: 1 1 auto;
+        }
+        .lh-section-block {
+            margin-bottom: 3rem;
+        }
+        .lh-section-block-title {
+            margin-bottom: 1.5rem;
+        }
+        .lh-section-block-title .lh-eyebrow {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+        .lh-section-block-title h2 {
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            margin: 0;
+        }
+        /* Ưu đãi: dùng row/col trong Blade để 3 cột đều nhau */
+        .lh-why-card {
+            background: linear-gradient(145deg, #fff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.35rem 1.5rem;
+            height: 100%;
+        }
+        .lh-why-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #1d4ed8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .lh-why-card h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+        .lh-why-card p {
+            font-size: 0.88rem;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.55;
+        }
+        /* Lưới ảnh phòng */
+        .lh-room-visual-tile,
+        .lh-room-photo-tile {
+            display: block;
+            width: 100%;
+            min-height: 0;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+            border: 1px solid #e2e8f0;
+            text-decoration: none;
+            background: #e8edf5;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .lh-room-visual-tile:hover,
+        .lh-room-photo-tile:hover {
+            box-shadow: 0 12px 32px rgba(30, 64, 175, 0.15);
+            transform: translateY(-2px);
+        }
+        .lh-room-visual-tile .lh-room-visual-media {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+        }
+        .lh-room-photo-tile .lh-room-visual-media {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+        }
+        .lh-room-photo-tile .lh-room-visual-media img {
+            position: absolute;
+            inset: 0;
+        }
+        .lh-room-visual-tile img,
+        .lh-room-photo-tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.35s ease;
+        }
+        .lh-room-visual-tile .lh-room-visual-media img {
+            position: absolute;
+            inset: 0;
+        }
+        .lh-room-visual-tile .lh-room-visual-media {
+            position: relative;
+        }
+        .lh-room-visual-tile:hover img,
+        .lh-room-photo-tile:hover img {
+            transform: scale(1.04);
+        }
+        .lh-split-copy .btn.rounded-pill {
+            padding: 0.55rem 1.35rem;
+            font-weight: 600;
+        }
+        .lh-testimonial-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 1.5rem 1.6rem;
+            height: 100%;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+        }
+        .lh-testimonial-quote {
+            font-size: 0.95rem;
+            color: #334155;
+            line-height: 1.65;
+            margin-bottom: 1.25rem;
+            font-style: italic;
+            flex: 1 1 auto;
+        }
+        .lh-testimonial-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+        .lh-testimonial-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e0e7ff;
+        }
+        .lh-testimonial-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #0f172a;
+        }
+        .lh-testimonial-role {
+            font-size: 0.78rem;
+            color: #94a3b8;
+        }
+        .lh-cta-band {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
+            border-radius: 20px;
+            padding: 2rem 2rem;
+            color: #fff;
+            margin-bottom: 2.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .lh-cta-band::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Cpath d='M0 0h40v40H0V0zm40 40h40v40H40V40z'/%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+        .lh-cta-band-inner { position: relative; z-index: 1; }
+        .lh-cta-band h3 {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+        .lh-cta-band p {
+            color: rgba(255,255,255,0.85);
+            margin: 0;
+            max-width: 36rem;
+        }
+        .lh-cta-band .btn-light {
+            font-weight: 700;
+        }
+
+        /* Contact extras */
+        .lh-contact-hours {
+            background: linear-gradient(145deg, #f8fafc, #f1f5f9);
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            padding: 1.25rem 1.35rem;
+        }
+        .lh-contact-quick-link {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.9rem 1rem;
+            border-radius: 14px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            text-decoration: none;
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .lh-contact-quick-link:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+            color: #1d4ed8;
+        }
+        .lh-contact-quick-link i {
+            font-size: 1.25rem;
+            color: #2563eb;
+        }
+        .lh-contact-banner-img {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+            max-height: 220px;
+        }
+        .lh-contact-banner-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            min-height: 200px;
+        }
+
+        /* Policy: icon cards + doc layout */
+        .lh-doc-lead {
+            font-size: 1rem;
+            color: #475569;
+            line-height: 1.7;
+            border-left: 4px solid #2563eb;
+            padding-left: 1.25rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(90deg, rgba(239, 246, 255, 0.6), transparent);
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            border-radius: 0 12px 12px 0;
+        }
+        .lh-policy-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 767px) {
+            .lh-policy-grid { grid-template-columns: 1fr; }
+        }
+        .lh-policy-doc-card {
+            display: flex;
+            gap: 1rem;
+            padding: 1.25rem 1.35rem;
+            border-radius: 16px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.18s, box-shadow 0.18s;
+        }
+        .lh-policy-doc-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(30, 64, 175, 0.1);
+            color: inherit;
+        }
+        .lh-policy-doc-card i.doc-ico {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .lh-policy-doc-card h3 {
+            font-size: 0.98rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+            color: #0f172a;
+        }
+        .lh-policy-doc-card p {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.5;
+        }
+        .lh-updated-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            margin-bottom: 1.25rem;
+        }
+
+        /* Help: two-column */
+        .lh-help-aside-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 1.5rem;
+            position: sticky;
+            top: 1rem;
+        }
+        .lh-help-aside-card h3 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 1rem;
+        }
+        .lh-help-nav a {
+            display: block;
+            padding: 0.5rem 0;
+            color: #475569;
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 500;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .lh-help-nav a:last-child { border-bottom: none; }
+        .lh-help-nav a:hover { color: #1d4ed8; }
+        .lh-help-hero-side {
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+        }
+        .lh-help-hero-side img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            min-height: 200px;
+            display: block;
+        }
     </style>
     @stack('styles')
+    {{-- Thanh cuộn: đặt sau stack để thắng CSS từng trang; trước đây thiếu include nên site khách không áp dụng --}}
+    <style>
+        @include('partials.scrollbar-theme')
+    </style>
     <script type="module" src="https://unpkg.com/deep-chat@2.4.2/dist/deepChat.bundle.js"></script>
 </head>
 <body>

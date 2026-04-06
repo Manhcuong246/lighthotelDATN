@@ -149,6 +149,10 @@ class AccountController extends Controller
             return back()->with('error', 'Không đủ điều kiện hoàn tiền.');
         }
 
+        if (\App\Models\RefundRequest::where('booking_id', $booking->id)->where('status', 'pending_refund')->exists()) {
+            return back()->with('error', 'Đơn này đã có yêu cầu hoàn tiền đang chờ xử lý.');
+        }
+
         $validated = $request->validate([
             'account_name' => 'required|string|max:255',
             'account_number' => 'required|string|max:50',
