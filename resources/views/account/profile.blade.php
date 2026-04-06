@@ -19,7 +19,7 @@
                         <div class="d-flex align-items-center gap-3">
                             @php
                                 $avatarUrl = $user->avatar_url
-                                    ? (str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : asset('storage/' . $user->avatar_url))
+                                    ? (str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : '/storage/' . $user->avatar_url . '?v=' . config('room_images.cache_version', '1'))
                                     : null;
                             @endphp
                             @if($avatarUrl)

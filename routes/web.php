@@ -33,7 +33,7 @@ Route::get('/storage/{path}', function (string $path) {
     $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
     return response()->file($fullPath, [
         'Content-Type' => $mime,
-        'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
+        'Cache-Control' => 'public, max-age=86400',
     ]);
 })->where('path', '.+');
 
@@ -89,6 +89,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/confirm-payment', [BookingAdminController::class, 'confirmPayment'])->name('bookings.confirm-payment');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
+    Route::post('/bookings/{booking}/payment-settings', [BookingAdminController::class, 'updatePaymentSettings'])->name('bookings.update-payment-settings');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');

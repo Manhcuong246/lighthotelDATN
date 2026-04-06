@@ -43,8 +43,11 @@ class RoomController extends Controller
 
         $hotel = HotelInfo::first();
 
-        $query = RoomType::with(['rooms' => function($q) {
-            $q->where('status', 'available')->with('images');
+        // Ảnh trưng bày: cần phòng có images; ưu tiên available nhưng vẫn lấy phòng khác nếu loại đó hết phòng trống.
+        $query = RoomType::with(['rooms' => function ($q) {
+            $q->with('images')
+                ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
+                ->orderBy('id');
         }]);
 
         $query = $this->roomTypeIsActive($query);
@@ -96,7 +99,9 @@ class RoomController extends Controller
         // Data cho dropdown + gallery ảnh phòng (eager load để tránh N+1)
         $allRoomTypes = $this->roomTypeIsActive(RoomType::query())
             ->with(['rooms' => function ($q) {
-                $q->where('status', 'available')->with('images');
+                $q->with('images')
+                    ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
+                    ->orderBy('id');
             }])
             ->orderBy('name')
             ->get();

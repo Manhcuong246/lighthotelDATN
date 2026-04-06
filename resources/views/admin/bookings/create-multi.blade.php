@@ -5,9 +5,7 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="fw-bold mb-0">🛎️ Tạo Đặt Phòng Nhiều Phòng</h4>
-        <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại
-        </a>
+        <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     @if(session('error'))
@@ -30,8 +28,8 @@
                     <input type="date" class="form-control" id="check_out">
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
-                    <button type="button" class="btn btn-primary w-100" onclick="checkAvailability()">
-                        <i class="bi bi-search"></i> Tìm Phòng Trống
+                    <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center btn-admin-icon" title="Tìm phòng trống" onclick="checkAvailability()">
+                        <i class="bi bi-search"></i>
                     </button>
                 </div>
             </div>
@@ -89,8 +87,8 @@
                     <div class="card-body">
                         <div class="input-group">
                             <input type="text" name="coupon_code" id="coupon_code" class="form-control" placeholder="Nhập mã giảm giá">
-                            <button type="button" class="btn btn-outline-primary" onclick="applyCoupon()">
-                                Áp dụng
+                            <button type="button" class="btn btn-outline-primary btn-admin-icon" title="Áp dụng mã" onclick="applyCoupon()">
+                                <i class="bi bi-ticket-perforated"></i>
                             </button>
                         </div>
                         <div id="couponMessage" class="mt-2 small"></div>
@@ -106,17 +104,11 @@
                         <!-- Payment Method Radio -->
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Phương thức thanh toán *</label>
-                            <div class="d-flex gap-3">
+                            <div class="d-flex flex-wrap gap-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="payment_method" id="payment_cash" value="cash" checked onchange="togglePaymentMethod()">
                                     <label class="form-check-label" for="payment_cash">
                                         💵 Tiền mặt
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="payment_method" id="payment_bank" value="bank_transfer" onchange="togglePaymentMethod()">
-                                    <label class="form-check-label" for="payment_bank">
-                                        🏦 Chuyển khoản
                                     </label>
                                 </div>
                                 <div class="form-check">
@@ -126,6 +118,7 @@
                                     </label>
                                 </div>
                             </div>
+                            <p class="small text-muted mb-0 mt-2">Chuyển khoản không dùng khi tạo đơn hộ; nếu khách CK sau, cập nhật tại chi tiết đơn.</p>
                         </div>
 
                         <!-- Cash Payment Status (show when cash selected) -->
@@ -142,24 +135,6 @@
                             <label class="form-label small fw-bold">Số tiền đã thu *</label>
                             <input type="number" name="amount_paid" id="cash_amount" class="form-control" min="0" value="0">
                             <small class="text-muted">Nhập số tiền đã thu từ khách</small>
-                        </div>
-
-                        <!-- Bank Transfer Info (show when bank selected) -->
-                        <div id="bankTransferInfo" class="alert alert-info" style="display: none;">
-                            <h6 class="alert-heading fw-bold">🏦 Thông tin chuyển khoản</h6>
-                            <hr class="my-2">
-                            @if($hotelInfo)
-                                <p class="mb-1"><strong>Ngân hàng:</strong> {{ $hotelInfo->bank_name ?? 'Vietcombank' }}</p>
-                                <p class="mb-1"><strong>Số tài khoản:</strong> {{ $hotelInfo->bank_account ?? 'Chưa cấu hình' }}</p>
-                                <p class="mb-1"><strong>Chủ tài khoản:</strong> {{ $hotelInfo->bank_account_name ?? 'Chưa cấu hình' }}</p>
-                            @else
-                                <p class="mb-1"><strong>Ngân hàng:</strong> Vietcombank</p>
-                                <p class="mb-1"><strong>Số tài khoản:</strong> 1234567890</p>
-                                <p class="mb-1"><strong>Chủ tài khoản:</strong> KHÁCH SẠN LIGHTHOTEL</p>
-                            @endif
-                            <p class="mb-0 text-danger"><strong>Nội dung CK:</strong> <span id="transferContent">BOOKING_<span id="bookingIdPlaceholder">[ID]</span></span></p>
-                            <hr class="my-2">
-                            <p class="mb-0 small text-muted">Sau khi tạo đơn, bạn sẽ được chuyển đến trang hướng dẫn chuyển khoản.</p>
                         </div>
 
                         <div id="vnpayInfo" class="alert alert-primary mb-0" style="display: none;">
@@ -192,8 +167,8 @@
                         <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
                     </div>
                     <div class="col-md-4 text-end">
-                        <button type="submit" class="btn btn-success btn-lg px-5">
-                            <i class="bi bi-check-circle"></i> Xác Nhận Đặt Phòng
+                        <button type="submit" class="btn btn-success btn-lg px-4 d-inline-flex align-items-center justify-content-center gap-0 btn-admin-icon" style="width: auto; min-width: 3rem; min-height: 3rem;" title="Xác nhận đặt phòng">
+                            <i class="bi bi-check2-circle fs-4"></i>
                         </button>
                     </div>
                 </div>
@@ -211,6 +186,25 @@
 </style>
 
 <script>
+const __BP = @json(config('booking.pricing'));
+function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate) {
+    const stdCap = Number(__BP.standard_capacity) || 3;
+    const maxCap = Number(__BP.max_capacity) || 6;
+    const maxC05 = Number(__BP.max_children_05) || 3;
+    const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
+    const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
+    const total = adults + c611 + c05;
+    const billableSlots = Math.max(0, stdCap - c05);
+    const extraAdults = Math.max(0, adults - billableSlots);
+    const remainingSlots = Math.max(0, billableSlots - adults);
+    const extraChildren = Math.max(0, c611 - remainingSlots);
+    const adultFee = extraAdults * aRate * base;
+    const childFee = extraChildren * cRate * base;
+    const surcharge = adultFee + childFee;
+    const perNight = base + surcharge;
+    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap, maxCap, maxC05, allowed: total <= maxCap && c05 <= maxC05 };
+}
+
 let availableRoomsData = [];
 let selectedRooms = {};
 let nights = 0;
@@ -296,7 +290,7 @@ function renderAvailableRooms(rooms) {
                         <h6 class="fw-bold mb-1">${roomType.name}</h6>
                         <div class="text-muted small mb-1">
                             <i class="bi bi-aspect-ratio me-1"></i>${roomType.area || 30} m² ·
-                            <i class="bi bi-people me-1"></i>Tối đa ${roomType.max_occupancy} người
+                            <i class="bi bi-people me-1"></i>Tiêu chuẩn 3 người (NL + trẻ 6–11 + trẻ 0–5 đều tính sức chứa); từ người thứ 4 tính phụ thu NL/trẻ 6–11; trẻ 0–5 miễn phụ thu · Tối đa 6 người · Tối đa 3 trẻ 0–5
                         </div>
                         <div class="mb-1">
                             <span class="badge bg-light text-dark border-0 rounded-pill px-2 py-1 me-1 small"><i class="bi bi-wifi me-1"></i>Wi-Fi</span>
@@ -317,17 +311,18 @@ function renderAvailableRooms(rooms) {
                             <label class="form-label small fw-bold mb-1">Số phòng</label>
                             <div class="d-flex align-items-center gap-1 justify-content-end">
                                 <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2"
-                                        onclick="changeRoomQuantity('${roomType.room_type_id}', -1, ${roomType.available_count}, ${roomType.base_price}, '${roomType.name}', ${roomType.max_occupancy})"
+                                        onclick="changeRoomQuantity('${roomType.room_type_id}', -1, ${roomType.available_count}, ${roomType.base_price}, '${roomType.name}', ${roomType.adult_capacity || 2}, ${roomType.child_capacity || 0})"
                                         id="qtyMinus_${roomType.room_type_id}" style="font-size: 0.8rem;">−</button>
                                 <input type="number" class="form-control form-control-sm text-center room-quantity py-0"
                                        id="qty_${roomType.room_type_id}"
                                        data-room-type="${roomType.room_type_id}"
                                        data-price="${roomType.base_price}"
                                        data-name="${roomType.name}"
-                                       data-max="${roomType.max_occupancy}"
+                                       data-adult-capacity="${roomType.adult_capacity || 2}"
+                                       data-child-capacity="${roomType.child_capacity || 0}"
                                        value="0" min="0" max="${roomType.available_count}" readonly style="width: 40px; font-size: 0.9rem;">
                                 <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2"
-                                        onclick="changeRoomQuantity('${roomType.room_type_id}', 1, ${roomType.available_count}, ${roomType.base_price}, '${roomType.name}', ${roomType.max_occupancy})"
+                                        onclick="changeRoomQuantity('${roomType.room_type_id}', 1, ${roomType.available_count}, ${roomType.base_price}, '${roomType.name}', ${roomType.adult_capacity || 2}, ${roomType.child_capacity || 0})"
                                         id="qtyPlus_${roomType.room_type_id}" style="font-size: 0.8rem;">+</button>
                             </div>
                         </div>
@@ -359,7 +354,7 @@ function renderAvailableRooms(rooms) {
 }
 
 // Change room quantity with +/- buttons
-function changeRoomQuantity(roomTypeId, delta, maxAvailable, price, name, maxOccupancy) {
+function changeRoomQuantity(roomTypeId, delta, maxAvailable, price, name, adultCapacity, childCapacity) {
     const qtyInput = document.getElementById(`qty_${roomTypeId}`);
     const currentQty = parseInt(qtyInput.value) || 0;
     const newQty = currentQty + delta;
@@ -367,11 +362,11 @@ function changeRoomQuantity(roomTypeId, delta, maxAvailable, price, name, maxOcc
     if (newQty < 0 || newQty > maxAvailable) return;
 
     qtyInput.value = newQty;
-    updateRoomCardState(roomTypeId, newQty, price, name, maxOccupancy);
+    updateRoomCardState(roomTypeId, newQty, price, name, adultCapacity, childCapacity);
 }
 
 // Update room card visual state and generate individual room forms
-function updateRoomCardState(roomTypeId, quantity, price, name, maxOccupancy) {
+function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, childCapacity) {
     const card = document.getElementById(`roomCard_${roomTypeId}`);
     const roomFormsContainer = document.getElementById(`roomForms_${roomTypeId}`);
     const subtotalDiv = document.getElementById(`subtotal_${roomTypeId}`);
@@ -387,28 +382,32 @@ function updateRoomCardState(roomTypeId, quantity, price, name, maxOccupancy) {
         subtotalDiv.querySelector('.subtotal-amount').textContent = formatMoney(subtotal);
         subtotalDiv.style.display = 'block';
 
-        // Generate/update individual room forms
-        generateRoomForms(roomTypeId, quantity, price, name, maxOccupancy);
+        generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, childCapacity);
 
-        // Update data structure
         if (!selectedRooms[roomTypeId]) {
             selectedRooms[roomTypeId] = {
                 room_type_id: roomTypeId,
                 quantity: quantity,
-                price_per_night: price,
+                base_price: price,
                 name: name,
+                adult_capacity: adultCapacity,
+                child_capacity: childCapacity,
                 rooms: []
             };
         }
         selectedRooms[roomTypeId].quantity = quantity;
+        selectedRooms[roomTypeId].adult_capacity = adultCapacity;
+        selectedRooms[roomTypeId].child_capacity = childCapacity;
 
-        // Initialize room data if not exists
         for (let i = 0; i < quantity; i++) {
             if (!selectedRooms[roomTypeId].rooms[i]) {
                 selectedRooms[roomTypeId].rooms[i] = {
                     adults: 1,
                     children_0_5: 0,
-                    children_6_11: 0
+                    children_6_11: 0,
+                    price_per_night: price,
+                    extra_adult_fee: 0,
+                    child_fee: 0
                 };
             }
         }
@@ -431,16 +430,14 @@ function updateRoomCardState(roomTypeId, quantity, price, name, maxOccupancy) {
 }
 
 // Generate individual room forms
-function generateRoomForms(roomTypeId, quantity, price, name, maxOccupancy) {
+function generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, childCapacity) {
     const container = document.getElementById(`roomForms_${roomTypeId}`);
     const currentForms = container.querySelectorAll('.individual-room-form').length;
 
-    // Remove excess forms if quantity decreased
     while (container.querySelectorAll('.individual-room-form').length > quantity) {
         container.lastElementChild.remove();
     }
 
-    // Add new forms if quantity increased
     for (let i = currentForms; i < quantity; i++) {
         const roomIndex = i;
         const formHtml = `
@@ -448,7 +445,7 @@ function generateRoomForms(roomTypeId, quantity, price, name, maxOccupancy) {
                 <div class="card-body p-2">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <h6 class="fw-bold mb-0 text-primary">Phòng ${roomIndex + 1}</h6>
-                        <span class="text-muted small">Tiêu chuẩn: ${maxOccupancy} người</span>
+                        <span class="text-muted small">TC: 3 (tính cả trẻ 0–5); trẻ 0–5 miễn phụ thu · Tối đa 6 · Tối đa 3 trẻ 0–5</span>
                     </div>
                     <div class="row g-2">
                         <div class="col-md-4">
@@ -457,25 +454,25 @@ function generateRoomForms(roomTypeId, quantity, price, name, maxOccupancy) {
                                    id="adults_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
                                    data-room-index="${roomIndex}"
-                                   min="1" max="${maxOccupancy + 2}" value="1"
+                                   min="1" max="6" value="1"
                                    style="font-size: 0.85rem;" onchange="updateRoomGuestData('${roomTypeId}', ${roomIndex})">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small mb-1" style="font-size: 0.75rem;">Trẻ 0-5t</label>
+                            <label class="form-label small mb-1" style="font-size: 0.75rem;" title="Miễn phí nhưng tính vào sức chứa phòng (tối đa 3)">Trẻ 0–5 tuổi</label>
                             <input type="number" class="form-control form-control-sm room-children-0-5"
                                    id="children05_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
                                    data-room-index="${roomIndex}"
-                                   min="0" value="0"
+                                   min="0" max="3" value="0"
                                    style="font-size: 0.85rem;" onchange="updateRoomGuestData('${roomTypeId}', ${roomIndex})">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small mb-1" style="font-size: 0.75rem;">Trẻ 6-11t</label>
+                            <label class="form-label small mb-1" style="font-size: 0.75rem;" title="50% giá phòng/đêm mỗi em">Trẻ 6–11 tuổi</label>
                             <input type="number" class="form-control form-control-sm room-children-6-11"
                                    id="children611_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
                                    data-room-index="${roomIndex}"
-                                   min="0" value="0"
+                                   min="0" max="5" value="0"
                                    style="font-size: 0.85rem;" onchange="updateRoomGuestData('${roomTypeId}', ${roomIndex})">
                         </div>
                     </div>
@@ -513,22 +510,17 @@ function updateRoomPriceDetails(roomTypeId, roomIndex, adults, children05, child
     if (!room) return;
 
     const basePrice = parseFloat(room.base_price) || 0;
-    const maxAdults = room.max_occupancy || 2;
-    const maxChildren = 1; // Default max children
+    const aRate = room.adult_surcharge_rate ?? null;
+    const cRate = room.child_surcharge_rate ?? null;
+    const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate);
 
-    // Calculate extra guests
-    const extraAdults = Math.max(0, adults - maxAdults);
-    const totalChildren = children05 + children611;
-    const chargeableChildren = Math.max(0, children611 - maxChildren);
-
-    // Check limit (+2 max)
     const limitError = document.getElementById(`limitError_${roomTypeId}_${roomIndex}`);
-    if (extraAdults > 2 || (totalChildren - maxChildren) > 2) {
+    if (!br.allowed) {
         if (!limitError) {
             const formCard = document.getElementById(`roomForm_${roomTypeId}_${roomIndex}`);
             const errorHtml = `
                 <div id="limitError_${roomTypeId}_${roomIndex}" class="alert alert-danger py-1 small mb-2 mt-2">
-                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Vượt quá giới hạn +2 người
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Phòng tối đa ${br.maxCap} người (bao gồm trẻ em) và tối đa ${br.maxC05} trẻ 0–5 tuổi
                 </div>
             `;
             formCard.querySelector('.card-body').insertAdjacentHTML('beforeend', errorHtml);
@@ -537,28 +529,22 @@ function updateRoomPriceDetails(roomTypeId, roomIndex, adults, children05, child
         limitError.remove();
     }
 
-    // Calculate fees (40% for adults, 30% for children)
-    const extraAdultFee = extraAdults * (0.4 * basePrice);
-    const childFee = chargeableChildren * (0.3 * basePrice);
+    roomData.rooms[roomIndex].extra_adult_fee = br.adultFee;
+    roomData.rooms[roomIndex].child_fee = br.childFee;
+    roomData.rooms[roomIndex].price_per_night = br.perNight;
 
-    roomData.rooms[roomIndex].extra_adult_fee = extraAdultFee;
-    roomData.rooms[roomIndex].child_fee = childFee;
-    roomData.rooms[roomIndex].price_per_night = basePrice + extraAdultFee + childFee;
-
-    // Update display
     const feeDisplay = document.getElementById(`feeDisplay_${roomTypeId}_${roomIndex}`);
     if (feeDisplay) {
         let feeHtml = '';
-        if (extraAdultFee > 0) {
-            feeHtml += `<div class="text-danger small">Phụ thu người lớn: +${formatMoney(extraAdultFee * nights)}</div>`;
+        if (br.adultFee > 0) {
+            feeHtml += `<div class="text-danger small">Phụ thu NL thêm (${br.extraAdults} người): +${formatMoney(br.adultFee)}/đêm</div>`;
         }
-        if (childFee > 0) {
-            feeHtml += `<div class="text-danger small">Phụ thu trẻ em: +${formatMoney(childFee * nights)}</div>`;
+        if (br.childFee > 0) {
+            feeHtml += `<div class="text-danger small">Phụ thu trẻ 6–11 thêm (${br.extraChildren} em): +${formatMoney(br.childFee)}/đêm</div>`;
         }
         feeDisplay.innerHTML = feeHtml;
     }
 
-    // Update main room card subtotal display
     updateRoomCardSubtotal(roomTypeId);
 }
 
@@ -571,25 +557,21 @@ function updateRoomCardSubtotal(roomTypeId) {
     if (!room) return;
 
     const basePrice = parseFloat(room.base_price) || 0;
-    const maxAdults = room.max_occupancy || 2;
-    const maxChildren = 1;
+    const aRate = room.adult_surcharge_rate ?? null;
+    const cRate = room.child_surcharge_rate ?? null;
 
     let typeSubtotal = 0;
     let typeExtraFees = 0;
 
     roomType.rooms.forEach(roomData => {
         const adults = roomData.adults || 1;
+        const children05 = roomData.children_0_5 || 0;
         const children611 = roomData.children_6_11 || 0;
 
-        const extraAdults = Math.max(0, adults - maxAdults);
-        const chargeableChildren = Math.max(0, children611 - maxChildren);
-
-        const extraAdultFeePerNight = extraAdults * (0.4 * basePrice);
-        const childFeePerNight = chargeableChildren * (0.3 * basePrice);
-
-        const roomPricePerNight = basePrice + extraAdultFeePerNight + childFeePerNight;
+        const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate);
+        const roomPricePerNight = br.perNight;
         typeSubtotal += roomPricePerNight * nights;
-        typeExtraFees += (extraAdultFeePerNight + childFeePerNight) * nights;
+        typeExtraFees += br.surcharge * nights;
     });
 
     // Update subtotal display on card
@@ -639,43 +621,24 @@ function calculateTotal() {
 
     Object.values(selectedRooms).forEach((roomType, typeIndex) => {
         const room = availableRoomsData.find(r => r.room_type_id == roomType.room_type_id);
-        if (!room) {
-            console.log('Room not found for type:', roomType.room_type_id);
-            return;
-        }
+        if (!room) return;
 
         const basePrice = parseFloat(room.base_price) || 0;
-        console.log('Room:', room.name, 'basePrice:', basePrice, 'max_occupancy:', room.max_occupancy);
+        const aRate = room.adult_surcharge_rate ?? null;
+        const cRate = room.child_surcharge_rate ?? null;
 
         roomType.rooms.forEach((roomData, roomIndex) => {
             const adults = roomData.adults || 1;
             const children05 = roomData.children_0_5 || 0;
             const children611 = roomData.children_6_11 || 0;
 
-            console.log(`Room ${roomIndex + 1}: adults=${adults}, children05=${children05}, children611=${children611}`);
-
-            const maxAdults = room.max_occupancy || 2;
-            const maxChildren = 1;
-
-            const extraAdults = Math.max(0, adults - maxAdults);
-            const chargeableChildren = Math.max(0, children611 - maxChildren);
-
-            console.log(`Extra adults: ${extraAdults}, Chargeable children: ${chargeableChildren}`);
-
-            const extraAdultFeePerNight = extraAdults * (0.4 * basePrice);
-            const childFeePerNight = chargeableChildren * (0.3 * basePrice);
-
-            console.log(`Extra adult fee per night: ${extraAdultFeePerNight}, Child fee per night: ${childFeePerNight}`);
-
-            const roomPricePerNight = basePrice + extraAdultFeePerNight + childFeePerNight;
+            const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate);
+            const roomPricePerNight = br.perNight;
             const roomSubtotal = roomPricePerNight * nights;
 
-            console.log(`Room price per night: ${roomPricePerNight}, Room subtotal: ${roomSubtotal}`);
-
             subtotal += roomSubtotal;
-            extraFeesTotal += (extraAdultFeePerNight + childFeePerNight) * nights;
+            extraFeesTotal += br.surcharge * nights;
 
-            // Add to summary HTML
             roomSummaryHtml += `
                 <div class="mb-2 p-2 bg-light rounded">
                     <div class="d-flex justify-content-between">
@@ -685,14 +648,13 @@ function calculateTotal() {
                     <div class="small text-muted">
                         ${nights} đêm x ${formatMoney(roomPricePerNight)}
                     </div>
-                    ${extraAdultFeePerNight > 0 ? `<div class="text-danger small">Phụ thu người lớn: +${formatMoney(extraAdultFeePerNight * nights)}</div>` : ''}
-                    ${childFeePerNight > 0 ? `<div class="text-danger small">Phụ thu trẻ em: +${formatMoney(childFeePerNight * nights)}</div>` : ''}
+                    ${br.adultFee > 0 ? `<div class="text-danger small">Phụ thu NL thêm (${br.extraAdults}): +${formatMoney(br.adultFee * nights)}</div>` : ''}
+                    ${br.childFee > 0 ? `<div class="text-danger small">Phụ thu trẻ 6–11 thêm (${br.extraChildren}): +${formatMoney(br.childFee * nights)}</div>` : ''}
                 </div>
             `;
 
-            // Update room data for form submission
-            roomData.extra_adult_fee = extraAdultFeePerNight;
-            roomData.child_fee = childFeePerNight;
+            roomData.extra_adult_fee = br.adultFee;
+            roomData.child_fee = br.childFee;
             roomData.price_per_night = roomPricePerNight;
         });
     });
@@ -741,8 +703,16 @@ function applyCoupon() {
             const msgDiv = document.getElementById('couponMessage');
             if (data.valid) {
                 let subtotal = 0;
-                Object.values(selectedRooms).forEach(room => {
-                    subtotal += room.price_per_night * room.quantity * nights;
+                Object.values(selectedRooms).forEach(roomType => {
+                    const room = availableRoomsData.find(r => r.room_type_id == roomType.room_type_id);
+                    if (!room) return;
+                    const basePrice = parseFloat(room.base_price) || 0;
+                    const aR = room.adult_surcharge_rate ?? null;
+                    const cR = room.child_surcharge_rate ?? null;
+                    roomType.rooms.forEach(rd => {
+                        const br = bookingPriceBreakdown(basePrice, rd.adults || 1, rd.children_0_5 || 0, rd.children_6_11 || 0, aR, cR);
+                        subtotal += br.perNight * nights;
+                    });
                 });
 
                 const discount = subtotal * (data.discount_percent / 100);
@@ -766,28 +736,19 @@ function formatMoney(amount) {
 // Toggle payment method UI
 function togglePaymentMethod() {
     const isCash = document.getElementById('payment_cash').checked;
-    const isBank = document.getElementById('payment_bank').checked;
     const isVnpay = document.getElementById('payment_vnpay').checked;
 
     const cashStatus = document.getElementById('cashPaymentStatus');
-    const bankInfo = document.getElementById('bankTransferInfo');
     const vnpayInfo = document.getElementById('vnpayInfo');
 
     if (isVnpay) {
         cashStatus.style.display = 'none';
         document.getElementById('cashAmountDiv').style.display = 'none';
-        bankInfo.style.display = 'none';
         vnpayInfo.style.display = 'block';
     } else if (isCash) {
         vnpayInfo.style.display = 'none';
         cashStatus.style.display = 'block';
-        bankInfo.style.display = 'none';
         toggleCashAmount();
-    } else if (isBank) {
-        vnpayInfo.style.display = 'none';
-        cashStatus.style.display = 'none';
-        document.getElementById('cashAmountDiv').style.display = 'none';
-        bankInfo.style.display = 'block';
     }
 }
 
@@ -838,7 +799,7 @@ function prepareFormData() {
             addInput('adults', parseInt(roomData.adults) || 1);
             addInput('children_0_5', parseInt(roomData.children_0_5) || 0);
             addInput('children_6_11', parseInt(roomData.children_6_11) || 0);
-            addInput('price_per_night', parseFloat(roomData.price_per_night) || roomType.price_per_night);
+            addInput('price_per_night', parseFloat(roomData.price_per_night) || roomType.base_price);
         });
     });
 }

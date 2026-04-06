@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Chỉnh sửa người dùng</h1>
-        <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+        <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     @if ($errors->any())
@@ -82,59 +82,53 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-+
-+                        <div class="mb-3">
-+                            <label for="avatar" class="form-label fw-bold">Ảnh đại diện</label>
-+                            <div class="d-flex align-items-center gap-3 mb-2">
-+                                @if($user->avatar_url)
-+                                    <img src="{{ str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : asset('storage/' . $user->avatar_url) }}" 
-+                                         alt="Avatar" class="rounded-circle" style="width: 64px; height: 64px; object-fit: cover;">
-+                                @else
-+                                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" 
-+                                         style="width: 64px; height: 64px;">
-+                                        {{ strtoupper(mb_substr($user->full_name, 0, 1)) }}
-+                                    </div>
-+                                @endif
-+                                <input type="file" class="form-control @error('avatar') is-invalid @enderror" id="avatar" name="avatar" accept="image/*">
-+                            </div>
-+                            <small class="text-muted">Định dạng: JPG, PNG, GIF. Tối đa 2MB.</small>
-+                            @error('avatar')
-+                                <div class="invalid-feedback">{{ $message }}</div>
-+                            @enderror
-+                        </div>
-+
-+                        <div class="card bg-light border-0 mb-4">
-+                            <div class="card-body p-3">
-+                                <h6 class="fw-bold mb-3">Vai trò</h6>
-+                                <div class="d-flex flex-wrap gap-3">
-+                                    @forelse ($roles as $role)
-+                                        <div class="form-check">
-+                                            <input class="form-check-input" type="checkbox" name="role_ids[]" id="role_{{ $role->id }}" value="{{ $role->id }}"
-+                                                   @if($user->roles->contains($role->id)) checked @endif>
-+                                            <label class="form-check-label" for="role_{{ $role->id }}">
-+                                                {{ ucfirst($role->name) }}
-+                                            </label>
-+                                        </div>
-+                                    @empty
-+                                        <p class="text-muted mb-0">Không có vai trò nào</p>
-+                                    @endforelse
-+                                </div>
-+                            </div>
-+                        </div>
+                        <div class="mb-3">
+                            <label for="avatar" class="form-label fw-bold">Ảnh đại diện</label>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                @if($user->avatar_url)
+                                    <img src="{{ str_starts_with($user->avatar_url, 'http') ? $user->avatar_url : asset('storage/' . $user->avatar_url) }}"
+                                         alt="Avatar" class="rounded-circle" style="width: 64px; height: 64px; object-fit: cover;">
+                                @else
+                                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white"
+                                         style="width: 64px; height: 64px;">
+                                        {{ strtoupper(mb_substr($user->full_name, 0, 1)) }}
+                                    </div>
+                                @endif
+                                <input type="file" class="form-control @error('avatar') is-invalid @enderror" id="avatar" name="avatar" accept="image/*">
+                            </div>
+                            <small class="text-muted">Định dạng: JPG, PNG, GIF. Tối đa 2MB.</small>
+                            @error('avatar')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
+                        <div class="card bg-light border-0 mb-4">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-3">Vai trò</h6>
+                                <div class="d-flex flex-wrap gap-3">
+                                    @forelse ($roles as $role)
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="role_ids[]" id="role_{{ $role->id }}" value="{{ $role->id }}"
+                                                   @if($user->roles->contains($role->id)) checked @endif>
+                                            <label class="form-check-label" for="role_{{ $role->id }}">
+                                                {{ ucfirst($role->name) }}
+                                            </label>
+                                        </div>
+                                    @empty
+                                        <p class="text-muted mb-0">Không có vai trò nào</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-                            <a href="{{ route('admin.users.show', $user) }}" class="btn btn-outline-secondary">Hủy</a>
+                            <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                            <a href="{{ route('admin.users.show', $user) }}" class="btn btn-outline-secondary btn-admin-icon" title="Hủy"><i class="bi bi-x-lg"></i></a>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
-
-        </div>
-+        {{-- Cột Roles cũ đã dời vào form chính --}}
-
     </div>
 </div>
 @endsection

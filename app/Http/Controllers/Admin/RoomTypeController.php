@@ -93,6 +93,8 @@ class RoomTypeController extends Controller
             }
             RoomImageStorage::ensureDirectories();
             $validated['image'] = $request->file('image')->store(RoomImageStorage::roomTypesDir(), 'public');
+        } else {
+            unset($validated['image']);
         }
 
         $roomType->update($validated);

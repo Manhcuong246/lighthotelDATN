@@ -1,3 +1,10 @@
+# --- Docker nhanh (khách sạn / Laravel) ---
+# 1) Sao chép:  copy .env.docker.example .env   (ghi đè .env cũ nếu bạn chỉ dùng Docker)
+# 2) Chạy:      docker compose up -d --build
+# 3) Mở web:    http://127.0.0.1:8080
+# PhpMyAdmin (tùy chọn): docker compose --profile tools up -d
+# Artisan trên host (MySQL trong Docker): DB_HOST=127.0.0.1 DB_USERNAME=app DB_PASSWORD=app_password php artisan ...
+#
 services:
   mysql:
     image: mysql:8.0
@@ -24,10 +31,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    entrypoint: ["/bin/sh", "/var/www/html/docker/entrypoint-app.sh"]
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
-      APP_URL: ${APP_URL:-http://localhost}
+      # Trùng cổng nginx mặc định — tránh asset() / URL sai
+      APP_URL: ${APP_URL:-http://127.0.0.1:8080}
       DB_CONNECTION: ${DB_CONNECTION:-mysql}
       DB_HOST: mysql
       DB_PORT: 3306
@@ -37,7 +46,6 @@ services:
     volumes:
       - .:/var/www/html
       - /var/www/html/vendor
-      - /var/www/html/node_modules
       # Dev: OPcache luôn soi lại file — tránh cảm giác "sửa Blade/PHP mà không đổi"
       - ./docker/php/zz-opcache-dev.ini:/usr/local/etc/php/conf.d/zz-opcache-dev.ini:ro
     depends_on:
@@ -55,6 +63,7 @@ services:
       - app
 
   phpmyadmin:
+    profiles: [tools]
     image: phpmyadmin:5-apache
     environment:
       PMA_HOST: mysql

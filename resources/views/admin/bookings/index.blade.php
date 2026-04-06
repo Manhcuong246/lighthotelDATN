@@ -1,23 +1,21 @@
 @extends('layouts.admin')
 
-@section('title', 'Quản lý đặt phòng')
+@section('title', 'Đơn đặt phòng & thanh toán')
 
 @section('content')
 <div class="container-fluid px-0">
     <div class="page-header">
-        <h1 class="text-dark fw-bold">Quản lý đặt phòng</h1>
+        <h1 class="text-dark fw-bold mb-0">Đơn đặt phòng &amp; thanh toán</h1>
         <div class="d-flex flex-wrap gap-2">
             @if(auth()->user()->isAdmin())
-            <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary btn-sm">
-                <i class="bi bi-layers me-1"></i>Tạo đơn nhiều phòng
-            </a>
+            <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Tạo đơn nhiều phòng"><i class="bi bi-layers"></i></a>
             @endif
 
             <div class="dropdown">
                 <button class="btn btn-light btn-sm position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell-fill fs-5" style="color: #ff6b6b;"></i>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        {{ $counts['total'] ?? (is_object($bookings) && method_exists($bookings, 'total') ? $bookings->total() : (is_array($bookings) ? count($bookings) : 0)) }}
+                        {{ $counts['total'] ?? 0 }}
                     </span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 280px;">
@@ -34,7 +32,7 @@
                     <li>
                         <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=pending">
                             <div class="d-flex justify-content-between">
-                                <span><strong>Chờ xác nhận:</strong></span>
+                                <span><strong>Chờ thanh toán:</strong></span>
                                 <span class="badge bg-warning">{{ $counts['pending'] ?? 0 }}</span>
                             </div>
                         </a>
@@ -42,8 +40,8 @@
                     <li>
                         <a class="dropdown-item" href="{{ route('admin.bookings.index') }}?status=confirmed">
                             <div class="d-flex justify-content-between">
-                                <span><strong>Đã xác nhận:</strong></span>
-                                <span class="badge bg-info">{{ $counts['confirmed'] ?? 0 }}</span>
+                                <span><strong>Đã thanh toán:</strong></span>
+                                <span class="badge bg-success">{{ $counts['confirmed'] ?? 0 }}</span>
                             </div>
                         </a>
                     </li>
@@ -69,24 +67,27 @@
     <!-- Table Card -->
     <div class="card shadow-sm border-0">
         <div class="card-header py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: linear-gradient(90deg, #3b49d6 0%, #4b3bd6 100%);">
-            <h5 class="mb-0 text-white fw-semibold">{{ request('checkin_checkout') ? 'Check-in / Check-out' : 'Danh sách đơn đặt phòng' }}</h5>
+            <h5 class="mb-0 text-white fw-semibold">Đơn &amp; giao dịch thanh toán</h5>
             <form action="{{ route('admin.bookings.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
-                <input type="hidden" name="checkin_checkout" value="{{ request('checkin_checkout') }}">
-                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm khách, phòng, mã đơn..." style="width: 200px;">
-                <input type="date" name="check_in_from" value="{{ request('check_in_from') }}" class="form-control form-control-sm" style="width: 170px;" title="Từ ngày nhận phòng">
-                <input type="date" name="check_in_to" value="{{ request('check_in_to') }}" class="form-control form-control-sm" style="width: 170px;" title="Đến ngày nhận phòng">
-                <input type="date" name="check_out_from" value="{{ request('check_out_from') }}" class="form-control form-control-sm" style="width: 170px;" title="Từ ngày trả phòng">
-                <input type="date" name="check_out_to" value="{{ request('check_out_to') }}" class="form-control form-control-sm" style="width: 170px;" title="Đến ngày trả phòng">
-                <select name="status" class="form-select form-select-sm" style="width: 150px;">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Khách, phòng, mã đơn, mã GD…" style="width: 220px;">
+                <span class="text-white small align-self-center text-nowrap me-1">Nhận từ</span>
+                <input type="date" name="check_in_from" value="{{ request('check_in_from') }}" class="form-control form-control-sm" style="width: 150px;" aria-label="Nhận phòng từ ngày" title="Nhận phòng — từ">
+                <span class="text-white-50 small align-self-center text-nowrap mx-1">→</span>
+                <input type="date" name="check_in_to" value="{{ request('check_in_to') }}" class="form-control form-control-sm" style="width: 150px;" aria-label="Nhận phòng đến ngày" title="Nhận phòng — đến">
+                <span class="text-white small align-self-center text-nowrap ms-2 me-1">Trả từ</span>
+                <input type="date" name="check_out_from" value="{{ request('check_out_from') }}" class="form-control form-control-sm" style="width: 150px;" aria-label="Trả phòng từ ngày" title="Trả phòng — từ">
+                <span class="text-white-50 small align-self-center text-nowrap mx-1">→</span>
+                <input type="date" name="check_out_to" value="{{ request('check_out_to') }}" class="form-control form-control-sm" style="width: 150px;" aria-label="Trả phòng đến ngày" title="Trả phòng — đến">
+                <select name="status" class="form-select form-select-sm" style="width: 170px;" title="Trạng thái">
                     <option value="">Tất cả trạng thái</option>
-                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Chờ xác nhận</option>
-                    <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Đã xác nhận</option>
+                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Chờ thanh toán</option>
+                    <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Đã thanh toán</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Hoàn thành</option>
                     <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Đã hủy</option>
                 </select>
-                <button type="submit" class="btn btn-light btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
-                @if(request()->hasAny(['q','status']))
-                <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-light btn-sm">Xóa bộ lọc</a>
+                <button type="submit" class="btn btn-light btn-sm btn-admin-icon" title="Tìm"><i class="bi bi-search"></i></button>
+                @if(request()->hasAny(['q','status','check_in_from','check_in_to','check_out_from','check_out_to']))
+                <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-light btn-sm btn-admin-icon" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
                 @endif
             </form>
         </div>
@@ -96,27 +97,40 @@
                     <thead class="table-light">
                         <tr>
                             <th style="width: 50px;">#</th>
-                            <th style="width: 180px;">👤 Khách hàng</th>
-                            <th style="width: 120px;">🏨 Phòng</th>
-                            <th style="width: 100px;">📅 Ngày nhận phòng</th>
-                            <th style="width: 100px;">📅 Ngày trả phòng</th>
-                            <th style="width: 50px;" class="text-center">👥</th>
-                            <th style="width: 120px;" class="text-end">💰 Tổng tiền</th>
-                            <th style="width: 110px;">📊 Trạng thái</th>
-                            <th style="width: 220px;">⚡ Hành động</th>
+                            <th style="width: 170px;">Khách hàng</th>
+                            <th style="width: 110px;">Phòng</th>
+                            <th style="width: 90px;">Nhận phòng</th>
+                            <th style="width: 90px;">Trả phòng</th>
+                            <th style="width: 52px;" class="text-center"><span class="cursor-help" data-bs-toggle="tooltip" data-bs-placement="top" title="Cột trạng thái lưu trú: di chuột vào từng icon hàng bên dưới để xem chú thích.">Lưu trú</span></th>
+                            <th style="width: 45px;" class="text-center">SL</th>
+                            <th style="width: 120px;" class="text-end">Tổng tiền</th>
+                            <th style="width: 145px;">Trạng thái</th>
+                            <th style="width: 80px;"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($bookings as $booking)
+                            @php
+                                $lp = $booking->latestPayment;
+                                $method = $lp ? $lp->method : $booking->payment_method;
+                                $paySt  = $lp ? $lp->status : ($booking->payment_status ?? 'pending');
+
+                                $methodLabels = [
+                                    'vnpay'         => ['text' => 'VNPay',       'color' => 'dark'],
+                                    'cash'          => ['text' => 'Tiền mặt',    'color' => 'secondary'],
+                                    'credit_card'   => ['text' => 'Thẻ',         'color' => 'info'],
+                                    'bank_transfer' => ['text' => 'Chuyển khoản','color' => 'primary'],
+                                ];
+                            @endphp
                             <tr>
                                 <td><strong>#{{ $booking->id }}</strong></td>
                                 <td>
-                                    <div class="fw-bold">{{ $booking->user?->full_name ?? '—' }}</div>
-                                    <small class="text-muted">{{ $booking->user?->email ?? '—' }}</small>
+                                    <div class="fw-semibold">{{ $booking->user?->full_name ?? '—' }}</div>
+                                    <small class="text-muted">{{ $booking->user?->email ?? '' }}</small>
                                 </td>
-                                 <td>
+                                <td>
                                     @if($booking->rooms->count() > 1)
-                                        <div class="fw-bold text-primary">{{ $booking->rooms->count() }} phòng</div>
+                                        <div class="fw-semibold text-primary">{{ $booking->rooms->count() }} phòng</div>
                                         <small class="text-muted">{{ $booking->rooms->pluck('name')->implode(', ') }}</small>
                                     @else
                                         <span class="badge bg-primary">{{ $booking->rooms->first()->name ?? '—' }}</span>
@@ -125,66 +139,62 @@
                                 <td>{{ $booking->check_in?->format('d/m/Y') ?? '—' }}</td>
                                 <td>{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</td>
                                 <td class="text-center">
-                                    <span class="badge bg-secondary">
-                                        {{ $booking->bookingRooms->sum(function($br) {
-                                            return $br->adults + $br->children_0_5 + $br->children_6_11;
-                                        }) }}
-                                    </span>
+                                    @switch($booking->adminStayPhase())
+                                        @case('cancelled')
+                                            <span class="text-danger cursor-help d-inline-flex" role="img" data-bs-toggle="tooltip" data-bs-placement="left" aria-label="Đã hủy đơn" title="Icon cấm (đỏ): Đơn đã hủy — không áp dụng theo dõi check-in/check-out."><i class="bi bi-slash-circle fs-5" aria-hidden="true"></i></span>
+                                            @break
+                                        @case('pending_payment')
+                                            <span class="text-muted cursor-help d-inline-flex" role="img" data-bs-toggle="tooltip" data-bs-placement="left" aria-label="Chờ thanh toán" title="Icon đồng hồ cát: Chưa thanh toán / chưa xác nhận — chưa thể coi là lưu trú thực tế cho đến khi đơn được xác nhận."><i class="bi bi-hourglass-split fs-5" aria-hidden="true"></i></span>
+                                            @break
+                                        @case('not_checked_in')
+                                            <span class="text-warning cursor-help d-inline-flex" role="img" data-bs-toggle="tooltip" data-bs-placement="left" aria-label="Chưa check-in" title="Icon cửa đóng (vàng): Đơn đã xác nhận, còn trong kỳ đặt — chưa ghi nhận check-in."><i class="bi bi-door-closed fs-5" aria-hidden="true"></i></span>
+                                            @break
+                                        @case('stay_overdue')
+                                            <span class="text-danger cursor-help d-inline-flex" role="img" data-bs-toggle="tooltip" data-bs-placement="left" aria-label="Quá hạn check-in" title="Icon lịch X (đỏ): Đã quá ngày trả phòng mà vẫn chưa check-in — cần xử lý ngoại lệ, cập nhật ngày hoặc hủy đơn."><i class="bi bi-calendar-x fs-5" aria-hidden="true"></i></span>
+                                            @break
+                                        @case('checked_in')
+                                            <span class="text-primary cursor-help d-inline-flex" role="img" data-bs-toggle="tooltip" data-bs-placement="left" aria-label="Đã check-in" title="Icon nhà + tích (xanh dương): Khách đã check-in — chưa ghi nhận check-out."><i class="bi bi-house-check fs-5" aria-hidden="true"></i></span>
+                                            @break
+                                        @case('checked_out')
+                                            <span class="text-success cursor-help d-inline-flex" role="img" data-bs-toggle="tooltip" data-bs-placement="left" aria-label="Đã check-out" title="Icon mũi tên ra (xanh lá): Đã check-out / hoàn thành lưu trú."><i class="bi bi-box-arrow-right fs-5" aria-hidden="true"></i></span>
+                                            @break
+                                    @endswitch
+                                </td>
+                                <td class="text-center" title="Tổng khách (NL + trẻ 6–11 + trẻ 0–5)">
+                                    @php
+                                        $effOcc = $booking->bookingRooms->sum(fn($br) => $br->adults + $br->children_6_11);
+                                        $infants = $booking->bookingRooms->sum(fn($br) => $br->children_0_5);
+                                    @endphp
+                                    <span class="badge bg-secondary">{{ $effOcc }}</span>
+                                    @if($infants > 0)<small class="text-muted d-block" style="font-size:.65rem">+{{ $infants }} trẻ nhỏ</small>@endif
                                 </td>
                                 <td class="text-end">
                                     <strong class="text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</strong>
                                 </td>
                                 <td>
-                                    @php
-                                        $statusColors = [
-                                            'pending' => 'warning',
-                                            'confirmed' => 'info',
-                                            'completed' => 'success',
-                                            'cancelled' => 'danger',
-                                        ];
-                                        $statusLabels = [
-                                            'pending' => 'Chờ xác nhận',
-                                            'confirmed' => 'Đã thanh toán',
-                                            'completed' => 'Hoàn thành',
-                                            'cancelled' => 'Đã hủy',
-                                        ];
-                                    @endphp
-                                    <span class="badge bg-{{ $statusColors[$booking->status] ?? 'secondary' }}">
-                                        {{ $statusLabels[$booking->status] ?? '—' }}
-                                    </span>
+                                    @if($booking->status === 'cancelled')
+                                        <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Đã hủy</span>
+                                    @elseif($booking->status === 'completed')
+                                        <span class="badge bg-success"><i class="bi bi-check-all me-1"></i>Hoàn thành</span>
+                                    @elseif($paySt === 'paid' || $booking->status === 'confirmed')
+                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã thanh toán</span>
+                                        @if($method && isset($methodLabels[$method]))
+                                            <br><span class="badge bg-{{ $methodLabels[$method]['color'] }} mt-1" style="font-size:.7rem">{{ $methodLabels[$method]['text'] }}</span>
+                                        @endif
+                                    @elseif($paySt === 'failed')
+                                        <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>TT thất bại</span>
+                                    @else
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Chờ thanh toán</span>
+                                        @if($method && isset($methodLabels[$method]))
+                                            <br><span class="badge bg-{{ $methodLabels[$method]['color'] }} mt-1" style="font-size:.7rem">{{ $methodLabels[$method]['text'] }}</span>
+                                        @endif
+                                    @endif
                                 </td>
                                 <td>
-                                    @if(request('checkin_checkout'))
-                                        <div class="d-flex flex-wrap gap-2">
-                                            @if($booking->isCheckinAllowed())
-                                                <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST">
-                                                    @csrf
-                                                    <button class="btn btn-sm btn-success text-white fw-bold"><i class="bi bi-box-arrow-in-right me-1"></i>Xác nhận Check-in</button>
-                                                </form>
-                                            @elseif($booking->isCheckoutAllowed())
-                                                <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST">
-                                                    @csrf
-                                                    <button class="btn btn-sm btn-warning text-dark fw-bold"><i class="bi bi-box-arrow-right me-1"></i>Xác nhận Check-out</button>
-                                                </form>
-                                            @endif
-
-                                            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" data-bs-toggle="modal" data-bs-target="#surchargeModal{{ $booking->id }}" title="Lập phiếu phát sinh phụ thu (Ví dụ: Thêm người)">
-                                                <i class="bi bi-plus-circle me-1"></i>Phát sinh
-                                            </button>
-                                            <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary" title="Xem chi tiết đơn">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                        </div>
-                                    @else
-                                    <div class="d-flex gap-1">
-                                        <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary" title="Xem">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <a href="{{ route('admin.bookings.edit', $booking) }}" class="btn btn-sm btn-outline-secondary" title="Sửa">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
+                                    <div class="d-flex gap-1 align-items-center">
+                                        <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
                                         <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-admin-icon dropdown-toggle" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Thao tác">
                                                 <i class="bi bi-three-dots-vertical"></i>
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end" style="position: fixed; inset: 0px auto auto 0px; transform: translate3d(0px, 38px, 0px); z-index: 9999;">
@@ -194,31 +204,39 @@
                                                         @csrf
                                                         <input type="hidden" name="status" value="confirmed">
                                                         <button class="dropdown-item text-success">
-                                                            <i class="bi bi-check-circle me-2"></i> Xác nhận đơn
+                                                            <i class="bi bi-check-circle me-2"></i> Xác nhận thanh toán
                                                         </button>
                                                     </form>
                                                 </li>
                                                 @endif
 
-                                                @if($booking->isCheckinAllowed())
+                                                @if($booking->isAdminCheckinAllowed())
                                                 <li>
                                                     <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST">
                                                         @csrf
-                                                        <button class="dropdown-item text-info">
+                                                        <button class="dropdown-item text-info" type="submit">
                                                             <i class="bi bi-box-arrow-in-right me-2"></i> Check-in
                                                         </button>
                                                     </form>
                                                 </li>
                                                 @endif
 
-                                                @if($booking->isCheckoutAllowed())
+                                                @if($booking->isAdminCheckoutAllowed())
                                                 <li>
                                                     <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST">
                                                         @csrf
-                                                        <button class="dropdown-item text-warning">
+                                                        <button class="dropdown-item text-warning" type="submit">
                                                             <i class="bi bi-box-arrow-right me-2"></i> Check-out
                                                         </button>
                                                     </form>
+                                                </li>
+                                                @endif
+
+                                                @if($booking->status !== 'cancelled')
+                                                <li>
+                                                    <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#surchargeModal{{ $booking->id }}">
+                                                        <i class="bi bi-plus-circle me-2"></i> Phát sinh / phụ thu
+                                                    </button>
                                                 </li>
                                                 @endif
 
@@ -246,12 +264,11 @@
                                             </ul>
                                         </div>
                                     </div>
-                                    @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">
+                                <td colspan="10" class="text-center py-5 text-muted">
                                     <i class="bi bi-inbox display-4 d-block mb-3"></i>
                                     📭 Chưa có đơn đặt phòng nào
                                 </td>
@@ -298,6 +315,7 @@
 </style>
 
 <!-- Modal Hủy Đơn -->
+@if(isset($bookings) && $bookings->count())
 @foreach($bookings as $booking)
 <div class="modal fade" id="cancelModal{{ $booking->id }}" tabindex="-1" aria-labelledby="cancelModalLabel{{ $booking->id }}" aria-hidden="true">
     <div class="modal-dialog">
@@ -341,20 +359,18 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i>Đóng
-                    </button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-x-circle me-1"></i>Xác nhận hủy
-                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-admin-icon" data-bs-dismiss="modal" title="Đóng"><i class="bi bi-x-lg"></i></button>
+                    <button type="submit" class="btn btn-danger btn-admin-icon" title="Xác nhận hủy"><i class="bi bi-x-octagon"></i></button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 @endforeach
+@endif
 
 <!-- Modal Surcharge (Phiếu Phát Sinh) -->
+@if(isset($bookings) && $bookings->count())
 @foreach($bookings as $booking)
 <div class="modal fade" id="surchargeModal{{ $booking->id }}" tabindex="-1" aria-labelledby="surchargeModalLabel{{ $booking->id }}" aria-hidden="true">
     <div class="modal-dialog">
@@ -400,17 +416,14 @@
                     </div>
                 </div>
                 <div class="modal-footer pb-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i>Hủy bỏ
-                    </button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-plus-circle me-1"></i>Lưu phiếu phát sinh
-                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-admin-icon" data-bs-dismiss="modal" title="Hủy"><i class="bi bi-x-lg"></i></button>
+                    <button type="submit" class="btn btn-danger btn-admin-icon" title="Lưu phiếu phát sinh"><i class="bi bi-plus-circle"></i></button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 @endforeach
+@endif
 
 @endsection

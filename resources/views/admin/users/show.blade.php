@@ -7,8 +7,8 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">{{ $user->full_name }}</h1>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">Chỉnh sửa</a>
-            <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary btn-admin-icon" title="Sửa"><i class="bi bi-pencil-square"></i></a>
+            <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
         </div>
     </div>
 

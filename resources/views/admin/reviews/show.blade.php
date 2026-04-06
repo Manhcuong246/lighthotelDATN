@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Đánh giá #{{ $review->id }}</h1>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+            <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
         </div>
     </div>
 
@@ -74,7 +74,7 @@
                             </small>
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-sm">Lưu phản hồi</button>
+                        <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Lưu phản hồi"><i class="bi bi-check2-lg"></i></button>
                     </form>
 
                     <div class="row">
@@ -109,9 +109,7 @@
                     <p class="mb-0">
                         <strong>Phòng:</strong><br>
                         {{ $review->room->name }}
-                        <a href="{{ route('rooms.show', $review->room) }}" class="btn btn-outline-primary btn-sm d-block mt-2">
-                            Xem chi tiết phòng
-                        </a>
+                        <a href="{{ route('rooms.show', $review->room) }}" class="btn btn-outline-primary btn-sm btn-admin-icon d-block mt-2" title="Xem phòng public"><i class="bi bi-box-arrow-up-right"></i></a>
                     </p>
                     @endif
                 </div>

@@ -7,9 +7,9 @@
     <div class="page-header">
         <h1 class="text-dark fw-bold">Bảng điều khiển</h1>
         <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-download me-1"></i>Xuất báo cáo</a>
+            <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm btn-admin-icon" title="Xuất báo cáo"><i class="bi bi-download"></i></a>
             @if(auth()->user()->isAdmin())
-                <a href="{{ route('admin.bookings.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Thêm đơn</a>
+                <a href="{{ route('admin.bookings.create') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Thêm đơn"><i class="bi bi-plus-lg"></i></a>
             @endif
         </div>
     </div>

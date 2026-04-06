@@ -295,25 +295,33 @@
         </div>
     </div>
 
-    @php
-        $lhPhRoom = "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22400%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22100%25%22 height=%22100%25%22/%3E%3C/svg%3E";
-    @endphp
     <section class="lh-section-block" id="gallery" aria-label="Ảnh các loại phòng">
         <h2 class="visually-hidden">Hình ảnh phòng</h2>
         <div class="row g-2 g-md-3">
             @foreach($allRoomTypes as $gType)
                 @php
-                    $gRoom = $gType->rooms->first();
-                    $gImg = $gRoom ? ($gRoom->getDisplayImageUrls()[0] ?? null) : null;
-                    if (!$gImg && $gType->image) {
-                        $gImg = \App\Models\Room::resolveImageUrl($gType->image);
+                    $gImg = null;
+                    foreach ($gType->rooms as $gr) {
+                        $gUrls = $gr->getDisplayImageUrls();
+                        if (! empty($gUrls)) {
+                            $gImg = $gUrls[0];
+                            break;
+                        }
                     }
-                    $gImg = $gImg ?? $lhPhRoom;
+                    $gImg = $gImg ?? $gType->image_url;
+                    $gLabel = htmlspecialchars(\Illuminate\Support\Str::limit($gType->name, 14), ENT_XML1 | ENT_QUOTES, 'UTF-8');
+                    $gFallback = 'data:image/svg+xml,'.rawurlencode(
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">'
+                        .'<rect fill="#e2e8f0" width="100%" height="100%"/>'
+                        .'<text fill="#475569" font-family="system-ui,sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">'
+                        .$gLabel.'</text></svg>'
+                    );
+                    $gImg = $gImg ?? $gFallback;
                 @endphp
                 <div class="col-6 col-md-4 col-lg-3">
                     <a href="{{ route('rooms.search', ['room_type' => $gType->id, 'check_in' => date('Y-m-d'), 'check_out' => date('Y-m-d', strtotime('+1 day'))]) }}" class="lh-room-photo-tile">
                         <div class="lh-room-visual-media">
-                            <img src="{{ $gImg }}" alt="" loading="lazy" decoding="async" width="400" height="400" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22400%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22100%25%22 height=%22100%25%22/%3E%3C/svg%3E'">
+                            <img src="{{ $gImg }}" alt="{{ $gType->name }}" loading="lazy" decoding="async" width="400" height="400" onerror="this.onerror=null;this.src={!! json_encode($gFallback) !!}">
                         </div>
                     </a>
                 </div>
@@ -519,14 +527,29 @@
                                 <div class="col-md-4 col-sm-5">
                                     <div class="lh-result-img-wrap" style="height: 200px;">
                                         @php
-                                            $firstImg = $type->rooms->flatMap->images->first();
-                                            $searchListImg = ($firstImg && $firstImg->image_url)
-                                                ? \App\Models\Room::resolveImageUrl($firstImg->image_url)
-                                                : ($type->image ? \App\Models\Room::resolveImageUrl($type->image) : $placeholderSvg);
+                                            $searchListImg = null;
+                                            foreach ($type->rooms as $listRoom) {
+                                                foreach ($listRoom->images as $lim) {
+                                                    if ($lim->image_url) {
+                                                        $searchListImg = \App\Models\Room::resolveImageUrl($lim->image_url);
+                                                        break 2;
+                                                    }
+                                                }
+                                            }
+                                            $searchListImg = $searchListImg ?? $type->image_url;
+                                            $searchListLabel = htmlspecialchars(\Illuminate\Support\Str::limit($type->name, 20), ENT_XML1 | ENT_QUOTES, 'UTF-8');
+                                            $searchListFallback = 'data:image/svg+xml,'.rawurlencode(
+                                                '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260">'
+                                                .'<rect fill="#e2e8f0" width="100%" height="100%"/>'
+                                                .'<text fill="#475569" font-family="system-ui,sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">'
+                                                .$searchListLabel.'</text></svg>'
+                                            );
+                                            $searchListImg = $searchListImg ?? $searchListFallback;
                                         @endphp
-                                        <img src="{{ $searchListImg ?? $placeholderSvg }}"
+                                        <img src="{{ $searchListImg }}"
                                              class="lh-result-img w-100 h-100" style="object-fit: cover;"
-                                             alt="{{ $type->name }}">
+                                             alt="{{ $type->name }}"
+                                             onerror="this.onerror=null;this.src={!! json_encode($searchListFallback) !!}">
                                     </div>
                                 </div>
                                 <div class="col-md-8 col-sm-7 d-flex flex-column p-3">
@@ -580,19 +603,32 @@
         <div class="row g-3 align-items-stretch">
             @forelse($roomTypesList as $type)
                 @php
-                    $firstRoom = $type->rooms->first();
-                    $imageUrl = $firstRoom ? ($firstRoom->getDisplayImageUrls()[0] ?? null) : null;
-                    $imageUrl = $imageUrl ?? ($type->image ? App\Models\Room::resolveImageUrl($type->image) : null);
-                    $imageUrl = $imageUrl ?? $placeholderSvg;
+                    $imageUrl = null;
+                    foreach ($type->rooms as $hr) {
+                        $hUrls = $hr->getDisplayImageUrls();
+                        if (! empty($hUrls)) {
+                            $imageUrl = $hUrls[0];
+                            break;
+                        }
+                    }
+                    $imageUrl = $imageUrl ?? $type->image_url;
+                    $tileLabel = htmlspecialchars(\Illuminate\Support\Str::limit($type->name, 18), ENT_XML1 | ENT_QUOTES, 'UTF-8');
+                    $tileFallback = 'data:image/svg+xml,'.rawurlencode(
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300">'
+                        .'<rect fill="#e2e8f0" width="100%" height="100%"/>'
+                        .'<text fill="#475569" font-family="system-ui,sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">'
+                        .$tileLabel.'</text></svg>'
+                    );
+                    $imageUrl = $imageUrl ?? $tileFallback;
                 @endphp
                 <div class="col-6 col-lg-4 col-xl-3 d-flex">
                     <a href="{{ route('rooms.search', ['room_type' => $type->id, 'check_in' => date('Y-m-d'), 'check_out' => date('Y-m-d', strtotime('+1 day'))]) }}" class="lh-room-visual-tile w-100">
                         <div class="lh-room-visual-media">
                             <img src="{{ $imageUrl }}"
-                                 alt=""
+                                 alt="{{ $type->name }}"
                                  loading="lazy"
                                  decoding="async"
-                                 onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22100%25%22 height=%22100%25%22/%3E%3C/svg%3E'">
+                                 onerror="this.onerror=null;this.src={!! json_encode($tileFallback) !!}">
                         </div>
                     </a>
                 </div>

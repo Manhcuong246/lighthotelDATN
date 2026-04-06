@@ -8,6 +8,9 @@ return [
     'server_ip' => env('VNPAY_SERVER_IP', '127.0.0.1'),
     /** Số ngày hiệu lực của link “vào thanh toán” (/payment/vnpay/pay/{booking}) gửi qua email (chữ ký URL). */
     'pay_entry_signed_ttl_days' => (int) env('VNPAY_PAY_ENTRY_TTL_DAYS', 14),
-    /** Phút VNPay cho mỗi lần tạo giao dịch (sau khi khách bấm link và hệ thống redirect sang VNPay). */
-    'transaction_expire_minutes' => (int) env('VNPAY_TXN_EXPIRE_MINUTES', 15),
+    /**
+     * Phút chờ thanh toán trên cổng VNPay — tính từ lúc tạo URL (khách bấm link / đặt phòng),
+     * không phải từ lúc gửi email. Tăng nếu khách cần thời gian (tối đa 1440 trong code).
+     */
+    'transaction_expire_minutes' => (int) env('VNPAY_TXN_EXPIRE_MINUTES', 30),
 ];

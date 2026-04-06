@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Thêm phòng mới</h1>
-        <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+        <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     <div class="card card-admin shadow mb-4">
@@ -28,7 +28,7 @@
                                     data-price="{{ $rt->price }}"
                                     data-beds="{{ $rt->beds }}"
                                     data-baths="{{ $rt->baths }}"
-                                    data-image="{{ $rt->image }}"
+                                    data-image="{{ $rt->image_url ?? '' }}"
                                     {{ old('room_type_id') == $rt->id ? 'selected' : '' }}>
                                     {{ $rt->name }}
                                 </option>
@@ -88,8 +88,8 @@
                         <option value="maintenance" {{ old('status') === 'maintenance' ? 'selected' : '' }}>Bảo trì</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Lưu</button>
-                <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary">Hủy</a>
+                <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary btn-admin-icon" title="Hủy"><i class="bi bi-x-lg"></i></a>
             </form>
         </div>
     </div>
@@ -146,10 +146,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 bathsInput.value = selectedOption.dataset.baths || '1';
             }
             
-            // Hiển thị ảnh từ loại phòng
             const imageData = selectedOption.dataset.image;
             if (imageData && imageData !== '') {
-                previewImg.src = '/storage/' + imageData;
+                previewImg.src = imageData;
                 imagePreviewDiv.style.display = 'block';
             } else {
                 imagePreviewDiv.style.display = 'none';

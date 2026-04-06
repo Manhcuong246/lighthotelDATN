@@ -6,9 +6,7 @@
 <div class="container-fluid px-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="text-dark fw-bold">🚨 Quản lý báo cáo hư hỏng</h1>
-        <a href="{{ route('admin.damage-reports.create') }}" class="btn btn-danger">
-            <i class="bi bi-plus-lg me-1"></i>Tạo báo cáo mới
-        </a>
+        <a href="{{ route('admin.damage-reports.create') }}" class="btn btn-danger btn-admin-icon" title="Tạo báo cáo"><i class="bi bi-plus-lg"></i></a>
     </div>
 
     @if(session('success'))
@@ -95,9 +93,7 @@
                             </td>
                             <td>{{ $report->created_at->format('d/m/Y H:i') }}</td>
                             <td>
-                                <a href="{{ route('admin.damage-reports.show', $report) }}" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-eye"></i> Chi tiết
-                                </a>
+                                <a href="{{ route('admin.damage-reports.show', $report) }}" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
                             </td>
                         </tr>
                         @empty
