@@ -14,7 +14,7 @@
 <div class="card shadow-sm border-0 rounded-4">
 <div class="card-body">
 
-<form action="{{ route('admin.services.store') }}" 
+<form action="{{ route('admin.roomtypes.services.store') }}" 
       method="POST">
 
 @csrf
@@ -78,9 +78,8 @@ Lưu dịch vụ
 
 </button>
 
-<a href="{{ route('admin.services.index') }}"
+<a href="{{ route('admin.roomtypes.services.index') }}"
    class="btn btn-secondary">
-
 Quay lại
 
 </a>
