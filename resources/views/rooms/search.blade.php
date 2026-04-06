@@ -582,20 +582,21 @@
 
                         <div class="summary-group">
                             <div class="summary-group-title">Thông tin khách hàng</div>
+                            @php $cust = auth()->user(); @endphp
                             <div class="mb-3">
                                 <label class="small text-muted mb-1">Họ tên *</label>
                                 <input type="text" name="full_name" class="form-control form-control-sm"
-                                       value="{{ auth()->check() ? auth()->user()->full_name : old('full_name') }}" required>
+                                       value="{{ old('full_name', $cust?->full_name) }}" {{ $cust ? 'readonly' : '' }} required>
                             </div>
                             <div class="mb-3">
                                 <label class="small text-muted mb-1">Email *</label>
                                 <input type="email" name="email" class="form-control form-control-sm"
-                                       value="{{ auth()->check() ? auth()->user()->email : old('email') }}" required>
+                                       value="{{ old('email', $cust?->email) }}" {{ $cust ? 'readonly' : '' }} required>
                             </div>
                             <div class="mb-3">
                                 <label class="small text-muted mb-1">Số điện thoại *</label>
                                 <input type="text" name="phone" class="form-control form-control-sm"
-                                       value="{{ auth()->check() ? auth()->user()->phone : old('phone') }}" required>
+                                       value="{{ old('phone', $cust?->phone) }}" {{ $cust ? 'readonly' : '' }} required>
                             </div>
                         </div>
 

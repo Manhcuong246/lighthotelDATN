@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use App\Models\RefundLog;
+use Illuminate\Support\Facades\URL;
 
 class Booking extends Model
 {
@@ -20,6 +21,7 @@ class Booking extends Model
 
     protected $fillable = [
         'user_id',
+        'room_id',
         'check_in',
         'check_out',
         'check_in_date',
@@ -32,6 +34,8 @@ class Booking extends Model
         'total_price',
         'status',
         'payment_status',
+        'payment_method',
+        'placed_via',
         'coupon_code',
         'discount_amount',
         'cancellation_reason',
@@ -135,6 +139,26 @@ class Booking extends Model
             && !is_null($this->actual_check_in)
             && is_null($this->actual_check_out)
             && Carbon::today()->gte($this->check_out);
+    }
+
+    /** Đặt từ website khách (kể cả không đăng nhập — tài khoản shadow theo email). */
+    public const PLACED_VIA_CUSTOMER_WEB = 'customer_web';
+
+    /** Admin đặt hộ khách. */
+    public const PLACED_VIA_ADMIN = 'admin';
+
+    /**
+     * Link xem chi tiết đơn cho khách không đăng nhập (kèm chữ ký URL).
+     */
+    public function signedPublicShowUrl(?int $ttlDays = null): string
+    {
+        $days = $ttlDays ?? max(1, (int) config('booking.signed_booking_show_ttl_days', 90));
+
+        return URL::signedRoute(
+            'bookings.show',
+            ['booking' => $this->id],
+            now()->addDays($days)
+        );
     }
 }
 

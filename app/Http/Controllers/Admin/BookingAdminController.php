@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\PaymentInstructionMail;
 use App\Models\Booking;
 use App\Models\Coupon;
+use App\Models\HotelInfo;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Carbon\CarbonPeriod;
 
@@ -130,7 +132,7 @@ class BookingAdminController extends Controller
 
         DB::beginTransaction();
         try {
-            // Find or create user
+            // Find or create user (đồng bộ họ tên / SĐT khi admin đặt hộ hoặc khách đã có tài khoản shadow)
             $user = User::firstOrCreate(
                 ['email' => $validated['email']],
                 [
@@ -139,6 +141,10 @@ class BookingAdminController extends Controller
                     'password' => bcrypt(Str::random(12)),
                 ]
             );
+            $user->forceFill([
+                'full_name' => $validated['full_name'],
+                'phone' => $validated['phone'] ?? $user->phone,
+            ])->save();
 
             // Create booking
             $booking = Booking::create([
@@ -150,6 +156,7 @@ class BookingAdminController extends Controller
                 'total_price' => $totalPrice,
                 'status' => $validated['status'],
                 'payment_status' => 'pending',
+                'placed_via' => Booking::PLACED_VIA_ADMIN,
             ]);
 
             // Create booked dates
@@ -171,14 +178,15 @@ class BookingAdminController extends Controller
 
             // Create payment record
             try {
+                $ps = $validated['payment_status'];
+                $paymentPaid = in_array($ps, ['paid', 'partial'], true);
                 Payment::create([
                     'booking_id' => $booking->id,
                     'amount' => $validated['amount_paid'] ?? 0,
-                    'payment_method' => $validated['payment_method'],
-                    'status' => $validated['payment_status'],
+                    'method' => $validated['payment_method'],
+                    'status' => $paymentPaid ? 'paid' : 'pending',
                     'transaction_id' => 'ADM' . time() . rand(1000, 9999),
-                    'notes' => $validated['payment_note'] ?? null,
-                    'paid_at' => $validated['payment_status'] === 'paid' ? now() : ($validated['payment_status'] === 'partial' ? now() : null),
+                    'paid_at' => $paymentPaid ? now() : null,
                 ]);
             } catch (\Exception $e) {
                 // Continue even if payment creation fails
@@ -472,7 +480,7 @@ class BookingAdminController extends Controller
             'coupon_code' => 'nullable|string',
             'discount_amount' => 'nullable|numeric|min:0',
             'total_price' => 'required|numeric|min:0',
-            'payment_method' => 'required|in:cash,bank_transfer',
+            'payment_method' => 'required|in:cash,bank_transfer,vnpay',
             'payment_status' => 'nullable|in:pending,paid',
             'amount_paid' => 'nullable|numeric|min:0',
         ]);
@@ -484,7 +492,7 @@ class BookingAdminController extends Controller
 
         DB::beginTransaction();
         try {
-            // Find or create user
+            // Find or create user — cập nhật tên/SĐT khi đặt hộ lại cho cùng email
             $user = User::firstOrCreate(
                 ['email' => $validated['email']],
                 [
@@ -493,6 +501,10 @@ class BookingAdminController extends Controller
                     'password' => bcrypt(Str::random(12)),
                 ]
             );
+            $user->forceFill([
+                'full_name' => $validated['full_name'],
+                'phone' => $validated['phone'] ?? $user->phone,
+            ])->save();
 
             // Calculate totals with surcharge logic
             $subtotal = 0;
@@ -545,6 +557,7 @@ class BookingAdminController extends Controller
             $totalPrice = max(0, $subtotal - $discount);
 
             // Create booking
+            $paymentMethodInitial = $validated['payment_method'];
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'room_id' => null,
@@ -556,9 +569,10 @@ class BookingAdminController extends Controller
                 'total_price' => $totalPrice,
                 'coupon_code' => $validated['coupon_code'] ?? null,
                 'discount_amount' => $discount,
-                'status' => 'confirmed',
-                'payment_status' => 'pending', // Default pending
+                'status' => $paymentMethodInitial === 'vnpay' ? 'pending' : 'confirmed',
+                'payment_status' => 'pending',
                 'payment_method' => $validated['payment_method'],
+                'placed_via' => Booking::PLACED_VIA_ADMIN,
             ]);
 
             // Create booking_rooms and assign specific rooms
@@ -627,10 +641,9 @@ class BookingAdminController extends Controller
                     Payment::create([
                         'booking_id' => $booking->id,
                         'amount' => $amountPaid,
-                        'payment_method' => 'cash',
+                        'method' => 'cash',
                         'status' => 'paid',
                         'transaction_id' => 'CASH_' . time() . rand(1000, 9999),
-                        'notes' => 'Thanh toán tiền mặt - Admin',
                         'paid_at' => now(),
                     ]);
 
@@ -647,36 +660,69 @@ class BookingAdminController extends Controller
                 // Bank transfer: always pending initially
                 // No payment record created yet - will be created when admin confirms
 
-                // Generate VietQR code URL
-                $hotelInfo = \App\Models\HotelInfo::first();
+                DB::commit();
+
+                $booking->load('user');
+                $hotelInfo = HotelInfo::first();
                 $qrCodeUrl = $this->generateVietQRUrl(
                     $hotelInfo?->bank_account ?? '0326083913',
                     $hotelInfo?->bank_name ?? 'Vietcombank',
                     $booking->total_price,
-                    'BOOKING ' . $booking->id
+                    'BOOKING '.$booking->id
+                );
+                $mailOk = $this->sendPaymentInstructionMail(
+                    $booking,
+                    $hotelInfo,
+                    count($dates),
+                    $qrCodeUrl,
+                    null,
+                    $user->email
                 );
 
-                // Send payment instruction email to customer
-                try {
-                    \Log::info('Attempting to send payment email to: ' . $user->email);
-                    Mail::to($user->email)->send(new PaymentInstructionMail(
-                        $booking,
-                        $hotelInfo,
-                        count($dates),
-                        $qrCodeUrl
-                    ));
-                    \Log::info('Payment email sent successfully to: ' . $user->email);
-                } catch (\Exception $e) {
-                    // Log error but don't stop the booking process
-                    \Log::error('Failed to send payment instruction email: ' . $e->getMessage());
-                    \Log::error('Email error trace: ' . $e->getTraceAsString());
+                $redirect = redirect()->route('admin.bookings.payment-instruction', $booking)
+                    ->with('success', 'Tạo đơn thành công.');
+                if ($mailOk) {
+                    return $redirect->with('info', 'Đã gửi email hướng dẫn chuyển khoản tới khách.');
                 }
+
+                return $redirect->with(
+                    'warning',
+                    'Không gửi được email (SMTP lỗi hoặc cần App Password Gmail). Xem storage/logs/laravel.log — vẫn có thể gửi thông tin thủ công từ trang này.'
+                );
+            }
+
+            if ($paymentMethod === 'vnpay') {
+                Payment::create([
+                    'booking_id' => $booking->id,
+                    'amount' => $booking->total_price,
+                    'method' => 'vnpay',
+                    'status' => 'pending',
+                ]);
 
                 DB::commit();
 
-                // Redirect to payment instruction page
-                return redirect()->route('admin.bookings.payment-instruction', $booking)
-                    ->with('success', 'Tạo đơn đặt phòng thành công! Email hướng dẫn thanh toán đã được gửi đến khách.');
+                $booking->load('user');
+                $hotelInfo = HotelInfo::first();
+                $payUrl = $this->signedVnPayEntryUrl($booking);
+                $mailOk = $this->sendPaymentInstructionMail(
+                    $booking,
+                    $hotelInfo,
+                    count($dates),
+                    null,
+                    $payUrl,
+                    $user->email
+                );
+
+                $redirect = redirect()->route('admin.bookings.payment-instruction', $booking)
+                    ->with('success', 'Đã tạo đơn.');
+                if ($mailOk) {
+                    return $redirect->with('info', 'Đã gửi email chứa link thanh toán VNPay tới khách.');
+                }
+
+                return $redirect->with(
+                    'warning',
+                    'Không gửi được email (SMTP lỗi hoặc cần App Password Gmail). Xem storage/logs/laravel.log — link VNPay vẫn có trên trang này để sao chép cho khách.'
+                );
             }
 
             DB::commit();
@@ -685,6 +731,42 @@ class BookingAdminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    protected function signedVnPayEntryUrl(Booking $booking): string
+    {
+        $days = max(1, (int) config('vnpay.pay_entry_signed_ttl_days', 14));
+
+        return URL::signedRoute(
+            'payment.vnpay.pay',
+            ['booking' => $booking->id],
+            now()->addDays($days)
+        );
+    }
+
+    protected function sendPaymentInstructionMail(
+        Booking $booking,
+        ?HotelInfo $hotelInfo,
+        int $nights,
+        ?string $qrCodeUrl,
+        ?string $vnpayPayUrl,
+        string $toEmail
+    ): bool {
+        try {
+            Mail::to($toEmail)->send(new PaymentInstructionMail(
+                $booking,
+                $hotelInfo,
+                $nights,
+                $qrCodeUrl,
+                $vnpayPayUrl
+            ));
+
+            return true;
+        } catch (\Throwable $e) {
+            \Log::error('Payment instruction email failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return false;
         }
     }
 
@@ -732,7 +814,17 @@ class BookingAdminController extends Controller
                 ->with('info', 'Đơn đặt phòng này đã được thanh toán.');
         }
 
-        return view('admin.bookings.payment-instruction', compact('booking', 'hotelInfo'));
+        $vnpayPayUrl = null;
+        $pendingVnpay = Payment::where('booking_id', $booking->id)
+            ->where('method', 'vnpay')
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pendingVnpay && ($booking->payment_method === null || $booking->payment_method === 'vnpay')) {
+            $vnpayPayUrl = $this->signedVnPayEntryUrl($booking);
+        }
+
+        return view('admin.bookings.payment-instruction', compact('booking', 'hotelInfo', 'vnpayPayUrl'));
     }
 
     /**

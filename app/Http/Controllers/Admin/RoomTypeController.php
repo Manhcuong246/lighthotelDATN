@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\RoomType;
+use App\Support\RoomImageStorage;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
@@ -44,7 +45,8 @@ class RoomTypeController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('room_types', 'public');
+            RoomImageStorage::ensureDirectories();
+            $validated['image'] = $request->file('image')->store(RoomImageStorage::roomTypesDir(), 'public');
         }
 
         RoomType::create([
@@ -89,7 +91,8 @@ class RoomTypeController extends Controller
             if ($roomType->image) {
                 Storage::disk('public')->delete($roomType->image);
             }
-            $validated['image'] = $request->file('image')->store('room_types', 'public');
+            RoomImageStorage::ensureDirectories();
+            $validated['image'] = $request->file('image')->store(RoomImageStorage::roomTypesDir(), 'public');
         }
 
         $roomType->update($validated);

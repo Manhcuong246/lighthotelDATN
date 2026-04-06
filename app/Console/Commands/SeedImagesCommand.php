@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\User;
+use App\Support\RoomImageStorage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -32,47 +33,6 @@ class SeedImagesCommand extends Command
         'https://randomuser.me/api/portraits/women/4.jpg',
         'https://randomuser.me/api/portraits/men/5.jpg',
         'https://randomuser.me/api/portraits/women/5.jpg',
-    ];
-
-    /** Ảnh phòng khách sạn - Pexels/Unsplash (phòng ngủ, phòng tắm, view...) */
-    private array $roomImageUrls = [
-        'https://images.pexels.com/photos/164595/pexels-photo-164595.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271619/pexels-photo-271619.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/262048/pexels-photo-262048.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/279746/pexels-photo-279746.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271816/pexels-photo-271816.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/2376997/pexels-photo-2376997.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/212269/pexels-photo-212269.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271897/pexels-photo-271897.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/14746032/pexels-photo-14746032.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/10343928/pexels-photo-10343928.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/10389176/pexels-photo-10389176.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/5439496/pexels-photo-5439496.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/14021931/pexels-photo-14021931.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/3940733/pexels-photo-3940733.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/13722872/pexels-photo-13722872.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/3688261/pexels-photo-3688261.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/29006838/pexels-photo-29006838.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/1579253/pexels-photo-1579253.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271643/pexels-photo-271643.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/276224/pexels-photo-276224.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271706/pexels-photo-271706.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271707/pexels-photo-271707.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271708/pexels-photo-271708.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271711/pexels-photo-271711.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271713/pexels-photo-271713.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271715/pexels-photo-271715.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271716/pexels-photo-271716.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/2376997/pexels-photo-2376997.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/189295/pexels-photo-189295.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271618/pexels-photo-271618.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271612/pexels-photo-271612.jpeg?auto=compress&cs=tinysrgb&w=800',
-        'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=800',
     ];
 
     public function handle(): int
@@ -144,12 +104,17 @@ class SeedImagesCommand extends Command
     {
         $this->info('--- Seed ảnh phòng khách sạn ---');
 
-        Storage::disk('public')->makeDirectory('rooms');
+        RoomImageStorage::ensureDirectories();
 
         $rooms = Room::all();
         $count = 0;
-        $urls = $this->roomImageUrls;
+        $urls = config('room_images.sample_urls', []);
         $totalUrls = count($urls);
+        if ($totalUrls === 0) {
+            $this->warn('  Không có sample_urls trong config/room_images.php.');
+
+            return;
+        }
 
         foreach ($rooms as $room) {
             if (! $force && $room->image && ! str_starts_with($room->image, 'http')) {
@@ -161,14 +126,14 @@ class SeedImagesCommand extends Command
             $imagesPerRoom = 4;
             $offset = ($room->id * $imagesPerRoom) % $totalUrls;
 
-            for ($i = 0; $i < $imagesPerRoom; $i++) {
-                $path = 'rooms/room_' . $room->id . '_' . ($i + 1) . '.jpg';
-                $url = $urls[($offset + $i) % $totalUrls];
+            for ($i = 1; $i <= $imagesPerRoom; $i++) {
+                $path = RoomImageStorage::galleryPathForRoom($room->id, $i);
+                $url = $urls[($offset + $i - 1) % $totalUrls];
                 $content = $this->downloadImage($url);
 
                 if ($content === null) {
-                    $this->warn("  Không tải được ảnh phòng #{$room->id} (ảnh " . ($i + 1) . "), tạo placeholder.");
-                    $content = $this->createPlaceholderImage(800, 600, 'R' . $room->id . '-' . ($i + 1));
+                    $this->warn("  Không tải được ảnh phòng #{$room->id} (ảnh " . $i . "), tạo placeholder.");
+                    $content = $this->createPlaceholderImage(800, 600, 'R' . $room->id . '-' . $i);
                 }
 
                 Storage::disk('public')->put($path, $content);

@@ -96,12 +96,6 @@ php artisan test tests/Feature/BookingAdminControllerTest.php
 
 ## 📝 Tích hợp thêm (optional)
 
-### Email Notification
-Thêm vào `updateStatus()`, `checkIn()`, `checkOut()`:
-```php
-Mail::to($booking->user->email)->send(new BookingStatusChanged($booking));
-```
-
 ### SMS Alert
 Gọi API SMS provider khi check-in/check-out.
 

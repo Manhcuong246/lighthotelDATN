@@ -30,6 +30,21 @@ class BookingController extends Controller
         $this->bookingService = $bookingService;
     }
 
+    /**
+     * Chi tiết đơn: chủ tài khoản đã đăng nhập, hoặc khách mở link có chữ ký (sau thanh toán / email).
+     */
+    public function show(Request $request, Booking $booking)
+    {
+        $booking->load(['user', 'rooms.roomType', 'payment', 'refundLogs']);
+
+        $isOwner = Auth::check() && (int) Auth::id() === (int) $booking->user_id;
+        if ($isOwner || $request->hasValidSignature()) {
+            return view('bookings.show', compact('booking'));
+        }
+
+        abort(403, 'Bạn không có quyền xem đơn đặt phòng này. Đăng nhập đúng tài khoản đặt phòng hoặc dùng link được gửi trong email xác nhận.');
+    }
+
     public function store(StoreBookingRequest $request)
     {
         if (Auth::check() && Auth::user()?->canAccessAdmin()) {
@@ -57,10 +72,7 @@ class BookingController extends Controller
                 $bankCode
             );
 
-            // Tự động đăng nhập cho khách mới (nếu chưa login)
-            if (! Auth::check() && $booking->user) {
-                Auth::login($booking->user);
-            }
+            // Khách không đăng nhập vẫn đặt được: không ép đăng nhập trước khi sang VNPay.
 
             return redirect()->away($paymentUrl);
 
@@ -108,7 +120,7 @@ class BookingController extends Controller
     {
         // Kiểm tra quyền sở hữu booking
         if ($booking->user_id !== Auth::id()) {
-            return redirect()->route('bookings.index')
+            return redirect()->route('home')
                 ->withErrors('Bạn không có quyền hủy đơn đặt phòng này.');
         }
 
@@ -177,7 +189,7 @@ class BookingController extends Controller
     public function showRefundDetails(Booking $booking)
     {
         if ($booking->user_id !== Auth::id()) {
-            return redirect()->route('bookings.index')
+            return redirect()->route('home')
                 ->withErrors('Bạn không có quyền xem thông tin này.');
         }
 

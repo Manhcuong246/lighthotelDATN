@@ -113,21 +113,23 @@ class BookingService
 
         // 6. Thực hiện giao dịch DB
         return DB::transaction(function () use ($data, $checkIn, $checkOut, $totalPrice, $discountAmount, $couponCode, $roomPriceDetails, $dates) {
-            // Xử lý user
+            // Một đơn luôn gắn user_id (tài khoản đăng nhập hoặc tài khoản shadow theo email).
             if (Auth::check()) {
-                $userId = Auth::id();
+                $userId = (int) Auth::id();
             } else {
                 $user = User::firstOrCreate(
                     ['email' => $data['email']],
                     [
                         'full_name' => $data['full_name'],
                         'phone'     => $data['phone'] ?? null,
-                        'password'  => bcrypt(Str::random(12)),
+                        'password'  => bcrypt(Str::random(32)),
                     ]
                 );
+                $user->forceFill([
+                    'full_name' => $data['full_name'],
+                    'phone'     => $data['phone'] ?? $user->phone,
+                ])->save();
                 $userId = $user->id;
-                // Nếu là khách đặt lần đầu, switch sang user này (optional, tuỳ requirement cũ)
-                // Trong controller gốc có Auth::login($user);
             }
 
             // Tạo Booking
@@ -138,6 +140,8 @@ class BookingService
                 'total_price'     => $totalPrice,
                 'status'          => 'pending',
                 'payment_status'   => 'pending',
+                'payment_method'  => $data['payment_method'],
+                'placed_via'      => Booking::PLACED_VIA_CUSTOMER_WEB,
                 'coupon_code'     => $couponCode,
                 'discount_amount' => $discountAmount,
             ]);

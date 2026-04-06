@@ -20,6 +20,9 @@
                     <ul class="footer-links list-unstyled mb-0">
                         <li><a href="{{ route('home') }}">Trang chủ</a></li>
                         <li><a href="{{ route('home') }}#rooms-section">Phòng</a></li>
+                        <li><a href="{{ route('pages.contact') }}">Liên hệ</a></li>
+                        <li><a href="{{ route('pages.help') }}">Trợ giúp</a></li>
+                        <li><a href="{{ route('pages.policy') }}">Chính sách</a></li>
                         <li><a href="{{ route('login') }}">Đăng nhập</a></li>
                         <li><a href="{{ route('register') }}">Đăng ký</a></li>
                     </ul>
@@ -83,8 +86,8 @@
                     &copy; {{ date('Y') }} {{ $hotelInfo?->name ?? 'Light Hotel' }}. Bảo lưu mọi quyền.
                 </div>
                 <div class="d-flex gap-4">
-                    <a href="#" class="footer-legal">Chính sách bảo mật</a>
-                    <a href="#" class="footer-legal">Điều khoản sử dụng</a>
+                    <a href="{{ route('pages.policy') }}#privacy" class="footer-legal">Chính sách bảo mật</a>
+                    <a href="{{ route('pages.policy') }}#terms" class="footer-legal">Điều khoản sử dụng</a>
                 </div>
             </div>
         </div>

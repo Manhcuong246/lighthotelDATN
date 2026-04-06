@@ -13,7 +13,10 @@ class PaymentController extends Controller
             return redirect()->route('home')->withErrors('Đơn hàng chưa được thanh toán.');
         }
 
-        return view('payment.success', compact('booking'));
+        $booking->load('rooms.roomType');
+        $signedBookingViewUrl = $booking->signedPublicShowUrl();
+
+        return view('payment.success', compact('booking', 'signedBookingViewUrl'));
     }
 
     public function failed()
