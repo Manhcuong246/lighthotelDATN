@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Review extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'reviews';
 
     public $timestamps = true;
@@ -36,6 +39,14 @@ class Review extends Model
     public function room()
     {
         return $this->belongsTo(Room::class);
+    }
+
+    public static function userHasReviewedRoom(int $userId, int $roomId): bool
+    {
+        return static::withTrashed()
+            ->where('user_id', $userId)
+            ->where('room_id', $roomId)
+            ->exists();
     }
 }
 

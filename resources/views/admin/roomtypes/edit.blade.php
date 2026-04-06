@@ -127,6 +127,24 @@
                         </select>
                     </div>
 
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-semibold">Dịch vụ đi kèm có sẵn</label>
+                        <p class="small text-muted mb-2">Chọn từ <a href="{{ route('admin.services.index') }}" target="_blank" rel="noopener">danh mục dịch vụ</a>. Khách tìm phòng có thể lọc theo các dịch vụ này (loại phòng phải gắn <strong>đủ</strong> các dịch vụ đã chọn).</p>
+                        <div class="row g-2 border rounded p-3 bg-light">
+                            @forelse($services as $svc)
+                                <div class="col-md-4 col-lg-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="service_ids[]" value="{{ $svc->id }}" id="svc_rt_{{ $roomType->id }}_{{ $svc->id }}"
+                                            {{ in_array($svc->id, old('service_ids', $roomType->services->pluck('id')->all()), true) ? 'checked' : '' }}>
+                                        <label class="form-check-label small" for="svc_rt_{{ $roomType->id }}_{{ $svc->id }}">{{ $svc->name }}</label>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="small text-warning mb-0">Chưa có dịch vụ — <a href="{{ route('admin.services.create') }}">thêm dịch vụ</a>.</p>
+                            @endforelse
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Button -->

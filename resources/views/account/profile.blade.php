@@ -195,7 +195,7 @@ document.getElementById('avatarInput')?.addEventListener('change', function(e) {
                             @php
                                 $cancelledBookings = \App\Models\Booking::where('user_id', auth()->id())
                                     ->where('status', 'cancelled')
-                                    ->with('room')
+                                    ->with(['room', 'rooms'])
                                     ->orderBy('created_at', 'desc')
                                     ->get();
                             @endphp
@@ -214,11 +214,21 @@ document.getElementById('avatarInput')?.addEventListener('change', function(e) {
                                         </thead>
                                         <tbody>
                                             @foreach($cancelledBookings as $booking)
+                                                @php
+                                                    $cancelRoom = $booking->rooms->first() ?? $booking->room;
+                                                @endphp
                                                 <tr>
                                                     <td>
-                                                        <a href="{{ route('rooms.show', $booking->room_id) }}" class="text-decoration-none">
-                                                            {{ $booking->room->name ?? 'N/A' }}
-                                                        </a>
+                                                        @if($cancelRoom)
+                                                            <a href="{{ route('rooms.show', $cancelRoom) }}" class="text-decoration-none">
+                                                                {{ $cancelRoom->name }}
+                                                            </a>
+                                                            @if($booking->rooms->count() > 1)
+                                                                <span class="text-muted small">(+{{ $booking->rooms->count() - 1 }} phòng)</span>
+                                                            @endif
+                                                        @else
+                                                            <span class="text-muted">N/A</span>
+                                                        @endif
                                                     </td>
                                                     <td>{{ \Carbon\Carbon::parse($booking->cancelled_at ?? $booking->updated_at)->format('d/m/Y H:i') }}</td>
                                                     <td>{{ $booking->cancellation_reason ?? 'Yêu cầu từ khách hàng' }}</td>

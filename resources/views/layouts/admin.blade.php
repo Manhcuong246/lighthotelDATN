@@ -287,11 +287,11 @@
                         @else
                             <span class="rounded-circle me-2 d-inline-flex align-items-center justify-content-center text-white fw-bold" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.9rem">{{ $adminAvatarInitial }}</span>
                         @endif
-                        <span class="d-none d-md-inline small">{{ auth()->user()->isAdmin() ? 'Quản trị viên' : 'Nhân viên' }}</span>
+                        <span class="d-none d-md-inline small">{{ auth()->user()->isAdmin() ? 'Admin' : 'Nhân viên' }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-1">
-                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Thông tin cá nhân</a></li>
-                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Lịch đặt phòng</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Hồ sơ</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Đơn của tôi</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item py-2 text-danger" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
                     </ul>
@@ -306,41 +306,39 @@
     <aside id="sidebar">
         <div class="sidebar-header">
             <h4><i class="bi bi-building me-2"></i>Light Hotel</h4>
-            <p class="small mb-0">Quản trị hệ thống</p>
+            <p class="small mb-0 opacity-75">Quản trị</p>
         </div>
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
                     <i class="bi bi-speedometer2"></i>
-                    Bảng điều khiển
+                    Tổng quan
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.roomtypes*') ? 'active' : '' }}" href="{{ route('admin.roomtypes.index') }}">
+                <a class="nav-link {{ request()->routeIs('admin.roomtypes.*') ? 'active' : '' }}" href="{{ route('admin.roomtypes.index') }}">
                     <i class="bi bi-layers"></i>
                     Loại phòng
                 </a>
             </li>
             <li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('admin.roomtypes.services*') ? 'active' : '' }}" 
-       href="{{ route('admin.roomtypes.services.index') }}">
-       
-        <i class="bi bi-cone-striped"></i>
-        Dịch vụ
-
-    </a>
-</li>
+                <a class="nav-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}"
+                   href="{{ route('admin.services.index') }}">
+                    <i class="bi bi-cone-striped"></i>
+                    Dịch vụ
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.rooms*') ? 'active' : '' }}" href="{{ route('admin.rooms.index') }}">
                     <i class="bi bi-door-open"></i>
-                    Quản lý phòng
+                    Phòng
                 </a>
             </li>
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.bookings.index') || request()->routeIs('admin.payments.show') || request()->routeIs('admin.payments.edit') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
                     <i class="bi bi-calendar-check"></i>
-                    Đặt phòng &amp; thanh toán
+                    Đặt phòng
                 </a>
             </li>
             <li class="nav-item">
@@ -354,7 +352,7 @@
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.bookings.index') || request()->routeIs('admin.payments.show') || request()->routeIs('admin.payments.edit') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
                     <i class="bi bi-credit-card"></i>
-                    Đơn &amp; thanh toán
+                    Đặt phòng
                 </a>
             </li>
             @endif
@@ -362,7 +360,7 @@
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.users*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                     <i class="bi bi-people"></i>
-                    Người dùng
+                    Tài khoản
                 </a>
             </li>
             @endif
@@ -375,7 +373,7 @@
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.coupons*') ? 'active' : '' }}" href="{{ route('admin.coupons.index') }}">
                     <i class="bi bi-ticket-perforated"></i>
-                    Mã giảm giá
+                    Mã giảm
                 </a>
             </li>
             @if(auth()->user()->isAdmin())

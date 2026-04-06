@@ -68,8 +68,10 @@ class BookingCancellationController extends Controller
 
     /**
      * Process booking cancellation.
+     *
+     * Trả JSON cho fetch/AJAX (trang bookings/cancel); redirect + flash cho form HTML.
      */
-    public function cancel(Request $request, Booking $booking): JsonResponse
+    public function cancel(Request $request, Booking $booking): JsonResponse|RedirectResponse
     {
         $this->authorizeBookingAccess($request, $booking);
 
@@ -83,22 +85,33 @@ class BookingCancellationController extends Controller
             auth()->id()
         );
 
+        $respondJson = $request->expectsJson() || $request->isJson() || $request->wantsJson();
+
         if ($result['success']) {
             $booking = $result['booking'];
+            $redirectTo = $this->publicBookingShowUrl($booking);
 
-            return response()->json([
-                'success' => true,
-                'message' => $result['message'],
-                'refund_amount' => $result['refund_amount'],
-                'refund_type' => $result['refund_type'],
-                'redirect_url' => $this->publicBookingShowUrl($booking),
-            ]);
+            if ($respondJson) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'refund_amount' => $result['refund_amount'],
+                    'refund_type' => $result['refund_type'],
+                    'redirect_url' => $redirectTo,
+                ]);
+            }
+
+            return redirect()->to($redirectTo)->with('success', $result['message']);
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => $result['message'],
-        ], 422);
+        if ($respondJson) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 422);
+        }
+
+        return back()->withInput()->withErrors(['reason' => $result['message']]);
     }
 
     /**

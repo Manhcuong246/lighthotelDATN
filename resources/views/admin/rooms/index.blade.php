@@ -57,8 +57,8 @@
                                     @endif
                                 </td>
                                 <td>{{ $room->type }}</td>
-                                <td>{{ number_format($room->base_price, 0, ',', '.') }} VNĐ</td>
-                                <td>{{ $room->max_guests }}</td>
+                                <td>{{ number_format($room->catalogueBasePrice(), 0, ',', '.') }} VNĐ</td>
+                                <td>{{ $room->catalogueMaxGuests() }}</td>
                                 <td>
                                     @if($room->status === 'available')
                                         <span class="badge bg-success">Sẵn sàng</span>
@@ -160,15 +160,15 @@
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-people me-2"></i>Sức chứa</th>
-                                <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">{{ $room->max_guests }} người</span></td>
+                                <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">{{ $room->catalogueMaxGuests() }} người</span>@if($room->room_type_id)<span class="text-muted small ms-1">(theo loại)</span>@endif</td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-door-open me-2"></i>Số giường</th>
-                                <td><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ $room->beds ?? 1 }} giường</span></td>
+                                <td><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ $room->catalogueBeds() }} giường</span></td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-droplet me-2"></i>Số phòng tắm</th>
-                                <td><span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">{{ $room->baths ?? 1 }} phòng</span></td>
+                                <td><span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">{{ $room->catalogueBaths() }} phòng</span></td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-rulers me-2"></i>Diện tích</th>
@@ -176,7 +176,7 @@
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-currency-dollar me-2"></i>Giá cơ bản</th>
-                                <td class="fw-bold text-danger">{{ number_format($room->base_price, 0, ',', '.') }} VNĐ</td>
+                                <td class="fw-bold text-danger">{{ number_format($room->catalogueBasePrice(), 0, ',', '.') }} VNĐ</td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-patch-check me-2"></i>Trạng thái</th>

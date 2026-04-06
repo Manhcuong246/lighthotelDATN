@@ -2,6 +2,65 @@
 
 use Illuminate\Support\Str;
 
+/*
+|--------------------------------------------------------------------------
+| Database password resolution
+|--------------------------------------------------------------------------
+|
+| Trên Windows, biến môi trường DB_PASSWORD / LARAVEL_DB_PASSWORD rỗng có thể tồn tại trước khi
+| load .env (Dotenv immutable không ghi đè) → MySQL "using password: NO".
+| Đọc trực tiếp từ file .env nếu env() không có giá trị thật.
+|
+*/
+$basePath = dirname(__DIR__);
+
+$readPasswordFromEnvFile = static function (string $key) use ($basePath): ?string {
+    $path = $basePath.DIRECTORY_SEPARATOR.'.env';
+    if (! is_file($path) || ! is_readable($path)) {
+        return null;
+    }
+    $content = file_get_contents($path);
+    if ($content === false) {
+        return null;
+    }
+    $content = preg_replace('/^\xEF\xBB\xBF/', '', $content) ?? $content;
+    $content = str_replace("\r\n", "\n", str_replace("\r", "\n", $content));
+    if (! preg_match_all('/^'.preg_quote($key, '/').'=(.*)$/m', $content, $matches)) {
+        return null;
+    }
+    $raw = trim((string) end($matches[1]));
+    if ($raw === '') {
+        return null;
+    }
+    if (strlen($raw) >= 2) {
+        if ($raw[0] === '"' && str_ends_with($raw, '"')) {
+            return stripcslashes(substr($raw, 1, -1));
+        }
+        if ($raw[0] === "'" && str_ends_with($raw, "'")) {
+            return substr($raw, 1, -1);
+        }
+    }
+
+    return $raw;
+};
+
+$dbPassword = (static function () use ($readPasswordFromEnvFile): string {
+    foreach (['LARAVEL_DB_PASSWORD', 'DB_PASSWORD'] as $key) {
+        $v = env($key);
+        if (filled($v)) {
+            return (string) $v;
+        }
+    }
+    foreach (['LARAVEL_DB_PASSWORD', 'DB_PASSWORD'] as $key) {
+        $fromFile = $readPasswordFromEnvFile($key);
+        if ($fromFile !== null && $fromFile !== '') {
+            return $fromFile;
+        }
+    }
+
+    return '';
+})();
+
 return [
 
     /*
@@ -45,12 +104,12 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
-            'url' => env('DB_URL'),
+            'url' => filled(env('DB_URL')) ? env('DB_URL') : null,
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('DB_DATABASE', 'hotel_booking'),
             'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
+            'password' => $dbPassword,
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
@@ -66,12 +125,12 @@ return [
 
         'mariadb' => [
             'driver' => 'mariadb',
-            'url' => env('DB_URL'),
+            'url' => filled(env('DB_URL')) ? env('DB_URL') : null,
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('DB_DATABASE', 'hotel_booking'),
             'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
+            'password' => $dbPassword,
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),

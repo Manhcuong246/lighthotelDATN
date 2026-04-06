@@ -57,7 +57,7 @@
                         <div class="col mr-2">
                             <div class="fs-6 fw-bold text-uppercase text-info mb-1">Tỉ lệ lấp phòng</div>
                             <div class="h5 mb-0 fw-bold text-gray-800">{{ $occupancyRate }}%</div>
-                            <div class="small text-muted">Tháng: {{ $monthlyOccupancyRate }}%</div>
+                            <div class="small text-muted">Trung bình tháng: {{ $monthlyOccupancyRate }}%</div>
                         </div>
                         <div class="col-auto">
                             <div class="stat-icon bg-info-light text-info-dark">
@@ -127,10 +127,10 @@
                 </div>
                 <div class="card-body">
                     @php
-                        $totalRoomsStatus = $roomsAvailable + $roomsBooked + $roomsMaintenance ?: 1;
-                        $pctAvailable = $totalRoomsStatus > 0 ? round(($roomsAvailable / $totalRoomsStatus) * 100) : 0;
-                        $pctBooked = $totalRoomsStatus > 0 ? round(($roomsBooked / $totalRoomsStatus) * 100) : 0;
-                        $pctMaintenance = $totalRoomsStatus > 0 ? round(($roomsMaintenance / $totalRoomsStatus) * 100) : 0;
+                        $totalRoomsForBar = max(1, $totalRooms);
+                        $pctAvailable = round(($roomsAvailable / $totalRoomsForBar) * 100);
+                        $pctBooked = round(($roomsBooked / $totalRoomsForBar) * 100);
+                        $pctMaintenance = round(($roomsMaintenance / $totalRoomsForBar) * 100);
                     @endphp
                     <div class="chart-pie pt-4 pb-2">
                         <div class="d-flex flex-column">
@@ -142,7 +142,7 @@
                                 <div class="progress-bar bg-success" role="progressbar" style="width: {{ $pctAvailable }}%"></div>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span>Đã đặt</span>
+                                <span>Có lịch đêm nay</span>
                                 <span class="badge bg-warning text-dark">{{ $roomsBooked }}</span>
                             </div>
                             <div class="progress mb-3" style="height: 10px;">
@@ -159,7 +159,7 @@
                     </div>
                     <div class="mt-4 text-center small">
                         <span class="me-2"><i class="bi bi-circle-fill text-success"></i> Trống</span>
-                        <span class="me-2"><i class="bi bi-circle-fill text-warning"></i> Đã đặt</span>
+                        <span class="me-2"><i class="bi bi-circle-fill text-warning"></i> Có lịch đêm nay</span>
                         <span class="me-2"><i class="bi bi-circle-fill text-secondary"></i> Bảo trì</span>
                     </div>
                 </div>

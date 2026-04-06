@@ -31,6 +31,7 @@
                     <option value="pending" {{ request('payment_status') === 'pending' ? 'selected' : '' }}>Chờ thanh toán</option>
                     <option value="paid" {{ request('payment_status') === 'paid' ? 'selected' : '' }}>Đã thanh toán</option>
                     <option value="failed" {{ request('payment_status') === 'failed' ? 'selected' : '' }}>Thất bại</option>
+                    <option value="refunded" {{ request('payment_status') === 'refunded' ? 'selected' : '' }}>Đã hoàn tiền</option>
                 </select>
                 <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Tìm"><i class="bi bi-search"></i></button>
                 @if(request()->hasAny(['q','payment_status']))
@@ -84,6 +85,8 @@
                                         <span class="badge bg-success">Đã thanh toán</span>
                                     @elseif($payment->status === 'failed')
                                         <span class="badge bg-danger">Thất bại</span>
+                                    @elseif($payment->status === 'refunded')
+                                        <span class="badge bg-info text-dark">Đã hoàn tiền</span>
                                     @else
                                         <span class="badge bg-secondary">{{ $payment->status }}</span>
                                     @endif

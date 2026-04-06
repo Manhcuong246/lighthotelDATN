@@ -44,6 +44,8 @@
                                     <span class="badge bg-success">Đã thanh toán</span>
                                 @elseif($payment->status === 'failed')
                                     <span class="badge bg-danger">Thất bại</span>
+                                @elseif($payment->status === 'refunded')
+                                    <span class="badge bg-info text-dark">Đã hoàn tiền</span>
                                 @else
                                     <span class="badge bg-secondary">{{ $payment->status }}</span>
                                 @endif

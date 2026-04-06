@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use App\Models\RefundLog;
 use Illuminate\Support\Facades\URL;
 
 class Booking extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'bookings';
 
     public $timestamps = true;
@@ -210,7 +214,106 @@ class Booking extends Model
     }
 
     /**
-     * Đánh giá phòng: chỉ khách đã đặt đúng phòng đó và đã check-out (đã trả phòng).
+     * Hóa đơn / biên lai (khách và luật tạo HĐ nội bộ): chỉ khi đã thanh toán và đã checkout.
+     */
+    public function isPaidAndCheckedOutForInvoice(): bool
+    {
+        if (in_array($this->status, ['cancelled', 'cancel_requested'], true)) {
+            return false;
+        }
+
+        if (! $this->isPaymentRecordedPaid()) {
+            return false;
+        }
+
+        return $this->status === 'completed' || $this->actual_check_out !== null;
+    }
+
+    /**
+     * Đơn đã được ghi nhận thanh toán (theo bookings.payment_status hoặc payments.status).
+     */
+    public function isPaymentRecordedPaid(): bool
+    {
+        if (($this->payment_status ?? '') === 'paid') {
+            return true;
+        }
+
+        if ($this->relationLoaded('payment')) {
+            return $this->payment && $this->payment->status === 'paid';
+        }
+
+        return $this->payment()->where('status', 'paid')->exists();
+    }
+
+    /**
+     * Đơn chờ thanh toán coi như hết hạn: quá ngày nhận phòng, hoặc các đêm phòng đã bị đơn khác (còn hiệu lực) giữ.
+     */
+    public function isPendingDisplayExpired(): bool
+    {
+        if ($this->status !== 'pending' || $this->isPaymentRecordedPaid()) {
+            return false;
+        }
+        if ($this->check_in && Carbon::today()->gt($this->check_in)) {
+            return true;
+        }
+
+        return $this->hasRoomDatesClaimedByAnotherActiveBooking();
+    }
+
+    private function hasRoomDatesClaimedByAnotherActiveBooking(): bool
+    {
+        if (!$this->check_in || !$this->check_out) {
+            return false;
+        }
+
+        $roomIds = $this->resolveRoomIdsForDateBlocks();
+        if ($roomIds === []) {
+            return false;
+        }
+
+        $period = CarbonPeriod::create(
+            Carbon::parse($this->check_in),
+            Carbon::parse($this->check_out)->copy()->subDay()
+        );
+        $dates = collect($period)->map(static fn ($d) => Carbon::parse($d)->toDateString())->all();
+        if ($dates === []) {
+            return false;
+        }
+
+        return RoomBookedDate::query()
+            ->whereIn('room_id', $roomIds)
+            ->whereIn('booked_date', $dates)
+            ->where('booking_id', '<>', $this->id)
+            ->whereHas('booking', static function ($q): void {
+                $q->whereNotIn('status', ['cancelled', 'cancel_requested']);
+            })
+            ->exists();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function resolveRoomIdsForDateBlocks(): array
+    {
+        if ($this->relationLoaded('bookingRooms')) {
+            $ids = $this->bookingRooms->pluck('room_id')->map(static fn ($id) => (int) $id)->unique()->values()->all();
+        } else {
+            $ids = $this->bookingRooms()->pluck('room_id')->map(static fn ($id) => (int) $id)->unique()->values()->all();
+        }
+
+        if ($ids !== []) {
+            return $ids;
+        }
+
+        if ($this->room_id) {
+            return [(int) $this->room_id];
+        }
+
+        return [];
+    }
+
+    /**
+     * Đánh giá phòng: chỉ khách đã đặt đúng phòng đó, đã thanh toán, và đã check-out.
      * Hỗ trợ cả đơn một phòng (bookings.room_id) và đơn nhiều phòng (booking_rooms).
      */
     public static function userHasCheckedOutRoom(int $userId, int $roomId): bool
@@ -219,11 +322,24 @@ class Booking extends Model
             ->where('user_id', $userId)
             ->whereNotIn('status', ['cancelled', 'cancel_requested'])
             ->whereNotNull('actual_check_out')
+            ->where(function ($q) {
+                $q->where('payment_status', 'paid')
+                    ->orWhereHas('payment', static fn ($p) => $p->where('status', 'paid'));
+            })
             ->where(function ($q) use ($roomId) {
                 $q->where('room_id', $roomId)
                     ->orWhereHas('bookingRooms', static fn ($br) => $br->where('room_id', $roomId));
             })
             ->exists();
+    }
+
+    /**
+     * Gửi đánh giá phòng: đủ điều kiện checkout + thanh toán và chưa có đánh giá cho phòng đó.
+     */
+    public static function userCanSubmitRoomReview(int $userId, int $roomId): bool
+    {
+        return static::userHasCheckedOutRoom($userId, $roomId)
+            && ! Review::userHasReviewedRoom($userId, $roomId);
     }
 
     /** Đặt từ website khách (kể cả không đăng nhập — tài khoản shadow theo email). */
@@ -266,6 +382,21 @@ class Booking extends Model
             ['booking' => $this->id],
             now()->addDays($days)
         );
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Booking $booking): void {
+            if ($booking->isForceDeleting()) {
+                return;
+            }
+            RoomBookedDate::where('booking_id', $booking->id)->delete();
+            Payment::where('booking_id', $booking->id)->delete();
+            $invoice = $booking->invoice()->first();
+            if ($invoice) {
+                $invoice->delete();
+            }
+        });
     }
 }
 

@@ -10,12 +10,19 @@ use App\Models\HotelInfo;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
+use App\Models\Service;
 use App\Models\RoomPrice;
 use App\Models\User;
+use App\Models\BookingService as BookingServiceRow;
+use App\Support\BookingInvoiceViewData;
+use App\Support\InvoiceExtrasSynchronizer;
 use App\Support\RoomOccupancyPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -69,7 +76,6 @@ class BookingAdminController extends Controller
         }
 
         $bookings = $query->paginate(15)->withQueryString();
-
         return view('admin.bookings.index', compact('bookings', 'counts'));
     }
 
@@ -81,13 +87,28 @@ class BookingAdminController extends Controller
             'payment',
             'logs',
             'bookingServices.service',
-            'surcharges',
+            'surcharges.service',
             'bookingRooms.room.roomType',
             'payments',
         ]);
         $latestPayment = $booking->payments->first();
+        $services = Service::query()->orderBy('name')->get();
 
-        return view('admin.bookings.show', compact('booking', 'latestPayment'));
+        return view('admin.bookings.show', compact('booking', 'latestPayment', 'services'));
+    }
+
+    /**
+     * Biên lai / hóa đơn tóm tắt đơn — chỉ khi đã thanh toán và đã checkout (cùng quy tắc khách).
+     */
+    public function bookingInvoice(Booking $booking)
+    {
+        if (! BookingInvoiceViewData::customerCanView($booking)) {
+            return redirect()
+                ->route('admin.bookings.show', $booking)
+                ->with('error', 'Chỉ xem biên lai khi đơn đã checkout và đã thanh toán.');
+        }
+
+        return view('admin.bookings.invoice', BookingInvoiceViewData::make($booking));
     }
 
     public function create()
@@ -219,7 +240,7 @@ class BookingAdminController extends Controller
 
         $total = 0;
         foreach ($period as $date) {
-            $priceForDate = $room->base_price;
+            $priceForDate = $room->catalogueBasePrice();
 
             foreach ($prices as $price) {
                 if ($date->betweenIncluded($price->start_date, $price->end_date)) {
@@ -323,9 +344,6 @@ class BookingAdminController extends Controller
         }
         DB::beginTransaction();
         try {
-            // Remove related booked date records first to satisfy FK constraints
-            RoomBookedDate::where('booking_id', $booking->id)->delete();
-
             $booking->delete();
 
             DB::commit();
@@ -604,9 +622,9 @@ class BookingAdminController extends Controller
                     'room_type_id' => $typeId,
                     'name' => $room->roomType->name ?? 'Không xác định',
                     'description' => $room->roomType->description ?? '',
-                    'base_price' => $room->base_price,
-                    'max_occupancy' => $room->max_guests,
-                    'adult_capacity' => $room->roomType->adult_capacity ?? $room->max_guests ?? 2,
+                    'base_price' => $room->catalogueBasePrice(),
+                    'max_occupancy' => $room->catalogueMaxGuests(),
+                    'adult_capacity' => $room->roomType->adult_capacity ?? $room->catalogueMaxGuests() ?? 2,
                     'child_capacity' => $room->roomType->child_capacity ?? 0,
                     'adult_surcharge_rate' => RoomOccupancyPricing::adultSurchargeRate($room->roomType),
                     'child_surcharge_rate' => RoomOccupancyPricing::childSurchargeRate($room->roomType),
@@ -704,7 +722,7 @@ class BookingAdminController extends Controller
                 $roomTypeId = $roomData['room_type_id'];
                 $room = Room::where('room_type_id', $roomTypeId)->where('status', 'available')->first();
 
-                $basePrice = (float) ($room?->base_price ?? 0);
+                $basePrice = (float) ($room ? $room->catalogueBasePrice() : 0);
                 $roomType = $room?->roomType;
 
                 $adults = $roomData['adults'] ?? 1;
@@ -1078,41 +1096,501 @@ class BookingAdminController extends Controller
     }
 
     /**
-     * Store Surcharge/Phiếu phát sinh
+     * Thêm dịch vụ từ danh mục (booking_services) — giá snapshot theo bảng dịch vụ, cộng vào tổng đơn.
      */
-    public function storeSurcharge(Request $request, Booking $booking)
+    public function storeBookingServices(Request $request, Booking $booking)
     {
-        $request->validate([
-            'reason' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
-        ]);
+        if ($booking->status === 'cancelled') {
+            return back()->with('error', 'Không thêm dịch vụ cho đơn đã hủy.');
+        }
+
+        $raw = $request->input('svc_items', []);
+        if (! is_array($raw)) {
+            $raw = [];
+        }
+
+        $filtered = [];
+        foreach ($raw as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $sid = $row['service_id'] ?? null;
+            $qty = (int) ($row['quantity'] ?? 0);
+            if ($sid === null || $sid === '' || $qty < 1) {
+                continue;
+            }
+            $filtered[] = [
+                'service_id' => (int) $sid,
+                'quantity' => $qty,
+            ];
+        }
+
+        if (count($filtered) === 0) {
+            return back()->with('error', 'Chọn ít nhất một dịch vụ trong danh mục (không để trống ô dịch vụ) và số lượng ≥ 1.');
+        }
+
+        if (count($filtered) > 50) {
+            return back()->with('error', 'Tối đa 50 dòng dịch vụ mỗi lần gửi.');
+        }
+
+        $validator = Validator::make(
+            ['svc_items' => $filtered],
+            [
+                'svc_items' => ['required', 'array', 'min:1'],
+                'svc_items.*.service_id' => ['required', 'integer', 'exists:services,id'],
+                'svc_items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
+            ]
+        );
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $lines = $validator->validated()['svc_items'];
+
+        if (! Schema::hasTable('booking_services')) {
+            return back()->with('error', 'Chưa có bảng booking_services trong database. Chạy: php artisan migrate.')->withInput();
+        }
 
         DB::beginTransaction();
         try {
-            $surcharge = $booking->surcharges()->create([
-                'reason' => $request->reason,
-                'amount' => $request->amount,
-            ]);
+            $totalAdded = 0.0;
+            $logParts = [];
 
-            // Update total price of the booking
-            $booking->total_price += $surcharge->amount;
+            foreach ($lines as $line) {
+                $service = Service::query()->whereKey($line['service_id'])->firstOrFail();
+                $qty = (int) $line['quantity'];
+                $unit = (float) $service->price;
+                $lineTotal = round($unit * $qty, 2);
+
+                BookingServiceRow::create([
+                    'booking_id' => $booking->id,
+                    'service_id' => $service->id,
+                    'quantity' => $qty,
+                    'price' => $unit,
+                ]);
+
+                $totalAdded += $lineTotal;
+                $logParts[] = $service->name . ' × ' . $qty . ' — ' . number_format($lineTotal, 0, ',', '.') . ' ₫';
+            }
+
+            $booking->total_price = (float) $booking->total_price + $totalAdded;
             $booking->save();
 
-            // Log
-            \App\Models\BookingLog::create([
-                'booking_id' => $booking->id,
-                'old_status' => $booking->status,
-                'new_status' => $booking->status,
-                'notes' => 'Tạo phiếu phát sinh: ' . $surcharge->reason . ' - ' . number_format($surcharge->amount) . 'đ',
-                'changed_at' => now(),
-            ]);
+            $payment = $booking->payments()->orderByDesc('id')->first();
+            if ($payment && $payment->status === 'pending') {
+                $payment->amount = (float) $payment->amount + $totalAdded;
+                $payment->save();
+            }
 
             DB::commit();
 
-            return back()->with('success', 'Đã thêm phiếu phát sinh thành công!');
+            $booking->refresh();
+            $invoiceNote = $this->syncInvoiceExtrasIfExists($booking);
+
+            $note = count($logParts) === 1
+                ? 'Thêm dịch vụ danh mục: ' . ($logParts[0] ?? '')
+                : 'Thêm ' . count($logParts) . ' dịch vụ danh mục: ' . implode(' | ', $logParts);
+
+            try {
+                \App\Models\BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $booking->status,
+                    'new_status' => $booking->status,
+                    'notes' => $note,
+                    'changed_at' => now(),
+                ]);
+            } catch (\Throwable $logErr) {
+                // Không làm mất dữ liệu đã commit
+            }
+
+            return redirect()
+                ->route('admin.bookings.show', $booking->fresh())
+                ->with('success', (count($lines) === 1
+                    ? 'Đã thêm dịch vụ từ danh mục.'
+                    : 'Đã thêm ' . count($lines) . ' dịch vụ từ danh mục.') . $invoiceNote);
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors('Có lỗi khi tạo phiếu phát sinh: ' . $e->getMessage());
+            Log::error('storeBookingServices failed', [
+                'booking_id' => $booking->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Không thêm được dịch vụ: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Một form: lưu đồng thời dịch vụ danh mục và/hoặc phụ phí (tránh mất dữ liệu khi chỉ bấm một nút).
+     */
+    public function storeBookingExtras(Request $request, Booking $booking)
+    {
+        if ($booking->status === 'cancelled') {
+            return back()->with('error', 'Không thêm dịch vụ/phụ phí cho đơn đã hủy.');
+        }
+
+        $rawSvc = $request->input('svc_items', []);
+        if (! is_array($rawSvc)) {
+            $rawSvc = [];
+        }
+        $svcFiltered = [];
+        foreach ($rawSvc as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $sid = $row['service_id'] ?? null;
+            $qty = (int) ($row['quantity'] ?? 0);
+            if ($sid === null || $sid === '' || $qty < 1) {
+                continue;
+            }
+            $svcFiltered[] = [
+                'service_id' => (int) $sid,
+                'quantity' => $qty,
+            ];
+        }
+
+        $rawItems = $request->input('items', []);
+        if (! is_array($rawItems)) {
+            $rawItems = [];
+        }
+        $surgeFiltered = [];
+        foreach ($rawItems as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $reason = trim((string) ($row['reason'] ?? ''));
+            $amount = (float) ($row['amount'] ?? 0);
+            if ($reason === '' || $amount <= 0) {
+                continue;
+            }
+            $surgeFiltered[] = $row;
+        }
+
+        if (count($svcFiltered) === 0 && count($surgeFiltered) === 0) {
+            return back()->with('error', 'Chọn ít nhất một dịch vụ danh mục hoặc điền ít nhất một dòng phụ phí (mô tả + số tiền > 0), rồi bấm Lưu.');
+        }
+
+        if (count($svcFiltered) > 50) {
+            return back()->with('error', 'Tối đa 50 dòng dịch vụ mỗi lần gửi.');
+        }
+        if (count($surgeFiltered) > 50) {
+            return back()->with('error', 'Tối đa 50 dòng phụ phí mỗi lần gửi.');
+        }
+
+        $svcLines = [];
+        if (count($svcFiltered) > 0) {
+            if (! Schema::hasTable('booking_services')) {
+                return back()->with('error', 'Chưa có bảng booking_services trong database. Chạy: php artisan migrate (hoặc bật lại migration tạo bảng dịch vụ kèm).')->withInput();
+            }
+
+            $vSvc = Validator::make(
+                ['svc_items' => $svcFiltered],
+                [
+                    'svc_items' => ['required', 'array', 'min:1'],
+                    'svc_items.*.service_id' => ['required', 'integer', 'exists:services,id'],
+                    'svc_items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
+                ],
+                [
+                    'svc_items.*.service_id.exists' => 'Dịch vụ đã chọn không tồn tại trong danh mục (hoặc đã bị xóa). Tải lại trang và chọn lại.',
+                    'svc_items.*.quantity.min' => 'Số lượng mỗi dịch vụ phải từ 1 trở lên.',
+                ]
+            );
+            if ($vSvc->fails()) {
+                return back()->withErrors($vSvc)->withInput();
+            }
+            $svcLines = $vSvc->validated()['svc_items'];
+        }
+
+        $surgeRows = [];
+        if (count($surgeFiltered) > 0) {
+            $vSur = Validator::make(
+                ['items' => $surgeFiltered],
+                [
+                    'items' => ['required', 'array', 'min:1'],
+                    'items.*.reason' => ['required', 'string', 'max:500'],
+                    'items.*.amount' => ['required', 'numeric', 'min:0.01'],
+                ],
+                [
+                    'items.*.reason.required' => 'Mỗi dòng cần có mô tả / lý do (phụ phí, bồi thường…).',
+                    'items.*.amount.min' => 'Số tiền mỗi dòng phải lớn hơn 0.',
+                ]
+            );
+            if ($vSur->fails()) {
+                return back()->withErrors($vSur)->withInput();
+            }
+            foreach ($vSur->validated()['items'] as $row) {
+                $surgeRows[] = [
+                    'reason' => trim((string) $row['reason']),
+                    'amount' => (float) $row['amount'],
+                ];
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $booking->refresh();
+
+            $totalAdded = 0.0;
+            $svcLogParts = [];
+            $surgeLogParts = [];
+
+            foreach ($svcLines as $line) {
+                $service = Service::query()->whereKey($line['service_id'])->firstOrFail();
+                $qty = (int) $line['quantity'];
+                $unit = (float) $service->price;
+                $lineTotal = round($unit * $qty, 2);
+
+                BookingServiceRow::create([
+                    'booking_id' => $booking->id,
+                    'service_id' => $service->id,
+                    'quantity' => $qty,
+                    'price' => $unit,
+                ]);
+
+                $totalAdded += $lineTotal;
+                $svcLogParts[] = $service->name . ' × ' . $qty . ' — ' . number_format($lineTotal, 0, ',', '.') . ' ₫';
+            }
+
+            foreach ($surgeRows as $row) {
+                $surcharge = $booking->surcharges()->create([
+                    'service_id' => null,
+                    'reason' => $row['reason'],
+                    'quantity' => 1,
+                    'amount' => $row['amount'],
+                ]);
+                $totalAdded += (float) $surcharge->amount;
+                $surgeLogParts[] = $surcharge->reason . ' — ' . number_format((float) $surcharge->amount, 0, ',', '.') . ' ₫';
+            }
+
+            $booking->total_price = (float) $booking->total_price + $totalAdded;
+            $booking->save();
+
+            $payment = $booking->payments()->orderByDesc('id')->first();
+            if ($payment && $payment->status === 'pending') {
+                $payment->amount = (float) $payment->amount + $totalAdded;
+                $payment->save();
+            }
+
+            DB::commit();
+
+            $booking->refresh();
+            $invoiceNote = $this->syncInvoiceExtrasIfExists($booking);
+
+            $noteBits = [];
+            if ($svcLogParts !== []) {
+                $noteBits[] = count($svcLines) === 1
+                    ? 'Thêm dịch vụ danh mục: ' . ($svcLogParts[0] ?? '')
+                    : 'Thêm ' . count($svcLines) . ' dịch vụ danh mục: ' . implode(' | ', $svcLogParts);
+            }
+            if ($surgeLogParts !== []) {
+                $c = count($surgeRows);
+                $noteBits[] = $c === 1
+                    ? 'Phụ phí: ' . ($surgeLogParts[0] ?? '')
+                    : 'Phụ phí (' . $c . ' dòng): ' . implode(' | ', $surgeLogParts);
+            }
+
+            try {
+                \App\Models\BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $booking->status,
+                    'new_status' => $booking->status,
+                    'notes' => implode(' — ', $noteBits),
+                    'changed_at' => now(),
+                ]);
+            } catch (\Throwable $logErr) {
+                //
+            }
+
+            $msgParts = [];
+            if (count($svcLines) > 0) {
+                $msgParts[] = count($svcLines) === 1 ? '1 dịch vụ danh mục' : count($svcLines) . ' dịch vụ danh mục';
+            }
+            if (count($surgeRows) > 0) {
+                $msgParts[] = count($surgeRows) === 1 ? '1 phụ phí' : count($surgeRows) . ' phụ phí';
+            }
+
+            return redirect()
+                ->route('admin.bookings.show', $booking->fresh())
+                ->with('success', 'Đã lưu: ' . implode(' và ', $msgParts) . '.' . $invoiceNote);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('storeBookingExtras failed', [
+                'booking_id' => $booking->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Không lưu được: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Phụ phí / bồi thường phát sinh (không cố định): chỉ mô tả + số tiền — không dùng danh mục dịch vụ.
+     */
+    public function storeSurcharge(Request $request, Booking $booking)
+    {
+        if ($booking->status === 'cancelled') {
+            return back()->with('error', 'Không thêm phụ phí cho đơn đã hủy.');
+        }
+
+        $rows = $this->normalizeSurchargeRows($request);
+        if ($rows instanceof \Illuminate\Http\RedirectResponse) {
+            return $rows;
+        }
+
+        DB::beginTransaction();
+        try {
+            $totalAdded = 0.0;
+            $logParts = [];
+
+            foreach ($rows as $row) {
+                $surcharge = $booking->surcharges()->create([
+                    'service_id' => null,
+                    'reason' => $row['reason'],
+                    'quantity' => 1,
+                    'amount' => $row['amount'],
+                ]);
+
+                $totalAdded += (float) $surcharge->amount;
+
+                $logParts[] = $surcharge->reason . ' — ' . number_format((float) $surcharge->amount, 0, ',', '.') . ' ₫';
+            }
+
+            $booking->total_price = (float) $booking->total_price + $totalAdded;
+            $booking->save();
+
+            $payment = $booking->payments()->orderByDesc('id')->first();
+            if ($payment && $payment->status === 'pending') {
+                $payment->amount = (float) $payment->amount + $totalAdded;
+                $payment->save();
+            }
+
+            DB::commit();
+
+            $booking->refresh();
+            $invoiceNote = $this->syncInvoiceExtrasIfExists($booking);
+
+            $count = count($rows);
+            $logNote = $count === 1
+                ? 'Phụ phí: ' . ($logParts[0] ?? '')
+                : 'Phụ phí (' . $count . ' dòng): ' . implode(' | ', $logParts);
+
+            try {
+                \App\Models\BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $booking->status,
+                    'new_status' => $booking->status,
+                    'notes' => $logNote,
+                    'changed_at' => now(),
+                ]);
+            } catch (\Throwable $logErr) {
+                //
+            }
+
+            $msg = $count === 1
+                ? 'Đã ghi nhận phụ phí.'
+                : 'Đã ghi nhận ' . $count . ' khoản phụ phí.';
+
+            return redirect()
+                ->route('admin.bookings.show', $booking->fresh())
+                ->with('success', $msg . $invoiceNote);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return back()->with('error', 'Không ghi nhận được phụ phí: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * @return list<array{reason: string, amount: float}>|\Illuminate\Http\RedirectResponse
+     */
+    private function normalizeSurchargeRows(Request $request)
+    {
+        $items = $request->input('items');
+
+        if (is_array($items) && count($items) > 0) {
+            $filtered = [];
+            foreach ($items as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $reason = trim((string) ($row['reason'] ?? ''));
+                $amount = (float) ($row['amount'] ?? 0);
+                if ($reason === '' || $amount <= 0) {
+                    continue;
+                }
+                $filtered[] = $row;
+            }
+
+            if (count($filtered) === 0) {
+                return back()->with('error', 'Điền ít nhất một dòng: mô tả phụ phí và số tiền lớn hơn 0.');
+            }
+
+            if (count($filtered) > 50) {
+                return back()->with('error', 'Tối đa 50 dòng phụ phí mỗi lần gửi.');
+            }
+
+            $validator = Validator::make(
+                ['items' => $filtered],
+                [
+                    'items' => ['required', 'array', 'min:1'],
+                    'items.*.reason' => ['required', 'string', 'max:500'],
+                    'items.*.amount' => ['required', 'numeric', 'min:0.01'],
+                ],
+                [
+                    'items.*.reason.required' => 'Mỗi dòng cần có mô tả / lý do (phụ phí, bồi thường…).',
+                    'items.*.amount.min' => 'Số tiền mỗi dòng phải lớn hơn 0.',
+                ]
+            );
+
+            if ($validator->fails()) {
+                return back()->withErrors($validator)->withInput();
+            }
+
+            /** @var list<array<string, mixed>> $clean */
+            $clean = [];
+            foreach ($validator->validated()['items'] as $row) {
+                $clean[] = [
+                    'reason' => trim((string) $row['reason']),
+                    'amount' => (float) $row['amount'],
+                ];
+            }
+
+            return $clean;
+        }
+
+        $legacy = $request->validate([
+            'reason' => 'required|string|max:500',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        return [[
+            'reason' => trim((string) $legacy['reason']),
+            'amount' => (float) $legacy['amount'],
+        ]];
+    }
+
+    /**
+     * Sau khi đơn đã commit — nếu có hóa đơn thì cập nhật dịch vụ/phụ phí trên HĐ theo đơn.
+     */
+    private function syncInvoiceExtrasIfExists(Booking $booking): string
+    {
+        $booking->loadMissing('invoice');
+        if (! $booking->invoice) {
+            return '';
+        }
+
+        try {
+            InvoiceExtrasSynchronizer::replaceExtrasFromBooking($booking->invoice);
+
+            return ' Đã cập nhật hóa đơn theo đơn.';
+        } catch (\Throwable $e) {
+            Log::warning('invoice_extras_auto_sync_failed', [
+                'booking_id' => $booking->id,
+                'invoice_id' => $booking->invoice->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return '';
         }
     }
 }

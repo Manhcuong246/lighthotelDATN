@@ -107,6 +107,7 @@
     font-weight: 600;
 }
 .booking-page .booking-status.pending { background: #fef3c7; color: #92400e; }
+.booking-page .booking-status.pending-expired { background: #e5e7eb; color: #374151; }
 .booking-page .booking-status.confirmed { background: #dbeafe; color: #1d4ed8; }
 .booking-page .booking-status.completed { background: #d1fae5; color: #047857; }
 .booking-page .booking-status.cancelled { background: #f3f4f6; color: #6b7280; }
@@ -197,12 +198,28 @@
                             @if(($b->booking_services_count ?? 0) > 0)
                             <span><i class="bi bi-bag-check"></i>{{ $b->booking_services_count }} dịch vụ kèm</span>
                             @endif
+                            @if($b->rooms->count() > 1)
+                                @php
+                                    $typeLabels = $b->rooms->map(fn ($r) => $r->roomType->name ?? $r->type)->filter()->unique()->values();
+                                @endphp
+                                @if($typeLabels->isNotEmpty())
+                                <span class="d-block mt-1 small text-secondary">
+                                    <i class="bi bi-layers me-1"></i>Loại phòng: {{ $typeLabels->implode(' · ') }}
+                                </span>
+                                @endif
+                            @endif
                         </div>
                     </div>
                     <div class="booking-side">
                         <span class="booking-price">{{ $b->total_price ? number_format($b->total_price, 0, ',', '.') . ' ₫' : '—' }}</span>
-                        <span class="booking-status {{ $b->status }}">
-                            @if($b->status === 'pending') Chờ thanh toán
+                        @php
+                            $paidRecorded = $b->isPaymentRecordedPaid();
+                            $pendingExpired = $b->status === 'pending' && ! $paidRecorded && $b->isPendingDisplayExpired();
+                        @endphp
+                        <span class="booking-status {{ $pendingExpired ? 'pending-expired' : $b->status }}">
+                            @if($pendingExpired) Hết hạn
+                            @elseif($b->status === 'pending' && ! $paidRecorded) Chờ thanh toán
+                            @elseif($b->status === 'pending' && $paidRecorded) Đã thanh toán
                             @elseif($b->status === 'confirmed') Đã thanh toán
                             @elseif($b->status === 'completed') Hoàn thành
                             @elseif($b->status === 'cancelled') Đã hủy
