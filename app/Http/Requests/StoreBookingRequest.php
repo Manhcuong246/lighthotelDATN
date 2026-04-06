@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -14,16 +16,30 @@ class StoreBookingRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (Auth::check() && Auth::user() && ! Auth::user()->canAccessAdmin()) {
+            $this->merge([
+                'email' => Auth::user()->email,
+            ]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      */
     public function rules(): array
     {
+        $emailRules = ['required', 'email', 'max:150'];
+        if (Auth::check() && Auth::user() && ! Auth::user()->canAccessAdmin()) {
+            $emailRules[] = Rule::in([Auth::user()->email]);
+        }
+
         return [
             'room_ids'       => 'required|array|min:1',
             'room_ids.*'     => 'required|integer|exists:rooms,id',
             'full_name'      => 'required|string|max:150|min:2',
-            'email'          => 'required|email|max:150',
+            'email'          => $emailRules,
             'phone'          => 'required|string|min:10|max:20|regex:/^[0-9\+\-\s]+$/',
             'check_in'       => 'required|date|after_or_equal:today',
             'check_out'      => 'required|date|after:check_in',

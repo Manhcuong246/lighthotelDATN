@@ -176,14 +176,6 @@ class AccountController extends Controller
 
         $booking->update(['status' => 'cancel_requested']);
 
-        // Send Email to Admin (Giả sử admin email là info@lighthotel.com hoặc lấy từ config)
-        try {
-            \Illuminate\Support\Facades\Mail::to('admin@lighthotel.com')->send(new \App\Mail\RefundRequestedMail($refundRequest));
-        } catch (\Exception $e) {
-            // Log error but don't stop the process
-            \Illuminate\Support\Facades\Log::error('Mail error: ' . $e->getMessage());
-        }
-
         // Log
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,

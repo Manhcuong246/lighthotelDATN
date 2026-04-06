@@ -19,8 +19,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app['router']->aliasMiddleware('admin', \App\Http\Middleware\AdminMiddleware::class);
         $this->app['router']->aliasMiddleware('admin.only', \App\Http\Middleware\AdminOnlyMiddleware::class);
 
-        View::composer('layouts.app', function ($view) {
-            $view->with('hotelInfo', HotelInfo::first());
-        });
+        View::composer(
+            ['layouts.app', 'pages.*'],
+            function ($view) {
+                $view->with('hotelInfo', once(fn () => HotelInfo::first()));
+            }
+        );
     }
 }

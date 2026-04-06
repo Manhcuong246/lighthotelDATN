@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Image;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Support\RoomImageStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -185,13 +186,13 @@ class RoomAdminController extends Controller
             return;
         }
 
-        Storage::disk('public')->makeDirectory('rooms');
+        RoomImageStorage::ensureDirectories();
 
         foreach ($files as $file) {
             if (! $file->isValid()) {
                 continue;
             }
-            $path = $file->store('rooms', 'public');
+            $path = $file->store(RoomImageStorage::roomsDir(), 'public');
             Image::create([
                 'room_id' => $room->id,
                 'image_url' => $path,

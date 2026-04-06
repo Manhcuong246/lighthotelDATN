@@ -677,6 +677,26 @@
         }
         .bk-search-btn:hover { background: #005fa3; }
 
+        .bk-search-stack {
+            border: 3px solid #febb02;
+            border-radius: 8px;
+            overflow: visible;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            background: #fff;
+        }
+        .bk-search-bar.bk-search-bar--in-stack {
+            border: none;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        .bk-filter-row {
+            padding: 10px 12px 14px;
+            border-top: 1px solid #e8e8e8;
+            background: #fafafa;
+        }
+        .bk-filter-row .form-select,
+        .bk-filter-row .btn { font-size: 0.875rem; }
+
         /* Guest popup */
         .guest-popup {
             display: none;
@@ -726,6 +746,258 @@
             .bk-search-btn { border-radius: 0 0 5px 5px; padding: 14px; }
             .bk-seg-dates, .bk-seg-guests, .bk-seg-dest { flex: none; width: 100%; }
         }
+
+        /* ----- Inner pages: full-bleed hero from .container ----- */
+        main.container .lh-breakout {
+            width: 100vw;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+            max-width: 100vw;
+        }
+        .lh-page-hero {
+            position: relative;
+            padding: clamp(2.5rem, 6vw, 4rem) 0 clamp(2rem, 4vw, 3rem);
+            background: linear-gradient(135deg, #0c1222 0%, #1e3a8a 45%, #1d4ed8 100%);
+            overflow: hidden;
+        }
+        .lh-page-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 20%, rgba(56, 189, 248, 0.25), transparent 50%),
+                radial-gradient(ellipse 60% 50% at 85% 80%, rgba(251, 191, 36, 0.12), transparent 45%);
+            pointer-events: none;
+        }
+        .lh-page-hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .lh-page-hero-inner { position: relative; z-index: 1; }
+        .lh-page-hero h1 {
+            color: #fff;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            font-size: clamp(1.75rem, 4vw, 2.35rem);
+            line-height: 1.15;
+        }
+        .lh-page-hero .lh-page-lead {
+            color: rgba(255,255,255,0.78);
+            font-size: 1.05rem;
+            max-width: 36rem;
+            margin-bottom: 0;
+        }
+        .lh-breadcrumb {
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .lh-breadcrumb a {
+            color: rgba(255,255,255,0.55);
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .lh-breadcrumb a:hover { color: #fff; }
+        .lh-breadcrumb .active { color: rgba(255,255,255,0.95); font-weight: 600; }
+
+        .lh-page-body { padding-bottom: 3rem; }
+        .lh-glass-card {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.65);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+        }
+        .lh-contact-tile {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem 1.35rem;
+            border-radius: 16px;
+            background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            height: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .lh-contact-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(30, 64, 175, 0.1);
+        }
+        .lh-contact-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .lh-contact-tile a { color: #1d4ed8; font-weight: 600; text-decoration: none; }
+        .lh-contact-tile a:hover { text-decoration: underline; }
+
+        .lh-faq-accordion .accordion-item {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 16px !important;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+            background: #fff;
+        }
+        .lh-faq-accordion .accordion-button {
+            font-weight: 600;
+            font-size: 0.98rem;
+            padding: 1.1rem 1.25rem;
+            box-shadow: none !important;
+            background: #fff;
+            color: #0f172a;
+        }
+        .lh-faq-accordion .accordion-button:not(.collapsed) {
+            background: linear-gradient(90deg, #eff6ff, #fff);
+            color: #1d4ed8;
+        }
+        .lh-faq-accordion .accordion-body {
+            padding: 0 1.25rem 1.25rem;
+            color: #475569;
+            font-size: 0.95rem;
+            line-height: 1.65;
+        }
+
+        .lh-policy-toc {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .lh-policy-toc a {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.45rem 1rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #eff6ff;
+            color: #1d4ed8;
+            text-decoration: none;
+            border: 1px solid #bfdbfe;
+            transition: background 0.15s, transform 0.15s;
+        }
+        .lh-policy-toc a:hover {
+            background: #dbeafe;
+            transform: translateY(-1px);
+        }
+        .lh-policy-toc a.lh-policy-toc-muted {
+            background: #f8fafc;
+            color: #475569 !important;
+            border-color: #e2e8f0;
+        }
+        .lh-policy-toc a.lh-policy-toc-muted:hover {
+            background: #f1f5f9;
+        }
+        .lh-policy-section {
+            padding: 1.5rem 1.75rem;
+            border-radius: 16px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 1.25rem;
+        }
+        .lh-policy-section h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e0e7ff;
+        }
+        .lh-policy-section p {
+            color: #475569;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 0.75rem;
+        }
+        .lh-policy-section p:last-child { margin-bottom: 0; }
+
+        /* Home: hero polish */
+        .lh-hero-mesh {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 15% 30%, rgba(56, 189, 248, 0.22), transparent 55%),
+                radial-gradient(ellipse 50% 40% at 90% 70%, rgba(251, 191, 36, 0.15), transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .lh-hero-feature-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+        .lh-hero-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 1rem;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.95);
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(8px);
+        }
+        .lh-home-content-wrap {
+            position: relative;
+            z-index: 2;
+            margin-top: -28px;
+            padding-top: 2.5rem;
+            background: linear-gradient(180deg, #eef2ff 0%, #f5f7fb 10%, #f5f7fb 100%);
+            border-radius: 28px 28px 0 0;
+            box-shadow: 0 -16px 48px rgba(15, 23, 42, 0.07);
+        }
+        .lh-section-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 1rem;
+            margin-bottom: 1.75rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .bk-search-stack {
+            border: 2px solid rgba(255,255,255,0.35);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.22);
+            background: rgba(255,255,255,0.98);
+        }
+        .bk-search-bar.bk-search-bar--in-stack {
+            border-radius: 0;
+        }
+        .bk-search-bar {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .bk-search-btn {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-radius: 0 !important;
+        }
+        .bk-search-btn:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+        }
+        .bk-filter-row {
+            background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+            border-top: 1px solid #e2e8f0;
+        }
+        .navbar .nav-link.active {
+            color: #fbbf24 !important;
+        }
     </style>
     @stack('styles')
     <script type="module" src="https://unpkg.com/deep-chat@2.4.2/dist/deepChat.bundle.js"></script>
@@ -744,6 +1016,15 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                <li class="nav-item">
+                    <a class="nav-link fw-medium {{ request()->routeIs('pages.contact') ? 'active' : '' }}" href="{{ route('pages.contact') }}">Liên hệ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-medium {{ request()->routeIs('pages.help') ? 'active' : '' }}" href="{{ route('pages.help') }}">Trợ giúp</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-medium {{ request()->routeIs('pages.policy') ? 'active' : '' }}" href="{{ route('pages.policy') }}">Chính sách</a>
+                </li>
                 @auth
                     @if(auth()->user()->canAccessAdmin())
                     <li class="nav-item">

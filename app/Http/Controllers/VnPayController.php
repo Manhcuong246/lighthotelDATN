@@ -15,6 +15,39 @@ class VnPayController extends Controller
         protected VnPayService $vnPayService
     ) {}
 
+    /**
+     * Khách bấm link có chữ ký trong email → tại đây mới tạo URL VNPay (ExpireDate tính từ lúc bấm).
+     */
+    public function pay(Request $request, Booking $booking)
+    {
+        $payment = Payment::where('booking_id', $booking->id)
+            ->where('method', 'vnpay')
+            ->where('status', 'pending')
+            ->first();
+
+        // payment_method phải khớp vnpay nếu đã lưu; null = đơn cũ trước khi có cột/fillable
+        $methodMismatch = $booking->payment_method !== null && $booking->payment_method !== 'vnpay';
+        if (! $payment || $methodMismatch) {
+            return redirect()->route('home')
+                ->withErrors('Liên kết thanh toán không hợp lệ hoặc đơn đã được xử lý.');
+        }
+
+        $txnRef = 'LIGHT'.$booking->id;
+        $amountVnd = (int) round($booking->total_price);
+        $orderInfo = 'Dat phong Light Hotel #'.$booking->id;
+        $paymentUrl = $this->vnPayService->createPaymentUrl(
+            $txnRef,
+            $amountVnd,
+            $orderInfo,
+            route('payment.vnpay.return'),
+            $request->ip() ?: config('vnpay.server_ip', '127.0.0.1'),
+            'vn',
+            null
+        );
+
+        return redirect()->away($paymentUrl);
+    }
+
     public function return(Request $request)
     {
         $inputData = [];
@@ -68,7 +101,10 @@ class VnPayController extends Controller
                     'paid_at' => now(),
                 ]);
 
-                $booking->update(['status' => 'confirmed']);
+                $booking->update([
+                    'status' => 'confirmed',
+                    'payment_status' => 'paid',
+                ]);
 
                 DB::commit();
 

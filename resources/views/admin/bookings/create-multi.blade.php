@@ -119,6 +119,12 @@
                                         🏦 Chuyển khoản
                                     </label>
                                 </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="payment_vnpay" value="vnpay" onchange="togglePaymentMethod()">
+                                    <label class="form-check-label" for="payment_vnpay">
+                                        💳 VNPay (email SMTP + link có chữ ký)
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
@@ -154,6 +160,11 @@
                             <p class="mb-0 text-danger"><strong>Nội dung CK:</strong> <span id="transferContent">BOOKING_<span id="bookingIdPlaceholder">[ID]</span></span></p>
                             <hr class="my-2">
                             <p class="mb-0 small text-muted">Sau khi tạo đơn, bạn sẽ được chuyển đến trang hướng dẫn chuyển khoản.</p>
+                        </div>
+
+                        <div id="vnpayInfo" class="alert alert-primary mb-0" style="display: none;">
+                            <h6 class="alert-heading fw-bold mb-2">Thanh toán VNPay</h6>
+                            <p class="small mb-0">Sau khi tạo đơn, hệ thống gửi email cho khách (nếu đã cấu hình SMTP) kèm link có chữ ký. Thời hạn ~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút trên VNPay tính từ lúc khách <strong>bấm link</strong> trong email. Trang hướng dẫn admin cũng hiển thị cùng link để sao chép.</p>
                         </div>
                     </div>
                 </div>
@@ -756,15 +767,27 @@ function formatMoney(amount) {
 function togglePaymentMethod() {
     const isCash = document.getElementById('payment_cash').checked;
     const isBank = document.getElementById('payment_bank').checked;
+    const isVnpay = document.getElementById('payment_vnpay').checked;
 
-    if (isCash) {
-        document.getElementById('cashPaymentStatus').style.display = 'block';
-        document.getElementById('bankTransferInfo').style.display = 'none';
+    const cashStatus = document.getElementById('cashPaymentStatus');
+    const bankInfo = document.getElementById('bankTransferInfo');
+    const vnpayInfo = document.getElementById('vnpayInfo');
+
+    if (isVnpay) {
+        cashStatus.style.display = 'none';
+        document.getElementById('cashAmountDiv').style.display = 'none';
+        bankInfo.style.display = 'none';
+        vnpayInfo.style.display = 'block';
+    } else if (isCash) {
+        vnpayInfo.style.display = 'none';
+        cashStatus.style.display = 'block';
+        bankInfo.style.display = 'none';
         toggleCashAmount();
     } else if (isBank) {
-        document.getElementById('cashPaymentStatus').style.display = 'none';
+        vnpayInfo.style.display = 'none';
+        cashStatus.style.display = 'none';
         document.getElementById('cashAmountDiv').style.display = 'none';
-        document.getElementById('bankTransferInfo').style.display = 'block';
+        bankInfo.style.display = 'block';
     }
 }
 

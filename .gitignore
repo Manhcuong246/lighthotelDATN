@@ -23,6 +23,8 @@
 /storage/framework/cache/*
 /storage/logs/*.log
 /storage/app/public/rooms/*
+/storage/app/public/room_images/*
+!/storage/app/public/room_images/.gitkeep
 /vendor
 Homestead.json
 Homestead.yaml

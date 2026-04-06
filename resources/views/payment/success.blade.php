@@ -40,10 +40,13 @@
                 </div>
                 @endif
                 <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    @if(!empty($signedBookingViewUrl))
+                        <a href="{{ $signedBookingViewUrl }}" class="btn btn-primary">Xem chi tiết đơn (không cần đăng nhập)</a>
+                    @endif
                     @auth
-                    <a href="{{ route('account.bookings') }}" class="btn btn-primary">Xem lịch đặt phòng</a>
+                    <a href="{{ route('account.bookings') }}" class="btn {{ !empty($signedBookingViewUrl) ? 'btn-outline-primary' : 'btn-primary' }}">Đơn của tôi (tài khoản)</a>
                     @else
-                    <a href="{{ route('login') }}" class="btn btn-primary">Đăng nhập để xem đơn hàng</a>
+                    <a href="{{ route('login') }}" class="btn btn-outline-secondary">Đăng nhập / đăng ký</a>
                     @endauth
                     <a href="{{ route('home') }}" class="btn btn-outline-secondary">Về trang chủ</a>
                 </div>

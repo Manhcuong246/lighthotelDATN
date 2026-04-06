@@ -19,9 +19,10 @@ class VnPayService
         $vnpTmnCode = config('vnpay.tmn_code');
         $vnpHashSecret = config('vnpay.hash_secret');
 
-        // Thời gian tính từ lúc bấm đặt phòng (khi URL được tạo)
+        // vnp_CreateDate / vnp_ExpireDate gắn với lần gọi hàm này (khi redirect sang VNPay sau khi khách bấm link).
         $createDate = Carbon::now('Asia/Ho_Chi_Minh');
-        $expireDate = $createDate->copy()->addMinutes(15);
+        $expireMinutes = max(5, (int) config('vnpay.transaction_expire_minutes', 15));
+        $expireDate = $createDate->copy()->addMinutes($expireMinutes);
 
         $inputData = [
             'vnp_Version' => '2.1.0',
