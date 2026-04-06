@@ -20,7 +20,9 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
+use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
+
 
 
 // Serve storage files (fallback when symlink fails or PHP built-in server)
@@ -151,6 +153,15 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
 
       // ====== QUẢN LÝ LOẠI PHÒNG ======
 Route::prefix('roomtypes')->name('roomtypes.')->group(function () {
+    // ====== QUẢN LÝ DỊCH VỤ ======
+Route::prefix('services')->name('services.')->group(function () {
+    Route::get('/', [ServiceController::class, 'index'])->name('index');
+    Route::get('/create', [ServiceController::class, 'create'])->name('create');
+    Route::post('/', [ServiceController::class, 'store'])->name('store');
+    Route::get('/{id}/edit', [ServiceController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [ServiceController::class, 'update'])->name('update');
+    Route::delete('/{id}', [ServiceController::class, 'destroy'])->name('destroy');
+});
     Route::get('/', [RoomTypeController::class, 'index'])->name('index');
     Route::get('/create', [RoomTypeController::class, 'create'])->name('create');
     Route::post('/', [RoomTypeController::class, 'store'])->name('store');
