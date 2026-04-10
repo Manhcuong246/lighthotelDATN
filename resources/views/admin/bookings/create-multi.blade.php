@@ -1,21 +1,28 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="fw-bold mb-0">🛎️ Tạo Đặt Phòng Nhiều Phòng</h4>
-        <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
+<div class="container-fluid px-3 px-lg-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Tạo đặt phòng nhiều phòng</h1>
+            <div class="text-muted small">Chọn ngày, chọn số lượng phòng theo loại, nhập thông tin khách và phương thức thanh toán.</div>
+        </div>
+        <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon rounded-2" title="Quay lại">
+            <i class="bi bi-arrow-left"></i>
+        </a>
     </div>
 
     @if(session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
+        <div class="alert alert-danger rounded-3">{{ session('error') }}</div>
     @endif
 
     <!-- Step 1: Chọn Ngày -->
     <div class="card shadow-sm border-0 rounded-3 mb-4" id="step1">
-        <div class="card-header bg-gradient rounded-top-3">
-            <h5 class="mb-0 fw-bold">📅 Bước 1: Chọn Ngày Đặt Phòng</h5>
+        <div class="card-header bg-white border-0 rounded-top-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <h2 class="h6 mb-0 fw-bold">Bước 1: Chọn ngày</h2>
+                <span class="badge bg-light text-muted border">Bắt buộc</span>
+            </div>
         </div>
         <div class="card-body">
             <div class="row g-3">
@@ -28,8 +35,9 @@
                     <input type="date" class="form-control" id="check_out">
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
-                    <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center btn-admin-icon" title="Tìm phòng trống" onclick="checkAvailability()">
+                    <button type="button" class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2" onclick="checkAvailability()">
                         <i class="bi bi-search"></i>
+                        <span>Tìm phòng trống</span>
                     </button>
                 </div>
             </div>
@@ -44,8 +52,11 @@
 
         <!-- Danh sách phòng trống -->
         <div class="card shadow-sm border-0 rounded-3 mb-4">
-            <div class="card-header bg-gradient rounded-top-3">
-                <h5 class="mb-0 fw-bold">🏨 Bước 2: Chọn Loại Phòng và Số Lượng</h5>
+            <div class="card-header bg-white border-0 rounded-top-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h2 class="h6 mb-0 fw-bold">Bước 2: Chọn phòng</h2>
+                    <span class="badge bg-light text-muted border">Theo loại phòng</span>
+                </div>
             </div>
             <div class="card-body p-3">
                 <div id="availableRooms" class="d-flex flex-column">
@@ -56,8 +67,8 @@
 
         <!-- Thông tin khách hàng -->
         <div class="card shadow-sm border-0 rounded-3 mb-4">
-            <div class="card-header bg-gradient rounded-top-3">
-                <h5 class="mb-0 fw-bold">👤 Thông Tin Khách Hàng</h5>
+            <div class="card-header bg-white border-0 rounded-top-3">
+                <h2 class="h6 mb-0 fw-bold">Thông tin khách hàng</h2>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -81,14 +92,15 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="card shadow-sm border-0 rounded-3 mb-4">
-                    <div class="card-header bg-gradient rounded-top-3">
-                        <h5 class="mb-0 fw-bold">🎟️ Mã Giảm Giá</h5>
+                    <div class="card-header bg-white border-0 rounded-top-3">
+                        <h2 class="h6 mb-0 fw-bold">Mã giảm giá</h2>
                     </div>
                     <div class="card-body">
                         <div class="input-group">
                             <input type="text" name="coupon_code" id="coupon_code" class="form-control" placeholder="Nhập mã giảm giá">
-                            <button type="button" class="btn btn-outline-primary btn-admin-icon" title="Áp dụng mã" onclick="applyCoupon()">
+                            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" onclick="applyCoupon()">
                                 <i class="bi bi-ticket-perforated"></i>
+                                <span>Áp dụng</span>
                             </button>
                         </div>
                         <div id="couponMessage" class="mt-2 small"></div>
@@ -97,8 +109,8 @@
             </div>
             <div class="col-md-6">
                 <div class="card shadow-sm border-0 rounded-3 mb-4">
-                    <div class="card-header bg-gradient rounded-top-3">
-                        <h5 class="mb-0 fw-bold">💳 Thanh Toán</h5>
+                    <div class="card-header bg-white border-0 rounded-top-3">
+                        <h2 class="h6 mb-0 fw-bold">Thanh toán</h2>
                     </div>
                     <div class="card-body">
                         <!-- Payment Method Radio -->
@@ -108,13 +120,13 @@
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="payment_method" id="payment_cash" value="cash" checked onchange="togglePaymentMethod()">
                                     <label class="form-check-label" for="payment_cash">
-                                        💵 Tiền mặt
+                                        Tiền mặt
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="payment_method" id="payment_vnpay" value="vnpay" onchange="togglePaymentMethod()">
                                     <label class="form-check-label" for="payment_vnpay">
-                                        💳 VNPay (email SMTP + link có chữ ký)
+                                        VNPay (email SMTP + link có chữ ký)
                                     </label>
                                 </div>
                             </div>
@@ -137,8 +149,8 @@
                             <small class="text-muted">Nhập số tiền đã thu từ khách</small>
                         </div>
 
-                        <div id="vnpayInfo" class="alert alert-primary mb-0" style="display: none;">
-                            <h6 class="alert-heading fw-bold mb-2">Thanh toán VNPay</h6>
+                        <div id="vnpayInfo" class="alert alert-primary mb-0 small" style="display: none;">
+                            <div class="fw-bold mb-1">Thanh toán VNPay</div>
                             <p class="small mb-0">Sau khi tạo đơn, hệ thống gửi email cho khách (nếu đã cấu hình SMTP) kèm link có chữ ký. Thời hạn ~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút trên VNPay tính từ lúc khách <strong>bấm link</strong> trong email. Trang hướng dẫn admin cũng hiển thị cùng link để sao chép.</p>
                         </div>
                     </div>
@@ -167,8 +179,9 @@
                         <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
                     </div>
                     <div class="col-md-4 text-end">
-                        <button type="submit" class="btn btn-success btn-lg px-4 d-inline-flex align-items-center justify-content-center gap-0 btn-admin-icon" style="width: auto; min-width: 3rem; min-height: 3rem;" title="Xác nhận đặt phòng">
-                            <i class="bi bi-check2-circle fs-4"></i>
+                        <button type="submit" class="btn btn-success btn-lg px-4 d-inline-flex align-items-center justify-content-center gap-2">
+                            <i class="bi bi-check2-circle"></i>
+                            <span>Tạo đặt phòng</span>
                         </button>
                     </div>
                 </div>
@@ -178,15 +191,14 @@
 </div>
 
 <style>
-.bg-gradient { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
-.room-card { transition: all 0.3s; border: 2px solid #dee2e6; }
-.room-card:hover { border-color: #0d6efd; transform: translateY(-2px); }
-.room-card.selected { border-color: #198754; background: #f8fff9; }
-.room-image { height: 150px; object-fit: cover; border-radius: 8px; }
+    .room-card { transition: all 0.2s ease; border: 2px solid #dee2e6; }
+    .room-card:hover { border-color: #0d6efd; transform: translateY(-1px); }
+    .room-card.selected { border-color: #198754; background: #f8fff9; }
 </style>
 
 <script>
 const __BP = @json(config('booking.pricing'));
+/** Đồng bộ App\Support\RoomOccupancyPricing */
 function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate) {
     const stdCap = Number(__BP.standard_capacity) || 3;
     const maxCap = Number(__BP.max_capacity) || 6;
@@ -219,12 +231,12 @@ function checkAvailability() {
     const checkOut = document.getElementById('check_out').value;
 
     if (!checkIn || !checkOut) {
-        alert('Vui lòng chọn ngày nhận và trả phòng');
+        alert('Vui lòng chọn ngày nhận và trả phòng.');
         return;
     }
 
     if (checkOut <= checkIn) {
-        alert('Ngày trả phòng phải sau ngày nhận phòng');
+        alert('Ngày trả phòng phải sau ngày nhận phòng.');
         return;
     }
 
@@ -247,9 +259,7 @@ function checkAvailability() {
             return r.json();
         })
         .then(data => {
-            console.log('API Response:', data); // Debug log
             availableRoomsData = data.rooms;
-            console.log('Rooms:', availableRoomsData); // Debug log
             renderAvailableRooms(data.rooms);
         })
         .catch(err => {
@@ -291,11 +301,6 @@ function renderAvailableRooms(rooms) {
                         <div class="text-muted small mb-1">
                             <i class="bi bi-aspect-ratio me-1"></i>${roomType.area || 30} m² ·
                             <i class="bi bi-people me-1"></i>Tiêu chuẩn 3 người (NL + trẻ 6–11 + trẻ 0–5 đều tính sức chứa); từ người thứ 4 tính phụ thu NL/trẻ 6–11; trẻ 0–5 miễn phụ thu · Tối đa 6 người · Tối đa 3 trẻ 0–5
-                        </div>
-                        <div class="mb-1">
-                            <span class="badge bg-light text-dark border-0 rounded-pill px-2 py-1 me-1 small"><i class="bi bi-wifi me-1"></i>Wi-Fi</span>
-                            <span class="badge bg-light text-dark border-0 rounded-pill px-2 py-1 me-1 small"><i class="bi bi-snow me-1"></i>AC</span>
-                            <span class="badge bg-light text-dark border-0 rounded-pill px-2 py-1 small"><i class="bi bi-tv me-1"></i>TV</span>
                         </div>
                         <p class="text-muted small mb-0" style="font-size: 0.85rem;">${roomType.description ? roomType.description.substring(0, 80) + '...' : 'Phòng tiêu chuẩn với đầy đủ tiện nghi'}</p>
                     </div>
@@ -535,12 +540,12 @@ function updateRoomPriceDetails(roomTypeId, roomIndex, adults, children05, child
 
     const feeDisplay = document.getElementById(`feeDisplay_${roomTypeId}_${roomIndex}`);
     if (feeDisplay) {
-        let feeHtml = '';
+        let feeHtml = `<div class="text-muted small mb-1">Tổng khách trong phòng: <strong>${br.effective}</strong> (NL: ${adults}, trẻ 6–11: ${children611}, trẻ 0–5: ${children05}). Tiêu chuẩn: <strong>${br.stdCap}</strong>, tối đa: <strong>${br.maxCap}</strong>. Trẻ 0–5 tối đa: <strong>${br.maxC05}</strong>.</div>`;
         if (br.adultFee > 0) {
-            feeHtml += `<div class="text-danger small">Phụ thu NL thêm (${br.extraAdults} người): +${formatMoney(br.adultFee)}/đêm</div>`;
+            feeHtml += `<div class="text-danger small">Phụ thu NL vượt TC (${br.extraAdults} người): +${formatMoney(br.adultFee)}/đêm</div>`;
         }
         if (br.childFee > 0) {
-            feeHtml += `<div class="text-danger small">Phụ thu trẻ 6–11 thêm (${br.extraChildren} em): +${formatMoney(br.childFee)}/đêm</div>`;
+            feeHtml += `<div class="text-danger small">Phụ thu trẻ 6–11 vượt TC (${br.extraChildren} em): +${formatMoney(br.childFee)}/đêm</div>`;
         }
         feeDisplay.innerHTML = feeHtml;
     }
@@ -611,11 +616,6 @@ function calculateTotal() {
     let subtotal = 0;
     let extraFeesTotal = 0;
 
-    console.log('=== CALCULATE TOTAL ===');
-    console.log('selectedRooms:', selectedRooms);
-    console.log('availableRoomsData:', availableRoomsData);
-    console.log('nights:', nights);
-
     // Build room summary HTML
     let roomSummaryHtml = '';
 
@@ -648,8 +648,8 @@ function calculateTotal() {
                     <div class="small text-muted">
                         ${nights} đêm x ${formatMoney(roomPricePerNight)}
                     </div>
-                    ${br.adultFee > 0 ? `<div class="text-danger small">Phụ thu NL thêm (${br.extraAdults}): +${formatMoney(br.adultFee * nights)}</div>` : ''}
-                    ${br.childFee > 0 ? `<div class="text-danger small">Phụ thu trẻ 6–11 thêm (${br.extraChildren}): +${formatMoney(br.childFee * nights)}</div>` : ''}
+                    ${br.adultFee > 0 ? `<div class="text-danger small">Phụ thu NL vượt TC (${br.extraAdults}): +${formatMoney(br.adultFee * nights)}</div>` : ''}
+                    ${br.childFee > 0 ? `<div class="text-danger small">Phụ thu trẻ 6–11 vượt TC (${br.extraChildren} em): +${formatMoney(br.childFee * nights)}</div>` : ''}
                 </div>
             `;
 
@@ -658,9 +658,6 @@ function calculateTotal() {
             roomData.price_per_night = roomPricePerNight;
         });
     });
-
-    console.log('Final subtotal:', subtotal);
-    console.log('Final extraFeesTotal:', extraFeesTotal);
 
     // Update room summary display if container exists
     const roomSummaryContainer = document.getElementById('roomSummaryContainer');
@@ -673,8 +670,6 @@ function calculateTotal() {
     // Apply discount
     const discount = parseFloat(document.getElementById('discount_amount_input').value) || 0;
     const total = Math.max(0, subtotal - discount);
-
-    console.log('Discount:', discount, 'Total:', total);
 
     document.getElementById('totalAmount').textContent = formatMoney(total);
     document.getElementById('total_price_input').value = total;
@@ -809,7 +804,7 @@ document.getElementById('bookingForm').addEventListener('submit', function(e) {
 
     if (Object.keys(selectedRooms).length === 0) {
         e.preventDefault();
-        alert('Vui lòng chọn ít nhất một phòng');
+        alert('Vui lòng chọn ít nhất một phòng.');
         return false;
     }
 });
