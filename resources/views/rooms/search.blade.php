@@ -519,8 +519,9 @@
                                         <ul class="rate-benefit">
                                             <li><i class="bi bi-check-lg"></i> Bao gồm ăn sáng</li>
                                             <li>
-                                                <i class="bi bi-check-lg"></i> Tối đa 3 khách/phòng
-                                                <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" title="Tiêu chuẩn 3 người (tính cả trẻ 0–5). Từ người thứ 4: phụ thu NL 25%, trẻ 6–11 12.5% giá phòng/đêm. Trẻ 0–5 miễn phụ thu nhưng tính sức chứa (tối đa 3 bé). Tối đa 6 người/phòng."></i>
+                                                <i class="bi bi-check-lg"></i> Tối đa {{ (int) ($type->capacity ?? 6) }} khách/phòng
+                                                <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top"
+                                                   title="Tiêu chuẩn {{ (int) ($type->standard_capacity ?? 3) }} người (tính cả trẻ 0–5). Vượt tiêu chuẩn: tính phụ phí NL/trẻ 6–11 theo % giá phòng/đêm. Trẻ 0–5 miễn phụ thu nhưng tính sức chứa (tối đa {{ (int) config('booking.pricing.max_children_05', 3) }} bé). Tối đa {{ (int) ($type->capacity ?? 6) }} người/phòng."></i>
                                             </li>
                                             <li><i class="bi bi-check-lg"></i> Không hoàn phí khi hủy</li>
                                         </ul>
@@ -537,7 +538,8 @@
                                             @for($i = 0; $i < ($type->child_capacity ?? 0); $i++)
                                                 <i class="bi bi-person-fill fs-6" style="opacity: 0.6;"></i>
                                             @endfor
-                                            <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" title="TC 3 · Tối đa 6 (tính cả trẻ 0–5). Trẻ 0–5 miễn phụ thu. Vượt 3 người → phụ thu NL/trẻ 6–11."></i>
+                                            <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top"
+                                               title="TC {{ (int) ($type->standard_capacity ?? 3) }} · Tối đa {{ (int) ($type->capacity ?? 6) }} (tính cả trẻ 0–5). Trẻ 0–5 miễn phụ thu. Vượt TC → phụ thu NL/trẻ 6–11."></i>
                                         </div>
                                     </td>
                                     <td>
@@ -551,7 +553,8 @@
                                                 data-type-id="{{ $type->id }}"
                                                 data-type-name="{{ $type->name }}"
                                                 data-price="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->catalogueBasePrice() : 0 }}"
-                                                data-max-guests="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->catalogueMaxGuests() : 6 }}"
+                                                data-max-guests="{{ (int) ($type->capacity ?? ($type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->catalogueMaxGuests() : 6)) }}"
+                                                data-standard-guests="{{ (int) ($type->standard_capacity ?? 3) }}"
                                                 data-adult-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::adultSurchargeRate($type) }}"
                                                 data-child-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::childSurchargeRate($type) }}"
                                                 data-room-ids="{{ json_encode($type->available_rooms->pluck('id')->toArray()) }}">
@@ -766,14 +769,14 @@ const __BP = @json(config('booking.pricing'));
  * Trẻ 0–5 chiếm slot tiêu chuẩn (miễn phí), slot còn lại cho NL + trẻ 6–11
  * Phụ phí = % giá phòng/đêm cho NL / trẻ 6–11 vượt slot
  */
-function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate) {
-    const stdCap = Number(__BP.standard_capacity) || 3;
-    const maxCap = Number(__BP.max_capacity) || 6;
+function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, stdCap, maxCap) {
+    const _stdCap = Number(stdCap ?? __BP.standard_capacity) || 3;
+    const _maxCap = Number(maxCap ?? __BP.max_capacity) || 6;
     const maxC05 = Number(__BP.max_children_05) || 3;
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
     const total = adults + c611 + c05;
-    const billableSlots = Math.max(0, stdCap - c05);
+    const billableSlots = Math.max(0, _stdCap - c05);
     const extraAdults = Math.max(0, adults - billableSlots);
     const remainingSlots = Math.max(0, billableSlots - adults);
     const extraChildren = Math.max(0, c611 - remainingSlots);
@@ -781,7 +784,7 @@ function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate) {
     const childFee = extraChildren * cRate * base;
     const surcharge = adultFee + childFee;
     const perNight = base + surcharge;
-    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap, maxCap, maxC05, allowed: total <= maxCap && c05 <= maxC05 };
+    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05, allowed: total <= _maxCap && c05 <= maxC05 };
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -919,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="guest-selector-card">
                                     <div class="guest-selector-title">
                                         <span>Phòng ${i}</span>
-                                        <span class="text-muted small">Tiêu chuẩn 3 người (tính cả trẻ 0–5); trẻ 0–5 miễn phí nhưng tính sức chứa</span>
+                                        <span class="text-muted small">Tiêu chuẩn ${select.dataset.standardGuests || 3} người (tính cả trẻ 0–5); trẻ 0–5 miễn phí nhưng tính sức chứa</span>
                                     </div>
                                     <div class="row g-2">
                                         <div class="col-4">
@@ -970,7 +973,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     const c05 = parseInt(child05Arr[i].value || 0);
                     const c611 = parseInt(child611Arr[i].value || 0);
 
-                    const br = bookingPriceBreakdown(basePrice, adults, c05, c611, adultSurchargeRate, childSurchargeRate);
+                    const stdGuests = parseInt(select.getAttribute('data-standard-guests') || '3');
+                    const maxGuests = parseInt(select.getAttribute('data-max-guests') || '6');
+                    const br = bookingPriceBreakdown(basePrice, adults, c05, c611, adultSurchargeRate, childSurchargeRate, stdGuests, maxGuests);
 
                     if (!br.allowed) {
                         typeLimitExceeded = true;
