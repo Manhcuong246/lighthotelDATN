@@ -87,23 +87,23 @@
     </div>
 
     <!-- Charts and Tables Row -->
-    <div class="row g-3 g-md-4">
+    <div class="row g-3 g-md-4 align-items-stretch">
         <div class="col-12 col-md-6 col-xl-6">
-            <div class="card card-admin">
-                <div class="card-body p-3 p-md-4">
+            <div class="card card-admin h-100 dash-card">
+                <div class="card-body p-3 p-md-4 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="h6 fw-bold mb-0">Top 5 phòng doanh thu cao nhất</h2>
                         <span class="badge bg-light text-muted border">Tổng hợp</span>
                     </div>
                     @if($topRoomsByRevenue->isNotEmpty())
-                    <div class="row align-items-center">
+                    <div class="row align-items-center flex-grow-1">
                         <div class="col-md-6">
-                            <div style="height: 260px; position: relative;">
+                            <div class="dash-chart" style="position: relative;">
                                 <canvas id="topRoomsRevenueChart"></canvas>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <ul class="list-unstyled mb-0">
+                            <ul class="list-unstyled mb-0 dash-toplist">
                                 @foreach($topRoomsByRevenue as $i => $r)
                                 <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                                     <span class="text-truncate" style="max-width: 70%;">{{ $r->name }}</span>
@@ -121,8 +121,8 @@
         </div>
 
         <div class="col-12 col-md-6 col-xl-6">
-            <div class="card card-admin">
-                <div class="card-body p-3 p-md-4">
+            <div class="card card-admin h-100 dash-card">
+                <div class="card-body p-3 p-md-4 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="h6 fw-bold mb-0">Tình trạng phòng</h2>
                         <span class="badge bg-light text-muted border">Đêm nay</span>
@@ -133,7 +133,7 @@
                         $pctBooked = round(($roomsBooked / $totalRoomsForBar) * 100);
                         $pctMaintenance = round(($roomsMaintenance / $totalRoomsForBar) * 100);
                     @endphp
-                    <div class="chart-pie pt-4 pb-2">
+                    <div class="chart-pie pt-2 pb-2 flex-grow-1 d-flex flex-column justify-content-center">
                         <div class="d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span>Phòng trống</span>
@@ -169,8 +169,8 @@
 
         <div class="col-12 col-md-6 col-xl-6">
             <!-- Revenue Overview -->
-            <div class="card card-admin">
-                <div class="card-body p-3 p-md-4">
+            <div class="card card-admin h-100 dash-card">
+                <div class="card-body p-3 p-md-4 d-flex flex-column">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                         <h2 class="h6 fw-bold mb-0">Doanh thu</h2>
                         <div class="d-flex flex-wrap align-items-end gap-2">
@@ -190,7 +190,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="chart-area" style="height: 240px;">
+                    <div class="chart-area dash-chart">
                         <canvas id="monthlyRevenueChart"></canvas>
                     </div>
                     <div class="small text-muted mt-2" id="revHint"></div>
@@ -200,13 +200,13 @@
 
         <div class="col-12 col-md-6 col-xl-6">
             <!-- Occupancy Overview -->
-            <div class="card card-admin">
-                <div class="card-body p-3 p-md-4">
+            <div class="card card-admin h-100 dash-card">
+                <div class="card-body p-3 p-md-4 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="h6 fw-bold mb-0">Tỉ lệ lấp phòng (7 ngày)</h2>
                         <span class="badge bg-light text-muted border">%</span>
                     </div>
-                    <div class="chart-area" style="height: 240px;">
+                    <div class="chart-area dash-chart">
                         <canvas id="occupancyRateChart"></canvas>
                     </div>
                 </div>
@@ -219,6 +219,9 @@
     /* Dashboard polish (local) */
     .stat-card { border: 1px solid rgba(15, 23, 42, 0.06); }
     .chart-area canvas { max-height: 100%; }
+    .dash-card { border: 1px solid rgba(15, 23, 42, 0.06); }
+    .dash-chart { height: 240px; }
+    .dash-toplist { max-height: 240px; overflow: auto; padding-right: 0.25rem; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
