@@ -24,6 +24,8 @@ class AdminController extends Controller
 
     public function dashboard()
     {
+        [$rangeStart, $rangeEnd] = $this->resolveDashboardRange(request());
+
         // Thống kê tổng quan
         $totalRooms = Room::count();
         $totalBookings = Booking::count();
@@ -65,14 +67,14 @@ class AdminController extends Controller
             ->count();
         $monthlyOccupancyRate = $totalRoomDays > 0 ? round(($bookedRoomDays / $totalRoomDays) * 100, 1) : 0;
 
-        // Dữ liệu biểu đồ doanh thu 7 ngày gần nhất
-        $revenueChart = $this->getRevenueChartData();
+        // Dữ liệu biểu đồ doanh thu theo khoảng thời gian
+        $revenueChart = $this->getRevenueChartDataForRange($rangeStart, $rangeEnd);
 
-        // Dữ liệu biểu đồ tỉ lệ lấp phòng 7 ngày gần nhất
-        $occupancyChart = $this->getOccupancyChartData($sellableRooms);
+        // Dữ liệu biểu đồ tỉ lệ lấp phòng theo khoảng thời gian
+        $occupancyChart = $this->getOccupancyChartDataForRange($rangeStart, $rangeEnd, $sellableRooms);
 
-        // Top 5 phòng: đơn một phòng + đơn nhiều phòng (booking_rooms.subtotal)
-        $topRoomsByRevenue = $this->getTopRoomsByRevenue(5);
+        // Top phòng theo doanh thu trong khoảng thời gian
+        $topRoomsByRevenue = $this->getTopRoomsByRevenue(5, $rangeStart, $rangeEnd);
 
         // Tình trạng phòng theo lịch đêm nay (không chỉ cột status trên bảng rooms)
         $roomsBooked = $bookedRoomsToday;
@@ -93,21 +95,104 @@ class AdminController extends Controller
             'roomsAvailable',
             'roomsBooked',
             'roomsMaintenance'
+            ,
+            'rangeStart',
+            'rangeEnd'
         ));
     }
+
+    /**
+     * API: dữ liệu dashboard theo khoảng thời gian (dùng cho UI lọc thời gian).
+     */
+    public function dashboardData(Request $request)
+    {
+        [$rangeStart, $rangeEnd] = $this->resolveDashboardRange($request);
+
+        $totalRooms = Room::count();
+        $roomsMaintenance = Room::where('status', 'maintenance')->count();
+        $sellableRooms = max(1, $totalRooms - $roomsMaintenance);
+
+        $revenueSum = (float) Payment::where('status', 'paid')
+            ->whereBetween('paid_at', [$rangeStart->copy()->startOfDay(), $rangeEnd->copy()->endOfDay()])
+            ->sum('amount');
+
+        // fallback nếu paid_at null → dùng created_at
+        $revenueSumCreatedAt = (float) Payment::where('status', 'paid')
+            ->whereNull('paid_at')
+            ->whereBetween('created_at', [$rangeStart->copy()->startOfDay(), $rangeEnd->copy()->endOfDay()])
+            ->sum('amount');
+
+        $revenueInRange = $revenueSum + $revenueSumCreatedAt;
+
+        $bookingsInRange = (int) Booking::query()
+            ->whereBetween('created_at', [$rangeStart->copy()->startOfDay(), $rangeEnd->copy()->endOfDay()])
+            ->count();
+
+        $revenueChart = $this->getRevenueChartDataForRange($rangeStart, $rangeEnd);
+        $occupancyChart = $this->getOccupancyChartDataForRange($rangeStart, $rangeEnd, $sellableRooms);
+        $topRoomsByRevenue = $this->getTopRoomsByRevenue(5, $rangeStart, $rangeEnd);
+
+        return response()->json([
+            'range' => [
+                'start' => $rangeStart->toDateString(),
+                'end' => $rangeEnd->toDateString(),
+            ],
+            'kpis' => [
+                'revenue' => $revenueInRange,
+                'bookings' => $bookingsInRange,
+                'sellable_rooms' => $sellableRooms,
+            ],
+            'charts' => [
+                'revenue' => $revenueChart,
+                'occupancy' => $occupancyChart,
+            ],
+            'top_rooms' => $topRoomsByRevenue->values(),
+        ]);
+    }
     
-    private function getRevenueChartData(): array
+    private function resolveDashboardRange(Request $request): array
+    {
+        $end = $request->filled('end') ? Carbon::parse($request->input('end')) : Carbon::now();
+        $start = $request->filled('start') ? Carbon::parse($request->input('start')) : Carbon::now()->subDays(6);
+
+        $start = $start->startOfDay();
+        $end = $end->endOfDay();
+
+        if ($start->greaterThan($end)) {
+            [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
+        }
+
+        // Giới hạn tối đa 366 ngày để tránh query quá nặng
+        if ($start->diffInDays($end) > 366) {
+            $start = $end->copy()->subDays(366)->startOfDay();
+        }
+
+        return [$start, $end];
+    }
+
+    private function getRevenueChartDataForRange(Carbon $start, Carbon $end): array
     {
         $labels = [];
         $data = [];
 
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
-            $labels[] = $date->format('d/m');
-            $revenue = (float) Payment::where('status', 'paid')
-                ->whereRaw('DATE(COALESCE(paid_at, created_at)) = ?', [$date->toDateString()])
+        $cursor = $start->copy()->startOfDay();
+        $endDay = $end->copy()->startOfDay();
+
+        while ($cursor->lessThanOrEqualTo($endDay)) {
+            $labels[] = $cursor->format('d/m');
+
+            $revenuePaidAt = (float) Payment::where('status', 'paid')
+                ->whereBetween('paid_at', [$cursor->copy()->startOfDay(), $cursor->copy()->endOfDay()])
                 ->sum('amount');
-            $data[] = $revenue;
+
+            $revenueCreatedAt = (float) Payment::where('status', 'paid')
+                ->whereNull('paid_at')
+                ->whereBetween('created_at', [$cursor->copy()->startOfDay(), $cursor->copy()->endOfDay()])
+                ->sum('amount');
+
+            $data[] = $revenuePaidAt + $revenueCreatedAt;
+
+            $cursor->addDay();
         }
 
         $max = count($data) > 0 ? max($data) : 0;
@@ -116,17 +201,21 @@ class AdminController extends Controller
         return ['labels' => $labels, 'data' => $data, 'suggestedMax' => $suggestedMax];
     }
 
-    private function getOccupancyChartData(int $sellableRooms): array
+    private function getOccupancyChartDataForRange(Carbon $start, Carbon $end, int $sellableRooms): array
     {
         $labels = [];
         $data = [];
         $denom = max(1, $sellableRooms);
 
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
-            $labels[] = $date->format('d/m');
-            $bookedRooms = $this->countDistinctRoomsBookedOnDate($date->toDateString());
+        $cursor = $start->copy()->startOfDay();
+        $endDay = $end->copy()->startOfDay();
+
+        while ($cursor->lessThanOrEqualTo($endDay)) {
+            $labels[] = $cursor->format('d/m');
+            $bookedRooms = $this->countDistinctRoomsBookedOnDate($cursor->toDateString());
             $data[] = round(($bookedRooms / $denom) * 100, 1);
+
+            $cursor->addDay();
         }
 
         return ['labels' => $labels, 'data' => $data];
@@ -154,17 +243,23 @@ class AdminController extends Controller
      *
      * @return Collection<int, object{id: int, name: string, total_revenue: float}>
      */
-    private function getTopRoomsByRevenue(int $limit): Collection
+    private function getTopRoomsByRevenue(int $limit, ?Carbon $rangeStart = null, ?Carbon $rangeEnd = null): Collection
     {
         $exclude = ['cancelled', 'cancel_requested'];
+        $rangeStart = $rangeStart?->copy()->startOfDay();
+        $rangeEnd = $rangeEnd?->copy()->endOfDay();
 
         $fromBookingRooms = BookingRoom::query()
             ->selectRaw('booking_rooms.room_id as id, rooms.name, SUM(booking_rooms.subtotal) as total_revenue')
             ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
             ->join('rooms', 'rooms.id', '=', 'booking_rooms.room_id')
-            ->whereHas('booking', static function ($q) use ($exclude): void {
+            ->whereHas('booking', static function ($q) use ($exclude, $rangeStart, $rangeEnd): void {
                 $q->whereNotIn('status', $exclude)
                     ->whereHas('payments', static fn ($p) => $p->where('status', 'paid'));
+
+                if ($rangeStart && $rangeEnd) {
+                    $q->whereBetween('created_at', [$rangeStart, $rangeEnd]);
+                }
             })
             ->groupBy('booking_rooms.room_id', 'rooms.name')
             ->get();
@@ -179,6 +274,9 @@ class AdminController extends Controller
             ->whereNotIn('bookings.status', $exclude)
             ->whereDoesntHave('bookingRooms')
             ->whereHas('payments', static fn ($p) => $p->where('status', 'paid'))
+            ->when($rangeStart && $rangeEnd, static function ($q) use ($rangeStart, $rangeEnd): void {
+                $q->whereBetween('bookings.created_at', [$rangeStart, $rangeEnd]);
+            })
             ->groupBy('bookings.room_id', 'rooms.name')
             ->get();
 
