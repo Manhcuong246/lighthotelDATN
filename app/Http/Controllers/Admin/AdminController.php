@@ -95,6 +95,30 @@ class AdminController extends Controller
             'roomsMaintenance'
         ));
     }
+
+    /**
+     * API: chỉ phục vụ component "Biểu đồ doanh thu" trên dashboard.
+     * Cho phép chọn khoảng ngày mà KHÔNG ảnh hưởng các KPI / widget khác.
+     */
+    public function revenueChartData(Request $request)
+    {
+        $end = $request->filled('end') ? Carbon::parse($request->input('end')) : Carbon::now();
+        $start = $request->filled('start') ? Carbon::parse($request->input('start')) : Carbon::now()->subDays(6);
+
+        $start = $start->startOfDay();
+        $end = $end->endOfDay();
+
+        if ($start->greaterThan($end)) {
+            [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
+        }
+
+        // Giới hạn tối đa 366 ngày để tránh query quá nặng
+        if ($start->diffInDays($end) > 366) {
+            $start = $end->copy()->subDays(366)->startOfDay();
+        }
+
+        return response()->json($this->getRevenueChartDataForRange($start, $end));
+    }
     
     private function getRevenueChartData(): array
     {
@@ -108,6 +132,31 @@ class AdminController extends Controller
                 ->whereRaw('DATE(COALESCE(paid_at, created_at)) = ?', [$date->toDateString()])
                 ->sum('amount');
             $data[] = $revenue;
+        }
+
+        $max = count($data) > 0 ? max($data) : 0;
+        $suggestedMax = $max > 0 ? (int) ceil($max * 1.2 / 100000) * 100000 : 1000000;
+
+        return ['labels' => $labels, 'data' => $data, 'suggestedMax' => $suggestedMax];
+    }
+
+    private function getRevenueChartDataForRange(Carbon $start, Carbon $end): array
+    {
+        $labels = [];
+        $data = [];
+
+        $cursor = $start->copy()->startOfDay();
+        $endDay = $end->copy()->startOfDay();
+
+        while ($cursor->lessThanOrEqualTo($endDay)) {
+            $labels[] = $cursor->format('d/m');
+
+            $revenue = (float) Payment::where('status', 'paid')
+                ->whereRaw('DATE(COALESCE(paid_at, created_at)) = ?', [$cursor->toDateString()])
+                ->sum('amount');
+
+            $data[] = $revenue;
+            $cursor->addDay();
         }
 
         $max = count($data) > 0 ? max($data) : 0;

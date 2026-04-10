@@ -170,12 +170,31 @@
             <!-- Revenue Overview -->
             <div class="card card-admin shadow mb-4">
                 <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Doanh thu 7 ngày gần nhất</h6>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="m-0 fw-bold">Doanh thu</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-2">
+                            <div>
+                                <div class="small text-muted fw-semibold mb-1">Từ</div>
+                                <input type="date" class="form-control form-control-sm" id="revStart">
+                            </div>
+                            <div>
+                                <div class="small text-muted fw-semibold mb-1">Đến</div>
+                                <input type="date" class="form-control form-control-sm" id="revEnd">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-light border rounded-2" id="revApply">
+                                <i class="bi bi-funnel"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-light border rounded-2" id="revReset" title="Về 7 ngày gần nhất">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="chart-area" style="height: 220px;">
                         <canvas id="monthlyRevenueChart"></canvas>
                     </div>
+                    <div class="small text-muted mt-2" id="revHint"></div>
                 </div>
             </div>
         </div>
@@ -271,6 +290,55 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Bộ lọc thời gian CHỈ áp dụng cho biểu đồ doanh thu
+    const revStart = document.getElementById('revStart');
+    const revEnd = document.getElementById('revEnd');
+    const revHint = document.getElementById('revHint');
+    const fmtDate = (d) => d.toISOString().slice(0, 10);
+
+    function setRevHint(start, end) {
+        if (revHint) revHint.textContent = `Đang xem: ${start} → ${end}`;
+    }
+
+    async function loadRevenueChart(start, end) {
+        setRevHint(start, end);
+        const url = new URL(@json(route('admin.dashboard.revenue-chart')), window.location.origin);
+        url.searchParams.set('start', start);
+        url.searchParams.set('end', end);
+
+        const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+
+        revenueChart.data.labels = json.labels || [];
+        revenueChart.data.datasets[0].data = json.data || [];
+        revenueChart.options.scales.y.suggestedMax = json.suggestedMax || 1000000;
+        revenueChart.update();
+    }
+
+    function setDefaultRevenueRange() {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - 6);
+        const s = fmtDate(start);
+        const e = fmtDate(end);
+        revStart.value = s;
+        revEnd.value = e;
+        loadRevenueChart(s, e).catch(() => {});
+    }
+
+    document.getElementById('revApply')?.addEventListener('click', () => {
+        if (!revStart.value || !revEnd.value) return;
+        loadRevenueChart(revStart.value, revEnd.value).catch(err => {
+            console.error(err);
+            alert('Không tải được dữ liệu doanh thu: ' + err.message);
+        });
+    });
+    document.getElementById('revReset')?.addEventListener('click', setDefaultRevenueRange);
+
+    // init with 7 days
+    setDefaultRevenueRange();
 
     // Biểu đồ tỉ lệ lấp phòng 7 ngày
     const occupancyCtx = document.getElementById('occupancyRateChart').getContext('2d');
