@@ -3,13 +3,20 @@
 @section('title', 'Bảng điều khiển - Admin')
 
 @section('content')
-<div class="container-fluid px-0">
-    <div class="page-header">
-        <h1 class="text-dark fw-bold">Bảng điều khiển</h1>
+<div class="container-fluid px-3 px-lg-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Bảng điều khiển</h1>
+            <div class="text-muted small">Tổng quan doanh thu, tình trạng phòng và hiệu suất vận hành.</div>
+        </div>
         <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm btn-admin-icon" title="Xuất báo cáo"><i class="bi bi-download"></i></a>
+            <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm btn-admin-icon rounded-2" title="Xuất báo cáo">
+                <i class="bi bi-download"></i>
+            </a>
             @if(auth()->user()->isAdmin())
-                <a href="{{ route('admin.bookings.create') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Thêm đơn"><i class="bi bi-plus-lg"></i></a>
+                <a href="{{ route('admin.bookings.create') }}" class="btn btn-primary btn-sm btn-admin-icon rounded-2" title="Thêm đơn">
+                    <i class="bi bi-plus-lg"></i>
+                </a>
             @endif
         </div>
     </div>
@@ -17,69 +24,61 @@
     <!-- Stats Cards -->
     <div class="row g-3 g-md-4 mb-4">
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-left-primary">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-primary mb-1">Doanh thu hôm nay</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($todayRevenue, 0, ',', '.') }} ₫</div>
+            <div class="card stat-card h-100 border-0">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="small text-muted fw-semibold text-uppercase">Doanh thu hôm nay</div>
+                            <div class="h5 mb-0 fw-bold mt-1">{{ number_format($todayRevenue, 0, ',', '.') }} ₫</div>
                         </div>
-                        <div class="col-auto">
-                            <div class="stat-icon bg-primary-light text-primary-dark">
-                                <i class="bi bi-cash-stack"></i>
-                            </div>
+                        <div class="stat-icon bg-primary-light text-primary-dark flex-shrink-0">
+                            <i class="bi bi-cash-stack"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-left-success">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-success mb-1">Doanh thu tháng</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($monthlyRevenue, 0, ',', '.') }} ₫</div>
+            <div class="card stat-card h-100 border-0">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="small text-muted fw-semibold text-uppercase">Doanh thu tháng này</div>
+                            <div class="h5 mb-0 fw-bold mt-1">{{ number_format($monthlyRevenue, 0, ',', '.') }} ₫</div>
                         </div>
-                        <div class="col-auto">
-                            <div class="stat-icon bg-success-light text-success-dark">
-                                <i class="bi bi-currency-dollar"></i>
-                            </div>
+                        <div class="stat-icon bg-success-light text-success-dark flex-shrink-0">
+                            <i class="bi bi-currency-dollar"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-left-info">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-info mb-1">Tỉ lệ lấp phòng</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $occupancyRate }}%</div>
-                            <div class="small text-muted">Trung bình tháng: {{ $monthlyOccupancyRate }}%</div>
+            <div class="card stat-card h-100 border-0">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="small text-muted fw-semibold text-uppercase">Tỉ lệ lấp phòng (hôm nay)</div>
+                            <div class="h5 mb-0 fw-bold mt-1">{{ $occupancyRate }}%</div>
+                            <div class="small text-muted mt-1">TB tháng: {{ $monthlyOccupancyRate }}%</div>
                         </div>
-                        <div class="col-auto">
-                            <div class="stat-icon bg-info-light text-info-dark">
-                                <i class="bi bi-pie-chart"></i>
-                            </div>
+                        <div class="stat-icon bg-info-light text-info-dark flex-shrink-0">
+                            <i class="bi bi-pie-chart"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-left-danger">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="fs-6 fw-bold text-uppercase text-danger mb-1">Tổng doanh thu</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">{{ number_format($totalRevenue, 0, ',', '.') }} ₫</div>
+            <div class="card stat-card h-100 border-0">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="small text-muted fw-semibold text-uppercase">Tổng doanh thu</div>
+                            <div class="h5 mb-0 fw-bold mt-1">{{ number_format($totalRevenue, 0, ',', '.') }} ₫</div>
                         </div>
-                        <div class="col-auto">
-                            <div class="stat-icon bg-danger-light text-danger-dark">
-                                <i class="bi bi-wallet2"></i>
-                            </div>
+                        <div class="stat-icon bg-danger-light text-danger-dark flex-shrink-0">
+                            <i class="bi bi-wallet2"></i>
                         </div>
                     </div>
                 </div>
@@ -90,11 +89,12 @@
     <!-- Charts and Tables Row -->
     <div class="row g-3 g-md-4">
         <div class="col-12 col-md-6 col-xl-6">
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Top 5 phòng có doanh thu cao nhất</h6>
-                </div>
-                <div class="card-body">
+            <div class="card card-admin">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h6 fw-bold mb-0">Top 5 phòng doanh thu cao nhất</h2>
+                        <span class="badge bg-light text-muted border">Tổng hợp</span>
+                    </div>
                     @if($topRoomsByRevenue->isNotEmpty())
                     <div class="row align-items-center">
                         <div class="col-md-6">
@@ -121,11 +121,12 @@
         </div>
 
         <div class="col-12 col-md-6 col-xl-6">
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Tình trạng phòng</h6>
-                </div>
-                <div class="card-body">
+            <div class="card card-admin">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h6 fw-bold mb-0">Tình trạng phòng</h2>
+                        <span class="badge bg-light text-muted border">Đêm nay</span>
+                    </div>
                     @php
                         $totalRoomsForBar = max(1, $totalRooms);
                         $pctAvailable = round(($roomsAvailable / $totalRoomsForBar) * 100);
@@ -168,10 +169,10 @@
 
         <div class="col-12 col-md-6 col-xl-6">
             <!-- Revenue Overview -->
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <h6 class="m-0 fw-bold">Doanh thu</h6>
+            <div class="card card-admin">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <h2 class="h6 fw-bold mb-0">Doanh thu</h2>
                         <div class="d-flex flex-wrap align-items-end gap-2">
                             <div>
                                 <div class="small text-muted fw-semibold mb-1">Từ</div>
@@ -181,17 +182,15 @@
                                 <div class="small text-muted fw-semibold mb-1">Đến</div>
                                 <input type="date" class="form-control form-control-sm" id="revEnd">
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-light border rounded-2" id="revApply">
-                                <i class="bi bi-funnel"></i>
+                            <button type="button" class="btn btn-sm btn-primary rounded-2" id="revApply">
+                                <i class="bi bi-funnel me-1"></i>Áp dụng
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-light border rounded-2" id="revReset" title="Về 7 ngày gần nhất">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-2" id="revReset" title="Về 7 ngày gần nhất">
                                 <i class="bi bi-arrow-counterclockwise"></i>
                             </button>
                         </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area" style="height: 220px;">
+                    <div class="chart-area" style="height: 240px;">
                         <canvas id="monthlyRevenueChart"></canvas>
                     </div>
                     <div class="small text-muted mt-2" id="revHint"></div>
@@ -201,12 +200,13 @@
 
         <div class="col-12 col-md-6 col-xl-6">
             <!-- Occupancy Overview -->
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h6 class="m-0 fw-bold">Tỉ lệ lấp phòng 7 ngày gần nhất</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area" style="height: 220px;">
+            <div class="card card-admin">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h6 fw-bold mb-0">Tỉ lệ lấp phòng (7 ngày)</h2>
+                        <span class="badge bg-light text-muted border">%</span>
+                    </div>
+                    <div class="chart-area" style="height: 240px;">
                         <canvas id="occupancyRateChart"></canvas>
                     </div>
                 </div>
@@ -214,6 +214,12 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Dashboard polish (local) */
+    .stat-card { border: 1px solid rgba(15, 23, 42, 0.06); }
+    .chart-area canvas { max-height: 100%; }
+</style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
