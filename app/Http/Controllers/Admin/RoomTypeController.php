@@ -39,6 +39,7 @@ class RoomTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:room_types,name',
             'capacity' => 'required|integer|min:1',
+            'standard_capacity' => 'required|integer|min:1|lte:capacity',
             'beds' => 'required|integer|min:1',
             'baths' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
@@ -57,6 +58,7 @@ class RoomTypeController extends Controller
         $roomType = RoomType::create([
             'name' => $validated['name'],
             'capacity' => $validated['capacity'],
+            'standard_capacity' => $validated['standard_capacity'],
             'beds' => $validated['beds'],
             'baths' => $validated['baths'],
             'price' => $validated['price'],
@@ -111,6 +113,9 @@ class RoomTypeController extends Controller
 
         $serviceIds = array_values(array_unique(array_map('intval', $validated['service_ids'] ?? [])));
         unset($validated['service_ids']);
+
+        // standard_capacity: chỉ set lúc tạo, không cho sửa sau khi đã tạo
+        unset($validated['standard_capacity']);
 
         $roomType->update($validated);
 

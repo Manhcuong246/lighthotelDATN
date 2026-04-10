@@ -24,8 +24,11 @@ use App\Models\RoomType;
  */
 final class RoomOccupancyPricing
 {
-    public static function standardCapacity(): int
+    public static function standardCapacity(?RoomType $roomType = null): int
     {
+        if ($roomType && !is_null($roomType->standard_capacity)) {
+            return (int) $roomType->standard_capacity;
+        }
         return (int) config('booking.pricing.standard_capacity', 3);
     }
 
@@ -58,7 +61,7 @@ final class RoomOccupancyPricing
     /**
      * @throws \InvalidArgumentException
      */
-    public static function validate(int $adults, int $children611, int $children05 = 0): void
+    public static function validate(int $adults, int $children611, int $children05 = 0, ?RoomType $roomType = null): void
     {
         if ($adults < 1) {
             throw new \InvalidArgumentException('Cần ít nhất 1 người lớn trong phòng.');
@@ -72,7 +75,9 @@ final class RoomOccupancyPricing
         }
 
         $total = $adults + $children611 + $children05;
-        $max = self::maxCapacity();
+        $max = ($roomType && !is_null($roomType->capacity))
+            ? (int) $roomType->capacity
+            : self::maxCapacity();
 
         if ($total > $max) {
             throw new \InvalidArgumentException(
@@ -94,9 +99,9 @@ final class RoomOccupancyPricing
         int $children05 = 0,
         ?RoomType $roomType = null
     ): array {
-        self::validate($adults, $children611, $children05);
+        self::validate($adults, $children611, $children05, $roomType);
 
-        $std = self::standardCapacity();
+        $std = self::standardCapacity($roomType);
         $total = $adults + $children611 + $children05;
 
         $billableSlots = max(0, $std - $children05);

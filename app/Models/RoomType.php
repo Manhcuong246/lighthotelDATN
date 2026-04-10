@@ -12,6 +12,7 @@ class RoomType extends Model
     protected $fillable = [
         'name',
         'capacity',
+        'standard_capacity',
         'adult_capacity',
         'child_capacity',
         'beds',
@@ -27,6 +28,8 @@ class RoomType extends Model
     ];
 
     protected $casts = [
+        'standard_capacity' => 'integer',
+        'capacity' => 'integer',
         'adult_surcharge_rate' => 'float',
         'child_surcharge_rate' => 'float',
     ];

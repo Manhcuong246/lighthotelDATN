@@ -60,6 +60,16 @@
                                required>
                     </div>
 
+                    <!-- Tiêu chuẩn (không phụ phí) — khóa sửa -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Tiêu chuẩn (không phụ phí)</label>
+                        <input type="number"
+                               class="form-control bg-light"
+                               value="{{ old('standard_capacity', $roomType->standard_capacity ?? 3) }}"
+                               disabled>
+                        <small class="text-muted">Chỉ thiết lập khi tạo mới loại phòng, không thể chỉnh sau.</small>
+                    </div>
+
                     <!-- Số giường -->
                     <div class="col-md-3 mb-3">
                         <label class="form-label fw-semibold">Số giường</label>

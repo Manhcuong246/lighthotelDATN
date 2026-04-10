@@ -61,6 +61,19 @@
                                required>
                     </div>
 
+                    <!-- Số người tiêu chuẩn (không phụ phí) -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Tiêu chuẩn (không phụ phí)</label>
+                        <input type="number"
+                               name="standard_capacity"
+                               class="form-control"
+                               placeholder="Ví dụ: 2"
+                               value="{{ old('standard_capacity') }}"
+                               min="1"
+                               required>
+                        <small class="text-muted">Chỉ thiết lập khi tạo mới. Vượt tiêu chuẩn sẽ tính phụ phí.</small>
+                    </div>
+
                     <!-- Số giường -->
                     <div class="col-md-3 mb-3">
                         <label class="form-label fw-semibold">Số giường</label>

@@ -623,7 +623,8 @@ class BookingAdminController extends Controller
                     'name' => $room->roomType->name ?? 'Không xác định',
                     'description' => $room->roomType->description ?? '',
                     'base_price' => $room->catalogueBasePrice(),
-                    'max_occupancy' => $room->catalogueMaxGuests(),
+                    'max_occupancy' => (int) ($room->roomType->capacity ?? $room->catalogueMaxGuests() ?? 6),
+                    'standard_capacity' => (int) ($room->roomType->standard_capacity ?? config('booking.pricing.standard_capacity', 3)),
                     'adult_capacity' => $room->roomType->adult_capacity ?? $room->catalogueMaxGuests() ?? 2,
                     'child_capacity' => $room->roomType->child_capacity ?? 0,
                     'adult_surcharge_rate' => RoomOccupancyPricing::adultSurchargeRate($room->roomType),
@@ -729,7 +730,7 @@ class BookingAdminController extends Controller
                 $children05 = $roomData['children_0_5'] ?? 0;
                 $children611 = $roomData['children_6_11'] ?? 0;
 
-                RoomOccupancyPricing::validate($adults, $children611, $children05);
+                RoomOccupancyPricing::validate($adults, $children611, $children05, $roomType);
                 $breakdown = RoomOccupancyPricing::breakdown($basePrice, $adults, $children611, $children05, $roomType);
 
                 $actualPricePerNight = $breakdown['price_per_night'];

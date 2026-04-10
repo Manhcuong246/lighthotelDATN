@@ -199,14 +199,14 @@
 <script>
 const __BP = @json(config('booking.pricing'));
 /** Đồng bộ App\Support\RoomOccupancyPricing */
-function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate) {
-    const stdCap = Number(__BP.standard_capacity) || 3;
-    const maxCap = Number(__BP.max_capacity) || 6;
+function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, stdCap, maxCap) {
+    const _stdCap = Number(stdCap ?? __BP.standard_capacity) || 3;
+    const _maxCap = Number(maxCap ?? __BP.max_capacity) || 6;
     const maxC05 = Number(__BP.max_children_05) || 3;
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
     const total = adults + c611 + c05;
-    const billableSlots = Math.max(0, stdCap - c05);
+    const billableSlots = Math.max(0, _stdCap - c05);
     const extraAdults = Math.max(0, adults - billableSlots);
     const remainingSlots = Math.max(0, billableSlots - adults);
     const extraChildren = Math.max(0, c611 - remainingSlots);
@@ -214,7 +214,7 @@ function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate) {
     const childFee = extraChildren * cRate * base;
     const surcharge = adultFee + childFee;
     const perNight = base + surcharge;
-    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap, maxCap, maxC05, allowed: total <= maxCap && c05 <= maxC05 };
+    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05, allowed: total <= _maxCap && c05 <= maxC05 };
 }
 
 let availableRoomsData = [];
@@ -300,7 +300,7 @@ function renderAvailableRooms(rooms) {
                         <h6 class="fw-bold mb-1">${roomType.name}</h6>
                         <div class="text-muted small mb-1">
                             <i class="bi bi-aspect-ratio me-1"></i>${roomType.area || 30} m² ·
-                            <i class="bi bi-people me-1"></i>Tiêu chuẩn 3 người (NL + trẻ 6–11 + trẻ 0–5 đều tính sức chứa); từ người thứ 4 tính phụ thu NL/trẻ 6–11; trẻ 0–5 miễn phụ thu · Tối đa 6 người · Tối đa 3 trẻ 0–5
+                            <i class="bi bi-people me-1"></i>Tiêu chuẩn ${roomType.standard_capacity ?? 3} người; tối đa ${roomType.max_occupancy ?? 6} người · Tối đa 3 trẻ 0–5
                         </div>
                         <p class="text-muted small mb-0" style="font-size: 0.85rem;">${roomType.description ? roomType.description.substring(0, 80) + '...' : 'Phòng tiêu chuẩn với đầy đủ tiện nghi'}</p>
                     </div>
@@ -517,7 +517,7 @@ function updateRoomPriceDetails(roomTypeId, roomIndex, adults, children05, child
     const basePrice = parseFloat(room.base_price) || 0;
     const aRate = room.adult_surcharge_rate ?? null;
     const cRate = room.child_surcharge_rate ?? null;
-    const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate);
+    const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate, room.standard_capacity, room.max_occupancy);
 
     const limitError = document.getElementById(`limitError_${roomTypeId}_${roomIndex}`);
     if (!br.allowed) {
@@ -573,7 +573,7 @@ function updateRoomCardSubtotal(roomTypeId) {
         const children05 = roomData.children_0_5 || 0;
         const children611 = roomData.children_6_11 || 0;
 
-        const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate);
+        const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate, room.standard_capacity, room.max_occupancy);
         const roomPricePerNight = br.perNight;
         typeSubtotal += roomPricePerNight * nights;
         typeExtraFees += br.surcharge * nights;
@@ -632,7 +632,7 @@ function calculateTotal() {
             const children05 = roomData.children_0_5 || 0;
             const children611 = roomData.children_6_11 || 0;
 
-            const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate);
+            const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate, room.standard_capacity, room.max_occupancy);
             const roomPricePerNight = br.perNight;
             const roomSubtotal = roomPricePerNight * nights;
 
@@ -705,7 +705,7 @@ function applyCoupon() {
                     const aR = room.adult_surcharge_rate ?? null;
                     const cR = room.child_surcharge_rate ?? null;
                     roomType.rooms.forEach(rd => {
-                        const br = bookingPriceBreakdown(basePrice, rd.adults || 1, rd.children_0_5 || 0, rd.children_6_11 || 0, aR, cR);
+                        const br = bookingPriceBreakdown(basePrice, rd.adults || 1, rd.children_0_5 || 0, rd.children_6_11 || 0, aR, cR, room.standard_capacity, room.max_occupancy);
                         subtotal += br.perNight * nights;
                     });
                 });

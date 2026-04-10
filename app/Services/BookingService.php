@@ -196,7 +196,7 @@ class BookingService
         $roomType = $room->roomType;
 
         try {
-            RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5);
+            RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5, $roomType);
         } catch (\InvalidArgumentException $e) {
             throw new \Exception("Phòng \"{$room->name}\": " . $e->getMessage());
         }
