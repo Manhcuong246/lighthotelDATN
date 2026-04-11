@@ -184,7 +184,8 @@ class BookingService
             ]);
 
             // Tạo BookingGuests
-            if (isset($data['guests']) 
+             if (isset($data['guests']) && is_array($data['guests'])) {
+                foreach ($data['guests'] as $guestData) {
 
             // Trả về booking để controller xử lý tiếp (vnpay)
             return $booking;
