@@ -8,5 +8,6 @@ class BookingGuest extends Model{
     protected $fillable = [
     'booking_id',
     'name',
+    'cccd',
 ];
 }
