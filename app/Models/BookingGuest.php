@@ -12,4 +12,8 @@ class BookingGuest extends Model{
     'type',
     'status',
 ];
+public function booking()
+    {
+        return $this->belongsTo(Booking::class);
+    }
 }
