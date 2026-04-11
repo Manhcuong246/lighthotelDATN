@@ -64,6 +64,8 @@ class StoreBookingRequest extends FormRequest
             'guests'         => 'nullable|array',
            'guests.*.name'  => 'required_with:guests|string|max:150',
            'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
+            'guests.*.type'  => 'required_with:guests|in:adult,child',
+            'guests.*.room_index' => 'nullable|integer|min:0',
         ];
     }
 
