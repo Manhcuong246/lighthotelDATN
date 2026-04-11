@@ -90,7 +90,14 @@ class StoreBookingRequest extends FormRequest
             'check_out.required'     => 'Vui lòng chọn ngày trả phòng.',
             'check_out.date'         => 'Ngày trả phòng không hợp lệ.',
             'check_out.after'        => 'Ngày trả phòng phải sau ngày nhận phòng.',
-           
+              'guests.required'        => 'Vui lòng cung cấp thông tin khách.',
+            'guests.*.name.required' => 'Vui lòng nhập tên khách.',
+            'guests.*.name.max'      => 'Tên khách không được vượt quá 150 ký tự.',
+            'guests.*.cccd.regex'    => 'CCCD phải gồm 12 số.',
+            'guests.*.type.required' => 'Vui lòng chọn loại khách.',
+            'guests.*.type.in'       => 'Loại khách không hợp lệ.',
+            'guests.*.room_index.integer' => 'Index phòng không hợp lệ.',
+            'guests.*.room_index.min' => 'Index phòng không được âm.',
         ];
     }
 }
