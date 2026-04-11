@@ -61,6 +61,8 @@ class StoreBookingRequest extends FormRequest
             'adults'         => 'required|array',
             'children_0_5'   => 'required|array',
             'children_6_11'  => 'required|array',
+            'guests'         => 'nullable|array',
+           
         ];
     }
 
@@ -85,6 +87,7 @@ class StoreBookingRequest extends FormRequest
             'check_out.required'     => 'Vui lòng chọn ngày trả phòng.',
             'check_out.date'         => 'Ngày trả phòng không hợp lệ.',
             'check_out.after'        => 'Ngày trả phòng phải sau ngày nhận phòng.',
+           
         ];
     }
 }
