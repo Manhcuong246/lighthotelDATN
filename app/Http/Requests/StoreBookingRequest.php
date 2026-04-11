@@ -63,6 +63,7 @@ class StoreBookingRequest extends FormRequest
             'children_6_11'  => 'required|array',
             'guests'         => 'nullable|array',
            'guests.*.name'  => 'required_with:guests|string|max:150',
+           'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
         ];
     }
 
