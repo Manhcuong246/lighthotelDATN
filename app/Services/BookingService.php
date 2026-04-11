@@ -183,6 +183,8 @@ class BookingService
                 'status'     => 'pending',
             ]);
 
+            // Tạo BookingGuests
+            if (isset($data['guests']) 
 
             // Trả về booking để controller xử lý tiếp (vnpay)
             return $booking;
