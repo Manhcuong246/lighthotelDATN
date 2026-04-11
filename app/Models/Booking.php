@@ -142,6 +142,11 @@ class Booking extends Model
         return $this->hasMany(BookingSurcharge::class);
     }
 
+    public function bookingGuests()
+    {
+        return $this->hasMany(BookingGuest::class);
+    }
+
     /**
      * Khách tự check-in trên web: từ ngày nhận phòng, đơn đã xác nhận.
      */
