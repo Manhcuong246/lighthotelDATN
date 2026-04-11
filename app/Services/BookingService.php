@@ -189,6 +189,12 @@ class BookingService
                                         BookingGuest::create([
                         'booking_id' => $booking->id,
                         'name'       => $guestData['name'],
+                         'cccd'       => $guestData['cccd'] ?? null,
+                        'type'       => $guestData['type'],
+                        'status'     => 'pending',
+                    ]);
+                }
+            }
 
             // Trả về booking để controller xử lý tiếp (vnpay)
             return $booking;
