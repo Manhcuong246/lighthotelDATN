@@ -132,7 +132,7 @@ class BookingAdminController extends Controller
             'check_out' => 'required|date|after:check_in',
             'guests' => 'required|integer|min:1',
             'status' => 'required|in:pending,confirmed,completed',
-            'payment_method' => 'required|in:cash,bank_transfer,credit_card,momo,zalopay',
+            'payment_method' => 'required|in:cash,vnpay',
             'payment_status' => 'required|in:pending,paid,partial',
             'amount_paid' => 'nullable|numeric|min:0',
             'payment_note' => 'nullable|string|max:500',
@@ -423,7 +423,7 @@ class BookingAdminController extends Controller
         $request->validate([
             'booking_status' => 'required|in:pending,confirmed,cancelled,completed',
             'payment_status' => 'required|in:pending,paid',
-            'payment_method' => 'required|in:cash,vnpay,bank_transfer',
+            'payment_method' => 'required|in:cash,vnpay',
         ], [
             'booking_status.required' => 'Chọn trạng thái đơn.',
             'payment_status.required' => 'Chọn trạng thái thanh toán.',

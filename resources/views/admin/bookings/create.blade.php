@@ -160,10 +160,7 @@
                                 id="payment_method" name="payment_method" required>
                             <option value="">-- Chọn phương thức --</option>
                             <option value="cash" {{ old('payment_method') == 'cash' ? 'selected' : '' }}>💵 Tiền mặt</option>
-                            <option value="bank_transfer" {{ old('payment_method') == 'bank_transfer' ? 'selected' : '' }}>🏦 Chuyển khoản</option>
-                            <option value="credit_card" {{ old('payment_method') == 'credit_card' ? 'selected' : '' }}>💳 Thẻ tín dụng</option>
-                            <option value="momo" {{ old('payment_method') == 'momo' ? 'selected' : '' }}>📱 MoMo</option>
-                            <option value="zalopay" {{ old('payment_method') == 'zalopay' ? 'selected' : '' }}>📲 ZaloPay</option>
+                            <option value="vnpay" {{ old('payment_method') == 'vnpay' ? 'selected' : '' }}>💳 VNPay</option>
                         </select>
                         @error('payment_method')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>

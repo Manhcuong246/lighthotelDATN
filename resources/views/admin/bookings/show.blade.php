@@ -327,7 +327,6 @@
                                     <select name="payment_method" class="form-select form-select-sm" required>
                                         <option value="cash" @selected($booking->payment_method === 'cash')>Tiền mặt</option>
                                         <option value="vnpay" @selected($booking->payment_method === 'vnpay')>VNPay</option>
-                                        <option value="bank_transfer" @selected($booking->payment_method === 'bank_transfer')>Chuyển khoản</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
