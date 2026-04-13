@@ -54,6 +54,9 @@ class BookingController extends Controller
         }
 
         try {
+            $validated = $request->validated();
+            \Log::info('Validated data:', $validated);
+            $booking = $this->bookingService->createBooking($validated);
 
             // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
