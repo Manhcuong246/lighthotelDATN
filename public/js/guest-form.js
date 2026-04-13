@@ -236,6 +236,9 @@ class GuestFormManager {
             input.addEventListener('input', (e) => {
                 // Only allow numbers
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                if (e.target.value.length > 12) {
+    e.target.value = e.target.value.slice(0, 12);
+}
                 
                 // Validate length
                 if (e.target.value.length > 0 && e.target.value.length !== 12) {
