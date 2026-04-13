@@ -45,7 +45,7 @@ class GuestCheckInController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Guest status updated successfully',
+            'message' => 'Cập nhật trạng thái khách thành công',
             'guest' => $guest->fresh()
         ]);
     }
