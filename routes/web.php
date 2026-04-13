@@ -22,6 +22,7 @@ use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
+use App\Http\Controllers\GuestCheckInController;
 
 
 
@@ -184,6 +185,13 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
 
 
 
+});
+
+// Check-in Routes
+Route::middleware('auth')->prefix('checkin')->name('checkin.')->group(function () {
+    Route::get('/bookings/{booking}', [GuestCheckInController::class, 'index'])->name('index');
+    Route::post('/guests/{guest}/status', [GuestCheckInController::class, 'updateGuestStatus'])->name('guest.status');
+   
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
