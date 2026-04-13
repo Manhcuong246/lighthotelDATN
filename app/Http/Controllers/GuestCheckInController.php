@@ -14,6 +14,7 @@ class GuestCheckInController extends Controller
      */
     public function index(Booking $booking)
     {
+          \Log::info('Check-in page accessed', ['booking_id' => $booking->id]);
         // Check if user has permission to view this booking
         $this->authorizeBookingAccess($booking);
 
