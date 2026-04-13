@@ -46,12 +46,14 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request)
     {
+        // Debug: Log request data
+        \Log::info('Booking request data:', $request->all());
+        
         if (Auth::check() && Auth::user()?->canAccessAdmin()) {
             return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
         }
 
         try {
-            $booking = $this->bookingService->createBooking($request->validated());
 
             // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
