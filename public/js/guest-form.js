@@ -5,7 +5,7 @@ class GuestFormManager {
     }
 
     init() {
-        console.log('GuestFormManager initializing...');
+       console.log('[GuestForm] Initializing...');
         
         // Listen for room selection changes
         this.bindEvents();
