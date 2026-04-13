@@ -191,7 +191,8 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
 Route::middleware('auth')->prefix('checkin')->name('checkin.')->group(function () {
     Route::get('/bookings/{booking}', [GuestCheckInController::class, 'index'])->name('index');
     Route::post('/guests/{guest}/status', [GuestCheckInController::class, 'updateGuestStatus'])->name('guest.status');
-   
+    Route::post('/bookings/{booking}/checkin-all', [GuestCheckInController::class, 'checkInAll'])->name('all');
+    Route::get('/bookings/{booking}/guests', [GuestCheckInController::class, 'getGuestList'])->name('guests');
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
