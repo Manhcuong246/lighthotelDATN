@@ -139,6 +139,7 @@ class GuestFormManager {
 
         // Update guest count display
         if (countElement) {
+            console.log('No guests selected for room:', roomIndex);
             countElement.textContent = `(${adultCount} khách)`;
         }
 
