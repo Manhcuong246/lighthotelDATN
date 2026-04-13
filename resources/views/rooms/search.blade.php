@@ -642,6 +642,9 @@
                             </div>
                         </div>
 
+                        <!-- Guest inputs are now rendered dynamically by JavaScript in each room container -->
+<script src="{{ asset('js/guest-form.js') }}" defer></script>
+
                         <div class="summary-group">
                             <div class="summary-group-title">Mã giảm giá</div>
                             <div class="input-group input-group-sm mb-2">
@@ -918,7 +921,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     let containerHtml = '';
                     for (let i = 1; i <= qty; i++) {
                         containerHtml += `
-                            <div class="col-md-6 guest-selector-item">
+                            <div class="col-md-6 guest-selector-item" data-room-index="${i-1}">
                                         <div class="guest-selector-card">
                                     <div class="guest-selector-title">
                                         <span>Phòng ${i}</span>
@@ -928,17 +931,31 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Người lớn</label>
                                             <input type="number" class="form-control form-control-sm guest-count adults-count"
-                                                   data-type-id="${typeId}" value="1" min="1" max="6">
+                                                   name="adults[${i-1}]" data-type-id="${typeId}" data-room-index="${i-1}" value="1" min="1" max="6">
                                         </div>
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;" title="Trẻ dưới 6 tuổi: miễn phí nhưng tính vào sức chứa phòng (tối đa 3)">Trẻ 0–5 tuổi</label>
                                             <input type="number" class="form-control form-control-sm guest-count child-05-count"
-                                                   data-type-id="${typeId}" value="0" min="0" max="3">
+                                                   name="children_0_5[${i-1}]" data-type-id="${typeId}" data-room-index="${i-1}" value="0" min="0" max="3">
                                         </div>
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;" title="50% giá phòng/đêm mỗi em">Trẻ 6–11t</label>
                                             <input type="number" class="form-control form-control-sm guest-count child-611-count"
-                                                   data-type-id="${typeId}" value="0" min="0" max="5">
+                                                   name="children_6_11[${i-1}]" data-type-id="${typeId}" data-room-index="${i-1}" value="0" min="0" max="5">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Guest Information Inputs -->
+                                    <div class="guest-info-section mt-3 pt-3 border-top">
+                                        <div class="guest-info-header mb-2">
+                                            <small class="text-primary fw-bold">
+                                                <i class="bi bi-people-fill me-1"></i>Thông tin khách - Phòng ${i}
+                                            </small>
+                                        </div>
+                                        <div class="guest-inputs-container" id="guestInputsContainer-${i-1}">
+                                            <div class="text-muted text-center py-2 bg-light rounded">
+                                                <small style="font-size: 0.7rem;">Vui lòng chọn số lượng người</small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -949,7 +966,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Re-bind events to new inputs
                     guestContainer.querySelectorAll('.guest-count').forEach(s => {
-                        s.addEventListener('input', updateSummary);
+                        s.addEventListener('change', function() {
+                            updateSummary();
+                            // Trigger guest input update when adult count changes
+                            if (s.classList.contains('adults-count')) {
+                                if (window.guestFormManager) {
+                                    window.guestFormManager.updateRoomGuestInputs(s);
+                                }
+                            }
+                        });
                     });
                 }
 
