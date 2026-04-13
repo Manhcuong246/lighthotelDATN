@@ -1,0 +1,35 @@
+{
+    "bookings": [
+        "id",
+        "user_id",
+        "room_id",
+        "check_in",
+        "check_out",
+        "actual_check_in",
+        "actual_check_out",
+        "guests",
+        "adults",
+        "children",
+        "total_price",
+        "status",
+        "created_at",
+        "updated_at"
+    ],
+    "room_types": [
+        "id",
+        "name",
+        "capacity",
+        "adult_capacity",
+        "child_capacity",
+        "beds",
+        "baths",
+        "price",
+        "adult_price",
+        "child_price",
+        "description",
+        "image",
+        "status",
+        "created_at",
+        "updated_at"
+    ]
+}

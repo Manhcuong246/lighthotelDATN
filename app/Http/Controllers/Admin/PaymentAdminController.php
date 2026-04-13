@@ -1,0 +1,63 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Payment;
+use Illuminate\Http\Request;
+
+class PaymentAdminController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware('admin');
+    }
+
+    public function index(Request $request)
+    {
+        $query = array_filter([
+            'q' => $request->input('q'),
+            'payment_status' => $request->input('payment_status') ?: $request->input('status'),
+        ], fn ($v) => $v !== null && $v !== '');
+
+        return redirect()->route('admin.bookings.index', $query);
+    }
+
+    public function show(Payment $payment)
+    {
+        $payment->load(['booking.user', 'booking.room']);
+
+        return view('admin.payments.show', compact('payment'));
+    }
+
+    public function edit(Payment $payment)
+    {
+        $payment->load(['booking.user', 'booking.room']);
+
+        return view('admin.payments.edit', compact('payment'));
+    }
+
+    public function update(Request $request, Payment $payment)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:pending,paid,failed,refunded',
+            'amount' => 'sometimes|numeric|min:0',
+            'method' => 'sometimes|string|max:50',
+        ]);
+
+        $payment->update($validated);
+
+        return redirect()->route('admin.bookings.index')->with('success', 'Cập nhật thanh toán thành công.');
+    }
+
+    public function destroy(Payment $payment)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->isAdmin()) {
+            abort(403, 'Chỉ quản trị viên mới được xóa thanh toán.');
+        }
+        $payment->delete();
+
+        return redirect()->route('admin.bookings.index')->with('success', 'Xóa thanh toán thành công.');
+    }
+}
