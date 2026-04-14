@@ -27,3 +27,35 @@ Homestead.yaml
 Thumbs.db
 
 # Docker files should be committed
+
+# Additional Laravel files
+/storage/framework/testing
+/storage/framework/cache/data
+/public/storage
+/storage/app/public
+
+# IDE and Editor files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+/coverage
+/.coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+.cache
