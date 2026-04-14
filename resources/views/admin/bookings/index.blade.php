@@ -9,7 +9,6 @@
         <div class="d-flex flex-wrap gap-2">
             @if(auth()->user()->isAdmin())
             <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Tạo đơn nhiều phòng"><i class="bi bi-layers"></i></a>
-            <a href="{{ route('admin.bookings.create') }}" class="btn btn-success btn-sm btn-admin-icon" title="Tạo đơn mới"><i class="bi bi-plus-circle"></i></a>
             @endif
 
             <div class="dropdown">

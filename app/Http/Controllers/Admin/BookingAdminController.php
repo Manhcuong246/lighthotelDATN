@@ -131,23 +131,14 @@ class BookingAdminController extends Controller
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'guests' => 'required|integer|min:1',
-            'status' => 'required|in:pending,confirmed,completed',
-            'payment_method' => 'required|in:cash,vnpay',
+            'status' => 'required|in:pending,confirmed',
+            'payment_method' => 'required|in:cash,bank_transfer,credit_card,momo,zalopay',
             'payment_status' => 'required|in:pending,paid,partial',
             'amount_paid' => 'nullable|numeric|min:0',
             'payment_note' => 'nullable|string|max:500',
         ]);
 
         $room = Room::findOrFail($validated['room_id']);
-        
-        // Validate guests không vượt quá tối đa phòng
-        $maxGuests = $room->roomType?->max_guests ?? 2;
-        if ($validated['guests'] > $maxGuests) {
-            return back()->withErrors([
-                'guests' => "Số khách ({$validated['guests']}) vượt quá tối đa ({$maxGuests}) của phòng {$room->room_number}."
-            ])->withInput();
-        }
-
         $checkIn = new \Carbon\Carbon($validated['check_in']);
         $checkOut = new \Carbon\Carbon($validated['check_out']);
 
@@ -423,7 +414,7 @@ class BookingAdminController extends Controller
         $request->validate([
             'booking_status' => 'required|in:pending,confirmed,cancelled,completed',
             'payment_status' => 'required|in:pending,paid',
-            'payment_method' => 'required|in:cash,vnpay',
+            'payment_method' => 'required|in:cash,vnpay,bank_transfer',
         ], [
             'booking_status.required' => 'Chọn trạng thái đơn.',
             'payment_status.required' => 'Chọn trạng thái thanh toán.',
@@ -831,27 +822,8 @@ class BookingAdminController extends Controller
                 'changed_at' => now(),
             ]);
 
-            // Send confirmation email for ALL payment methods (except VNPay which sends later with payment link)
-            $booking->load('user');
-            $hotelInfo = HotelInfo::first();
-            $paymentMethod = $validated['payment_method'];
-            
-            if ($paymentMethod !== 'vnpay') {
-                // For non-VNPay methods, send confirmation email without payment link
-                try {
-                    Mail::to($user->email)->send(new PaymentInstructionMail(
-                        $booking,
-                        $hotelInfo,
-                        count($dates),
-                        null,
-                        null // No payment URL for non-VNPay
-                    ));
-                } catch (\Exception $e) {
-                    Log::warning("Failed to send booking confirmation email for admin booking {$booking->id}: " . $e->getMessage());
-                }
-            }
-
             // Handle payment based on method
+            $paymentMethod = $validated['payment_method'];
             $paymentStatus = $validated['payment_status'] ?? 'pending';
             $amountPaid = $validated['amount_paid'] ?? 0;
 
