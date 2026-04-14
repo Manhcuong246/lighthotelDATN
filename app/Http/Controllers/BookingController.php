@@ -10,17 +10,14 @@ use App\Models\RoomPrice;
 use App\Models\User;
 use App\Models\Service;
 use App\Models\BookingService as BookingServiceModel;
-use App\Models\HotelInfo;
 use App\Services\VnPayService;
 use App\Services\BookingService;
 use App\Http\Requests\StoreBookingRequest;
 use App\Exceptions\BookingException;
-use App\Mail\PaymentInstructionMail;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Carbon\CarbonPeriod;
 
 class BookingController extends Controller
@@ -56,24 +53,7 @@ class BookingController extends Controller
         try {
             $booking = $this->bookingService->createBooking($request->validated());
 
-            // Gửi email xác nhận booking ngay sau khi tạo
-            try {
-                $hotelInfo = HotelInfo::first();
-                $nights = $booking->check_out->diffInDays($booking->check_in);
-                
-                Mail::to($booking->user->email)->send(new PaymentInstructionMail(
-                    $booking,
-                    $hotelInfo,
-                    $nights,
-                    null,
-                    null
-                ));
-            } catch (\Exception $e) {
-                \Log::warning('Không gửi được email xác nhận booking: ' . $e->getMessage());
-                // Không dừng flow, tiếp tục redirect VNPay
-            }
-
-            // Redirect VNPay
+            // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
             $returnUrl    = route('payment.vnpay.return');
             $orderInfo    = 'Dat phong Light Hotel #' . $booking->id;

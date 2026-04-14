@@ -15,9 +15,6 @@
                     <i class="bi bi-receipt-cutoff me-1"></i>Biên lai
                 </a>
                 @endif
-                <a href="{{ route('admin.bookings.create') }}" class="btn btn-sm btn-outline-success no-print" title="Tạo đơn mới cho khách khác">
-                    <i class="bi bi-plus-circle me-1"></i>Đơn mới
-                </a>
             @php
                 $statusColors = [
                     'pending' => 'warning',
@@ -327,6 +324,7 @@
                                     <select name="payment_method" class="form-select form-select-sm" required>
                                         <option value="cash" @selected($booking->payment_method === 'cash')>Tiền mặt</option>
                                         <option value="vnpay" @selected($booking->payment_method === 'vnpay')>VNPay</option>
+                                        <option value="bank_transfer" @selected($booking->payment_method === 'bank_transfer')>Chuyển khoản</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">

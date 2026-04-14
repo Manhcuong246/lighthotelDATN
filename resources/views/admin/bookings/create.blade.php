@@ -113,15 +113,11 @@
                                id="children" name="children" min="0" value="{{ old('children', 0) }}" />
                         @error('children')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
-                    <input type="hidden" id="guests" name="guests" value="{{ old('guests', (int) old('adults', 1) + (int) old('children', 0)) }}" />
-                    @error('guests')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     <div class="col-sm-2">
                         <label for="status" class="form-label small fw-bold text-muted mb-1">Trạng thái *</label>
                         <select class="form-select form-select-sm rounded-2 @error('status') is-invalid @enderror"
                                 id="status" name="status" required>
-                            <option value="pending" @selected(old('status') == 'pending')>⏳ Chờ xác nhận</option>
-                            <option value="confirmed" @selected(old('status', 'confirmed') == 'confirmed')>✓ Đã xác nhận</option>
-                            <option value="completed" @selected(old('status') == 'completed')>✅ Hoàn thành</option>
+                            <option value="confirmed" selected>✓ Đã thanh toán</option>
                         </select>
                         @error('status')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
@@ -160,7 +156,10 @@
                                 id="payment_method" name="payment_method" required>
                             <option value="">-- Chọn phương thức --</option>
                             <option value="cash" {{ old('payment_method') == 'cash' ? 'selected' : '' }}>💵 Tiền mặt</option>
-                            <option value="vnpay" {{ old('payment_method') == 'vnpay' ? 'selected' : '' }}>💳 VNPay</option>
+                            <option value="bank_transfer" {{ old('payment_method') == 'bank_transfer' ? 'selected' : '' }}>🏦 Chuyển khoản</option>
+                            <option value="credit_card" {{ old('payment_method') == 'credit_card' ? 'selected' : '' }}>💳 Thẻ tín dụng</option>
+                            <option value="momo" {{ old('payment_method') == 'momo' ? 'selected' : '' }}>📱 MoMo</option>
+                            <option value="zalopay" {{ old('payment_method') == 'zalopay' ? 'selected' : '' }}>📲 ZaloPay</option>
                         </select>
                         @error('payment_method')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
@@ -329,24 +328,11 @@ function updatePricePreview() {
     const basePrice = parseFloat(selectedOption.dataset.price) || 0;
     const maxGuests = parseInt(selectedOption.getAttribute('data-max-guests')) || 1;
 
-    // Set max guests for adults
     adultsInput.max = maxGuests;
 
-    const adults = parseInt(adultsInput.value) || 0;
-    if (adults > maxGuests) {
+    if (parseInt(adultsInput.value) > maxGuests) {
         adultsInput.value = maxGuests;
     }
-
-    // Set max guests for children (remaining capacity after adults)
-    const remainingCapacity = Math.max(0, maxGuests - adults);
-    childrenInput.max = remainingCapacity;
-
-    const children = parseInt(childrenInput.value) || 0;
-    if (children > remainingCapacity) {
-        childrenInput.value = remainingCapacity;
-    }
-
-    updateGuestsCount();
 
     const startDate = new Date(checkIn);
     const endDate = new Date(checkOut);
@@ -368,13 +354,6 @@ function updatePricePreview() {
         new Intl.NumberFormat('vi-VN').format(total) + 'đ';
 
     pricePreview.style.display = 'block';
-}
-
-function updateGuestsCount() {
-    const guestsInput = document.getElementById('guests');
-    const adults = parseInt(adultsInput.value) || 0;
-    const children = parseInt(childrenInput.value) || 0;
-    guestsInput.value = Math.max(1, adults + children);
 }
 
 
@@ -557,27 +536,6 @@ checkOutInput.addEventListener('change', function () {
 paymentMethodSelect.addEventListener('change', generateQR);
 
 paymentStatusSelect.addEventListener('change', generateQR);
-
-adultsInput.addEventListener('input', function () {
-    updateGuestsCount();
-    updatePricePreview(); // Re-validate children input max based on adults
-});
-
-childrenInput.addEventListener('input', function () {
-    // Validate that children doesn't exceed remaining capacity
-    const selectedOption = roomSelect.options[roomSelect.selectedIndex];
-    if (selectedOption.value) {
-        const maxGuests = parseInt(selectedOption.getAttribute('data-max-guests')) || 1;
-        const adults = parseInt(adultsInput.value) || 0;
-        const remainingCapacity = Math.max(0, maxGuests - adults);
-        const children = parseInt(childrenInput.value) || 0;
-        
-        if (children > remainingCapacity) {
-            childrenInput.value = remainingCapacity;
-        }
-    }
-    updateGuestsCount();
-});
 
 amountPaidInput.addEventListener('input', generateQR);
 

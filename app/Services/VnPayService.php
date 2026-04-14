@@ -57,22 +57,20 @@ class VnPayService
             $inputData['vnp_BankCode'] = $bankCode;
         }
 
-        $inputData['vnp_SecureHashType'] = 'SHA512';
-
         ksort($inputData);
         $hashData = '';
         $i = 0;
         foreach ($inputData as $key => $value) {
             if ($i === 1) {
-                $hashData .= '&' . rawurlencode($key) . '=' . rawurlencode($value);
+                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
             } else {
-                $hashData .= rawurlencode($key) . '=' . rawurlencode($value);
+                $hashData .= urlencode($key) . '=' . urlencode($value);
                 $i = 1;
             }
         }
 
         $vnpSecureHash = hash_hmac('sha512', $hashData, $vnpHashSecret);
-        $query = http_build_query($inputData, '', '&', PHP_QUERY_RFC3986);
+        $query = http_build_query($inputData);
 
         return $vnpUrl . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
     }
@@ -87,9 +85,9 @@ class VnPayService
         $i = 0;
         foreach ($inputData as $key => $value) {
             if ($i === 1) {
-                $hashData .= '&' . rawurlencode($key) . '=' . rawurlencode($value);
+                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
             } else {
-                $hashData .= rawurlencode($key) . '=' . rawurlencode($value);
+                $hashData .= urlencode($key) . '=' . urlencode($value);
                 $i = 1;
             }
         }
