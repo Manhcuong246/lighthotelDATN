@@ -57,6 +57,38 @@ class BookingController extends Controller
             $validated = $request->validated();
             \Log::info('Validated data:', $validated);
             $booking = $this->bookingService->createBooking($validated);
+            
+            // Process guest information for admin bookings
+            \Log::info('Processing guest data for booking ' . $booking->id, [
+                'guest1_name' => $request->get('guest1_name'),
+                'guest1_cccd' => $request->get('guest1_cccd'),
+                'guest2_name' => $request->get('guest2_name'),
+                'guest2_cccd' => $request->get('guest2_cccd')
+            ]);
+            
+            // Create guest 1 if provided
+            if (!empty($request->get('guest1_name'))) {
+                \App\Models\BookingGuest::create([
+                    'booking_id' => $booking->id,
+                    'name' => $request->get('guest1_name'),
+                    'cccd' => $request->get('guest1_cccd'),
+                    'type' => 'adult',
+                    'status' => 'pending',
+                ]);
+                \Log::info('Created guest 1 for booking ' . $booking->id);
+            }
+            
+            // Create guest 2 if provided
+            if (!empty($request->get('guest2_name'))) {
+                \App\Models\BookingGuest::create([
+                    'booking_id' => $booking->id,
+                    'name' => $request->get('guest2_name'),
+                    'cccd' => $request->get('guest2_cccd'),
+                    'type' => 'adult',
+                    'status' => 'pending',
+                ]);
+                \Log::info('Created guest 2 for booking ' . $booking->id);
+            }
 
             // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
