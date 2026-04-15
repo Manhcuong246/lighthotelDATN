@@ -102,6 +102,8 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
     Route::post('/bookings/{booking}/payment-settings', [BookingAdminController::class, 'updatePaymentSettings'])->name('bookings.update-payment-settings');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
+    Route::get('/bookings/{booking}/guest-info', [BookingAdminController::class, 'getGuestInfo'])->name('bookings.guest-info');
+    Route::put('/bookings/{booking}/guest-info', [BookingAdminController::class, 'updateGuestInfo'])->name('bookings.update-guest-info');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');
     Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
