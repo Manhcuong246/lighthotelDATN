@@ -143,6 +143,49 @@
             </div>
         </div>
 
+        <!-- Thông tin chietailed khách hàng -->
+        <div class="card shadow-sm border-0 rounded-3 mb-3">
+            <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
+                <h5 class="mb-0 fw-bold">Thông tin chietailed khách hàng</h5>
+                <small class="text-muted">Nhâp tên và CCCD cho tât ca khách</small>
+            </div>
+            <div class="card-body">
+                <div id="guestDetailsContainer">
+                    @php
+                        $defaultAdults = 1;
+                        $defaultChildren = 0;
+                        $totalGuests = $defaultAdults + $defaultChildren;
+                    @endphp
+                    
+                    @for ($i = 1; $i <= $totalGuests; $i++)
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">
+                                    Khách {{ $i }} ({{ $i <= $defaultAdults ? 'Ng\u01b0\u1eddi l\u1edbn' : 'Tr\u1ebb em' }}) *
+                                </label>
+                                <input type="text" 
+                                       name="guests[{{ $i }}][name]" 
+                                       class="form-control" 
+                                       placeholder="Nh\u1eadp h\u1ecd t\u00ean" 
+                                       required>
+                                <input type="hidden" name="guests[{{ $i }}][type]" value="{{ $i <= $defaultAdults ? 'adult' : 'child' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">
+                                    CCCD Khách {{ $i }} {{ $i > $defaultAdults ? '(kh\u1ecfng b\u1eaft bu\u1ed9c)' : '*' }}
+                                </label>
+                                <input type="text" 
+                                       name="guests[{{ $i }}][cccd]" 
+                                       class="form-control" 
+                                       placeholder="Nh\u1eadp s\u1ed1 CCCD" 
+                                       {{ $i <= $defaultAdults ? 'required' : '' }}>
+                            </div>
+                        </div>
+                    @endfor
+                </div>
+            </div>
+        </div>
+
         <!-- Thông tin thanh toán -->
         <div class="card shadow-sm border-0 rounded-3 mb-3">
             <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
@@ -538,6 +581,55 @@ paymentMethodSelect.addEventListener('change', generateQR);
 paymentStatusSelect.addEventListener('change', generateQR);
 
 amountPaidInput.addEventListener('input', generateQR);
+
+// Simple function to update guest form when guest count changes
+function updateGuestForm() {
+    const adultsInput = document.getElementById('adults');
+    const childrenInput = document.getElementById('children');
+    const container = document.getElementById('guestDetailsContainer');
+    
+    if (!adultsInput || !childrenInput || !container) return;
+    
+    const adults = parseInt(adultsInput.value) || 1;
+    const children = parseInt(childrenInput.value) || 0;
+    const totalGuests = adults + children;
+    
+    let html = '';
+    for (let i = 1; i <= totalGuests; i++) {
+        const isAdult = i <= adults;
+        html += `
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        Khách ${i} (${isAdult ? 'Ng\u01b0\u1eddi l\u1edbn' : 'Tr\u1ebb em'}) *
+                    </label>
+                    <input type="text" 
+                           name="guests[${i}][name]" 
+                           class="form-control" 
+                           placeholder="Nh\u1eadp h\u1ecd t\u00ean" 
+                           required>
+                    <input type="hidden" name="guests[${i}][type]" value="${isAdult ? 'adult' : 'child'}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        CCCD Khách ${i} ${!isAdult ? '(kh\u1ecfng b\u1eaft bu\u1ed9c)' : '*'}
+                    </label>
+                    <input type="text" 
+                           name="guests[${i}][cccd]" 
+                           class="form-control" 
+                           placeholder="Nh\u1eadp s\u1ed1 CCCD" 
+                           ${isAdult ? 'required' : ''}>
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// Add event listeners
+document.getElementById('adults')?.addEventListener('change', updateGuestForm);
+document.getElementById('children')?.addEventListener('change', updateGuestForm);
 
 
 /* =========================
