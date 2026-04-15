@@ -123,6 +123,14 @@ class BookingAdminController extends Controller
 
     public function store(Request $request)
     {
+        \Log::info('store() called with request data', [
+            'all_data' => $request->all(),
+            'has_guests' => $request->has('guests'),
+            'guests_data' => $request->get('guests'),
+            'method' => $request->method(),
+            'ajax' => $request->ajax()
+        ]);
+        
         $validated = $request->validate([
             'room_id' => 'required|exists:rooms,id',
             'full_name' => 'required|string|max:150',
@@ -130,12 +138,17 @@ class BookingAdminController extends Controller
             'phone' => 'nullable|string|max:20',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1',
+            'adults' => 'required|integer|min:1',
+            'children' => 'nullable|integer|min:0',
             'status' => 'required|in:pending,confirmed',
             'payment_method' => 'required|in:cash,bank_transfer,credit_card,momo,zalopay',
             'payment_status' => 'required|in:pending,paid,partial',
             'amount_paid' => 'nullable|numeric|min:0',
             'payment_note' => 'nullable|string|max:500',
+            'guests' => 'required|array|min:1',
+            'guests.*.name' => 'required|string|max:150',
+            'guests.*.type' => 'required|in:adult,child',
+            'guests.*.cccd' => 'nullable|string|max:20',
         ]);
 
         $room = Room::findOrFail($validated['room_id']);
@@ -179,12 +192,15 @@ class BookingAdminController extends Controller
             ])->save();
 
             // Create booking
+            $totalGuests = ($validated['adults'] ?? 1) + ($validated['children'] ?? 0);
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'room_id' => $room->id,
                 'check_in' => $checkIn->toDateString(),
                 'check_out' => $checkOut->toDateString(),
-                'guests' => $validated['guests'],
+                'guests' => $totalGuests,
+                'adults' => $validated['adults'] ?? 1,
+                'children' => $validated['children'] ?? 0,
                 'total_price' => $totalPrice,
                 'status' => $validated['status'],
                 'payment_status' => 'pending',
@@ -222,6 +238,33 @@ class BookingAdminController extends Controller
                 ]);
             } catch (\Exception $e) {
                 // Continue even if payment creation fails
+            }
+
+            // Save guest information
+            \Log::info('Processing guest data for booking ' . $booking->id, [
+                'guests_data' => $validated['guests'] ?? 'NOT_SET',
+                'is_array' => isset($validated['guests']) && is_array($validated['guests']),
+                'count' => isset($validated['guests']) && is_array($validated['guests']) ? count($validated['guests']) : 0
+            ]);
+            
+            if (isset($validated['guests']) && is_array($validated['guests'])) {
+                foreach ($validated['guests'] as $index => $guestData) {
+                    \Log::info("Creating guest {$index}", [
+                        'name' => $guestData['name'] ?? 'MISSING',
+                        'cccd' => $guestData['cccd'] ?? 'MISSING',
+                        'type' => $guestData['type'] ?? 'MISSING'
+                    ]);
+                    
+                    \App\Models\BookingGuest::create([
+                        'booking_id' => $booking->id,
+                        'name' => $guestData['name'],
+                        'cccd' => $guestData['cccd'] ?? null,
+                        'type' => $guestData['type'],
+                        'status' => 'pending',
+                    ]);
+                }
+            } else {
+                \Log::warning('No guest data found in request for booking ' . $booking->id);
             }
 
             DB::commit();
@@ -545,6 +588,9 @@ class BookingAdminController extends Controller
         $booking->actual_check_in = now();
         $booking->save();
 
+        // Cập nhật trạng thái tất cả khách hàng thành checked_in
+        $booking->bookingGuests()->update(['status' => 'checked_in']);
+
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,
             'old_status' => $old,
@@ -552,7 +598,7 @@ class BookingAdminController extends Controller
             'changed_at' => now(),
         ]);
 
-        return back()->with('success', 'Khách đã được check-in.');
+        return back()->with('success', 'Khách đã được check-in. Tất cả thông tin khách hàng đã được xác nhận.');
     }
 
     public function checkOut(Booking $booking)
@@ -575,6 +621,110 @@ class BookingAdminController extends Controller
         ]);
 
         return back()->with('success', 'Khách đã check-out.');
+    }
+
+    /**
+     * Lấy thông tin khách hàng cho modal check-in
+     */
+    public function getGuestInfo(Booking $booking)
+    {
+        if (!$booking->isAdminCheckinAllowed()) {
+            return response()->json(['error' => 'Không thể thực hiện check-in cho đơn này.'], 403);
+        }
+
+        $booking->load(['bookingGuests', 'rooms', 'user']);
+        
+        $guests = $booking->bookingGuests()->orderBy('type')->orderBy('name')->get();
+        
+        // Debug logging
+        \Log::info('Guest info for booking ' . $booking->id, [
+            'guests_count' => $guests->count(),
+            'booking_id' => $booking->id,
+            'booking_status' => $booking->status,
+            'check_in' => $booking->check_in,
+            'check_out' => $booking->check_out,
+            'user_id' => $booking->user_id
+        ]);
+        
+        // If no guests found, return empty - no more sample guests
+        if ($guests->isEmpty()) {
+            \Log::info('No guests found for booking ' . $booking->id . ' - returning empty');
+            return response()->json([
+                'booking' => [
+                    'id' => $booking->id,
+                    'status' => $booking->status,
+                    'check_in' => $booking->check_in,
+                    'check_out' => $booking->check_out,
+                    'user' => $booking->user?->full_name,
+                ],
+                'guests' => [],
+                'message' => 'Không có thông tin khách hàng. Vui lòng thêm thông tin khách hàng.'
+            ]);
+            
+            // Reload guests after creating
+            $guests = $booking->bookingGuests()->orderBy('type')->orderBy('name')->get();
+        }
+        
+        return response()->json([
+            'booking' => [
+                'id' => $booking->id,
+                'user_name' => $booking->user?->full_name ?? '—',
+                'rooms' => $booking->rooms->map(function($room) {
+                    return $room->name;
+                })->implode(', '),
+                'check_in' => $booking->check_in?->format('d/m/Y') ?? '—',
+                'check_out' => $booking->check_out?->format('d/m/Y') ?? '—',
+            ],
+            'guests' => $guests->map(function($guest) {
+                return [
+                    'id' => $guest->id,
+                    'name' => $guest->name,
+                    'type' => $guest->type,
+                    'cccd' => $guest->cccd ?: '',
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Câp nhât thông tin khách hàng
+     */
+    public function updateGuestInfo(Request $request, Booking $booking)
+    {
+        if (!$booking->isAdminCheckinAllowed()) {
+            return response()->json(['error' => 'Không thê câp nhât thông tin cho don này.'], 403);
+        }
+
+        $validated = $request->validate([
+            'guests' => 'required|array|min:1',
+            'guests.*.id' => 'required|exists:booking_guests,id',
+            'guests.*.name' => 'required|string|max:150',
+            'guests.*.cccd' => 'nullable|string|max:20',
+            'guests.*.type' => 'required|in:adult,child',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['guests'] as $guestData) {
+                $guest = \App\Models\BookingGuest::find($guestData['id']);
+                if ($guest && $guest->booking_id === $booking->id) {
+                    $guest->update([
+                        'name' => $guestData['name'],
+                        'cccd' => $guestData['cccd'] ?? null,
+                        'type' => $guestData['type'],
+                    ]);
+                }
+            }
+
+            DB::commit();
+            
+            // Return updated guest list
+            return $this->getGuestInfo($booking);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Có lôi xây ra: ' . $e->getMessage()], 500);
+        }
     }
 
     // ===================== MULTI-ROOM BOOKING =====================
@@ -671,6 +821,14 @@ class BookingAdminController extends Controller
 
     public function storeMulti(Request $request)
     {
+        \Log::info('storeMulti called with request data', [
+            'all_data' => $request->all(),
+            'has_guests' => $request->has('guests'),
+            'guests_data' => $request->get('guests'),
+            'method' => $request->method(),
+            'ajax' => $request->ajax()
+        ]);
+        
         $validated = $request->validate([
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
@@ -690,6 +848,11 @@ class BookingAdminController extends Controller
             'payment_method' => 'required|in:cash,vnpay',
             'payment_status' => 'nullable|in:pending,paid',
             'amount_paid' => 'nullable|numeric|min:0',
+            // Temporarily remove guest validation to debug
+            // 'guest1_name' => 'required|string|max:150',
+            // 'guest1_cccd' => 'required|string|max:20',
+            // 'guest2_name' => 'nullable|string|max:150',
+            // 'guest2_cccd' => 'nullable|string|max:20',
         ]);
 
         $checkIn = new \Carbon\Carbon($validated['check_in']);
@@ -874,6 +1037,38 @@ class BookingAdminController extends Controller
                     'warning',
                     $this->paymentInstructionMailFailureMessage().' — link VNPay vẫn có trên trang này để sao chép cho khách.'
                 );
+            }
+
+            // Save guest information - process simple guest fields
+            \Log::info('Processing guest data for multi-room booking ' . $booking->id, [
+                'guest1_name' => $validated['guest1_name'] ?? 'NOT_SET',
+                'guest1_cccd' => $validated['guest1_cccd'] ?? 'NOT_SET',
+                'guest2_name' => $validated['guest2_name'] ?? 'NOT_SET',
+                'guest2_cccd' => $validated['guest2_cccd'] ?? 'NOT_SET'
+            ]);
+            
+            // Always create guest 1 (required)
+            if (!empty($validated['guest1_name'])) {
+                \App\Models\BookingGuest::create([
+                    'booking_id' => $booking->id,
+                    'name' => $validated['guest1_name'],
+                    'cccd' => $validated['guest1_cccd'] ?? null,
+                    'type' => 'adult',
+                    'status' => 'pending',
+                ]);
+                \Log::info('Created guest 1 for booking ' . $booking->id);
+            }
+            
+            // Create guest 2 if provided
+            if (!empty($validated['guest2_name'])) {
+                \App\Models\BookingGuest::create([
+                    'booking_id' => $booking->id,
+                    'name' => $validated['guest2_name'],
+                    'cccd' => $validated['guest2_cccd'] ?? null,
+                    'type' => 'adult',
+                    'status' => 'pending',
+                ]);
+                \Log::info('Created guest 2 for booking ' . $booking->id);
             }
 
             DB::commit();
