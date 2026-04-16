@@ -234,7 +234,7 @@
 
                                                 @if($booking->isAdminCheckoutAllowed())
                                                 <li>
-                                                    <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST">
+                                                    <form action="{{ route('admin.bookings.checkout', $booking) }}" method="POST">
                                                         @csrf
                                                         <button class="dropdown-item text-warning" type="submit">
                                                             <i class="bi bi-box-arrow-right me-2"></i> Check-out
@@ -424,7 +424,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
             </div>
-            <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST" id="checkinForm{{ $booking->id }}">
+            <form action="{{ route('admin.bookings.checkin', $booking) }}" method="POST" id="checkinForm{{ $booking->id }}">
                 @csrf
                 <div class="modal-body">
                     <div class="alert alert-info">
@@ -473,7 +473,7 @@
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-lg me-1"></i>Đóng
                     </button>
-                    <button type="submit" class="btn btn-info" id="checkinSubmitBtn{{ $booking->id }}" disabled style="display: none;">
+                    <button type="submit" class="btn btn-info" id="checkinSubmitBtn{{ $booking->id }}" disabled>
                         <i class="bi bi-box-arrow-in-right me-1"></i>Xác nhận Check-in
                     </button>
                 </div>
@@ -616,6 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (submitBtn) {
                             submitBtn.disabled = confirmed < totalGuests;
                             if (confirmed >= totalGuests) {
+                                submitBtn.style.display = 'inline-block';
                                 submitBtn.classList.remove('btn-info');
                                 submitBtn.classList.add('btn-success');
                             } else {
