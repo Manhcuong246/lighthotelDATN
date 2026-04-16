@@ -143,17 +143,16 @@
             </div>
         </div>
 
-        <!-- Thông tin chietailed khách hàng -->
         <div class="card shadow-sm border-0 rounded-3 mb-3">
             <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
-                <h5 class="mb-0 fw-bold">Thông tin chietailed khách hàng</h5>
-                <small class="text-muted">Nhâp tên và CCCD cho tât ca khách</small>
+                <h5 class="mb-0 fw-bold">Thông tin chi tiết khách hàng</h5>
+                <small class="text-muted">Nhập tên và CCCD cho tất cả khách</small>
             </div>
             <div class="card-body">
                 <div id="guestDetailsContainer">
                     @php
-                        $defaultAdults = 1;
-                        $defaultChildren = 0;
+                        $defaultAdults = old('adults', 1);
+                        $defaultChildren = old('children', 0);
                         $totalGuests = $defaultAdults + $defaultChildren;
                     @endphp
                     
@@ -166,7 +165,8 @@
                                 <input type="text" 
                                        name="guests[{{ $i }}][name]" 
                                        class="form-control" 
-                                       placeholder="Nh\u1eadp h\u1ecd t\u00ean" 
+                                       placeholder="Nhập họ tên" 
+                                       value="{{ old('guests.'.$i.'.name') }}"
                                        required>
                                 <input type="hidden" name="guests[{{ $i }}][type]" value="{{ $i <= $defaultAdults ? 'adult' : 'child' }}">
                             </div>
@@ -177,7 +177,8 @@
                                 <input type="text" 
                                        name="guests[{{ $i }}][cccd]" 
                                        class="form-control" 
-                                       placeholder="Nh\u1eadp s\u1ed1 CCCD" 
+                                       placeholder="Nhập số CCCD" 
+                                       value="{{ old('guests.'.$i.'.cccd') }}"
                                        {{ $i <= $defaultAdults ? 'required' : '' }}>
                             </div>
                         </div>
@@ -630,6 +631,9 @@ function updateGuestForm() {
 // Add event listeners
 document.getElementById('adults')?.addEventListener('change', updateGuestForm);
 document.getElementById('children')?.addEventListener('change', updateGuestForm);
+
+// Run immediately on load to handle old() values
+document.addEventListener('DOMContentLoaded', updateGuestForm);
 
 
 /* =========================
