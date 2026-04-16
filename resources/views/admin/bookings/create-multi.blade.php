@@ -45,9 +45,8 @@
     </div>
 
     <!-- Step 2: Chọn Phòng và Thông Tin -->
-    <form id="bookingForm" action="{{ route('books.store') }}" method="POST">
+    <form id="bookingForm" action="{{ route('admin.bookings.store-multi') }}" method="POST">
         @csrf
-        <!-- DEBUG: Form action now uses BookingController -->
         <input type="hidden" name="debug_form_version" value="v3-direct-submit">
         <input type="hidden" name="check_in" id="form_check_in">
         <input type="hidden" name="check_out" id="form_check_out">
@@ -93,60 +92,7 @@
             </div>
         </div>
 
-        <!-- Thông tin chi tiet khách hàng -->
-        <div class="card shadow-sm border-0 rounded-3 mb-4">
-            <div class="card-header bg-white border-0 rounded-top-3">
-                <div class="d-flex align-items-center justify-content-between">
-                    <h2 class="h6 mb-0 fw-bold">Thông tin chi tiet khách hàng</h2>
-                    <span class="badge bg-warning text-dark border">Bat buoc</span>
-                </div>
-                <div class="small text-muted mt-1">Nhap tên và CCCD cho khách hàng</div>
-            </div>
-            <div class="card-body">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">
-                            Khách 1 (Ng\u01b0\u1eddi l\u1edbn) *
-                        </label>
-                        <input type="text" 
-                               name="guest1_name" 
-                               class="form-control" 
-                               placeholder="Nh\u1eadp h\u1ecd t\u00ean" 
-                               required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">
-                            CCCD Khách 1 *
-                        </label>
-                        <input type="text" 
-                               name="guest1_cccd" 
-                               class="form-control" 
-                               placeholder="Nh\u1eadp s\u1ed1 CCCD" 
-                               required>
-                    </div>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">
-                            Khách 2 (Ng\u01b0\u1eddi l\u1edbn)
-                        </label>
-                        <input type="text" 
-                               name="guest2_name" 
-                               class="form-control" 
-                               placeholder="Nh\u1eadp h\u1ecd t\u00ean (kh\u1ecfng b\u1eaft bu\u1ed9c)">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">
-                            CCCD Khách 2
-                        </label>
-                        <input type="text" 
-                               name="guest2_cccd" 
-                               class="form-control" 
-                               placeholder="Nh\u1eadp s\u1ed1 CCCD (kh\u1ecfng b\u1eaft bu\u1ed9c)">
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Mã giảm giá và thanh toán -->
         <div class="row">
@@ -218,6 +164,11 @@
             </div>
         </div>
 
+        <!-- Thông tin chi tiết khách hàng -->
+        <div class="card shadow-sm border-0 rounded-3 mb-4" id="guestFormsContainer" style="display: none;">
+            <!-- Javascript sẽ tự động thêm form thông tin dựa vào tổng số lượng người lớn tại đây -->
+        </div>
+
         <!-- Tổng tiền và xác nhận -->
         <div class="card shadow-sm border-0 rounded-3 mb-4 bg-light">
             <div class="card-body">
@@ -239,60 +190,7 @@
                         <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
                     </div>
                     
-                    <!-- Thông tin chi tiet khách hàng -->
-                    <div class="card shadow-sm border-0 rounded-3 mb-4">
-                        <div class="card-header bg-white border-0 rounded-top-3">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <h2 class="h6 mb-0 fw-bold">Thông tin chi tiet khách hàng</h2>
-                                <span class="badge bg-warning text-dark border">Bat buoc</span>
-                            </div>
-                            <div class="small text-muted mt-1">Nhap tên và CCCD cho khách hàng (t\u1ed1i thi\u1ec3u 1 khách)</div>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">
-                                        Khách 1 (Ng\u01b0\u1eddi l\u1edbn) *
-                                    </label>
-                                    <input type="text" 
-                                           name="guest1_name" 
-                                           class="form-control" 
-                                           placeholder="Nh\u1eadp h\u1ecd t\u00ean" 
-                                           required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">
-                                        CCCD Khách 1 *
-                                    </label>
-                                    <input type="text" 
-                                           name="guest1_cccd" 
-                                           class="form-control" 
-                                           placeholder="Nh\u1eadp s\u1ed1 CCCD" 
-                                           required>
-                                </div>
-                            </div>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">
-                                        Khách 2 (Ng\u01b0\u1eddi l\u1edbn)
-                                    </label>
-                                    <input type="text" 
-                                           name="guest2_name" 
-                                           class="form-control" 
-                                           placeholder="Nh\u1eadp h\u1ecd t\u00ean (kh\u1ecfng b\u1eaft bu\u1ed9c)">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">
-                                        CCCD Khách 2
-                                    </label>
-                                    <input type="text" 
-                                           name="guest2_cccd" 
-                                           class="form-control" 
-                                           placeholder="Nh\u1eadp s\u1ed1 CCCD (kh\u1ecfng b\u1eaft bu\u1ed9c)">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
                     
                     <div class="col-md-4 text-end">
                         <button type="submit" class="btn btn-success btn-lg px-4 d-inline-flex align-items-center justify-content-center gap-2">
@@ -336,6 +234,7 @@ function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, st
 let availableRoomsData = [];
 let selectedRooms = {};
 let nights = 0;
+let guestData = {}; // Source of truth for guest name/cccd inputs
 
 // Set min checkout date when checkin changes
 document.getElementById('check_in').addEventListener('change', function() {
@@ -402,11 +301,11 @@ function renderAvailableRooms(rooms) {
                 <div class="row g-0">
                     <!-- Room Image -->
                     <div class="col-md-2 col-sm-3">
-                        <div class="position-relative h-100" style="min-height: 100px;">
+                        <div class="position-relative h-100 w-100">
                             <img src="${roomImage}"
-                                 class="w-100 h-100 rounded-start" style="object-fit: cover;"
+                                 class="w-100 d-block rounded-start" style="object-fit: cover; aspect-ratio: 4/3; min-height: 140px; height: 100%;"
                                  alt="${roomType.name}">
-                            <span class="position-absolute top-0 start-0 m-1 badge bg-success small" style="font-size: 0.7rem;">
+                            <span class="position-absolute top-0 start-0 m-1 badge bg-success small" style="font-size: 0.7rem; z-index: 1;">
                                 Còn ${roomType.available_count}
                             </span>
                         </div>
@@ -948,41 +847,110 @@ function prepareFormData() {
         });
     });
     
-    // Add guest inputs to form
-    const guestInputs = form.querySelectorAll('[name^="guest"]');
-    console.log('Found guest inputs:', guestInputs.length);
-    
-    guestInputs.forEach(input => {
-        console.log('Processing guest input:', input.name, input.value);
-        // Clone the input to ensure it's included in form submission
-        const clonedInput = input.cloneNode(true);
-        clonedInput.className = 'dynamic-room-input';
-        form.appendChild(clonedInput);
-        console.log('Added cloned input:', clonedInput.name, clonedInput.value);
+}
+
+function generateGuestDetailsForm() {
+    let totalAdults = 0;
+    Object.values(selectedRooms).forEach(roomType => {
+        roomType.rooms.forEach(roomData => {
+            totalAdults += parseInt(roomData.adults) || 1;
+        });
     });
-    
-    console.log('Guest inputs added to form:', guestInputs.length);
-    
-    // Also try to manually add specific guest fields
-    const guest1Name = form.querySelector('[name="guest1_name"]');
-    const guest1Cccd = form.querySelector('[name="guest1_cccd"]');
-    const guest2Name = form.querySelector('[name="guest2_name"]');
-    const guest2Cccd = form.querySelector('[name="guest2_cccd"]');
-    
-    console.log('Manual check - guest1_name:', guest1Name ? guest1Name.value : 'NOT_FOUND');
-    console.log('Manual check - guest1_cccd:', guest1Cccd ? guest1Cccd.value : 'NOT_FOUND');
-    console.log('Manual check - guest2_name:', guest2Name ? guest2Name.value : 'NOT_FOUND');
-    console.log('Manual check - guest2_cccd:', guest2Cccd ? guest2Cccd.value : 'NOT_FOUND');
-    
-    // Manually add them if found
-    [guest1Name, guest1Cccd, guest2Name, guest2Cccd].forEach(input => {
-        if (input && input.value) {
-            const clonedInput = input.cloneNode(true);
-            clonedInput.className = 'dynamic-room-input';
-            form.appendChild(clonedInput);
-            console.log('Manually added:', clonedInput.name, clonedInput.value);
+
+    const container = document.getElementById('guestFormsContainer');
+    if (!container) return;
+
+    if (totalAdults === 0) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+
+    container.style.display = 'block';
+
+    // Rebuild header (only the subtitle text changes)
+    let headerDiv = container.querySelector('.card-header');
+    if (!headerDiv) {
+        container.innerHTML = `
+            <div class="card-header bg-white border-0 rounded-top-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h2 class="h6 mb-0 fw-bold">Thông tin chi tiết khách hàng</h2>
+                    <span class="badge bg-warning text-dark border">Bắt buộc</span>
+                </div>
+                <div class="small text-muted mt-1 guest-count-hint"></div>
+            </div>
+            <div class="card-body"><div class="row g-3 guest-rows"></div></div>
+        `;
+    }
+    const hint = container.querySelector('.guest-count-hint');
+    if (hint) hint.textContent = `Vui lòng nhập thông tin cho ${totalAdults} khách (tối thiểu khách 1)`;
+
+    const rowsContainer = container.querySelector('.guest-rows');
+    if (!rowsContainer) return;
+
+    // Count current rows
+    const currentRows = rowsContainer.querySelectorAll('.guest-row').length;
+
+    if (currentRows < totalAdults) {
+        // Add missing rows
+        for (let i = currentRows; i < totalAdults; i++) {
+            const isRequired = (i === 0);
+            const savedName = guestData[i] ? guestData[i].name : '';
+            const savedCccd = guestData[i] ? guestData[i].cccd : '';
+            const row = document.createElement('div');
+            row.className = 'col-12 guest-row';
+            row.dataset.index = i;
+            row.innerHTML = `
+                <div class="row g-3 mb-1">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            Khách ${i + 1} (Người lớn) ${isRequired ? '<span class="text-danger">*</span>' : ''}
+                        </label>
+                        <input type="text"
+                               name="guests[${i}][name]"
+                               class="form-control guest-name-input"
+                               data-guest-index="${i}"
+                               placeholder="Nhập họ tên"
+                               value="${savedName}"
+                               ${isRequired ? 'required' : ''}>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            CCCD Khách ${i + 1} ${isRequired ? '<span class="text-danger">*</span>' : ''}
+                        </label>
+                        <input type="text"
+                               name="guests[${i}][cccd]"
+                               class="form-control guest-cccd-input"
+                               data-guest-index="${i}"
+                               placeholder="Nhập số CCCD (đúng 12 số)"
+                               value="${savedCccd}"
+                               pattern="\\d{12}"
+                               minlength="12"
+                               maxlength="12"
+                               title="CCCD phải bao gồm chính xác 12 chữ số"
+                               ${isRequired ? 'required' : ''}>
+                    </div>
+                </div>
+                ${i < totalAdults - 1 ? '<hr class="my-2 border-light">' : ''}
+            `;
+            // Attach live-save listeners
+            row.querySelector('.guest-name-input').addEventListener('input', function() {
+                if (!guestData[i]) guestData[i] = {};
+                guestData[i].name = this.value;
+            });
+            row.querySelector('.guest-cccd-input').addEventListener('input', function() {
+                if (!guestData[i]) guestData[i] = {};
+                guestData[i].cccd = this.value;
+            });
+            rowsContainer.appendChild(row);
         }
-    });
+    } else if (currentRows > totalAdults) {
+        // Remove extra rows
+        const rows = rowsContainer.querySelectorAll('.guest-row');
+        for (let i = currentRows - 1; i >= totalAdults; i--) {
+            if (rows[i]) rows[i].remove();
+        }
+    }
 }
 
 // Simple function to select a room and fill form data
@@ -993,15 +961,22 @@ function selectRoom(roomId, adults, children) {
     console.log('Room selected:', roomId, 'Adults:', adults, 'Children:', children);
 }
 
-// Simple form validation
+// Form validation and preparation
 document.getElementById('bookingForm').addEventListener('submit', function(e) {
-    const roomId = document.getElementById('form_room_id').value;
-    if (!roomId) {
+    let hasRooms = false;
+    Object.values(selectedRooms).forEach(roomType => {
+        if (roomType.quantity > 0) hasRooms = true;
+    });
+
+    if (!hasRooms) {
         e.preventDefault();
-        alert('Vui lòng chon ít nhát m?t phòng.');
+        alert('Vui lòng chọn ít nhất một phòng.');
         return false;
     }
-    console.log('Form submitting with room:', roomId);
+    
+    // Prepare dynamic fields before submission
+    prepareFormData();
+    console.log('Form submitting with selected rooms:', selectedRooms);
 });
 </script>
 @endsection
