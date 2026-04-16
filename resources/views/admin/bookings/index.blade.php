@@ -8,6 +8,7 @@
         <h1 class="text-dark fw-bold mb-0">Đơn đặt phòng &amp; thanh toán</h1>
         <div class="d-flex flex-wrap gap-2">
             @if(auth()->user()->isAdmin())
+            <a href="{{ route('admin.bookings.create') }}" class="btn btn-success btn-sm btn-admin-icon" title="Tạo đơn đặt phòng"><i class="bi bi-plus-circle"></i></a>
             <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Tạo đơn nhiều phòng"><i class="bi bi-layers"></i></a>
             @endif
 
