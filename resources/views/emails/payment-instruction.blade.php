@@ -29,6 +29,66 @@
                                     Đơn <strong style="color:#1a2b4a;">#{{ $booking->id }}</strong> đang chờ thanh toán qua <strong>VNPay</strong>.
                                 </p>
 
+                                {{-- Chi tiết đặt phòng --}}
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f8fafc; border-radius:12px; border:2px solid #e2e8f0; margin-bottom:20px;">
+                                    <tr>
+                                        <td style="padding:20px; font-family:Arial,Helvetica,sans-serif;">
+                                            <p style="margin:0 0 16px; font-size:16px; font-weight:700; color:#1a2b4a; border-bottom:2px solid #3b82f6; padding-bottom:8px;">
+                                                📋 Chi tiết đặt phòng
+                                            </p>
+                                            
+                                            @php
+                                                $room = $booking->rooms->first() ?? null;
+                                                $roomType = $room?->roomType;
+                                                $checkIn = \Carbon\Carbon::parse($booking->check_in);
+                                                $checkOut = \Carbon\Carbon::parse($booking->check_out);
+                                            @endphp
+                                            
+                                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                                                <tr>
+                                                    <td style="padding:8px 0; font-size:14px; color:#64748b; width:40%;">🏨 Phòng:</td>
+                                                    <td style="padding:8px 0; font-size:14px; font-weight:600; color:#1e293b;">
+                                                        @if($roomType)
+                                                            {{ $roomType->name ?? 'Loại phòng' }}
+                                                        @elseif($booking->room)
+                                                            Phòng {{ $booking->room->room_number ?? 'N/A' }}
+                                                        @else
+                                                            Đang cập nhật
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                                <tr style="background:#f1f5f9;">
+                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">📅 Nhận phòng:</td>
+                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
+                                                        {{ $checkIn->format('H:i') }} - {{ $checkIn->format('d/m/Y') }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">📅 Trả phòng:</td>
+                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
+                                                        {{ $checkOut->format('H:i') }} - {{ $checkOut->format('d/m/Y') }}
+                                                    </td>
+                                                </tr>
+                                                <tr style="background:#f1f5f9;">
+                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">🌙 Số đêm:</td>
+                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
+                                                        {{ $nights }} đêm
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">👥 Số khách:</td>
+                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
+                                                        {{ $booking->adults ?? 1 }} người lớn
+                                                        @if($booking->children > 0)
+                                                            + {{ $booking->children }} trẻ em
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+
                                 {{-- Gợi ý thời hạn — không hiển thị URL --}}
                                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f7ff; border-radius:12px; border:1px solid #bfdbfe;">
                                     <tr>

@@ -140,10 +140,9 @@ class BookingAdminController extends Controller
             'phone' => 'nullable|string|max:20',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
-            'adults' => 'required|integer|min:1',
-            'children' => 'nullable|integer|min:0',
+            'guests' => 'required|integer|min:1',
             'status' => 'required|in:pending,confirmed',
-            'payment_method' => 'required|in:cash,bank_transfer,credit_card,momo,zalopay',
+            'payment_method' => 'required|in:cash,vnpay',
             'payment_status' => 'required|in:pending,paid,partial',
             'amount_paid' => 'nullable|numeric|min:0',
             'payment_note' => 'nullable|string|max:500',
@@ -156,6 +155,11 @@ class BookingAdminController extends Controller
         $room = Room::findOrFail($validated['room_id']);
         $checkIn = new \Carbon\Carbon($validated['check_in']);
         $checkOut = new \Carbon\Carbon($validated['check_out']);
+
+        $adults = $validated['adults'];
+        $children611 = $validated['children_6_11'] ?? 0;
+        $children05 = $validated['children_0_5'] ?? 0;
+        $totalGuests = $adults + $children611 + $children05;
 
         // Check room availability
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
@@ -172,8 +176,8 @@ class BookingAdminController extends Controller
             return back()->withErrors(['check_in' => 'Phòng đã được đặt trong khoảng thời gian này.'])->withInput();
         }
 
-        // Calculate total price
-        $totalPrice = $this->calculateTotalPrice($room, $checkIn, $checkOut);
+        // Calculate total price with occupancy surcharge
+        $totalPrice = $this->calculateTotalPriceWithSurcharge($room, $checkIn, $checkOut, $adults, $children611, $children05);
 
         DB::beginTransaction();
         try {
@@ -200,9 +204,7 @@ class BookingAdminController extends Controller
                 'room_id' => $room->id,
                 'check_in' => $checkIn->toDateString(),
                 'check_out' => $checkOut->toDateString(),
-                'guests' => $totalGuests,
-                'adults' => $validated['adults'] ?? 1,
-                'children' => $validated['children'] ?? 0,
+                'guests' => $validated['guests'],
                 'total_price' => $totalPrice,
                 'status' => $validated['status'],
                 'payment_status' => 'pending',
@@ -229,15 +231,22 @@ class BookingAdminController extends Controller
             // Create payment record
             try {
                 $ps = $validated['payment_status'];
+                $paymentMethod = $validated['payment_method'];
                 $paymentPaid = in_array($ps, ['paid', 'partial'], true);
+
                 Payment::create([
                     'booking_id' => $booking->id,
                     'amount' => $validated['amount_paid'] ?? 0,
-                    'method' => $validated['payment_method'],
+                    'method' => $paymentMethod,
                     'status' => $paymentPaid ? 'paid' : 'pending',
                     'transaction_id' => 'ADM' . time() . rand(1000, 9999),
                     'paid_at' => $paymentPaid ? now() : null,
                 ]);
+
+                // Nếu thanh toán qua VNPay, gửi email cho khách
+                if ($paymentMethod === 'vnpay' && $ps === 'pending') {
+                    $this->sendVnPayPaymentEmail($booking, $adults, $children611, $children05);
+                }
             } catch (\Exception $e) {
                 // Continue even if payment creation fails
             }
@@ -295,6 +304,51 @@ class BookingAdminController extends Controller
             }
 
             $total += (float) $priceForDate;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Tính tổng giá với phụ phí số khách vượt sức chứa tiêu chuẩn
+     */
+    protected function calculateTotalPriceWithSurcharge(
+        Room $room,
+        \Carbon\Carbon $checkIn,
+        \Carbon\Carbon $checkOut,
+        int $adults,
+        int $children611 = 0,
+        int $children05 = 0
+    ): float {
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $prices = RoomPrice::where('room_id', $room->id)->get();
+        $roomType = $room->roomType;
+
+        $standardCapacity = $roomType->standard_capacity ?? 3;
+        $adultSurchargeRate = $roomType->adult_surcharge_rate ?? 0.25;
+        $childSurchargeRate = $roomType->child_surcharge_rate ?? 0.125;
+
+        $total = 0;
+        foreach ($period as $date) {
+            $basePrice = $room->catalogueBasePrice();
+
+            foreach ($prices as $price) {
+                if ($date->betweenIncluded($price->start_date, $price->end_date)) {
+                    $basePrice = $price->price;
+                    break;
+                }
+            }
+
+            // Tính phụ phí theo RoomOccupancyPricing
+            $billableSlots = max(0, $standardCapacity - $children05);
+            $extraAdults = max(0, $adults - $billableSlots);
+            $remainingSlots = max(0, $billableSlots - $adults);
+            $extraChildren611 = max(0, $children611 - $remainingSlots);
+
+            $adultSurcharge = $extraAdults * $adultSurchargeRate * $basePrice;
+            $childSurcharge = $extraChildren611 * $childSurchargeRate * $basePrice;
+
+            $total += $basePrice + $adultSurcharge + $childSurcharge;
         }
 
         return $total;
@@ -1044,6 +1098,58 @@ class BookingAdminController extends Controller
         return ! in_array(config('mail.default'), ['log', 'array'], true);
     }
 
+    /**
+     * Gửi email thanh toán VNPay cho khách khi admin tạo đơn
+     */
+    protected function sendVnPayPaymentEmail(
+        Booking $booking,
+        int $adults = 1,
+        int $children611 = 0,
+        int $children05 = 0
+    ): void {
+        try {
+            // Tạo link VNPay có chữ ký
+            $vnpayPayUrl = $this->signedVnPayEntryUrl($booking);
+
+            // Tính số đêm
+            $checkIn = new \Carbon\Carbon($booking->check_in);
+            $checkOut = new \Carbon\Carbon($booking->check_out);
+            $nights = $checkIn->diffInDays($checkOut);
+
+            // Lấy thông tin khách sạn
+            $hotelInfo = \App\Models\HotelInfo::first();
+
+            // Gửi email
+            $emailSent = $this->sendPaymentInstructionMail(
+                $booking,
+                $hotelInfo,
+                $nights,
+                null, // QR code URL (không cần cho VNPay)
+                $vnpayPayUrl,
+                $booking->user->email
+            );
+
+            // Log kết quả
+            if ($emailSent) {
+                \Log::info('VNPay payment email sent successfully', [
+                    'booking_id' => $booking->id,
+                    'email' => $booking->user->email,
+                    'amount' => $booking->total_price,
+                ]);
+            } else {
+                \Log::warning('VNPay payment email was not delivered (check MAIL_MAILER config)', [
+                    'booking_id' => $booking->id,
+                    'email' => $booking->user->email,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send VNPay payment email: '.$e->getMessage(), [
+                'exception' => $e,
+                'booking_id' => $booking->id,
+            ]);
+        }
+    }
+
     protected function paymentInstructionMailFailureMessage(): string
     {
         if (in_array(config('mail.default'), ['log', 'array'], true)) {
@@ -1730,13 +1836,13 @@ class BookingAdminController extends Controller
                 'password' => \Hash::make(Str::random(12)),
             ]
         );
-        
+
         $user->forceFill([
             'email' => $guestEmail,
             'full_name' => $validated['full_name'],
             'phone' => $validated['phone'] ?? $user->phone,
         ])->save();
-        
+
         return $user;
     }
 
@@ -1855,7 +1961,7 @@ class BookingAdminController extends Controller
                 ]);
             }
         }
-        
+
         \Cache::forget("guest_info_{$booking->id}");
     }
 
