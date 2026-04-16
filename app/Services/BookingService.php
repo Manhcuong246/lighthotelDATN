@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use Illuminate\Support\Facades\Log;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
@@ -183,18 +184,9 @@ class BookingService
                 'status'     => 'pending',
             ]);
 
-            // Tạo BookingGuests
-             if (isset($data['guests']) && is_array($data['guests'])) {
-                foreach ($data['guests'] as $guestData) {
-                                        BookingGuest::create([
-                        'booking_id' => $booking->id,
-                        'name'       => $guestData['name'],
-                         'cccd'       => $guestData['cccd'] ?? null,
-                        'type'       => $guestData['type'],
-                        'status'     => 'pending',
-                    ]);
-                }
-            }
+            // 11/04: Gä bỏ logic lưu BookingGuest cũ tại đây để chuyển sang lưu Guest trong Controller
+            // hoặc gộp chung vào một chỗ để tránh trùng lặp.
+            // (Đã được thực hiện trong BookingController@store theo yêu cầu người dùng)
 
             // Trả về booking để controller xử lý tiếp (vnpay)
             return $booking;
