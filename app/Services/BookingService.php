@@ -67,7 +67,7 @@ class BookingService
                 ->whereIn('booked_date', $dates)
                 ->exists();
             if ($conflict) {
-                $roomName = Room::find($rid)->name ?? 'Phòng';
+                $roomName = Room::with('roomType')->find($rid)?->displayLabel() ?? 'Phòng';
                 throw new BookingException("Phòng \"{$roomName}\" đã có người đặt trong khoảng thời gian này.");
             }
         }
@@ -204,7 +204,7 @@ class BookingService
         try {
             RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5, $roomType);
         } catch (\InvalidArgumentException $e) {
-            throw new \Exception("Phòng \"{$room->name}\": " . $e->getMessage());
+            throw new \Exception("Phòng \"{$room->displayLabel()}\": " . $e->getMessage());
         }
 
         $t = RoomOccupancyPricing::total($basePrice, $nights, $adults, $children_6_11, $children_0_5, $roomType);
