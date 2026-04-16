@@ -61,6 +61,11 @@ class StoreBookingRequest extends FormRequest
             'adults'         => 'required|array',
             'children_0_5'   => 'required|array',
             'children_6_11'  => 'required|array',
+            'guests'         => 'nullable|array',
+           'guests.*.name'  => 'required_with:guests|string|max:150',
+           'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
+            'guests.*.type'  => 'required_with:guests|in:adult,child',
+            'guests.*.room_index' => 'nullable|integer|min:0',
         ];
     }
 
@@ -85,6 +90,14 @@ class StoreBookingRequest extends FormRequest
             'check_out.required'     => 'Vui lòng chọn ngày trả phòng.',
             'check_out.date'         => 'Ngày trả phòng không hợp lệ.',
             'check_out.after'        => 'Ngày trả phòng phải sau ngày nhận phòng.',
+              'guests.required'        => 'Vui lòng cung cấp thông tin khách.',
+            'guests.*.name.required' => 'Vui lòng nhập tên khách.',
+            'guests.*.name.max'      => 'Tên khách không được vượt quá 150 ký tự.',
+            'guests.*.cccd.regex'    => 'CCCD phải gồm 12 số.',
+            'guests.*.type.required' => 'Vui lòng chọn loại khách.',
+            'guests.*.type.in'       => 'Loại khách không hợp lệ.',
+            'guests.*.room_index.integer' => 'Index phòng không hợp lệ.',
+            'guests.*.room_index.min' => 'Index phòng không được âm.',
         ];
     }
 }

@@ -45,10 +45,15 @@
     </div>
 
     <!-- Step 2: Chọn Phòng và Thông Tin -->
-    <form id="bookingForm" action="{{ route('admin.bookings.store-multi') }}" method="POST" style="display: none;">
+    <form id="bookingForm" action="{{ route('books.store') }}" method="POST">
         @csrf
+        <!-- DEBUG: Form action now uses BookingController -->
+        <input type="hidden" name="debug_form_version" value="v3-direct-submit">
         <input type="hidden" name="check_in" id="form_check_in">
         <input type="hidden" name="check_out" id="form_check_out">
+        <input type="hidden" name="room_id" id="form_room_id">
+        <input type="hidden" name="adults" id="form_adults" value="1">
+        <input type="hidden" name="children" id="form_children" value="0">
 
         <!-- Danh sách phòng trống -->
         <div class="card shadow-sm border-0 rounded-3 mb-4">
@@ -83,6 +88,61 @@
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Số điện thoại</label>
                         <input type="tel" name="phone" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thông tin chi tiet khách hàng -->
+        <div class="card shadow-sm border-0 rounded-3 mb-4">
+            <div class="card-header bg-white border-0 rounded-top-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h2 class="h6 mb-0 fw-bold">Thông tin chi tiet khách hàng</h2>
+                    <span class="badge bg-warning text-dark border">Bat buoc</span>
+                </div>
+                <div class="small text-muted mt-1">Nhap tên và CCCD cho khách hàng</div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            Khách 1 (Ng\u01b0\u1eddi l\u1edbn) *
+                        </label>
+                        <input type="text" 
+                               name="guest1_name" 
+                               class="form-control" 
+                               placeholder="Nh\u1eadp h\u1ecd t\u00ean" 
+                               required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            CCCD Khách 1 *
+                        </label>
+                        <input type="text" 
+                               name="guest1_cccd" 
+                               class="form-control" 
+                               placeholder="Nh\u1eadp s\u1ed1 CCCD" 
+                               required>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            Khách 2 (Ng\u01b0\u1eddi l\u1edbn)
+                        </label>
+                        <input type="text" 
+                               name="guest2_name" 
+                               class="form-control" 
+                               placeholder="Nh\u1eadp h\u1ecd t\u00ean (kh\u1ecfng b\u1eaft bu\u1ed9c)">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            CCCD Khách 2
+                        </label>
+                        <input type="text" 
+                               name="guest2_cccd" 
+                               class="form-control" 
+                               placeholder="Nh\u1eadp s\u1ed1 CCCD (kh\u1ecfng b\u1eaft bu\u1ed9c)">
                     </div>
                 </div>
             </div>
@@ -178,6 +238,62 @@
                         <input type="hidden" name="total_price" id="total_price_input">
                         <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
                     </div>
+                    
+                    <!-- Thông tin chi tiet khách hàng -->
+                    <div class="card shadow-sm border-0 rounded-3 mb-4">
+                        <div class="card-header bg-white border-0 rounded-top-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <h2 class="h6 mb-0 fw-bold">Thông tin chi tiet khách hàng</h2>
+                                <span class="badge bg-warning text-dark border">Bat buoc</span>
+                            </div>
+                            <div class="small text-muted mt-1">Nhap tên và CCCD cho khách hàng (t\u1ed1i thi\u1ec3u 1 khách)</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">
+                                        Khách 1 (Ng\u01b0\u1eddi l\u1edbn) *
+                                    </label>
+                                    <input type="text" 
+                                           name="guest1_name" 
+                                           class="form-control" 
+                                           placeholder="Nh\u1eadp h\u1ecd t\u00ean" 
+                                           required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">
+                                        CCCD Khách 1 *
+                                    </label>
+                                    <input type="text" 
+                                           name="guest1_cccd" 
+                                           class="form-control" 
+                                           placeholder="Nh\u1eadp s\u1ed1 CCCD" 
+                                           required>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">
+                                        Khách 2 (Ng\u01b0\u1eddi l\u1edbn)
+                                    </label>
+                                    <input type="text" 
+                                           name="guest2_name" 
+                                           class="form-control" 
+                                           placeholder="Nh\u1eadp h\u1ecd t\u00ean (kh\u1ecfng b\u1eaft bu\u1ed9c)">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">
+                                        CCCD Khách 2
+                                    </label>
+                                    <input type="text" 
+                                           name="guest2_cccd" 
+                                           class="form-control" 
+                                           placeholder="Nh\u1eadp s\u1ed1 CCCD (kh\u1ecfng b\u1eaft bu\u1ed9c)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="col-md-4 text-end">
                         <button type="submit" class="btn btn-success btn-lg px-4 d-inline-flex align-items-center justify-content-center gap-2">
                             <i class="bi bi-check2-circle"></i>
@@ -432,6 +548,9 @@ function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, c
     minusBtn.disabled = quantity <= 0;
 
     calculateTotal();
+    
+    // Generate guest details form
+    generateGuestDetailsForm();
 }
 
 // Generate individual room forms
@@ -506,6 +625,9 @@ function updateRoomGuestData(roomTypeId, roomIndex) {
 
     // Recalculate total
     calculateTotal();
+    
+    // Update guest details form
+    generateGuestDetailsForm();
 }
 
 // Calculate price details with surcharge for extra guests
@@ -769,11 +891,39 @@ function updateTransferContent() {
     // This will be updated with actual booking ID after creation
 }
 
+// Simple functions to show/hide guest inputs
+function addMoreGuests() {
+    for (let i = 3; i <= 4; i++) {
+        const row = document.getElementById(`guestRow${i}`);
+        if (row) {
+            row.style.display = 'block';
+        }
+    }
+    
+    document.getElementById('removeGuestBtn').style.display = 'inline-block';
+    event.target.style.display = 'none';
+}
+
+function removeGuestInputs() {
+    for (let i = 3; i <= 4; i++) {
+        const row = document.getElementById(`guestRow${i}`);
+        if (row) {
+            row.style.display = 'none';
+            // Clear the values
+            const inputs = row.querySelectorAll('input[type="text"]');
+            inputs.forEach(input => input.value = '');
+        }
+    }
+    
+    document.getElementById('removeGuestBtn').style.display = 'none';
+    document.querySelector('[onclick="addMoreGuests()"]').style.display = 'inline-block';
+}
+
 // Before submit, add selected rooms to form
 function prepareFormData() {
     const form = document.getElementById('bookingForm');
 
-    // Remove old room inputs
+    // Remove old dynamic inputs
     form.querySelectorAll('.dynamic-room-input').forEach(el => el.remove());
 
     // Add new room inputs
@@ -797,16 +947,61 @@ function prepareFormData() {
             addInput('price_per_night', parseFloat(roomData.price_per_night) || roomType.base_price);
         });
     });
+    
+    // Add guest inputs to form
+    const guestInputs = form.querySelectorAll('[name^="guest"]');
+    console.log('Found guest inputs:', guestInputs.length);
+    
+    guestInputs.forEach(input => {
+        console.log('Processing guest input:', input.name, input.value);
+        // Clone the input to ensure it's included in form submission
+        const clonedInput = input.cloneNode(true);
+        clonedInput.className = 'dynamic-room-input';
+        form.appendChild(clonedInput);
+        console.log('Added cloned input:', clonedInput.name, clonedInput.value);
+    });
+    
+    console.log('Guest inputs added to form:', guestInputs.length);
+    
+    // Also try to manually add specific guest fields
+    const guest1Name = form.querySelector('[name="guest1_name"]');
+    const guest1Cccd = form.querySelector('[name="guest1_cccd"]');
+    const guest2Name = form.querySelector('[name="guest2_name"]');
+    const guest2Cccd = form.querySelector('[name="guest2_cccd"]');
+    
+    console.log('Manual check - guest1_name:', guest1Name ? guest1Name.value : 'NOT_FOUND');
+    console.log('Manual check - guest1_cccd:', guest1Cccd ? guest1Cccd.value : 'NOT_FOUND');
+    console.log('Manual check - guest2_name:', guest2Name ? guest2Name.value : 'NOT_FOUND');
+    console.log('Manual check - guest2_cccd:', guest2Cccd ? guest2Cccd.value : 'NOT_FOUND');
+    
+    // Manually add them if found
+    [guest1Name, guest1Cccd, guest2Name, guest2Cccd].forEach(input => {
+        if (input && input.value) {
+            const clonedInput = input.cloneNode(true);
+            clonedInput.className = 'dynamic-room-input';
+            form.appendChild(clonedInput);
+            console.log('Manually added:', clonedInput.name, clonedInput.value);
+        }
+    });
 }
 
-document.getElementById('bookingForm').addEventListener('submit', function(e) {
-    prepareFormData();
+// Simple function to select a room and fill form data
+function selectRoom(roomId, adults, children) {
+    document.getElementById('form_room_id').value = roomId;
+    document.getElementById('form_adults').value = adults || 1;
+    document.getElementById('form_children').value = children || 0;
+    console.log('Room selected:', roomId, 'Adults:', adults, 'Children:', children);
+}
 
-    if (Object.keys(selectedRooms).length === 0) {
+// Simple form validation
+document.getElementById('bookingForm').addEventListener('submit', function(e) {
+    const roomId = document.getElementById('form_room_id').value;
+    if (!roomId) {
         e.preventDefault();
-        alert('Vui lòng chọn ít nhất một phòng.');
+        alert('Vui lòng chon ít nhát m?t phòng.');
         return false;
     }
+    console.log('Form submitting with room:', roomId);
 });
 </script>
 @endsection

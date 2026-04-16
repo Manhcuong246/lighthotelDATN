@@ -9,6 +9,7 @@ use App\Models\RoomBookedDate;
 use App\Models\User;
 use App\Models\Coupon;
 use App\Models\BookingRoom;
+use App\Models\BookingGuest;
 use App\Support\RoomOccupancyPricing;
 use App\Exceptions\BookingException;
 use Illuminate\Support\Facades\DB;
@@ -181,6 +182,19 @@ class BookingService
                 'method'     => $data['payment_method'],
                 'status'     => 'pending',
             ]);
+
+            // Tạo BookingGuests
+             if (isset($data['guests']) && is_array($data['guests'])) {
+                foreach ($data['guests'] as $guestData) {
+                                        BookingGuest::create([
+                        'booking_id' => $booking->id,
+                        'name'       => $guestData['name'],
+                         'cccd'       => $guestData['cccd'] ?? null,
+                        'type'       => $guestData['type'],
+                        'status'     => 'pending',
+                    ]);
+                }
+            }
 
             // Trả về booking để controller xử lý tiếp (vnpay)
             return $booking;
