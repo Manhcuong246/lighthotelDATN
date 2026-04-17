@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
 use App\Http\Controllers\GuestCheckInController;
+use App\Http\Controllers\NewBookingController;
 
 
 
@@ -216,4 +217,5 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
-
+// Include routes mới cho hệ thống đặt phòng
+require __DIR__ . '/new-bookings.php';
