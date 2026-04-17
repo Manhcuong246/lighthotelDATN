@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Guest;
+use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\RefundLog;
 use App\Models\Room;
@@ -46,48 +48,45 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request)
     {
-        // Debug: Log request data
-        \Log::info('Booking request data:', $request->all());
-        
-        if (Auth::check() && Auth::user()?->canAccessAdmin()) {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if ($user && $user->canAccessAdmin()) {
             return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
         }
 
         try {
             $validated = $request->validated();
-            \Log::info('Validated data:', $validated);
             $booking = $this->bookingService->createBooking($validated);
-            
-            // Process guest information for admin bookings
-            \Log::info('Processing guest data for booking ' . $booking->id, [
-                'guest1_name' => $request->get('guest1_name'),
-                'guest1_cccd' => $request->get('guest1_cccd'),
-                'guest2_name' => $request->get('guest2_name'),
-                'guest2_cccd' => $request->get('guest2_cccd')
-            ]);
-            
-            // Create guest 1 if provided
-            if (!empty($request->get('guest1_name'))) {
-                \App\Models\BookingGuest::create([
-                    'booking_id' => $booking->id,
-                    'name' => $request->get('guest1_name'),
-                    'cccd' => $request->get('guest1_cccd'),
-                    'type' => 'adult',
-                    'status' => 'pending',
-                ]);
-                \Log::info('Created guest 1 for booking ' . $booking->id);
+
+            // Tạo Guests từ guests_json (cách mới, bền vững khi form re-render)
+            $guestList = [];
+
+            if ($request->filled('guests_json')) {
+                $decoded = json_decode($request->input('guests_json'), true);
+                if (is_array($decoded)) {
+                    $guestList = $this->normalizeGuestPayload($decoded);
+                }
             }
-            
-            // Create guest 2 if provided
-            if (!empty($request->get('guest2_name'))) {
-                \App\Models\BookingGuest::create([
-                    'booking_id' => $booking->id,
-                    'name' => $request->get('guest2_name'),
-                    'cccd' => $request->get('guest2_cccd'),
-                    'type' => 'adult',
-                    'status' => 'pending',
+
+            // Fallback: dùng mảng guests[] cụ nếu không có guests_json
+            if (empty($guestList) && isset($validated['guests']) && is_array($validated['guests'])) {
+                $guestList = $this->normalizeGuestPayload($validated['guests']);
+            }
+
+            foreach ($guestList as $guestData) {
+                $name = trim($guestData['name'] ?? '');
+                $cccd = trim($guestData['cccd'] ?? '');
+                if ($name === '' && $cccd === '') continue;
+
+                Guest::create([
+                    'booking_id'     => $booking->id,
+                    'room_type'      => $guestData['room_type'] ?? null,
+                    'room_index'     => (int) ($guestData['room_index'] ?? 0),
+                    'name'           => $name,
+                    'cccd'           => $cccd ?: null,
+                    'type'           => $guestData['type'] ?? 'adult',
+                    'checkin_status' => 'pending',
                 ]);
-                \Log::info('Created guest 2 for booking ' . $booking->id);
             }
 
             // 11. Redirect VNPay
@@ -115,6 +114,44 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
         }
+    }
+
+    private function normalizeGuestPayload(array $guests): array
+    {
+        $flattened = [];
+
+        foreach ($guests as $topKey => $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            if (isset($value['name']) || isset($value['cccd']) || isset($value['type']) || isset($value['room_index'])) {
+                $flattened[] = [
+                    'room_type' => null,
+                    'room_index' => isset($value['room_index']) ? (int) $value['room_index'] : 0,
+                    'name' => trim((string) ($value['name'] ?? '')),
+                    'cccd' => trim((string) ($value['cccd'] ?? '')),
+                    'type' => $value['type'] ?? 'adult',
+                ];
+                continue;
+            }
+
+            foreach ($value as $guestData) {
+                if (! is_array($guestData)) {
+                    continue;
+                }
+
+                $flattened[] = [
+                    'room_type' => trim((string) $topKey),
+                    'room_index' => 0,
+                    'name' => trim((string) ($guestData['name'] ?? '')),
+                    'cccd' => trim((string) ($guestData['cccd'] ?? '')),
+                    'type' => $guestData['type'] ?? 'adult',
+                ];
+            }
+        }
+
+        return $flattened;
     }
 
     public function update(Request $request, Booking $booking)

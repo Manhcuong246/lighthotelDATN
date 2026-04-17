@@ -9,6 +9,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 
+/**
+ * @method bool hasRole(string $name)
+ * @method bool canAccessAdmin()
+ * @property int $id
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, Authorizable, SoftDeletes;

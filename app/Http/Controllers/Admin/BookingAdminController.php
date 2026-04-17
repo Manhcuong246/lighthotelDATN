@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\PaymentInstructionMail;
 use App\Models\Booking;
 use App\Models\Coupon;
+use App\Models\Guest;
 use App\Models\HotelInfo;
 use App\Models\Payment;
 use App\Models\Room;
@@ -20,7 +21,9 @@ use App\Support\InvoiceExtrasSynchronizer;
 use App\Support\RoomOccupancyPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
@@ -125,10 +128,10 @@ class BookingAdminController extends Controller
 
     public function store(Request $request)
     {
-        \Log::info('store() called with request data', [
+        Log::info('store() called with request data', [
             'all_data' => $request->all(),
-            'has_guests' => $request->has('guests'),
-            'guests_data' => $request->input('guests'),
+            'has_guests_json' => $request->has('guests_json'),
+            'guests_json_data' => $request->input('guests_json'),
             'method' => $request->method(),
             'ajax' => $request->ajax()
         ]);
@@ -140,17 +143,34 @@ class BookingAdminController extends Controller
             'phone' => 'nullable|string|max:20',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1',
+            'adults' => 'required|integer|min:1',
+            'children_6_11' => 'nullable|integer|min:0',
+            'children_0_5' => 'nullable|integer|min:0',
             'status' => 'required|in:pending,confirmed',
             'payment_method' => 'required|in:cash,vnpay',
             'payment_status' => 'required|in:pending,paid,partial',
             'amount_paid' => 'nullable|numeric|min:0',
             'payment_note' => 'nullable|string|max:500',
-            'guests' => 'required|array|min:1',
-            'guests.*.name' => 'required|string|max:150',
-            'guests.*.type' => 'required|in:adult,child',
-            'guests.*.cccd' => 'nullable|string|max:20',
+            'guests_json' => 'required|json',
         ]);
+
+        // Decode guests JSON
+        $guestsArray = json_decode($validated['guests_json'], true);
+
+        // Validate guests data
+        if (!is_array($guestsArray) || empty($guestsArray)) {
+            return back()->withErrors(['guests_json' => 'Vui lòng nhập thông tin khách hàng.'])->withInput();
+        }
+
+        // Validate each guest
+        foreach ($guestsArray as $index => $guest) {
+            if (empty($guest['name'])) {
+                return back()->withErrors(["guests.{$index}.name" => "Tên khách hàng không được để trống."])->withInput();
+            }
+            if ($index === 0 && empty($guest['cccd'])) {
+                return back()->withErrors(["guests.{$index}.cccd" => "CCCD khách hàng chính không được để trống."])->withInput();
+            }
+        }
 
         $room = Room::findOrFail($validated['room_id']);
         $checkIn = new \Carbon\Carbon($validated['check_in']);
@@ -198,13 +218,12 @@ class BookingAdminController extends Controller
             ])->save();
 
             // Create booking
-            $totalGuests = ($validated['adults'] ?? 1) + ($validated['children'] ?? 0);
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'room_id' => $room->id,
                 'check_in' => $checkIn->toDateString(),
                 'check_out' => $checkOut->toDateString(),
-                'guests' => $validated['guests'],
+                'guests' => $totalGuests,
                 'total_price' => $totalPrice,
                 'status' => $validated['status'],
                 'payment_status' => 'pending',
@@ -252,30 +271,35 @@ class BookingAdminController extends Controller
             }
 
             // Save guest information
-            \Log::info('Processing guest data for booking ' . $booking->id, [
-                'guests_data' => $validated['guests'] ?? 'NOT_SET',
-                'is_array' => isset($validated['guests']) && is_array($validated['guests']),
-                'count' => isset($validated['guests']) && is_array($validated['guests']) ? count($validated['guests']) : 0
+            Log::info('Processing guest data for booking ' . $booking->id, [
+                'guests_data' => $guestsArray,
+                'is_array' => is_array($guestsArray),
+                'count' => count($guestsArray)
             ]);
 
-            if (isset($validated['guests']) && is_array($validated['guests'])) {
-                foreach ($validated['guests'] as $index => $guestData) {
-                    \Log::info("Creating guest {$index}", [
+            if (is_array($guestsArray) && count($guestsArray) > 0) {
+                foreach ($guestsArray as $index => $guestData) {
+                    Log::info("Creating guest {$index}", [
                         'name' => $guestData['name'] ?? 'MISSING',
                         'cccd' => $guestData['cccd'] ?? 'MISSING',
-                        'type' => $guestData['type'] ?? 'MISSING'
                     ]);
+
+                    // Determine guest type based on index and counts
+                    $guestType = 'adult';
+                    if ($index >= $adults) {
+                        $guestType = ($index < $adults + $children611) ? 'child_6_11' : 'child_0_5';
+                    }
 
                     \App\Models\BookingGuest::create([
                         'booking_id' => $booking->id,
-                        'name' => $guestData['name'],
+                        'name' => $guestData['name'] ?? '',
                         'cccd' => $guestData['cccd'] ?? null,
-                        'type' => $guestData['type'],
+                        'type' => $guestType,
                         'status' => 'pending',
                     ]);
                 }
             } else {
-                \Log::warning('No guest data found in request for booking ' . $booking->id);
+                Log::warning('No guest data found in request for booking ' . $booking->id);
             }
 
             DB::commit();
@@ -648,8 +672,7 @@ class BookingAdminController extends Controller
         $booking->guests()->update(['checkin_status' => 'checked_in']);
 
         // Xóa cache để cập nhật giao diện ngay lập tức
-        \Cache::forget("guest_info_{$booking->id}");
-
+            Cache::forget("guest_info_{$booking->id}");
         \App\Models\BookingLog::create([
             'booking_id' => $booking->id,
             'old_status' => $old,
@@ -684,6 +707,7 @@ class BookingAdminController extends Controller
 
     /**
      * Lây thông tin khách hàng cho modal check-in
+     * Group by booking_rooms
      */
     public function getGuestInfo(Booking $booking)
     {
@@ -692,77 +716,116 @@ class BookingAdminController extends Controller
                 return response()->json(['error' => 'Không thể thực hiện check-in cho đơn này.'], 403);
             }
 
-            // Cache data for 5 minutes
-            $cacheKey = "guest_info_{$booking->id}";
+            // Load booking with bookingRooms and rooms
+            $booking->load([
+                'bookingRooms.room.roomType',
+                'guests:id,booking_id,name,type,cccd,checkin_status,room_index,room_type',
+                'user:id,full_name',
+                'rooms:id,name'
+            ]);
 
-            $cachedData = \Cache::remember($cacheKey, 300, function () use ($booking) {
-                // Load khách từ quan hệ guests mới
-                $booking->load([
-                    'guests:id,booking_id,name,type,cccd,checkin_status,room_index',
-                    'rooms:id,name',
-                    'user:id,full_name'
-                ]);
+            $bookingRooms = $booking->bookingRooms()->with('room.roomType')->orderBy('id')->get();
+            $allGuests = $booking->guests()->orderBy('id')->get();
 
-                $guests = $booking->guests()
-                    ->select('id', 'booking_id', 'name', 'type', 'cccd', 'checkin_status', 'room_index')
-                    ->orderBy('room_index')
-                    ->orderBy('type')
-                    ->orderBy('name')
-                    ->get();
+            // Group guests by booking_room based on room_index
+            $guestsByRoom = [];
 
-                return [
-                    'guests' => $guests,
-                    'booking_data' => [
+            // Fallback: if no booking_rooms, use rooms relationship
+            if ($bookingRooms->isEmpty()) {
+                $rooms = $booking->rooms;
+                $guestIndex = 0;
+
+                foreach ($rooms as $roomIndex => $room) {
+                    $roomTypeName = $room->roomType?->name ?? 'Phòng';
+                    $roomName = $room->name ?? ($roomIndex + 1);
+                    $roomDisplayName = $roomTypeName . ' ' . $roomName;
+
+                    // For old bookings, assign all guests to first room
+                    $roomGuests = [];
+
+                    // Get guests for this room (based on room_index or assign all to first room)
+                    $roomGuestCount = ($roomIndex === 0) ? $allGuests->count() : 0;
+
+                    for ($i = 0; $i < $roomGuestCount && $guestIndex < $allGuests->count(); $i++) {
+                        $guest = $allGuests[$guestIndex++];
+                        $roomGuests[] = [
+                            'id' => $guest->id,
+                            'name' => $guest->name,
+                            'type' => $guest->type ?? 'adult',
+                            'cccd' => $guest->cccd ?: '',
+                            'status' => $guest->checkin_status,
+                        ];
+                    }
+
+                    if (!empty($roomGuests)) {
+                        $guestsByRoom[] = [
+                            'room_name' => $roomDisplayName,
+                            'guests' => $roomGuests
+                        ];
+                    }
+                }
+            } else {
+                // Use booking_rooms data
+                $guestIndex = 0;
+
+                foreach ($bookingRooms as $roomIndex => $bookingRoom) {
+                    $room = $bookingRoom->room;
+                    $roomTypeName = $room?->roomType?->name ?? 'Phòng';
+                    $roomName = $room?->name ?? ($roomIndex + 1);
+                    $roomDisplayName = $roomTypeName . ' ' . $roomName;
+
+                    // Calculate guest count for this room
+                    $guestCountInRoom = $bookingRoom->adults + $bookingRoom->children_0_5 + $bookingRoom->children_6_11;
+
+                    $roomGuests = [];
+                    for ($i = 0; $i < $guestCountInRoom && $guestIndex < $allGuests->count(); $i++) {
+                        $guest = $allGuests[$guestIndex++];
+                        $roomGuests[] = [
+                            'id' => $guest->id,
+                            'name' => $guest->name,
+                            'type' => $guest->type ?? 'adult',
+                            'cccd' => $guest->cccd ?: '',
+                            'status' => $guest->checkin_status,
+                        ];
+                    }
+
+                    if (!empty($roomGuests)) {
+                        $guestsByRoom[] = [
+                            'room_name' => $roomDisplayName,
+                            'guests' => $roomGuests
+                        ];
+                    }
+                }
+            }
+
+            // If no guests found, return empty
+            if (empty($guestsByRoom)) {
+                return response()->json([
+                    'booking' => [
                         'id' => $booking->id,
                         'status' => $booking->status,
                         'check_in' => $booking->check_in,
                         'check_out' => $booking->check_out,
-                        'user_name' => $booking->user?->full_name ?? '—',
-                        'rooms' => $booking->rooms->pluck('name')->implode(', ')
-                    ]
-                ];
-            });
-
-            $guests = $cachedData['guests'];
-            $bookingData = $cachedData['booking_data'];
-
-            // If no guests found, return empty
-            if ($guests->isEmpty()) {
-                return response()->json([
-                    'booking' => [
-                        'id' => $bookingData['id'],
-                        'status' => $bookingData['status'],
-                        'check_in' => $bookingData['check_in'],
-                        'check_out' => $bookingData['check_out'],
-                        'user' => $bookingData['user_name'],
+                        'user' => $booking->user?->full_name ?? '—',
                     ],
-                    'guests' => [],
+                    'guests_by_room' => [],
                     'message' => 'Không có thông tin khách hàng. Vui lòng thêm thông tin khách hàng.'
                 ]);
             }
 
             return response()->json([
                 'booking' => [
-                    'id' => $bookingData['id'],
-                    'user_name' => $bookingData['user_name'],
-                    'rooms' => $bookingData['rooms'],
-                    'check_in' => $bookingData['check_in'] ? \Carbon\Carbon::parse($bookingData['check_in'])->format('d/m/Y') : '—',
-                    'check_out' => $bookingData['check_out'] ? \Carbon\Carbon::parse($bookingData['check_out'])->format('d/m/Y') : '—',
+                    'id' => $booking->id,
+                    'user_name' => $booking->user?->full_name ?? '—',
+                    'rooms' => $booking->rooms->pluck('name')->implode(', '),
+                    'check_in' => $booking->check_in ? \Carbon\Carbon::parse($booking->check_in)->format('d/m/Y') : '—',
+                    'check_out' => $booking->check_out ? \Carbon\Carbon::parse($booking->check_out)->format('d/m/Y') : '—',
                 ],
-                'guests' => $guests->map(function($guest) {
-                    return [
-                        'id' => $guest->id,
-                        'name' => $guest->name,
-                        'type' => $guest->type ?? 'adult',
-                        'cccd' => $guest->cccd ?: '',
-                        'status' => $guest->checkin_status,
-                        'room_name' => 'Phòng ' . ($guest->room_index + 1)
-                    ];
-                }),
+                'guests_by_room' => $guestsByRoom,
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error in getGuestInfo for booking ' . $booking->id, [
+            Log::error('Error in getGuestInfo for booking ' . $booking->id, [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -797,7 +860,8 @@ class BookingAdminController extends Controller
         DB::beginTransaction();
         try {
             foreach ($validated['guests'] as $guestData) {
-                $guest = \App\Models\Guest::find($guestData['id']); // Sửa sang model Guest
+                /** @var \App\Models\Guest $guest */
+                $guest = Guest::find($guestData['id']);
                 if ($guest && $guest->booking_id === $booking->id) {
                     $guest->update([
                         'name' => $guestData['name'],
@@ -810,7 +874,7 @@ class BookingAdminController extends Controller
             DB::commit();
 
             // Clear cache for this booking to ensure fresh data
-            \Cache::forget("guest_info_{$booking->id}");
+            Cache::forget("guest_info_{$booking->id}");
 
             // Return updated guest list
             return $this->getGuestInfo($booking);
@@ -845,7 +909,10 @@ class BookingAdminController extends Controller
 
         // Get booked dates in range
         $period = CarbonPeriod::create($checkIn, Carbon::parse($checkOut)->subDay());
-        $dates = collect($period)->map(fn($d) => $d->toDateString())->toArray();
+        $dates = [];
+        foreach ($period as $date) {
+            $dates[] = $date->toDateString();
+        }
 
         $bookedRoomIds = RoomBookedDate::whereIn('booked_date', $dates)
             ->pluck('room_id')
@@ -916,7 +983,7 @@ class BookingAdminController extends Controller
 
     public function storeMulti(Request $request)
     {
-        \Log::info('storeMulti called with request data', [
+        Log::info('storeMulti called with request data', [
             'all_data' => $request->all(),
             'has_guests' => $request->has('guests'),
             'guests_data' => $request->input('guests'),
@@ -944,16 +1011,33 @@ class BookingAdminController extends Controller
             'payment_status' => 'nullable|in:pending,paid',
             'amount_paid' => 'nullable|numeric|min:0',
             'guests' => 'required|array|min:1',
-            'guests.0.name' => 'required|string|max:150',
-            'guests.0.cccd' => 'required|digits:12',
-            'guests.*.name' => 'nullable|string|max:150',
-            'guests.*.cccd' => 'nullable|digits:12',
+            'guests.*' => 'array',
         ]);
+
+        $normalizedGuests = $this->flattenGuestPayloadByRoomType($request->input('guests', []));
+        if (count($normalizedGuests) === 0) {
+            return back()->withErrors(['guests' => 'Vui lòng nhập thông tin khách.'])->withInput();
+        }
+
+        foreach ($normalizedGuests as $index => $guestData) {
+            $name = trim((string) ($guestData['name'] ?? ''));
+            $cccd = trim((string) ($guestData['cccd'] ?? ''));
+
+            if ($name === '') {
+                return back()->withErrors(['guests' => "Tên khách thứ " . ($index + 1) . " không được để trống."])->withInput();
+            }
+            if (! preg_match('/^[0-9]{12}$/', $cccd)) {
+                return back()->withErrors(['guests' => "CCCD của khách \"{$name}\" phải gồm đúng 12 chữ số."])->withInput();
+            }
+        }
 
         $checkIn = Carbon::parse($validated['check_in']);
         $checkOut = Carbon::parse($validated['check_out']);
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
-        $dates = collect($period)->map(fn($d) => $d->toDateString())->toArray();
+        $dates = [];
+        foreach ($period as $date) {
+            $dates[] = $date->toDateString();
+        }
 
         DB::beginTransaction();
         try {
@@ -1089,7 +1173,7 @@ class BookingAdminController extends Controller
                 $vnpayPayUrl
             ));
         } catch (\Throwable $e) {
-            \Log::error('Payment instruction email failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Payment instruction email failed: '.$e->getMessage(), ['exception' => $e]);
 
             return false;
         }
@@ -1117,7 +1201,7 @@ class BookingAdminController extends Controller
             $nights = $checkIn->diffInDays($checkOut);
 
             // Lấy thông tin khách sạn
-            $hotelInfo = \App\Models\HotelInfo::first();
+            $hotelInfo = HotelInfo::first();
 
             // Gửi email
             $emailSent = $this->sendPaymentInstructionMail(
@@ -1131,19 +1215,19 @@ class BookingAdminController extends Controller
 
             // Log kết quả
             if ($emailSent) {
-                \Log::info('VNPay payment email sent successfully', [
+                Log::info('VNPay payment email sent successfully', [
                     'booking_id' => $booking->id,
                     'email' => $booking->user->email,
                     'amount' => $booking->total_price,
                 ]);
             } else {
-                \Log::warning('VNPay payment email was not delivered (check MAIL_MAILER config)', [
+                Log::warning('VNPay payment email was not delivered (check MAIL_MAILER config)', [
                     'booking_id' => $booking->id,
                     'email' => $booking->user->email,
                 ]);
             }
         } catch (\Throwable $e) {
-            \Log::error('Failed to send VNPay payment email: '.$e->getMessage(), [
+            Log::error('Failed to send VNPay payment email: '.$e->getMessage(), [
                 'exception' => $e,
                 'booking_id' => $booking->id,
             ]);
@@ -1833,7 +1917,7 @@ class BookingAdminController extends Controller
             [
                 'full_name' => $validated['full_name'],
                 'phone' => $validated['phone'] ?? null,
-                'password' => \Hash::make(Str::random(12)),
+                'password' => Hash::make(Str::random(12)),
             ]
         );
 
@@ -1949,33 +2033,80 @@ class BookingAdminController extends Controller
             return;
         }
 
-        foreach ($validated['guests'] as $guestData) {
+        $guestRows = $this->flattenGuestPayloadByRoomType($validated['guests']);
+
+        foreach ($guestRows as $guestData) {
             if (!empty($guestData['name'])) {
-                \App\Models\Guest::create([
+                Guest::create([
                     'booking_id' => $booking->id,
+                    'room_type' => $guestData['room_type'] ?? null,
                     'name' => $guestData['name'],
                     'cccd' => $guestData['cccd'] ?? null,
-                    'type' => 'adult',
+                    'type' => $guestData['type'] ?? 'adult',
                     'checkin_status' => 'pending',
-                    'room_index' => 0,
+                    'room_index' => $guestData['room_index'] ?? 0,
                 ]);
             }
         }
 
-        \Cache::forget("guest_info_{$booking->id}");
+        Cache::forget("guest_info_{$booking->id}");
+    }
+
+    /**
+     * Flatten guest payloads nested by room_type or flat by index.
+     *
+     * @param array $guests
+     * @return array<int, array<string, mixed>>
+     */
+    private function flattenGuestPayloadByRoomType(array $guests): array
+    {
+        $rows = [];
+
+        foreach ($guests as $roomKey => $roomGuests) {
+            if (!is_array($roomGuests)) {
+                continue;
+            }
+
+            if (isset($roomGuests['name']) || isset($roomGuests['cccd']) || isset($roomGuests['room_index'])) {
+                $rows[] = [
+                    'room_type' => null,
+                    'room_index' => isset($roomGuests['room_index']) ? (int) $roomGuests['room_index'] : 0,
+                    'name' => trim((string) ($roomGuests['name'] ?? '')),
+                    'cccd' => trim((string) ($roomGuests['cccd'] ?? '')),
+                    'type' => $roomGuests['type'] ?? 'adult',
+                ];
+                continue;
+            }
+
+            foreach ($roomGuests as $guestData) {
+                if (!is_array($guestData)) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'room_type' => trim((string) $roomKey),
+                    'room_index' => isset($guestData['room_index']) ? (int) $guestData['room_index'] : 0,
+                    'name' => trim((string) ($guestData['name'] ?? '')),
+                    'cccd' => trim((string) ($guestData['cccd'] ?? '')),
+                    'type' => $guestData['type'] ?? 'adult',
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     /**
      * Toggle trạng thái check-in của một khách hàng
      */
-    public function toggleGuestStatus(\App\Models\Guest $guest)
+    public function toggleGuestStatus(Guest $guest)
     {
         try {
             $newStatus = ($guest->checkin_status === 'checked_in') ? 'pending' : 'checked_in';
             $guest->update(['checkin_status' => $newStatus]);
 
             // Xóa cache thông tin khách của đơn này để khi load lại sẽ lấy data mới
-            \Cache::forget("guest_info_{$guest->booking_id}");
+            Cache::forget("guest_info_{$guest->booking_id}");
 
             return response()->json([
                 'success' => true,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -18,9 +19,11 @@ class StoreBookingRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if (Auth::check() && Auth::user() && ! Auth::user()->canAccessAdmin()) {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (Auth::check() && $user && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
             $this->merge([
-                'email' => Auth::user()->email,
+                'email' => $user->email,
             ]);
         }
     }
@@ -31,8 +34,10 @@ class StoreBookingRequest extends FormRequest
     public function rules(): array
     {
         $emailRules = ['required', 'email', 'max:150'];
-        if (Auth::check() && Auth::user() && ! Auth::user()->canAccessAdmin()) {
-            $emailRules[] = Rule::in([Auth::user()->email]);
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (Auth::check() && $user && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
+            $emailRules[] = Rule::in([$user->email]);
         }
 
         return [
@@ -62,10 +67,11 @@ class StoreBookingRequest extends FormRequest
             'children_0_5'   => 'required|array',
             'children_6_11'  => 'required|array',
             'guests'         => 'nullable|array',
-           'guests.*.name'  => 'required_with:guests|string|max:150',
-           'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
+            'guests.*.name'  => 'required_with:guests|string|max:150',
+            'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
             'guests.*.type'  => 'required_with:guests|in:adult,child',
             'guests.*.room_index' => 'nullable|integer|min:0',
+            'guests_json'    => 'nullable|string',
         ];
     }
 

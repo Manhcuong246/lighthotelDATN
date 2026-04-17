@@ -59,6 +59,66 @@
         overflow-y: auto;
     }
 
+    /* Premium Guest Info Cards */
+    .guest-input-card {
+        background: #ffffff;
+        border: 1px solid #edf2f7;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .guest-input-card:hover {
+        border-color: #cbd5e0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .input-group-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #718096;
+        font-weight: 700;
+        margin-bottom: 6px;
+        display: block;
+    }
+    .input-icon-wrapper {
+        position: relative;
+        transition: all 0.2s;
+    }
+    .input-icon-wrapper i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #a0aec0;
+        font-size: 0.9rem;
+    }
+    .input-with-icon {
+        padding-left: 38px !important;
+        border-radius: 8px !important;
+        border: 1px solid #e2e8f0 !important;
+        height: 40px !important;
+        font-size: 0.85rem !important;
+        transition: all 0.2s !important;
+    }
+    .input-with-icon:focus {
+        border-color: var(--secondary-blue) !important;
+        box-shadow: 0 0 0 3px rgba(0, 113, 194, 0.1) !important;
+        background: #fff !important;
+    }
+    .guest-info-section-title {
+        color: var(--secondary-blue);
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #ebf4ff;
+    }
+
     .room-type-card {
         background: #fff;
         border-radius: 16px;
@@ -253,6 +313,36 @@
     .btn-book-now:hover:not(:disabled) { background: #1e40af; transform: translateY(-2px); }
     .btn-book-now:disabled { background: #cbd5e0; cursor: not-allowed; }
 
+    /* Guest Input Premium Styling */
+    .guest-input-group {
+        transition: all 0.3s ease;
+        border: 1px solid #e2e8f0 !important;
+    }
+    .guest-input-group:hover {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08) !important;
+    }
+    .input-icon-wrapper {
+        position: relative;
+    }
+    .input-icon-wrapper i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+    .input-with-icon {
+        padding-left: 35px !important;
+        border-radius: 8px !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+    .input-with-icon:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+
     /* Modal Styles */
     .modal-header-custom { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-bottom: 1px solid #eee; }
     .modal-title-custom { font-weight: 700; font-size: 1.1rem; text-transform: uppercase; }
@@ -289,8 +379,9 @@
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 12px;
-        padding: 15px;
-        margin-top: 10px;
+        padding: 10px;
+        margin-top: 8px;
+        height: 100%;
     }
     .guest-selector-title {
         font-weight: 700;
@@ -521,7 +612,7 @@
                                             <li>
                                                 <i class="bi bi-check-lg"></i> Tối đa {{ (int) ($type->capacity ?? 6) }} khách/phòng
                                                 <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top"
-                                                   title="Tiêu chuẩn {{ (int) ($type->standard_capacity ?? 3) }} người (tính cả trẻ 0–5). Vượt tiêu chuẩn: tính phụ phí NL/trẻ 6–11 theo % giá phòng/đêm. Trẻ 0–5 miễn phụ thu nhưng tính sức chứa (tối đa {{ (int) config('booking.pricing.max_children_05', 3) }} bé). Tối đa {{ (int) ($type->capacity ?? 6) }} người/phòng."></i>
+                                                   title="Tiêu chuẩn {{ (int) ($type->standard_capacity ?? 3) }} người (tính cả trẻ 0–5). Vượt tiêu chuẩn: tính phụ phí người lớn/trẻ 6–11 theo % giá phòng/đêm. Trẻ 0–5 miễn phụ thu nhưng tính sức chứa."></i>
                                             </li>
                                             <li><i class="bi bi-check-lg"></i> Không hoàn phí khi hủy</li>
                                         </ul>
@@ -588,7 +679,7 @@
             @endforelse
 
             <div class="d-flex justify-content-center mt-4">
-                @if(method_exists($roomTypes, 'links'))
+                @if(!is_array($roomTypes) && method_exists($roomTypes, 'links'))
                     {{ $roomTypes->links() }}
                 @endif
             </div>
@@ -643,7 +734,6 @@
                         </div>
 
                         <!-- Guest inputs are now rendered dynamically by JavaScript in each room container -->
-<script src="{{ asset('js/guest-form.js') }}" defer></script>
 
                         <div class="summary-group">
                             <div class="summary-group-title">Mã giảm giá</div>
@@ -691,6 +781,8 @@
         @endforelse
     </div>
 </div>
+@push('scripts')
+@include('partials.guest-inputs')
 <script>
 function changeRooms(delta) {
     var input = document.getElementById('rooms-input');
@@ -829,7 +921,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (inputPhone) inputPhone.addEventListener('input', saveSelection);
 
     if (checkoutForm) {
-        checkoutForm.addEventListener('submit', function() {
+        // Thêm hidden input chứa guests_json nếu chưa có
+        let guestsJsonInput = checkoutForm.querySelector('input[name="guests_json"]');
+        if (!guestsJsonInput) {
+            guestsJsonInput = document.createElement('input');
+            guestsJsonInput.type = 'hidden';
+            guestsJsonInput.name = 'guests_json';
+            checkoutForm.appendChild(guestsJsonInput);
+        }
+
+        checkoutForm.addEventListener('submit', function(e) {
+            // Lưu snapshot cuối cùng trước khi submit
+            if (window.guestFormManager) {
+                window.guestFormManager.saveAllCurrentValues();
+                const flatList = window.guestFormManager.getFlatGuestList();
+                guestsJsonInput.value = JSON.stringify(flatList);
+            }
             sessionStorage.removeItem('hotel_booking_selection');
         });
     }
@@ -892,13 +999,10 @@ document.addEventListener('DOMContentLoaded', function() {
         let subtotal = 0;
         let htmlSnippet = '';
         let hiddenInputs = '';
-        let globalLimitExceeded = false;
-
-        // Clear previous error messages
-        document.querySelectorAll('.limit-error').forEach(el => el.remove());
 
         saveSelection();
 
+        let globalGuestIdx = 0; // Để tính toán index cho các ô input hắc ám
         qtySelectors.forEach(select => {
             const qty = parseInt(select.value);
             const typeId = select.getAttribute('data-type-id');
@@ -910,7 +1014,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const guestRow = document.getElementById(`guestRow${typeId}`);
             const guestContainer = document.getElementById(`guestSelectors${typeId}`);
-            let typeLimitExceeded = false;
 
             if (qty > 0) {
                 guestRow.classList.remove('d-none');
@@ -918,93 +1021,90 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Keep sync with UI: check if we need to add/remove containers
                 let currentContainers = guestContainer.querySelectorAll('.guest-selector-item').length;
                 if (currentContainers !== qty) {
+                    // *** Lưu dữ liệu đã nhập trước khi re-render ***
+                    if (window.guestFormManager) {
+                        window.guestFormManager.saveAllCurrentValues();
+                    }
+
                     let containerHtml = '';
                     for (let i = 1; i <= qty; i++) {
+                        const roomIdx = i - 1;
+
                         containerHtml += `
-                            <div class="col-md-6 guest-selector-item" data-room-index="${i-1}">
-                                        <div class="guest-selector-card">
-                                    <div class="guest-selector-title">
-                                        <span>Phòng ${i}</span>
-                                        <span class="text-muted small">Tiêu chuẩn ${select.dataset.standardGuests || 3} người (tính cả trẻ 0–5); trẻ 0–5 miễn phí nhưng tính sức chứa</span>
-                                    </div>
+                            <div class="col-lg-4 col-md-6 mb-3 guest-selector-item" data-room-index="${roomIdx}" data-type-id="${typeId}">
+                                <div class="guest-selector-card">
                                     <div class="row g-2">
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Người lớn</label>
                                             <input type="number" class="form-control form-control-sm guest-count adults-count"
-                                                   name="adults[${i-1}]" data-type-id="${typeId}" data-room-index="${i-1}" value="1" min="1" max="6">
+                                                   name="adults[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="1" min="1" max="6">
                                         </div>
                                         <div class="col-4">
-                                            <label style="font-size: 0.65rem; color: #718096;" title="Trẻ dưới 6 tuổi: miễn phí nhưng tính vào sức chứa phòng (tối đa 3)">Trẻ 0–5 tuổi</label>
+                                            <label style="font-size: 0.65rem; color: #718096;" title="Trẻ dưới 6 tuổi: miễn phí">Trẻ 0–5t</label>
                                             <input type="number" class="form-control form-control-sm guest-count child-05-count"
-                                                   name="children_0_5[${i-1}]" data-type-id="${typeId}" data-room-index="${i-1}" value="0" min="0" max="3">
+                                                   name="children_0_5[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="0" min="0" max="3">
                                         </div>
                                         <div class="col-4">
-                                            <label style="font-size: 0.65rem; color: #718096;" title="50% giá phòng/đêm mỗi em">Trẻ 6–11t</label>
+                                            <label style="font-size: 0.65rem; color: #718096;" title="50% giá phòng">Trẻ 6–11t</label>
                                             <input type="number" class="form-control form-control-sm guest-count child-611-count"
-                                                   name="children_6_11[${i-1}]" data-type-id="${typeId}" data-room-index="${i-1}" value="0" min="0" max="5">
+                                                   name="children_6_11[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="0" min="0" max="5">
                                         </div>
                                     </div>
-                                    
-                                    <!-- Guest Information Inputs -->
+
                                     <div class="guest-info-section mt-3 pt-3 border-top">
-                                        <div class="guest-info-header mb-2">
-                                            <small class="text-primary fw-bold">
-                                                <i class="bi bi-people-fill me-1"></i>Thông tin khách - Phòng ${i}
-                                            </small>
+                                        <div class="guest-info-section-title">
+                                            <i class="bi bi-person-lines-fill"></i> Thông tin khách hàng
                                         </div>
-                                        <div class="guest-inputs-container" id="guestInputsContainer-${i-1}">
-                                            <div class="text-muted text-center py-2 bg-light rounded">
-                                                <small style="font-size: 0.7rem;">Vui lòng chọn số lượng người</small>
-                                            </div>
+                                        <div class="guest-inputs-container" data-room-index="${roomIdx}" data-type-id="${typeId}">
+                                            <!-- Forms will be rendered dynamically by JavaScript -->
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         `;
+
+                        globalGuestIdx++;
                     }
                     guestContainer.innerHTML = containerHtml;
 
-                    // Re-bind events to new inputs
-                    guestContainer.querySelectorAll('.guest-count').forEach(s => {
-                        s.addEventListener('change', function() {
-                            updateSummary();
-                            // Trigger guest input update when adult count changes
-                            if (s.classList.contains('adults-count')) {
-                                if (window.guestFormManager) {
-                                    window.guestFormManager.updateRoomGuestInputs(s);
-                                }
-                            }
+                    // *** Render form khách hàng theo số người lớn mặc định (1 người) ***
+                    if (window.guestFormManager) {
+                        const roomItems = guestContainer.querySelectorAll('.guest-selector-item');
+                        roomItems.forEach(roomItem => {
+                            window.guestFormManager.renderGuestFormsByAdultCount(roomItem);
                         });
-                    });
+                    }
+
+                    // *** Fill lại giá trị đã lưu sau khi render ***
+                    if (window.guestFormManager) {
+                        window.guestFormManager.forceRestoreAllValues();
+                    }
+
                 }
 
-                // Calculate price for these rooms
                 const adultsArr = guestContainer.querySelectorAll('.adults-count');
                 const child05Arr = guestContainer.querySelectorAll('.child-05-count');
                 const child611Arr = guestContainer.querySelectorAll('.child-611-count');
 
-                if (qty > roomIds.length) {
-                    typeLimitExceeded = true;
-                }
+                // Cập nhật lại danh sách input sau khi đã được vẽ lại để tránh lỗi undefined
+                const adultsArrNew = guestContainer.querySelectorAll('.adults-count');
+                const child05ArrNew = guestContainer.querySelectorAll('.child-05-count');
+                const child611ArrArrNew = guestContainer.querySelectorAll('.child-611-count');
 
                 for (let i = 0; i < qty; i++) {
                     const roomIdForSlot = roomIds[i];
                     if (roomIdForSlot == null || roomIdForSlot === '') {
-                        typeLimitExceeded = true;
                         continue;
                     }
 
-                    const adults = parseInt(adultsArr[i].value || 0);
-                    const c05 = parseInt(child05Arr[i].value || 0);
-                    const c611 = parseInt(child611Arr[i].value || 0);
+                    // Kiểm tra an toàn để tránh lỗi .value of undefined khi JS chưa vẽ kịp
+                    const adults = (adultsArrNew[i]) ? parseInt(adultsArrNew[i].value || 1) : 1;
+                    const c05 = (child05ArrNew[i]) ? parseInt(child05ArrNew[i].value || 0) : 0;
+                    const c611 = (child611ArrArrNew[i]) ? parseInt(child611ArrArrNew[i].value || 0) : 0;
 
                     const stdGuests = parseInt(select.getAttribute('data-standard-guests') || '3');
                     const maxGuests = parseInt(select.getAttribute('data-max-guests') || '6');
                     const br = bookingPriceBreakdown(basePrice, adults, c05, c611, adultSurchargeRate, childSurchargeRate, stdGuests, maxGuests);
-
-                    if (!br.allowed) {
-                        typeLimitExceeded = true;
-                    }
                     const roomPricePerNight = br.perNight;
                     const extraAdultFee = br.adultFee;
                     const childFee = br.childFee;
@@ -1041,17 +1141,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 guestContainer.innerHTML = '';
             }
 
-            if (typeLimitExceeded) {
-                globalLimitExceeded = true;
-                guestContainer.insertAdjacentHTML('afterbegin', `
-                    <div class="col-12 limit-error">
-                        <div class="alert alert-danger py-2 small mb-2">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            Phòng tối đa 6 người (bao gồm trẻ em) và tối đa 3 trẻ 0–5 tuổi, vui lòng đặt thêm phòng.
-                        </div>
-                    </div>
-                `);
-            }
         });
 
         const discountAmount = subtotal * (currentDiscountPercent / 100);
@@ -1067,12 +1156,8 @@ document.addEventListener('DOMContentLoaded', function() {
             discountRow.classList.add('d-none');
         }
 
-        if (htmlSnippet === '' || globalLimitExceeded) {
-            if (htmlSnippet === '') {
-                selectedRoomsList.innerHTML = '<p class="text-muted italic small">Chưa có phòng nào được chọn</p>';
-            } else {
-                selectedRoomsList.innerHTML = htmlSnippet;
-            }
+        if (htmlSnippet === '') {
+            selectedRoomsList.innerHTML = '<p class="text-muted italic small">Chưa có phòng nào được chọn</p>';
             btnBookNow.disabled = true;
             btnBookNow.classList.remove('active');
         } else {
@@ -1192,6 +1277,38 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
         new bootstrap.Tooltip(el);
     });
+    // 16/04: Sử dụng Event Delegation để gắn sự kiện cho các ô chọn số lượng khách
+    // Cách này giúp sự kiện không bị mất khi HTML bị vẽ lại (updateSummary)
+    document.addEventListener('input', function(e) {
+        if (e.target && e.target.classList.contains('guest-count')) {
+            const input = e.target;
+
+            // 1. Cập nhật tiền và tóm tắt ngay lập tức
+            updateSummary();
+
+            // 2. Nếu là ô người lớn (adults-count), cập nhật số form khách hàng
+            if (window.guestFormManager && input.classList.contains('adults-count')) {
+                const roomItem = input.closest('.guest-selector-item');
+                if (roomItem) {
+                    window.guestFormManager.renderGuestFormsByAdultCount(roomItem);
+                }
+            }
+        }
+    });
+
+    // Thêm cả change event cho chắc chắn trên một số trình duyệt
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('guest-count')) {
+            // Chỉ chạy nếu dataset chưa được input event xử lý (tránh chạy 2 lần quá gần nhau)
+            updateSummary();
+            // Nếu là ô người lớn, cập nhật số form khách hàng
+            if (window.guestFormManager && e.target.classList.contains('adults-count')) {
+                const roomItem = e.target.closest('.guest-selector-item');
+                if (roomItem) window.guestFormManager.renderGuestFormsByAdultCount(roomItem);
+            }
+        }
+    });
 });
 </script>
+@endpush
 @endsection
