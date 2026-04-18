@@ -216,4 +216,12 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
+use App\Http\Controllers\Staff\StaffController;
+
+Route::middleware(['auth', 'staff'])
+    ->prefix('staff')
+    ->group(function () {
+        Route::get('/dashboard', [StaffController::class, 'dashboard']);
+    });
+
 
