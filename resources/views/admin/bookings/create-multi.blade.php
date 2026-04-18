@@ -189,9 +189,9 @@
                         <input type="hidden" name="total_price" id="total_price_input">
                         <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
                     </div>
-                    
 
-                    
+
+
                     <div class="col-md-4 text-end">
                         <button type="submit" class="btn btn-success btn-lg px-4 d-inline-flex align-items-center justify-content-center gap-2">
                             <i class="bi bi-check2-circle"></i>
@@ -235,6 +235,24 @@ let availableRoomsData = [];
 let selectedRooms = {};
 let nights = 0;
 let guestData = {}; // Source of truth for guest name/cccd inputs
+
+function sanitizeRoomTypeKey(name) {
+    return name.toString().toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function setGuestValue(roomTypeKey, index, field, value) {
+    if (!guestData[roomTypeKey]) {
+        guestData[roomTypeKey] = [];
+    }
+
+    if (!guestData[roomTypeKey][index]) {
+        guestData[roomTypeKey][index] = [];
+    }
+
+    guestData[roomTypeKey][index][field] = value;
+}
 
 // Set min checkout date when checkin changes
 document.getElementById('check_in').addEventListener('change', function() {
@@ -407,6 +425,8 @@ function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, c
         if (!selectedRooms[roomTypeId]) {
             selectedRooms[roomTypeId] = {
                 room_type_id: roomTypeId,
+                room_type_key: sanitizeRoomTypeKey(name),
+                room_type_label: name,
                 quantity: quantity,
                 base_price: price,
                 name: name,
@@ -447,7 +467,7 @@ function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, c
     minusBtn.disabled = quantity <= 0;
 
     calculateTotal();
-    
+
     // Generate guest details form
     generateGuestDetailsForm();
 }
@@ -524,7 +544,7 @@ function updateRoomGuestData(roomTypeId, roomIndex) {
 
     // Recalculate total
     calculateTotal();
-    
+
     // Update guest details form
     generateGuestDetailsForm();
 }
@@ -798,7 +818,7 @@ function addMoreGuests() {
             row.style.display = 'block';
         }
     }
-    
+
     document.getElementById('removeGuestBtn').style.display = 'inline-block';
     event.target.style.display = 'none';
 }
@@ -813,7 +833,7 @@ function removeGuestInputs() {
             inputs.forEach(input => input.value = '');
         }
     }
-    
+
     document.getElementById('removeGuestBtn').style.display = 'none';
     document.querySelector('[onclick="addMoreGuests()"]').style.display = 'inline-block';
 }
@@ -846,21 +866,15 @@ function prepareFormData() {
             addInput('price_per_night', parseFloat(roomData.price_per_night) || roomType.base_price);
         });
     });
-    
+
 }
 
 function generateGuestDetailsForm() {
-    let totalAdults = 0;
-    Object.values(selectedRooms).forEach(roomType => {
-        roomType.rooms.forEach(roomData => {
-            totalAdults += parseInt(roomData.adults) || 1;
-        });
-    });
-
     const container = document.getElementById('guestFormsContainer');
     if (!container) return;
 
-    if (totalAdults === 0) {
+    const selectedRoomTypes = Object.values(selectedRooms);
+    if (selectedRoomTypes.length === 0) {
         container.style.display = 'none';
         container.innerHTML = '';
         return;
@@ -868,9 +882,7 @@ function generateGuestDetailsForm() {
 
     container.style.display = 'block';
 
-    // Rebuild header (only the subtitle text changes)
-    let headerDiv = container.querySelector('.card-header');
-    if (!headerDiv) {
+    if (!container.querySelector('.card-header')) {
         container.innerHTML = `
             <div class="card-header bg-white border-0 rounded-top-3">
                 <div class="d-flex align-items-center justify-content-between">
@@ -879,78 +891,87 @@ function generateGuestDetailsForm() {
                 </div>
                 <div class="small text-muted mt-1 guest-count-hint"></div>
             </div>
-            <div class="card-body"><div class="row g-3 guest-rows"></div></div>
+            <div class="card-body"><div class="guest-rows"></div></div>
         `;
     }
-    const hint = container.querySelector('.guest-count-hint');
-    if (hint) hint.textContent = `Vui lòng nhập thông tin cho ${totalAdults} khách (tối thiểu khách 1)`;
 
     const rowsContainer = container.querySelector('.guest-rows');
     if (!rowsContainer) return;
 
-    // Count current rows
-    const currentRows = rowsContainer.querySelectorAll('.guest-row').length;
+    let totalGuests = 0;
+    let html = '';
+    let globalGuestIndex = 0;
 
-    if (currentRows < totalAdults) {
-        // Add missing rows
-        for (let i = currentRows; i < totalAdults; i++) {
-            const isRequired = (i === 0);
-            const savedName = guestData[i] ? guestData[i].name : '';
-            const savedCccd = guestData[i] ? guestData[i].cccd : '';
-            const row = document.createElement('div');
-            row.className = 'col-12 guest-row';
-            row.dataset.index = i;
-            row.innerHTML = `
-                <div class="row g-3 mb-1">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">
-                            Khách ${i + 1} (Người lớn) ${isRequired ? '<span class="text-danger">*</span>' : ''}
-                        </label>
-                        <input type="text"
-                               name="guests[${i}][name]"
-                               class="form-control guest-name-input"
-                               data-guest-index="${i}"
-                               placeholder="Nhập họ tên"
-                               value="${savedName}"
-                               ${isRequired ? 'required' : ''}>
+    selectedRoomTypes.forEach((roomType, typeIndex) => {
+        const roomTypeKey = roomType.room_type_key || sanitizeRoomTypeKey(roomType.name);
+        const roomTypeLabel = roomType.room_type_label || roomType.name;
+
+        if (!guestData[roomTypeKey]) {
+            guestData[roomTypeKey] = [];
+        }
+
+        // Loop through each specific room (not grouped by type)
+        roomType.rooms.forEach((roomData, roomIndex) => {
+            const roomGuestCount = (parseInt(roomData.adults, 10) || 0) + (parseInt(roomData.children_0_5, 10) || 0) + (parseInt(roomData.children_6_11, 10) || 0);
+            totalGuests += roomGuestCount;
+
+            html += `
+                <div class="mb-4 border rounded p-3 bg-light">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0 text-primary fw-bold">${roomTypeLabel} - Phòng ${roomIndex + 1}</h5>
+                        <span class="small text-muted">${roomGuestCount} khách</span>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">
-                            CCCD Khách ${i + 1} ${isRequired ? '<span class="text-danger">*</span>' : ''}
-                        </label>
-                        <input type="text"
-                               name="guests[${i}][cccd]"
-                               class="form-control guest-cccd-input"
-                               data-guest-index="${i}"
-                               placeholder="Nhập số CCCD (đúng 12 số)"
-                               value="${savedCccd}"
-                               pattern="\\d{12}"
-                               minlength="12"
-                               maxlength="12"
-                               title="CCCD phải bao gồm chính xác 12 chữ số"
-                               ${isRequired ? 'required' : ''}>
-                    </div>
-                </div>
-                ${i < totalAdults - 1 ? '<hr class="my-2 border-light">' : ''}
+                    <div class="row g-3">
             `;
-            // Attach live-save listeners
-            row.querySelector('.guest-name-input').addEventListener('input', function() {
-                if (!guestData[i]) guestData[i] = {};
-                guestData[i].name = this.value;
-            });
-            row.querySelector('.guest-cccd-input').addEventListener('input', function() {
-                if (!guestData[i]) guestData[i] = {};
-                guestData[i].cccd = this.value;
-            });
-            rowsContainer.appendChild(row);
-        }
-    } else if (currentRows > totalAdults) {
-        // Remove extra rows
-        const rows = rowsContainer.querySelectorAll('.guest-row');
-        for (let i = currentRows - 1; i >= totalAdults; i--) {
-            if (rows[i]) rows[i].remove();
-        }
+
+            for (let i = 0; i < roomGuestCount; i++) {
+                const guestIdx = globalGuestIndex++;
+                const savedName = guestData[roomTypeKey][guestIdx]?.name ?? '';
+                const savedCccd = guestData[roomTypeKey][guestIdx]?.cccd ?? '';
+                html += `
+                    <div class="col-12 guest-row">
+                        <div class="row g-3 mb-1">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Khách ${i + 1}</label>
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][room_index]" value="${roomIndex}">
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][type]" value="adult">
+                                <input type="text"
+                                       name="guests[${roomTypeKey}][${guestIdx}][name]"
+                                       class="form-control"
+                                       placeholder="Nhập họ tên"
+                                       value="${savedName}"
+                                       required
+                                       oninput="setGuestValue('${roomTypeKey}', ${guestIdx}, 'name', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">CCCD Khách ${i + 1}</label>
+                                <input type="text"
+                                       name="guests[${roomTypeKey}][${guestIdx}][cccd]"
+                                       class="form-control"
+                                       placeholder="Nhập số CCCD (12 số)"
+                                       value="${savedCccd}"
+                                       pattern="\\d{12}"
+                                       minlength="12"
+                                       maxlength="12"
+                                       required
+                                       oninput="setGuestValue('${roomTypeKey}', ${guestIdx}, 'cccd', this.value)">
+                            </div>
+                        </div>
+                        ${i < roomGuestCount - 1 ? '<hr class="my-2 border-light">' : ''}
+                    </div>
+                `;
+            }
+
+            html += '</div></div>';
+        });
+    });
+
+    const hint = container.querySelector('.guest-count-hint');
+    if (hint) {
+        hint.textContent = `Vui lòng nhập thông tin cho ${totalGuests} khách (Đảm bảo mỗi khách có tên và CCCD).`;
     }
+
+    rowsContainer.innerHTML = html;
 }
 
 // Simple function to select a room and fill form data
@@ -973,7 +994,7 @@ document.getElementById('bookingForm').addEventListener('submit', function(e) {
         alert('Vui lòng chọn ít nhất một phòng.');
         return false;
     }
-    
+
     // Prepare dynamic fields before submission
     prepareFormData();
     console.log('Form submitting with selected rooms:', selectedRooms);

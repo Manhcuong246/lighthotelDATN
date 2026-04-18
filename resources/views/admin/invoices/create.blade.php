@@ -5,8 +5,12 @@
 @section('content')
 @php
     $nights = max(1, \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out));
-    $servicesAmount = (float) $booking->bookingServices->sum(fn ($s) => (float) $s->price * (int) $s->quantity);
-    $surchargesAmount = (float) $booking->surcharges->sum(fn ($s) => (float) $s->amount);
+    $servicesAmount = (float) $booking->bookingServices->sum(function ($s) {
+        return (float) $s->price * (int) $s->quantity;
+    });
+    $surchargesAmount = (float) $booking->surcharges->sum(function ($s) {
+        return (float) $s->amount;
+    });
     $couponDiscount = (float) ($booking->discount_amount ?? 0);
     $roomsSum = (float) $booking->bookingRooms->sum('subtotal');
     $roomPreview = $roomsSum > 0
