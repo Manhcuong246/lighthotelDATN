@@ -173,11 +173,42 @@ class Booking extends Model
     }
 
     /**
-     * Get guests grouped by room
+     * Get guests grouped by room_index (legacy)
      */
     public function guestsByRoom(): array
     {
         return $this->guests()->groupBy('room_index')->toArray();
+    }
+
+    /**
+     * Get guests grouped by ACTUAL assigned room_id
+     * Returns: [room_id => ['room' => Room, 'guests' => [Guest, ...]]]
+     */
+    public function guestsByAssignedRoom(): array
+    {
+        $guests = $this->guests()->with('room.roomType')->get();
+        $grouped = [];
+
+        foreach ($guests as $guest) {
+            $roomId = $guest->room_id ?? 'unassigned';
+            if (!isset($grouped[$roomId])) {
+                $grouped[$roomId] = [
+                    'room' => $guest->room,
+                    'guests' => []
+                ];
+            }
+            $grouped[$roomId]['guests'][] = $guest;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * Get available rooms for this booking that can be assigned to guests
+     */
+    public function getAvailableRoomsForAssignment(): \Illuminate\Support\Collection
+    {
+        return $this->rooms()->with('roomType')->available()->get();
     }
 
     /**
