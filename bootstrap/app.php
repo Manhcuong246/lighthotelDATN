@@ -13,18 +13,35 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+
         $trusted = Env::get('TRUSTED_PROXIES');
         if (filled($trusted)) {
-            $at = $trusted === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', $trusted))));
+            $at = $trusted === '*'
+                ? '*'
+                : array_values(array_filter(array_map('trim', explode(',', $trusted))));
             $middleware->trustProxies(at: $at);
         }
 
+        // ==============================
+        // Middleware Alias
+        // ==============================
+
         $middleware->alias([
+
+            // Admin
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'admin_only' => \App\Http\Middleware\AdminOnlyMiddleware::class,
             'admin.only' => \App\Http\Middleware\AdminOnlyMiddleware::class,
+
+            // Staff (THÊM MỚI)
+            'staff' => \App\Http\Middleware\StaffMiddleware::class,
+
+            // Default Laravel
             'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
+
         ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-    })->create();
+    })
+    ->create();
