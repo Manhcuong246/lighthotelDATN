@@ -183,42 +183,13 @@
             </div>
             <div class="card-body">
                 <div id="guestDetailsContainer">
-                    @php
-                        $defaultAdults = old('adults', 1);
-                        $defaultChildren = old('children', 0);
-                        $totalGuests = $defaultAdults + $defaultChildren;
-                    @endphp
-
-                    @for ($i = 1; $i <= $totalGuests; $i++)
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">
-                                    Khách {{ $i }} ({{ $i <= $defaultAdults ? 'Ng\u01b0\u1eddi l\u1edbn' : 'Tr\u1ebb em' }}) *
-                                </label>
-                                <input type="text"
-                                       name="guests[{{ $i }}][name]"
-                                       class="form-control"
-                                       placeholder="Nhập họ tên"
-                                       value="{{ old('guests.'.$i.'.name') }}"
-                                       required>
-                                <input type="hidden" name="guests[{{ $i }}][type]" value="{{ $i <= $defaultAdults ? 'adult' : 'child' }}">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">
-                                    CCCD Khách {{ $i }} {{ $i > $defaultAdults ? '(kh\u1ecfng b\u1eaft bu\u1ed9c)' : '*' }}
-                                </label>
-                                <input type="text"
-                                       name="guests[{{ $i }}][cccd]"
-                                       class="form-control"
-                                       placeholder="Nhập số CCCD"
-                                       value="{{ old('guests.'.$i.'.cccd') }}"
-                                       {{ $i <= $defaultAdults ? 'required' : '' }}>
-                            </div>
-                        </div>
-                    @endfor
+                    <!-- Sẽ được render bằng JavaScript -->
                 </div>
             </div>
         </div>
+
+        <!-- Store guest data as JSON -->
+        <input type="hidden" name="guests_json" id="guests_json" value="{}">
 
         <!-- Thông tin thanh toán -->
         <div class="card shadow-sm border-0 rounded-3 mb-3">
@@ -394,6 +365,107 @@ const vnpaySection = document.getElementById('vnpay-section');
 // Bank config passed via data attribute to avoid linter false positives
 const bankConfigEl = document.getElementById('bank-config');
 const bankConfig = bankConfigEl ? JSON.parse(bankConfigEl.dataset.config) : {};
+
+/* =========================
+GUEST DATA MANAGEMENT
+========================= */
+
+// Object to store guest data by room ID
+let guestData = {};
+
+// Function to get unique room ID key
+function getRoomKey() {
+    const roomId = roomSelect.value;
+    return `room_${roomId}`;
+}
+
+// Function to render guest detail form
+function renderGuestForm() {
+    const adults = parseInt(adultsInput.value) || 1;
+    const children611 = parseInt(document.getElementById('children_6_11').value) || 0;
+    const children05 = parseInt(document.getElementById('children_0_5').value) || 0;
+    const totalGuests = adults + children611 + children05;
+
+    const roomKey = getRoomKey();
+    let html = '';
+
+    // Initialize room data if not exists
+    if (!guestData[roomKey]) {
+        guestData[roomKey] = {};
+    }
+
+    for (let i = 0; i < totalGuests; i++) {
+        const guestIndex = i + 1;
+        const isAdult = i < adults;
+        const guestType = isAdult ? 'adult' : (i < adults + children611 ? 'child_6_11' : 'child_0_5');
+
+        // Get saved values from guestData
+        const savedName = guestData[roomKey]?.[i]?.name || '';
+        const savedCccd = guestData[roomKey]?.[i]?.cccd || '';
+
+        html += `
+            <div class="row g-3 mb-3" data-guest-index="${i}">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        Khách ${guestIndex} (${isAdult ? 'Người lớn' : (guestType === 'child_6_11' ? 'Trẻ 6-11' : 'Trẻ 0-5')}) ${isAdult ? '*' : ''}
+                    </label>
+                    <input type="text"
+                           class="form-control guest-input"
+                           data-room="${roomKey}"
+                           data-index="${i}"
+                           data-field="name"
+                           placeholder="Nhập họ tên"
+                           value="${savedName}"
+                           ${isAdult ? 'required' : ''}>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        CCCD Khách ${guestIndex} ${isAdult ? '*' : '(không bắt buộc)'}
+                    </label>
+                    <input type="text"
+                           class="form-control guest-input"
+                           data-room="${roomKey}"
+                           data-index="${i}"
+                           data-field="cccd"
+                           placeholder="Nhập số CCCD"
+                           value="${savedCccd}"
+                           ${isAdult ? 'required' : ''}>
+                </div>
+            </div>
+        `;
+    }
+
+    document.getElementById('guestDetailsContainer').innerHTML = html;
+
+    // Attach event listeners to newly created inputs
+    attachGuestInputListeners();
+}
+
+// Attach event listeners to guest inputs
+function attachGuestInputListeners() {
+    document.querySelectorAll('.guest-input').forEach(input => {
+        input.addEventListener('input', function () {
+            const roomKey = this.dataset.room;
+            const index = parseInt(this.dataset.index);
+            const field = this.dataset.field;
+
+            if (!guestData[roomKey]) {
+                guestData[roomKey] = {};
+            }
+            if (!guestData[roomKey][index]) {
+                guestData[roomKey][index] = {};
+            }
+
+            guestData[roomKey][index][field] = this.value;
+        });
+    });
+}
+
+// Update form when room or guest count changes
+function updateGuestForm() {
+    renderGuestForm();
+}
+
 
 /* =========================
 PRICE PREVIEW
@@ -666,6 +738,7 @@ EVENTS
 ========================= */
 
 roomSelect.addEventListener('change', function () {
+    updateGuestForm();
     updatePricePreview();
     setTimeout(generateQR, 100);
 });
@@ -697,9 +770,23 @@ paymentStatusSelect.addEventListener('change', generateQR);
 amountPaidInput.addEventListener('input', generateQR);
 
 // Thêm event listeners cho số khách
-adultsInput.addEventListener('input', updatePricePreview);
-document.getElementById('children_6_11').addEventListener('input', updatePricePreview);
-document.getElementById('children_0_5').addEventListener('input', updatePricePreview);
+adultsInput.addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+document.getElementById('children_6_11').addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+document.getElementById('children_0_5').addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+
+// Initialize guest form on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateGuestForm();
+});
 
 
 /* =========================
@@ -717,6 +804,18 @@ BOOTSTRAP VALIDATION
         Array.prototype.slice.call(forms).forEach(function (form) {
 
             form.addEventListener('submit', function (event) {
+
+                // Fill guests_json with current guestData before submit
+                const roomKey = getRoomKey();
+                const currentRoomGuests = guestData[roomKey] || {};
+
+                // Convert to array format
+                const guestsArray = [];
+                Object.keys(currentRoomGuests).forEach(index => {
+                    guestsArray[parseInt(index)] = currentRoomGuests[index];
+                });
+
+                document.getElementById('guests_json').value = JSON.stringify(guestsArray);
 
                 if (!form.checkValidity()) {
 
