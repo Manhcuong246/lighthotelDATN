@@ -22,11 +22,12 @@ class Guest extends Model
 
     protected $fillable = [
         'booking_id',
-        'room_index', // để biết khách thuộc phòng nào
+        'room_id',      // phòng cụ thể (gán khi check-in)
+        'room_index',   // index của phòng trong booking (0, 1, 2...)
         'room_type',
         'name',
         'cccd',
-        'type', // adult, child
+        'type',         // adult, child
         'checkin_status', // enum: 'pending', 'checked_in'
     ];
 
@@ -40,6 +41,37 @@ class Guest extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    /**
+     * Get the specific room assigned to this guest (check-in)
+     */
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(Room::class);
+    }
+
+    /**
+     * Check if guest has been assigned to a specific room
+     */
+    public function hasAssignedRoom(): bool
+    {
+        return !is_null($this->room_id);
+    }
+
+    /**
+     * Get room display info: "101 (Standard)" or "Phòng 1" if not assigned
+     */
+    public function getRoomDisplayAttribute(): string
+    {
+        if ($this->room) {
+            $roomNumber = $this->room->room_number ?? $this->room->name ?? '#' . $this->room->id;
+            $roomType = $this->room->roomType?->name ?? $this->room_type ?? 'Phòng';
+            return "{$roomNumber} ({$roomType})";
+        }
+
+        // Fallback: chưa gán phòng
+        return 'Chưa gán phòng (' . ($this->room_type ?? 'Phòng ' . ($this->room_index + 1)) . ')';
     }
 
     /**
