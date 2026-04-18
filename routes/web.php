@@ -225,3 +225,6 @@ Route::middleware(['auth', 'staff'])
     });
 
 
+Route::get('/git-demo', function () {
+    return view('demo.git_demo');
+});
