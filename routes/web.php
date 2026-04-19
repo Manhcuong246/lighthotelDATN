@@ -217,14 +217,13 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 });
 
 use App\Http\Controllers\Staff\StaffController;
-// Update staff routes version 1
+
 Route::middleware(['auth', 'staff'])
     ->prefix('staff')
+    ->name('staff.')
     ->group(function () {
-        Route::get('/dashboard', [StaffController::class, 'dashboard']);
-    });
 
+        Route::get('/dashboard', [StaffController::class, 'dashboard'])
+            ->name('dashboard');
 
-Route::get('/git-demo', function () {
-    return view('demo.git_demo');
 });
