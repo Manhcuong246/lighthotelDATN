@@ -2,10 +2,40 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
 
 class VnPayService
 {
+    /**
+     * Redirect sang cổng VNPay — luôn dùng response không cache để trình duyệt/proxy
+     * không giữ URL cũ (CreateDate/ExpireDate đã quá hạn) khi khách bấm link sau.
+     */
+    public function redirectAwayNoCache(string $paymentUrl): RedirectResponse
+    {
+        return redirect()->away($paymentUrl)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, private')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+
+    /**
+     * Validate and format IP address for VNPAY
+     */
+    private function validateAndFormatIp(string $ipAddr): string
+    {
+        // Remove any whitespace
+        $ipAddr = trim($ipAddr);
+
+        // Check if it's a valid IP address
+        if (filter_var($ipAddr, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return $ipAddr;
+        }
+
+        // If invalid, use default server IP from config
+        return config('vnpay.server_ip', '127.0.0.1');
+    }
+
     public function createPaymentUrl(
         string $txnRef,
         int $amount,
@@ -19,10 +49,14 @@ class VnPayService
         $vnpTmnCode = config('vnpay.tmn_code');
         $vnpHashSecret = config('vnpay.hash_secret');
 
-        // vnp_CreateDate / vnp_ExpireDate gắn với lần gọi hàm này (khi redirect sang VNPay sau khi khách bấm link).
-        $createDate = Carbon::now('Asia/Ho_Chi_Minh');
-        $expireMinutes = max(5, (int) config('vnpay.transaction_expire_minutes', 15));
+        // Thời điểm tạo phiên = lúc gọi hàm (khách vừa bấm “Đặt” hoặc vừa mở link thanh toán).
+        // App timezone (config/app.php) phải là GMT+7 theo tài liệu VNPay cho yyyyMMddHHmmss.
+        $createDate = now();
+        $expireMinutes = max(5, min(1440, (int) config('vnpay.transaction_expire_minutes', 30)));
         $expireDate = $createDate->copy()->addMinutes($expireMinutes);
+
+        // Ensure proper encoding for Vietnamese characters
+        $orderInfo = mb_convert_encoding($orderInfo, 'UTF-8', 'UTF-8');
 
         $inputData = [
             'vnp_Version' => '2.1.0',
@@ -31,7 +65,7 @@ class VnPayService
             'vnp_Command' => 'pay',
             'vnp_CreateDate' => $createDate->format('YmdHis'),
             'vnp_CurrCode' => 'VND',
-            'vnp_IpAddr' => $ipAddr,
+            'vnp_IpAddr' => $this->validateAndFormatIp($ipAddr),
             'vnp_Locale' => $locale,
             'vnp_OrderInfo' => $orderInfo,
             'vnp_OrderType' => 'other',
@@ -45,6 +79,18 @@ class VnPayService
         }
 
         ksort($inputData);
+
+        // Log all input data for debugging
+        \Log::info('VNPAY Payment Data:', [
+            'input_data' => $inputData,
+            'vnp_url' => $vnpUrl,
+            'vnp_tmn_code' => $vnpTmnCode,
+            'amount' => $amount,
+            'order_info' => $orderInfo,
+            'return_url' => $returnUrl,
+            'ip_addr' => $ipAddr,
+        ]);
+
         $hashData = '';
         $i = 0;
         foreach ($inputData as $key => $value) {
@@ -56,10 +102,16 @@ class VnPayService
             }
         }
 
+        \Log::info('VNPAY Hash Data:', ['hash_data' => $hashData]);
+
         $vnpSecureHash = hash_hmac('sha512', $hashData, $vnpHashSecret);
         $query = http_build_query($inputData);
 
-        return $vnpUrl . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
+        $fullUrl = $vnpUrl . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
+
+        \Log::info('VNPAY Full URL Generated:', ['url' => $fullUrl]);
+
+        return $fullUrl;
     }
 
     public function verifyReturn(array $inputData): bool

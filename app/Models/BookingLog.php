@@ -14,6 +14,7 @@ class BookingLog extends Model
         'booking_id',
         'old_status',
         'new_status',
+        'notes',
         'changed_at',
     ];
 

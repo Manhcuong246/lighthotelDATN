@@ -8,8 +8,8 @@ use App\Models\Room;
 use App\Models\RoomType;
 use App\Support\RoomImageStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class RoomAdminController extends Controller
@@ -43,7 +43,7 @@ class RoomAdminController extends Controller
         if (!auth()->user()->canAccessAdmin()) {
             abort(403, 'Bạn không có quyền thêm phòng.');
         }
-        $roomTypes = RoomType::where('status', 1)->get();
+        $roomTypes = RoomType::query()->where('status', 1)->whereNull('deleted_at')->orderBy('name')->get();
         return view('admin.rooms.create', compact('roomTypes'));
     }
 
@@ -52,30 +52,35 @@ class RoomAdminController extends Controller
         if (!auth()->user()->canAccessAdmin()) {
             abort(403, 'Bạn không có quyền thêm phòng.');
         }
-        $data = $request->validate([
+        $hasType = $request->filled('room_type_id');
+        $data = $request->validate(array_merge([
             'name' => 'required|string|max:255',
             'room_number' => 'nullable|string|max:50',
-            'room_type_id' => 'nullable|exists:room_types,id',
+            'room_type_id' => [
+                'nullable',
+                Rule::exists('room_types', 'id')->whereNull('deleted_at'),
+            ],
             'type' => 'nullable|string|max:100',
-            'base_price' => 'required|numeric|min:0',
-            'max_guests' => 'required|integer|min:1',
-            'beds' => 'required|integer|min:1',
-            'baths' => 'required|integer|min:0',
             'area' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'status' => 'required|in:available,booked,maintenance',
             'images' => 'nullable|array|max:4',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp',
-        ]);
+        ], $hasType ? [
+            'base_price' => 'nullable|numeric|min:0',
+            'max_guests' => 'nullable|integer|min:1',
+            'beds' => 'nullable|integer|min:1',
+            'baths' => 'nullable|integer|min:0',
+        ] : [
+            'base_price' => 'required|numeric|min:0',
+            'max_guests' => 'required|integer|min:1',
+            'beds' => 'required|integer|min:1',
+            'baths' => 'required|integer|min:0',
+        ]));
 
-        // Nếu chọn room_type_id thì lấy thông tin từ room type
-        if ($request->filled('room_type_id')) {
-            $roomType = RoomType::find($request->room_type_id);
-            if ($roomType) {
-                $data['type'] = $roomType->name;
-                $data['base_price'] = $roomType->price; // Luôn lấy theo loại phòng
-                $data['max_guests'] = $data['max_guests'] ?: $roomType->capacity;
-            }
+        $data = $this->mergeCatalogueFieldsFromRoomType($data, $data['room_type_id'] ?? null);
+        if ($request->filled('room_type_id') && empty($data['room_type_id'])) {
+            return back()->withErrors(['room_type_id' => 'Loại phòng không hợp lệ hoặc đã bị ẩn.'])->withInput();
         }
 
         unset($data['images']);
@@ -89,22 +94,22 @@ class RoomAdminController extends Controller
     public function edit(Room $room)
     {
         $room->load('images');
-        $roomTypes = RoomType::where('status', 1)->get();
+        $roomTypes = RoomType::query()->where('status', 1)->whereNull('deleted_at')->orderBy('name')->get();
         return view('admin.rooms.edit', compact('room', 'roomTypes'));
     }
 
     public function update(Request $request, Room $room)
     {
         // Admin và staff đều có thể cập nhật phòng.
-        $data = $request->validate([
+        $hasType = $request->filled('room_type_id');
+        $data = $request->validate(array_merge([
             'name' => 'required|string|max:255',
             'room_number' => 'nullable|string|max:50',
-            'room_type_id' => 'nullable|exists:room_types,id',
+            'room_type_id' => [
+                'nullable',
+                Rule::exists('room_types', 'id')->whereNull('deleted_at'),
+            ],
             'type' => 'nullable|string|max:100',
-            'base_price' => 'nullable|numeric|min:0', // Để trống để lấy theo loại
-            'max_guests' => 'required|integer|min:1',
-            'beds' => 'required|integer|min:1',
-            'baths' => 'required|integer|min:0',
             'area' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'status' => 'required|in:available,booked,maintenance',
@@ -112,14 +117,24 @@ class RoomAdminController extends Controller
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp',
             'remove_images' => 'nullable|array',
             'remove_images.*' => 'integer|exists:images,id',
-        ]);
+        ], $hasType ? [
+            'base_price' => 'nullable|numeric|min:0',
+            'max_guests' => 'nullable|integer|min:1',
+            'beds' => 'nullable|integer|min:1',
+            'baths' => 'nullable|integer|min:0',
+        ] : [
+            'base_price' => 'required|numeric|min:0',
+            'max_guests' => 'required|integer|min:1',
+            'beds' => 'required|integer|min:1',
+            'baths' => 'required|integer|min:0',
+        ]));
 
         $removeIds = $data['remove_images'] ?? [];
         $newFilesLabels = $request->file('images') ?: [];
 
         // Logic check số lượng ảnh (tối đa 4)
         $existingCount = $room->images()->count();
-        $actualRemoveCount = Image::where('room_id', $room->id)->whereIn('id', $removeIds)->count();
+        $actualRemoveCount = $room->images()->whereIn('id', $removeIds)->count();
         $finalCount = $existingCount - $actualRemoveCount + count($newFilesLabels);
 
         if ($finalCount > 4) {
@@ -128,22 +143,15 @@ class RoomAdminController extends Controller
             ]);
         }
 
-        // Lấy thông tin từ Room Type nếu có
-        if ($request->filled('room_type_id')) {
-            $roomType = RoomType::find($request->room_type_id);
-            if ($roomType) {
-                $data['type'] = $roomType->name;
-                $data['base_price'] = $roomType->price; // Ép giá theo loại phòng
-            }
+        $data = $this->mergeCatalogueFieldsFromRoomType($data, $data['room_type_id'] ?? null);
+        if ($request->filled('room_type_id') && empty($data['room_type_id'])) {
+            return back()->withErrors(['room_type_id' => 'Loại phòng không hợp lệ hoặc đã bị ẩn.'])->withInput();
         }
 
         // Xóa ảnh cũ trước khi thêm mới
         if (!empty($removeIds)) {
             $toRemove = $room->images()->whereIn('id', $removeIds)->get();
             foreach ($toRemove as $img) {
-                if ($img->image_url && !str_starts_with($img->image_url, 'http')) {
-                    Storage::disk('public')->delete($img->image_url);
-                }
                 $img->delete();
             }
         }
@@ -205,8 +213,36 @@ class RoomAdminController extends Controller
 
     private function ensureRoomPrimaryImage(Room $room): void
     {
-        $firstImage = Image::where('room_id', $room->id)->first();
+        $firstImage = $room->images()->orderBy('id')->first();
         $room->update(['image' => $firstImage?->image_url]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function mergeCatalogueFieldsFromRoomType(array $data, mixed $roomTypeId): array
+    {
+        $id = $roomTypeId !== null && $roomTypeId !== '' ? (int) $roomTypeId : null;
+        if (! $id) {
+            return $data;
+        }
+
+        $roomType = RoomType::query()->whereNull('deleted_at')->find($id);
+        if (! $roomType) {
+            $data['room_type_id'] = null;
+
+            return $data;
+        }
+
+        $data['room_type_id'] = $roomType->id;
+        $data['type'] = $roomType->name;
+        $data['base_price'] = $roomType->price;
+        $data['max_guests'] = (int) ($roomType->capacity ?? 1);
+        $data['beds'] = (int) ($roomType->beds ?? 1);
+        $data['baths'] = (int) ($roomType->baths ?? 0);
+
+        return $data;
     }
 }
 

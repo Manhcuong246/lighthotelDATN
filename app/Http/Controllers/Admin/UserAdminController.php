@@ -37,13 +37,15 @@ class UserAdminController extends Controller
 
     public function show(User $user)
     {
-        return view('admin.users.show', compact('user'));
+        $user->load('roles');
+        $roles = Role::orderBy('name')->get();
+
+        return view('admin.users.show', compact('user', 'roles'));
     }
 
     public function edit(User $user)
     {
-        $roles = Role::all();
-        return view('admin.users.edit', compact('user', 'roles'));
+        return redirect()->route('admin.users.show', $user);
     }
 
     public function update(Request $request, User $user)
@@ -54,6 +56,8 @@ class UserAdminController extends Controller
             'phone' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive,banned',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'role_ids' => 'nullable|array',
+            'role_ids.*' => 'integer|exists:roles,id',
         ]);
 
         if ($request->hasFile('avatar')) {
@@ -64,17 +68,17 @@ class UserAdminController extends Controller
         }
 
         unset($validated['avatar']);
+        $roleIds = $validated['role_ids'] ?? [];
+        unset($validated['role_ids']);
         $user->update($validated);
 
         if ($request->filled('password')) {
-            $user->update(['password' => $request->password]); // Note: Model should handle hashing if not already
+            $user->update(['password' => bcrypt($request->password)]);
         }
 
-        if ($request->filled('role_ids') && is_array($request->role_ids)) {
-            $user->roles()->sync($request->role_ids);
-        }
+        $user->roles()->sync($roleIds);
 
-        return redirect()->route('admin.users.index')->with('success', 'Cập nhật người dùng thành công.');
+        return redirect()->route('admin.users.show', $user)->with('success', 'Đã lưu thông tin người dùng.');
     }
 
 

@@ -7,8 +7,8 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Cập nhật phòng: {{ $room->name }}</h1>
         <div class="d-flex gap-2">
-            <button type="submit" form="room-edit-form" class="btn btn-primary d-none d-md-inline-block">Cập nhật</button>
-            <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+            <button type="submit" form="room-edit-form" class="btn btn-primary btn-admin-icon d-none d-md-inline-block" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
+            <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
         </div>
     </div>
 
@@ -32,7 +32,7 @@
                                     data-price="{{ $rt->price }}"
                                     data-beds="{{ $rt->beds }}"
                                     data-baths="{{ $rt->baths }}"
-                                    data-image="{{ $rt->image }}"
+                                    data-image="{{ $rt->image_url ?? '' }}"
                                     {{ old('room_type_id', $room->room_type_id) == $rt->id ? 'selected' : '' }}>
                                     {{ $rt->name }}
                                 </option>
@@ -51,7 +51,7 @@
                     <div class="d-flex flex-wrap gap-2 mb-2">
                         @foreach($room->images as $img)
                         <div class="position-relative d-inline-block room-image-item" style="width: 80px;">
-                            <img src="{{ $img->image_url && !str_starts_with($img->image_url, 'http') ? asset('storage/' . $img->image_url) : $img->image_url }}"
+                            <img src="{{ \App\Models\Room::resolveImageUrl($img->image_url) ?? '' }}"
                                  alt=""
                                  class="img-thumbnail room-image-thumb"
                                  style="width: 80px; height: 60px; object-fit: cover;">
@@ -84,26 +84,30 @@
                     <input type="file" name="images[]" class="form-control" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" multiple>
                     <small class="text-muted">Thêm ảnh mới (tối đa 4 ảnh, mỗi ảnh &lt; 2MB)</small>
                 </div>
+                <div class="alert alert-light border small mb-3 mb-md-4 text-muted">
+                    <strong class="text-dark">Giá, tối đa khách, giường, tắm</strong> khi có <strong>loại phòng</strong> luôn lấy từ cấu hình loại phòng (cập nhật tại <a href="{{ route('admin.roomtypes.index') }}" class="link-primary">Quản lý loại phòng</a>). Phần lưu DB phòng được đồng bộ khi bạn Lưu — không cần (và không nên) sửa tay các ô đã khóa.
+                    <span class="d-block mt-1">Diện tích và mô tả bên dưới là thông tin riêng từng phòng vật lý.</span>
+                </div>
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Giá cơ bản (VNĐ/đêm)</label>
-                        <input type="number" name="base_price" class="form-control"
-                               value="{{ old('base_price', $room->base_price) }}" min="0" required readonly>
+                        <input type="number" name="base_price" id="base_price" class="form-control js-room-catalogue-input"
+                               value="{{ old('base_price', $room->base_price) }}" min="0" step="1">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Tối đa khách</label>
-                        <input type="number" name="max_guests" class="form-control"
-                               value="{{ old('max_guests', $room->max_guests) }}" min="1" required>
+                        <input type="number" name="max_guests" id="max_guests" class="form-control js-room-catalogue-input"
+                               value="{{ old('max_guests', $room->max_guests) }}" min="1" step="1">
                     </div>
                     <div class="col-md-2 mb-3">
                         <label class="form-label">Số giường</label>
-                        <input type="number" name="beds" class="form-control"
-                               value="{{ old('beds', $room->beds) }}" min="1" required>
+                        <input type="number" name="beds" id="beds" class="form-control js-room-catalogue-input"
+                               value="{{ old('beds', $room->beds) }}" min="1" step="1">
                     </div>
                     <div class="col-md-2 mb-3">
                         <label class="form-label">Số phòng tắm</label>
-                        <input type="number" name="baths" class="form-control"
-                               value="{{ old('baths', $room->baths) }}" min="0" required>
+                        <input type="number" name="baths" id="baths" class="form-control js-room-catalogue-input"
+                               value="{{ old('baths', $room->baths) }}" min="0" step="1">
                     </div>
                 </div>
                 <div class="mb-3">
@@ -123,8 +127,8 @@
                         <option value="maintenance" {{ old('status', $room->status) === 'maintenance' ? 'selected' : '' }}>Bảo trì</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Cập nhật</button>
-                <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary">Quay lại</a>
+                <button type="submit" class="btn btn-primary btn-admin-icon" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
+                <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
             </form>
         </div>
     </div>
@@ -134,10 +138,27 @@
 document.addEventListener('DOMContentLoaded', function() {
     const roomTypeSelect = document.getElementById('room_type_id');
     const nameInput = document.getElementById('name');
-    const basePriceInput = document.querySelector('input[name="base_price"]');
-    const maxGuestsInput = document.querySelector('input[name="max_guests"]');
-    const bedsInput = document.querySelector('input[name="beds"]');
-    const bathsInput = document.querySelector('input[name="baths"]');
+    const basePriceInput = document.getElementById('base_price');
+    const maxGuestsInput = document.getElementById('max_guests');
+    const bedsInput = document.getElementById('beds');
+    const bathsInput = document.getElementById('baths');
+    const catalogueInputs = [basePriceInput, maxGuestsInput, bedsInput, bathsInput].filter(Boolean);
+
+    function applyCatalogueFromType() {
+        const hasType = roomTypeSelect.value !== '';
+        catalogueInputs.forEach(function (el) {
+            el.readOnly = hasType;
+            el.classList.toggle('bg-light', hasType);
+            el.required = !hasType;
+        });
+        if (hasType) {
+            const opt = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+            basePriceInput.value = opt.dataset.price || '';
+            maxGuestsInput.value = opt.dataset.capacity || '';
+            bedsInput.value = opt.dataset.beds || '1';
+            bathsInput.value = opt.dataset.baths || '0';
+        }
+    }
 
     // Toggle chọn ảnh cần xóa (mobile-friendly)
     document.querySelectorAll('.room-remove-image-btn').forEach((btn) => {
@@ -185,25 +206,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    roomTypeSelect.addEventListener('change', function() {
-        const selectedOption= this.options[this.selectedIndex];
-        if (this.value) {
-            // Tự động điền giá và thông tin từ loại phòng (KHÔNG điền tên phòng)
-            if (!basePriceInput.value || basePriceInput.value === '0') {
-                basePriceInput.value = selectedOption.dataset.price || '';
-            }
-            if (!maxGuestsInput.value || maxGuestsInput.value === '1') {
-                maxGuestsInput.value = selectedOption.dataset.capacity || '';
-            }
-            // Điền số giường và số phòng tắm
-            if (!bedsInput.value || bedsInput.value === '1') {
-                bedsInput.value = selectedOption.dataset.beds || '1';
-            }
-            if (!bathsInput.value || bathsInput.value === '1') {
-                bathsInput.value = selectedOption.dataset.baths || '1';
-            }
-        }
-    });
+    roomTypeSelect.addEventListener('change', applyCatalogueFromType);
+    applyCatalogueFromType();
 });
 </script>
 @endsection

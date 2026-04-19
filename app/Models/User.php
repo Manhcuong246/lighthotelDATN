@@ -4,13 +4,29 @@ namespace App\Models;
 
 use App\Models\Booking;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 
+/**
+ * @method bool hasRole(string $name)
+ * @method bool isAdmin()
+ * @method bool isStaff()
+ * @method bool canAccessAdmin()
+ * @property int $id
+ * @property string $email
+ * @property string $full_name
+ * @property string $phone
+ * @property string $password
+ * @property string $avatar_url
+ * @property string $status
+ * @property \Illuminate\Database\Eloquent\Collection $roles
+ * @property-read string $email
+ */
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, Authorizable;
+    use HasFactory, Notifiable, Authorizable, SoftDeletes;
 
     protected $table = 'users';
 
@@ -26,6 +42,14 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+    /**
+     * Get the user's email address.
+     */
+    public function getEmailAttribute(): string
+    {
+        return $this->attributes['email'] ?? '';
+    }
 
     public function roles()
     {
@@ -49,12 +73,29 @@ class User extends Authenticatable
 
     public function isCustomer(): bool
     {
-        return $this->hasRole('guest');
+        return $this->hasRole('customer');
     }
 
     public function canAccessAdmin(): bool
     {
         return $this->isAdmin() || $this->isStaff();
+    }
+
+    /**
+     * Tài khoản chỉ được tạo ngầm khi khách đặt phòng (web) hoặc admin đặt hộ:
+     * có mật khẩu ngẫu nhiên, chưa gắn role — đăng ký với cùng email sẽ "kích hoạt" tài khoản.
+     */
+    public function isProvisionalGuestAccount(): bool
+    {
+        if ($this->isAdmin() || $this->isStaff()) {
+            return false;
+        }
+
+        if ($this->hasRole('guest')) {
+            return false;
+        }
+
+        return $this->roles()->count() === 0;
     }
 
     public function bookings()
@@ -65,6 +106,20 @@ class User extends Authenticatable
     public function reviews()
     {
         return $this->hasMany(Review::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user): void {
+            if ($user->isForceDeleting()) {
+                return;
+            }
+            $email = (string) $user->email;
+            if ($email !== '' && ! str_starts_with($email, '__deleted__')) {
+                $prefixed = '__deleted__' . $user->id . '__' . $email;
+                $user->email = strlen($prefixed) > 255 ? substr($prefixed, 0, 255) : $prefixed;
+            }
+        });
     }
 }
 

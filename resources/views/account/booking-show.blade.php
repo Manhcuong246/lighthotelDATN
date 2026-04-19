@@ -3,6 +3,10 @@
 @section('title', 'Chi tiết đặt phòng #' . $booking->id)
 
 @section('content')
+@php
+    $paidRecorded = $booking->isPaymentRecordedPaid();
+    $pendingExpired = $booking->status === 'pending' && ! $paidRecorded && $booking->isPendingDisplayExpired();
+@endphp
 <div class="mb-4">
     <a href="{{ route('account.bookings') }}" class="btn btn-sm btn-outline-secondary text-decoration-none">
         <i class="bi bi-arrow-left me-1"></i>Quay lại lịch sử
@@ -12,8 +16,10 @@
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
     <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="mb-0 fw-bold">Đơn đặt phòng #{{ $booking->id }}</h5>
-        <span class="badge {{ $booking->status === 'pending' ? 'bg-warning text-dark' : ($booking->status === 'confirmed' ? 'bg-info' : ($booking->status === 'completed' ? 'bg-success' : 'bg-secondary')) }} px-3 py-2">
-            @if($booking->status === 'pending') Chờ xác nhận
+        <span class="badge {{ $pendingExpired ? 'bg-secondary' : ($booking->status === 'pending' ? 'bg-warning text-dark' : ($booking->status === 'confirmed' ? 'bg-info' : ($booking->status === 'completed' ? 'bg-success' : 'bg-secondary'))) }} px-3 py-2">
+            @if($pendingExpired) Hết hạn
+            @elseif($booking->status === 'pending' && $paidRecorded) Đã thanh toán
+            @elseif($booking->status === 'pending') Chờ thanh toán
             @elseif($booking->status === 'confirmed') Đã thanh toán
             @elseif($booking->status === 'completed') Hoàn thành
             @elseif($booking->status === 'cancelled') Đã hủy
@@ -28,21 +34,106 @@
             <div class="col-md-6">
                 <h6 class="text-muted text-uppercase small fw-semibold mb-2">Phòng đã đặt</h6>
                 <ul class="list-unstyled mb-0">
-                    @foreach($booking->rooms as $room)
+                    @forelse($booking->rooms as $room)
                     <li class="mb-3">
-                        <p class="mb-0 fw-semibold">
-                            <i class="bi bi-door-open text-primary me-2"></i>{{ $room->name }}
+                        <p class="mb-1 fw-semibold">
+                            <i class="bi bi-door-open text-primary me-2"></i>
+                            <a href="{{ route('rooms.show', $room) }}" class="link-dark text-decoration-underline">{{ $room->name }}</a>
                         </p>
                         <div class="ms-4">
-                            <small class="text-muted d-block">{{ $room->roomType->name ?? '' }} - {{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫/đêm</small>
-                            <small class="text-info d-block">
+                            <small class="text-muted d-block">
+                                @if($room->roomType)
+                                    <a href="{{ route('home', ['room_type' => $room->room_type_id]) }}" class="text-decoration-none">{{ $room->roomType->name }}</a>
+                                @else
+                                    {{ $room->type ?? '—' }}
+                                @endif
+                                — {{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫/đêm
+                            </small>
+                            <div class="small mt-1">
+                                <a href="{{ route('rooms.show', $room) }}" class="text-primary text-decoration-none">Chi tiết phòng</a>
+                                @if($room->roomType)
+                                    <span class="text-muted">·</span>
+                                    <a href="{{ route('home', ['room_type' => $room->room_type_id]) }}" class="text-primary text-decoration-none">Loại phòng</a>
+                                @endif
+                            </div>
+                            <small class="text-info d-block mt-1">
                                 <i class="bi bi-people me-1"></i>
                                 {{ $room->pivot->adults }} Người lớn,
-                                {{ $room->pivot->children_0_5 + $room->pivot->children_6_11 }} Trẻ em
+                                @if($room->pivot->children_6_11 > 0){{ $room->pivot->children_6_11 }} Trẻ 6–11t @endif
+                                @if($room->pivot->children_0_5 > 0){{ $room->pivot->children_0_5 }} Trẻ 0–5t @endif
+                                @if($room->pivot->children_6_11 + $room->pivot->children_0_5 === 0) 0 Trẻ em @endif
                             </small>
+                            @auth
+                                @php
+                                    $uidBr = (int) auth()->id();
+                                    $ridBr = (int) $room->id;
+                                    $canSubmitReviewRoom = \App\Models\Booking::userCanSubmitRoomReview($uidBr, $ridBr);
+                                    $reviewedRoom = \App\Models\Review::userHasReviewedRoom($uidBr, $ridBr);
+                                @endphp
+                                @if($canSubmitReviewRoom)
+                                    <a href="{{ route('rooms.show', $room) }}#write-review" class="btn btn-sm btn-success mt-2 rounded-pill">
+                                        <i class="bi bi-star me-1"></i>
+                                        Viết đánh giá (loại: {{ $room->roomType->name ?? $room->type ?? 'phòng này' }})
+                                    </a>
+                                @elseif($reviewedRoom)
+                                    <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã đánh giá phòng này (mỗi tài khoản một lần / phòng).</span>
+                                @endif
+                            @endauth
                         </div>
                     </li>
-                    @endforeach
+                    @empty
+                        @if($booking->room)
+                            @php $r = $booking->room; @endphp
+                            <li class="mb-3">
+                                <p class="mb-1 fw-semibold">
+                                    <i class="bi bi-door-open text-primary me-2"></i>
+                                    <a href="{{ route('rooms.show', $r) }}" class="link-dark text-decoration-underline">{{ $r->name }}</a>
+                                </p>
+                                <div class="ms-4">
+                                    <small class="text-muted d-block">
+                                        @if($r->roomType)
+                                            <a href="{{ route('home', ['room_type' => $r->room_type_id]) }}" class="text-decoration-none">{{ $r->roomType->name }}</a>
+                                        @else
+                                            {{ $r->type ?? '—' }}
+                                        @endif
+                                        @if($r->base_price)
+                                            — {{ number_format($r->base_price, 0, ',', '.') }} ₫/đêm
+                                        @endif
+                                    </small>
+                                    <div class="small mt-1">
+                                        <a href="{{ route('rooms.show', $r) }}" class="text-primary text-decoration-none">Chi tiết phòng</a>
+                                        @if($r->roomType)
+                                            <span class="text-muted">·</span>
+                                            <a href="{{ route('home', ['room_type' => $r->room_type_id]) }}" class="text-primary text-decoration-none">Loại phòng</a>
+                                        @endif
+                                    </div>
+                                    @if($booking->guests)
+                                        <small class="text-info d-block mt-1">
+                                            <i class="bi bi-people me-1"></i>{{ $booking->guests }} khách
+                                        </small>
+                                    @endif
+                                    @auth
+                                        @php
+                                            $uidLg = (int) auth()->id();
+                                            $ridLg = (int) $r->id;
+                                            $canSubmitLegacy = \App\Models\Booking::userCanSubmitRoomReview($uidLg, $ridLg);
+                                            $reviewedLegacy = \App\Models\Review::userHasReviewedRoom($uidLg, $ridLg);
+                                        @endphp
+                                        @if($canSubmitLegacy)
+                                            <a href="{{ route('rooms.show', $r) }}#write-review" class="btn btn-sm btn-success mt-2 rounded-pill">
+                                                <i class="bi bi-star me-1"></i>
+                                                Viết đánh giá (loại: {{ $r->roomType->name ?? $r->type ?? 'phòng này' }})
+                                            </a>
+                                        @elseif($reviewedLegacy)
+                                            <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã đánh giá phòng này (mỗi tài khoản một lần / phòng).</span>
+                                        @endif
+                                    @endauth
+                                </div>
+                            </li>
+                        @else
+                            <li class="text-muted">Không có thông tin phòng cho đơn này.</li>
+                        @endif
+                    @endforelse
                 </ul>
             </div>
             <div class="col-md-6">
@@ -60,7 +151,7 @@
                     @if($booking->payment?->status === 'paid')
                         <span class="text-success fw-bold"><i class="bi bi-credit-card-2-front me-2"></i>Đã thanh toán</span>
                     @else
-                        <span class="text-warning fw-bold"><i class="bi bi-credit-card-2-front me-2"></i>Chưa thanh toán</span>
+                        <span class="{{ $pendingExpired ? 'text-secondary' : 'text-warning' }} fw-bold"><i class="bi bi-credit-card-2-front me-2"></i>{{ $pendingExpired ? 'Hết hạn' : 'Chưa thanh toán' }}</span>
                     @endif
                 </p>
             </div>
@@ -99,6 +190,41 @@
         </div>
         @endif
 
+        @if($booking->surcharges->isNotEmpty())
+        <div class="mt-4">
+            <h6 class="text-muted text-uppercase small fw-semibold mb-2">Phụ thu &amp; phí phát sinh (sau khi nhận phòng)</h6>
+            <p class="small text-muted mb-2">Các khoản ghi nhận khi lưu trú (ví dụ dịch vụ dùng thêm không có trong đơn đặt ban đầu).</p>
+            <div class="table-responsive rounded-2 border border-warning border-opacity-50">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Mô tả</th>
+                            <th class="text-end pe-3">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($booking->surcharges as $sc)
+                        <tr>
+                            <td class="ps-3">
+                                @if($sc->service)
+                                    <span class="fw-semibold">{{ $sc->service->name }}</span>
+                                    @if((int) ($sc->quantity ?? 1) > 1)
+                                        <span class="text-muted small">×{{ (int) $sc->quantity }}</span>
+                                    @endif
+                                    <br><span class="small text-muted">{{ $sc->reason }}</span>
+                                @else
+                                    {{ $sc->reason }}
+                                @endif
+                            </td>
+                            <td class="text-end pe-3 fw-semibold text-danger">+ {{ number_format($sc->amount, 0, ',', '.') }} ₫</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
+
         @if($booking->payment)
         <hr class="my-4">
         <h6 class="text-muted text-uppercase small fw-semibold mb-2">Thanh toán</h6>
@@ -113,8 +239,9 @@
         <p class="mb-1">
             <span class="text-muted">Trạng thái:</span>
             @if($booking->payment->status === 'paid') <span class="text-success fw-semibold">Đã thanh toán</span>
-            @elseif($booking->payment->status === 'pending') <span class="text-warning">Chờ thanh toán</span>
+            @elseif($booking->payment->status === 'pending') <span class="{{ $pendingExpired ? 'text-secondary' : 'text-warning' }}">{{ $pendingExpired ? 'Hết hạn' : 'Chờ thanh toán' }}</span>
             @elseif($booking->payment->status === 'failed') <span class="text-danger">Đã hủy / Thất bại</span>
+            @elseif($booking->payment->status === 'refunded') <span class="text-info fw-semibold">Đã hoàn tiền</span>
             @else {{ $booking->payment->status }}
             @endif
         </p>
@@ -191,14 +318,11 @@
             @if($booking->refundRequest && $booking->refundRequest->refund_proof_image)
             <div class="col-12 mt-3">
                 <p class="mb-2 small fw-bold">Minh chứng chuyển khoản:</p>
-                @php
-                    $imagePath = 'storage/' . $booking->refundRequest->refund_proof_image;
-                    $fullPath = public_path($imagePath);
-                @endphp
-                @if(file_exists($fullPath))
+                @if($booking->refundRequest->refundProofFileExists())
+                    @php $proofUrl = $booking->refundRequest->refundProofPublicUrl(); @endphp
                     <div class="text-center">
-                        <a href="{{ asset($imagePath) }}" target="_blank" class="d-inline-block">
-                            <img src="{{ asset($imagePath) }}" class="img-fluid rounded shadow-sm border" style="max-height: 300px;" alt="Proof of Refund" onerror="this.src='https://via.placeholder.com/400x300/f8f9fa/6c757d?text=Image+Not+Found';">
+                        <a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="d-inline-block">
+                            <img src="{{ $proofUrl }}" class="img-fluid rounded shadow-sm border" style="max-height: 300px;" alt="Minh chứng hoàn tiền">
                         </a>
                         <p class="mt-2 small text-muted">
                             <i class="bi bi-image me-1"></i>
@@ -208,9 +332,9 @@
                 @else
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Ảnh minh chứng không tồn tại</strong>
-                        <p class="mb-0 small text-muted">File: {{ $booking->refundRequest->refund_proof_image }}</p>
-                        <p class="mb-0 small">Vui lòng liên hệ admin để cập nhật lại ảnh minh chứng.</p>
+                        <strong>Ảnh minh chứng không tồn tại trên máy chủ</strong>
+                        <p class="mb-0 small text-muted">Đường dẫn lưu: {{ $booking->refundRequest->refund_proof_image }}</p>
+                        <p class="mb-0 small">Vui lòng liên hệ admin nếu bạn vừa tải lên nhưng vẫn báo lỗi.</p>
                     </div>
                 @endif
             </div>
@@ -220,24 +344,35 @@
 </div>
 @endif
 
-<div class="mt-3 d-flex gap-2">
-    @if($booking->rooms->isNotEmpty())
-    <a href="{{ route('rooms.show', $booking->rooms->first()) }}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-eye me-1"></i>Xem phòng
+@php
+    $bookingPrimaryRoom = $booking->rooms->first() ?? $booking->room;
+    $canViewInvoice = \App\Support\BookingInvoiceViewData::customerCanView($booking);
+@endphp
+<div class="mt-3 d-flex flex-wrap gap-2">
+    @if($canViewInvoice)
+    <a href="{{ route('account.bookings.invoice', $booking) }}" class="btn btn-outline-dark btn-sm" target="_blank" rel="noopener">
+        <i class="bi bi-receipt-cutoff me-1"></i>Hóa đơn
     </a>
+    @endif
+    @if($bookingPrimaryRoom)
+    <a href="{{ route('rooms.show', $bookingPrimaryRoom) }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-eye me-1"></i>Xem phòng đã đặt
+    </a>
+    @if($bookingPrimaryRoom->roomType)
+    <a href="{{ route('home', ['room_type' => $bookingPrimaryRoom->room_type_id]) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-grid me-1"></i>Xem loại phòng
+    </a>
+    @endif
     @endif
     
     @if($booking->status === 'confirmed')
         <a href="{{ route('account.bookings.refund', $booking) }}" class="btn btn-danger btn-sm px-4">
-            <i class="bi bi-wallet2 me-1"></i>Hủy & Hoàn tiền
+            <i class="bi bi-wallet2 me-1"></i>Hủy &amp; hoàn tiền
         </a>
     @elseif($booking->status === 'pending')
-        <form action="{{ route('bookings.cancel.post', $booking) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đặt phòng này?');">
-            @csrf
-            <button type="submit" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-x-circle me-1"></i>Hủy đơn
-            </button>
-        </form>
+        <a href="{{ route('bookings.cancel', $booking) }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-x-circle me-1"></i>Hủy &amp; hoàn tiền (theo chính sách)
+        </a>
     @endif
 </div>
 @endsection

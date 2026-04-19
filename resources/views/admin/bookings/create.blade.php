@@ -7,9 +7,7 @@
     <!-- Header -->
     <div class="mb-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
-            <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-secondary rounded-2">
-                <span class="me-1">←</span> Quay lại
-            </a>
+            <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-secondary btn-admin-icon rounded-2" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
             <h1 class="h4 fw-bold mb-0">➕ Tạo đơn đặt phòng cho khách</h1>
         </div>
     </div>
@@ -82,10 +80,10 @@
                             <option value="">-- Chọn số phòng --</option>
                             @foreach($rooms as $room)
                                 <option value="{{ $room->id }}"
-                                        data-price="{{ $room->base_price }}"
-                                        data-max-guests="{{ $room->max_guests }}"
+                                        data-price="{{ $room->catalogueBasePrice() }}"
+                                        data-max-guests="{{ $room->catalogueMaxGuests() }}"
                                         {{ old('room_id') == $room->id ? 'selected' : '' }}>
-                                    Phòng {{ $room->room_number }} - {{ $room->roomType->name ?? 'Không xác định' }} - {{ number_format($room->base_price, 0, ',', '.') }}đ/đêm (Tối đa {{ $room->max_guests }} khách)
+                                    Phòng {{ $room->room_number }} - {{ $room->roomType->name ?? 'Không xác định' }} - {{ number_format($room->catalogueBasePrice(), 0, ',', '.') }}đ/đêm (Tối đa {{ $room->catalogueMaxGuests() }} khách)
                                 </option>
                             @endforeach
                         </select>
@@ -104,46 +102,94 @@
                         @error('check_out')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="adults" class="form-label small fw-bold text-muted mb-1">Số người lớn *</label>
+                        <label for="adults" class="form-label small fw-bold text-muted mb-1">Người lớn *</label>
                         <input type="number" class="form-control form-control-sm rounded-2 @error('adults') is-invalid @enderror"
-                               id="adults" name="adults" min="1" value="{{ old('adults', 1) }}" required />
+                               id="adults" name="adults" min="1" max="6" value="{{ old('adults', 1) }}" required />
+                        <small class="text-muted" style="font-size: 0.7rem;">≥ 12 tuổi</small>
                         @error('adults')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="children" class="form-label small fw-bold text-muted mb-1">Số trẻ em</label>
-                        <input type="number" class="form-control form-control-sm rounded-2 @error('children') is-invalid @enderror"
-                               id="children" name="children" min="0" value="{{ old('children', 0) }}" />
-                        @error('children')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                        <label for="children_6_11" class="form-label small fw-bold text-muted mb-1">Trẻ 6-11</label>
+                        <input type="number" class="form-control form-control-sm rounded-2 @error('children_6_11') is-invalid @enderror"
+                               id="children_6_11" name="children_6_11" min="0" max="5" value="{{ old('children_6_11', 0) }}" />
+                        <small class="text-muted" style="font-size: 0.7rem;">Tính phí</small>
+                        @error('children_6_11')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                     </div>
                     <div class="col-sm-2">
-                        <label for="status" class="form-label small fw-bold text-muted mb-1">Trạng thái *</label>
+                        <label for="children_0_5" class="form-label small fw-bold text-muted mb-1">Trẻ 0-5</label>
+                        <input type="number" class="form-control form-control-sm rounded-2 @error('children_0_5') is-invalid @enderror"
+                               id="children_0_5" name="children_0_5" min="0" max="3" value="{{ old('children_0_5', 0) }}" />
+                        <small class="text-muted" style="font-size: 0.7rem;">Miễn phí</small>
+                        @error('children_0_5')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="col-sm-2">
+                        <label for="status" class="form-label small fw-bold text-muted mb-1">Trạng thái đơn *</label>
                         <select class="form-select form-select-sm rounded-2 @error('status') is-invalid @enderror"
                                 id="status" name="status" required>
-                            <option value="confirmed" selected>✓ Đã xác nhận</option>
+                            <option value="pending" @selected(old('status') == 'pending')>⏳ Chờ xác nhận</option>
+                            <option value="confirmed" @selected(old('status', 'confirmed') == 'confirmed')>✓ Đã xác nhận</option>
                         </select>
                         @error('status')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                        <small class="text-muted" style="font-size: 0.7rem;">Trạng thái xử lý đơn</small>
                     </div>
                 </div>
 
                 <!-- Preview tính giá -->
                 <div class="mt-3 pt-3 border-top" id="price-preview" style="display: none;">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-sm-3">
-                            <small class="text-muted">Số đêm:</small>
-                            <strong id="nights-count" class="text-primary">0</strong>
+                    <h6 class="fw-bold text-primary mb-2">💰 Chi tiết giá</h6>
+                    <div class="row g-2">
+                        <div class="col-sm-4">
+                            <div class="bg-light p-2 rounded">
+                                <small class="text-muted d-block">Số đêm:</small>
+                                <strong id="nights-count" class="text-primary fs-5">0</strong>
+                            </div>
                         </div>
-                        <div class="col-sm-3">
-                            <small class="text-muted">Giá cơ bản/đêm:</small>
-                            <strong id="base-price" class="text-dark">0đ</strong>
+                        <div class="col-sm-4">
+                            <div class="bg-light p-2 rounded">
+                                <small class="text-muted d-block">Giá cơ bản/đêm:</small>
+                                <strong id="base-price" class="text-dark fs-5">0đ</strong>
+                            </div>
                         </div>
-                        <div class="col-sm-3">
-                            <small class="text-muted">Tổng tiền dự kiến:</small>
-                            <strong id="total-price" class="text-success fs-5">0đ</strong>
+                        <div class="col-sm-4">
+                            <div class="bg-light p-2 rounded">
+                                <small class="text-muted d-block">Tổng tiền:</small>
+                                <strong id="total-price" class="text-success fs-4">0đ</strong>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Phụ thu chi tiết -->
+                    <div id="surcharge-details" class="mt-2" style="display: none;">
+                        <div class="alert alert-warning py-2 mb-0">
+                            <small class="fw-bold d-block mb-1">📋 Phụ thu vượt sức chứa:</small>
+                            <div id="surcharge-breakdown" class="small"></div>
+                        </div>
+                    </div>
+
+                    <!-- Ghi chú -->
+                    <div class="mt-2 small text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Tiêu chuẩn: <strong id="standard-capacity">3</strong> khách | Tối đa: <strong id="max-capacity">6</strong> khách
+                        | Trẻ 0-5 miễn phí nhưng tính sức chứa
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="card shadow-sm border-0 rounded-3 mb-3">
+            <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
+                <h5 class="mb-0 fw-bold">Thông tin chi tiết khách hàng</h5>
+                <small class="text-muted">Nhập tên và CCCD cho tất cả khách</small>
+            </div>
+            <div class="card-body">
+                <div id="guestDetailsContainer">
+                    <!-- Sẽ được render bằng JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Store guest data as JSON -->
+        <input type="hidden" name="guests_json" id="guests_json" value="{}">
 
         <!-- Thông tin thanh toán -->
         <div class="card shadow-sm border-0 rounded-3 mb-3">
@@ -158,22 +204,21 @@
                                 id="payment_method" name="payment_method" required>
                             <option value="">-- Chọn phương thức --</option>
                             <option value="cash" {{ old('payment_method') == 'cash' ? 'selected' : '' }}>💵 Tiền mặt</option>
-                            <option value="bank_transfer" {{ old('payment_method') == 'bank_transfer' ? 'selected' : '' }}>🏦 Chuyển khoản</option>
-                            <option value="credit_card" {{ old('payment_method') == 'credit_card' ? 'selected' : '' }}>💳 Thẻ tín dụng</option>
-                            <option value="momo" {{ old('payment_method') == 'momo' ? 'selected' : '' }}>📱 MoMo</option>
-                            <option value="zalopay" {{ old('payment_method') == 'zalopay' ? 'selected' : '' }}>📲 ZaloPay</option>
+                            <option value="vnpay" {{ old('payment_method') == 'vnpay' ? 'selected' : '' }}>🏦 VNPay</option>
                         </select>
                         @error('payment_method')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                        <small class="text-muted" style="font-size: 0.7rem;">VNPay: Gửi email thanh toán cho khách</small>
                     </div>
                     <div class="col-sm-4">
                         <label for="payment_status" class="form-label small fw-bold text-muted mb-1">Trạng thái thanh toán *</label>
                         <select class="form-select form-select-sm rounded-2 @error('payment_status') is-invalid @enderror"
                                 id="payment_status" name="payment_status" required>
-                            <option value="pending" {{ old('payment_status') == 'pending' ? 'selected' : '' }}>⏳ Chưa thanh toán</option>
+                            <option value="pending" {{ old('payment_status') == 'pending' ? 'selected' : '' }}>💵 Chưa thanh toán</option>
+                            <option value="partial" {{ old('payment_status') == 'partial' ? 'selected' : '' }}>💰 Đã đặt cọc</option>
                             <option value="paid" {{ old('payment_status') == 'paid' ? 'selected' : '' }}>✓ Đã thanh toán</option>
-                            <option value="partial" {{ old('payment_status') == 'partial' ? 'selected' : '' }}>💰 Đặt cọc</option>
                         </select>
                         @error('payment_status')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                        <small class="text-muted" style="font-size: 0.7rem;">Tình trạng thanh toán</small>
                     </div>
                     <div class="col-sm-4">
                         <label for="amount_paid" class="form-label small fw-bold text-muted mb-1">Số tiền đã thanh toán</label>
@@ -192,7 +237,16 @@
                     </div>
                 </div>
 
-                <!-- QR Code Section -->
+                <!-- VNPay Info -->
+                <div class="mt-3 pt-3 border-top" id="vnpay-section" style="display: none;">
+                    <div class="alert alert-info py-2">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>VNPay:</strong> Sau khi tạo đơn, hệ thống sẽ tự động gửi email cho khách với link thanh toán VNPay.
+                        <br><small class="text-muted">Link có hiệu lực trong {{ (int) config('vnpay.pay_entry_signed_ttl_days', 14) }} ngày. Khách có {{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút để hoàn tất thanh toán từ lúc bấm link.</small>
+                    </div>
+                </div>
+
+                <!-- QR Code Section (Bank Transfer only) -->
                 <div class="mt-3 pt-3 border-top" id="qr-section" style="display: none;">
                     @if($hotelInfo && $hotelInfo->bank_id && $hotelInfo->bank_account)
                     <div class="row">
@@ -215,8 +269,8 @@
                                 <p class="mb-0"><strong>Số tiền:</strong> <span id="bank-amount" class="text-success fw-bold">0đ</span></p>
                             </div>
                             <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="generateQR()">
-                                    <i class="bi bi-arrow-clockwise"></i> Tạo lại mã QR
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Tạo lại mã QR" onclick="generateQR()">
+                                    <i class="bi bi-arrow-clockwise"></i>
                                 </button>
                             </div>
                         </div>
@@ -231,13 +285,9 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="d-flex gap-2 mb-4">
-            <button type="submit" class="btn btn-primary rounded-2 fw-bold px-4">
-                💾 Tạo đơn đặt phòng
-            </button>
-            <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary rounded-2 fw-bold px-4">
-                ❌ Hủy
-            </a>
+        <div class="admin-action-row mb-4">
+            <button type="submit" class="btn btn-primary rounded-2 btn-admin-icon" title="Tạo đơn"><i class="bi bi-check2-lg"></i></button>
+            <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary rounded-2 btn-admin-icon" title="Hủy"><i class="bi bi-x-lg"></i></a>
         </div>
     </form>
 </div>
@@ -310,10 +360,112 @@ const paymentMethodSelect = document.getElementById('payment_method');
 const paymentStatusSelect = document.getElementById('payment_status');
 const amountPaidInput = document.getElementById('amount_paid');
 const qrSection = document.getElementById('qr-section');
+const vnpaySection = document.getElementById('vnpay-section');
 
 // Bank config passed via data attribute to avoid linter false positives
 const bankConfigEl = document.getElementById('bank-config');
 const bankConfig = bankConfigEl ? JSON.parse(bankConfigEl.dataset.config) : {};
+
+/* =========================
+GUEST DATA MANAGEMENT
+========================= */
+
+// Object to store guest data by room ID
+let guestData = {};
+
+// Function to get unique room ID key
+function getRoomKey() {
+    const roomId = roomSelect.value;
+    return `room_${roomId}`;
+}
+
+// Function to render guest detail form
+function renderGuestForm() {
+    const adults = parseInt(adultsInput.value) || 1;
+    const children611 = parseInt(document.getElementById('children_6_11').value) || 0;
+    const children05 = parseInt(document.getElementById('children_0_5').value) || 0;
+    const totalGuests = adults + children611 + children05;
+
+    const roomKey = getRoomKey();
+    let html = '';
+
+    // Initialize room data if not exists
+    if (!guestData[roomKey]) {
+        guestData[roomKey] = {};
+    }
+
+    for (let i = 0; i < totalGuests; i++) {
+        const guestIndex = i + 1;
+        const isAdult = i < adults;
+        const guestType = isAdult ? 'adult' : (i < adults + children611 ? 'child_6_11' : 'child_0_5');
+
+        // Get saved values from guestData
+        const savedName = guestData[roomKey]?.[i]?.name || '';
+        const savedCccd = guestData[roomKey]?.[i]?.cccd || '';
+
+        html += `
+            <div class="row g-3 mb-3" data-guest-index="${i}">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        Khách ${guestIndex} (${isAdult ? 'Người lớn' : (guestType === 'child_6_11' ? 'Trẻ 6-11' : 'Trẻ 0-5')}) ${isAdult ? '*' : ''}
+                    </label>
+                    <input type="text"
+                           class="form-control guest-input"
+                           data-room="${roomKey}"
+                           data-index="${i}"
+                           data-field="name"
+                           placeholder="Nhập họ tên"
+                           value="${savedName}"
+                           ${isAdult ? 'required' : ''}>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        CCCD Khách ${guestIndex} ${isAdult ? '*' : '(không bắt buộc)'}
+                    </label>
+                    <input type="text"
+                           class="form-control guest-input"
+                           data-room="${roomKey}"
+                           data-index="${i}"
+                           data-field="cccd"
+                           placeholder="Nhập số CCCD"
+                           value="${savedCccd}"
+                           ${isAdult ? 'required' : ''}>
+                </div>
+            </div>
+        `;
+    }
+
+    document.getElementById('guestDetailsContainer').innerHTML = html;
+
+    // Attach event listeners to newly created inputs
+    attachGuestInputListeners();
+}
+
+// Attach event listeners to guest inputs
+function attachGuestInputListeners() {
+    document.querySelectorAll('.guest-input').forEach(input => {
+        input.addEventListener('input', function () {
+            const roomKey = this.dataset.room;
+            const index = parseInt(this.dataset.index);
+            const field = this.dataset.field;
+
+            if (!guestData[roomKey]) {
+                guestData[roomKey] = {};
+            }
+            if (!guestData[roomKey][index]) {
+                guestData[roomKey][index] = {};
+            }
+
+            guestData[roomKey][index][field] = this.value;
+        });
+    });
+}
+
+// Update form when room or guest count changes
+function updateGuestForm() {
+    renderGuestForm();
+}
+
 
 /* =========================
 PRICE PREVIEW
@@ -325,6 +477,9 @@ function updatePricePreview() {
 
     const checkIn = checkInInput.value;
     const checkOut = checkOutInput.value;
+    const adults = parseInt(adultsInput.value) || 1;
+    const children611 = parseInt(document.getElementById('children_6_11').value) || 0;
+    const children05 = parseInt(document.getElementById('children_0_5').value) || 0;
 
     if (!selectedOption.value || !checkIn || !checkOut) {
         pricePreview.style.display = 'none';
@@ -332,17 +487,21 @@ function updatePricePreview() {
     }
 
     const basePrice = parseFloat(selectedOption.dataset.price) || 0;
-    const maxGuests = parseInt(selectedOption.getAttribute('data-max-guests')) || 1;
+    const maxGuests = parseInt(selectedOption.getAttribute('data-max-guests')) || 6;
+    const standardCapacity = 3; // Tiêu chuẩn: 3 khách
 
     adultsInput.max = maxGuests;
 
-    if (parseInt(adultsInput.value) > maxGuests) {
-        adultsInput.value = maxGuests;
+    // Validate tổng số khách
+    const totalGuests = adults + children611 + children05;
+    if (totalGuests > maxGuests) {
+        alert(`⚠️ Tổng số khách (${totalGuests}) vượt quá tối đa cho phép (${maxGuests})!`);
+        pricePreview.style.display = 'none';
+        return;
     }
 
     const startDate = new Date(checkIn);
     const endDate = new Date(checkOut);
-
     const nights = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
     if (nights <= 0) {
@@ -350,14 +509,55 @@ function updatePricePreview() {
         return;
     }
 
-    const total = basePrice * nights;
+    // Tính phụ phí theo RoomOccupancyPricing
+    const billableSlots = Math.max(0, standardCapacity - children05);
+    const extraAdults = Math.max(0, adults - billableSlots);
+    const remainingSlots = Math.max(0, billableSlots - adults);
+    const extraChildren611 = Math.max(0, children611 - remainingSlots);
 
+    const adultSurchargeRate = 0.25; // 25% giá phòng
+    const childSurchargeRate = 0.125; // 12.5% giá phòng
+
+    const adultSurchargePerNight = extraAdults * adultSurchargeRate * basePrice;
+    const childSurchargePerNight = extraChildren611 * childSurchargeRate * basePrice;
+    const totalSurchargePerNight = adultSurchargePerNight + childSurchargePerNight;
+
+    const pricePerNight = basePrice + totalSurchargePerNight;
+    const total = pricePerNight * nights;
+
+    // Hiển thị thông tin
     document.getElementById('nights-count').textContent = nights;
     document.getElementById('base-price').textContent =
         new Intl.NumberFormat('vi-VN').format(basePrice) + 'đ';
-
     document.getElementById('total-price').textContent =
         new Intl.NumberFormat('vi-VN').format(total) + 'đ';
+
+    document.getElementById('standard-capacity').textContent = standardCapacity;
+    document.getElementById('max-capacity').textContent = maxGuests;
+
+    // Hiển thị phụ thu nếu có
+    const surchargeDetails = document.getElementById('surcharge-details');
+    const surchargeBreakdown = document.getElementById('surcharge-breakdown');
+
+    if (totalSurchargePerNight > 0) {
+        let breakdownHtml = '';
+
+        if (extraAdults > 0) {
+            breakdownHtml += `<div class="text-danger mb-1">• Người lớn vượt TC: ${extraAdults} × ${adultSurchargeRate * 100}% = +${new Intl.NumberFormat('vi-VN').format(adultSurchargePerNight)}đ/đêm</div>`;
+        }
+
+        if (extraChildren611 > 0) {
+            breakdownHtml += `<div class="text-danger mb-1">• Trẻ 6-11 vượt TC: ${extraChildren611} × ${childSurchargeRate * 100}% = +${new Intl.NumberFormat('vi-VN').format(childSurchargePerNight)}đ/đêm</div>`;
+        }
+
+        breakdownHtml += `<div class="fw-bold mt-2 pt-2 border-top">Tổng phụ thu/đêm: ${new Intl.NumberFormat('vi-VN').format(totalSurchargePerNight)}đ</div>`;
+        breakdownHtml += `<div class="fw-bold text-success">Tổng phụ thu (${nights} đêm): ${new Intl.NumberFormat('vi-VN').format(totalSurchargePerNight * nights)}đ</div>`;
+
+        surchargeBreakdown.innerHTML = breakdownHtml;
+        surchargeDetails.style.display = 'block';
+    } else {
+        surchargeDetails.style.display = 'none';
+    }
 
     pricePreview.style.display = 'block';
 }
@@ -368,24 +568,35 @@ GET TOTAL PRICE
 ========================= */
 
 function getTotalPrice() {
-
     const selectedOption = roomSelect.options[roomSelect.selectedIndex];
-
     const checkIn = checkInInput.value;
     const checkOut = checkOutInput.value;
+    const adults = parseInt(adultsInput.value) || 1;
+    const children611 = parseInt(document.getElementById('children_6_11').value) || 0;
+    const children05 = parseInt(document.getElementById('children_0_5').value) || 0;
 
     if (!selectedOption.value || !checkIn || !checkOut) return 0;
 
     const basePrice = parseFloat(selectedOption.dataset.price) || 0;
+    const standardCapacity = 3;
 
     const startDate = new Date(checkIn);
     const endDate = new Date(checkOut);
-
     const nights = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
     if (nights <= 0) return 0;
 
-    return basePrice * nights;
+    // Tính phụ phí
+    const billableSlots = Math.max(0, standardCapacity - children05);
+    const extraAdults = Math.max(0, adults - billableSlots);
+    const remainingSlots = Math.max(0, billableSlots - adults);
+    const extraChildren611 = Math.max(0, children611 - remainingSlots);
+
+    const adultSurchargePerNight = extraAdults * 0.25 * basePrice;
+    const childSurchargePerNight = extraChildren611 * 0.125 * basePrice;
+    const pricePerNight = basePrice + adultSurchargePerNight + childSurchargePerNight;
+
+    return pricePerNight * nights;
 }
 
 
@@ -397,6 +608,7 @@ function generateQR() {
 
     if (!roomSelect.value) {
         qrSection.style.display = 'none';
+        vnpaySection.style.display = 'none';
         return;
     }
 
@@ -407,6 +619,17 @@ function generateQR() {
 
     const displayAmount = paidAmount > 0 ? paidAmount : totalPrice;
 
+    // Show VNPay section if vnpay selected
+    if (method === 'vnpay') {
+        vnpaySection.style.display = 'block';
+        qrSection.style.display = 'none';
+        return;
+    }
+
+    // Hide VNPay section for other methods
+    vnpaySection.style.display = 'none';
+
+    // For bank_transfer, show QR
     if (method !== 'bank_transfer' || displayAmount <= 0) {
         qrSection.style.display = 'none';
         return;
@@ -515,6 +738,7 @@ EVENTS
 ========================= */
 
 roomSelect.addEventListener('change', function () {
+    updateGuestForm();
     updatePricePreview();
     setTimeout(generateQR, 100);
 });
@@ -545,6 +769,25 @@ paymentStatusSelect.addEventListener('change', generateQR);
 
 amountPaidInput.addEventListener('input', generateQR);
 
+// Thêm event listeners cho số khách
+adultsInput.addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+document.getElementById('children_6_11').addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+document.getElementById('children_0_5').addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+
+// Initialize guest form on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateGuestForm();
+});
+
 
 /* =========================
 BOOTSTRAP VALIDATION
@@ -561,6 +804,18 @@ BOOTSTRAP VALIDATION
         Array.prototype.slice.call(forms).forEach(function (form) {
 
             form.addEventListener('submit', function (event) {
+
+                // Fill guests_json with current guestData before submit
+                const roomKey = getRoomKey();
+                const currentRoomGuests = guestData[roomKey] || {};
+
+                // Convert to array format
+                const guestsArray = [];
+                Object.keys(currentRoomGuests).forEach(index => {
+                    guestsArray[parseInt(index)] = currentRoomGuests[index];
+                });
+
+                document.getElementById('guests_json').value = JSON.stringify(guestsArray);
 
                 if (!form.checkValidity()) {
 

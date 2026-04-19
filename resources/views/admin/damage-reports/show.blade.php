@@ -5,9 +5,7 @@
 @section('content')
 <div class="container-fluid px-0">
     <div class="mb-4">
-        <a href="{{ route('admin.damage-reports.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại danh sách
-        </a>
+        <a href="{{ route('admin.damage-reports.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     <!-- Header -->
@@ -68,8 +66,8 @@
                                     value="{{ $damageReport->repair_cost }}">
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="bi bi-check"></i> Cập nhật
+                                <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center btn-admin-icon" style="height: 2.5rem;" title="Cập nhật">
+                                    <i class="bi bi-check2-lg"></i>
                                 </button>
                             </div>
                         </div>
@@ -233,8 +231,8 @@
                                 @endforeach
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-warning w-100">
-                            <i class="bi bi-arrow-left-right"></i> Chuyển phòng
+                        <button type="submit" class="btn btn-warning w-100 d-flex align-items-center justify-content-center btn-admin-icon" style="height: 2.5rem;" title="Chuyển phòng">
+                            <i class="bi bi-arrow-left-right"></i>
                         </button>
                     </form>
                 </div>
@@ -263,8 +261,8 @@
                             <textarea name="refund_reason" class="form-control" rows="2"
                                 placeholder="Ví dụ: Phòng không thể sử dụng do giường hỏng..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100">
-                            <i class="bi bi-cash-stack"></i> Xử lý hoàn tiền
+                        <button type="submit" class="btn btn-danger w-100 d-flex align-items-center justify-content-center btn-admin-icon" style="height: 2.5rem;" title="Xử lý hoàn tiền">
+                            <i class="bi bi-cash-stack"></i>
                         </button>
                     </form>
                 </div>

@@ -7,7 +7,7 @@
     <div class="page-header">
         <h1 class="text-dark fw-bold">Quản lý phòng</h1>
         @if(auth()->user()->canAccessAdmin())
-        <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Thêm phòng</a>
+        <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Thêm phòng"><i class="bi bi-plus-lg"></i></a>
         @endif
     </div>
 
@@ -22,9 +22,9 @@
                     <option value="booked" {{ request('status') === 'booked' ? 'selected' : '' }}>Đã đặt</option>
                     <option value="maintenance" {{ request('status') === 'maintenance' ? 'selected' : '' }}>Bảo trì</option>
                 </select>
-                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Tìm"><i class="bi bi-search"></i></button>
                 @if(request()->hasAny(['q','status']))
-                <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
                 @endif
             </form>
         </div>
@@ -57,8 +57,8 @@
                                     @endif
                                 </td>
                                 <td>{{ $room->type }}</td>
-                                <td>{{ number_format($room->base_price, 0, ',', '.') }} VNĐ</td>
-                                <td>{{ $room->max_guests }}</td>
+                                <td>{{ number_format($room->catalogueBasePrice(), 0, ',', '.') }} VNĐ</td>
+                                <td>{{ $room->catalogueMaxGuests() }}</td>
                                 <td>
                                     @if($room->status === 'available')
                                         <span class="badge bg-success">Sẵn sàng</span>
@@ -69,26 +69,26 @@
                                     @endif
                                 </td>
                                 <td>
-                                   <!-- Nút xem chi tiết -->
-                                   <button type="button" 
-                                           class="btn btn-info btn-sm mb-1" 
-                                           data-bs-toggle="modal" 
-                                           data-bs-target="#detailModal{{ $room->id }}">
-                                       <i class="bi bi-eye"></i>
-                                   </button>
-                                   
-                                   <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-warning btn-sm">
-    Sửa
-</a>
-
-                                    @if(auth()->user()->isAdmin())
-                                    <form action="{{ route('admin.rooms.destroy', $room) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc muốn xóa phòng này?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
-                                    </form>
-                                    @endif
+                                    <div class="admin-action-row">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-primary btn-admin-icon"
+                                                title="Xem chi tiết"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#detailModal{{ $room->id }}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <a href="{{ route('admin.rooms.edit', $room->id) }}"
+                                           class="btn btn-sm btn-outline-warning btn-admin-icon"
+                                           title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                                        @if(auth()->user()->isAdmin())
+                                        <form action="{{ route('admin.rooms.destroy', $room) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Bạn có chắc muốn xóa phòng này?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger btn-admin-icon" title="Xóa"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -126,14 +126,14 @@
                     <div class="col-lg-5">
                         @if($room->image)
                             <div class="ratio ratio-4x3 rounded-3 overflow-hidden shadow-sm bg-light">
-                                <img src="{{ asset('storage/' . $room->image) }}"
+                                <img src="{{ \App\Models\Room::resolveImageUrl($room->image) }}"
                                      alt="{{ $room->name }}"
                                      class="w-100 h-100"
                                      style="object-fit: cover;">
                             </div>
-                        @elseif($room->roomType && $room->roomType->image)
+                        @elseif($room->roomType && $room->roomType->image_url)
                             <div class="ratio ratio-4x3 rounded-3 overflow-hidden shadow-sm bg-light">
-                                <img src="{{ asset('storage/' . $room->roomType->image) }}"
+                                <img src="{{ $room->roomType->image_url }}"
                                      alt="{{ $room->roomType->name }}"
                                      class="w-100 h-100"
                                      style="object-fit: cover;">
@@ -160,15 +160,15 @@
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-people me-2"></i>Sức chứa</th>
-                                <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">{{ $room->max_guests }} người</span></td>
+                                <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">{{ $room->catalogueMaxGuests() }} người</span>@if($room->room_type_id)<span class="text-muted small ms-1">(theo loại)</span>@endif</td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-door-open me-2"></i>Số giường</th>
-                                <td><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ $room->beds ?? 1 }} giường</span></td>
+                                <td><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ $room->catalogueBeds() }} giường</span></td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-droplet me-2"></i>Số phòng tắm</th>
-                                <td><span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">{{ $room->baths ?? 1 }} phòng</span></td>
+                                <td><span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">{{ $room->catalogueBaths() }} phòng</span></td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-rulers me-2"></i>Diện tích</th>
@@ -176,7 +176,7 @@
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-currency-dollar me-2"></i>Giá cơ bản</th>
-                                <td class="fw-bold text-danger">{{ number_format($room->base_price, 0, ',', '.') }} VNĐ</td>
+                                <td class="fw-bold text-danger">{{ number_format($room->catalogueBasePrice(), 0, ',', '.') }} VNĐ</td>
                             </tr>
                             <tr>
                                 <th class="text-muted fw-semibold"><i class="bi bi-patch-check me-2"></i>Trạng thái</th>
@@ -201,10 +201,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-primary">
-                    <i class="bi bi-pencil"></i> Chỉnh sửa
-                </a>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <a href="{{ route('admin.rooms.edit', $room->id) }}" class="btn btn-outline-warning btn-admin-icon" title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                <button type="button" class="btn btn-outline-secondary btn-admin-icon" data-bs-dismiss="modal" title="Đóng"><i class="bi bi-x-lg"></i></button>
             </div>
         </div>
 </div>

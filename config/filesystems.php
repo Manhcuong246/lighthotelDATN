@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // true = Laravel đăng ký GET /storage/{path} với chữ ký; chặn toàn bộ ảnh public ở /storage/... (403).
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

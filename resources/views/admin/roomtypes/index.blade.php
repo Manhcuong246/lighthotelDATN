@@ -9,12 +9,12 @@
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <form action="{{ route('admin.roomtypes.index') }}" method="GET" class="d-flex gap-2">
                 <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm tên loại phòng..." style="width: 200px;">
-                <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Tìm"><i class="bi bi-search"></i></button>
                 @if(request('q'))
-                <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
                 @endif
             </form>
-            <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Thêm loại phòng</a>
+            <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Thêm loại phòng"><i class="bi bi-plus-lg"></i></a>
         </div>
     </div>
 
@@ -61,8 +61,8 @@
                             <td class="text-muted">{{ $type->id }}</td>
 
                             <td>
-                                @if($type->image && !empty($type->image))
-                                    <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                @if($type->image_url)
+                                    <img src="{{ $type->image_url }}" alt="{{ $type->name }}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                     <div style="width: 80px; height: 60px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; display: none; align-items: center; justify-content: center; font-size: 10px; color: #666;">
                                         No Image
                                     </div>
@@ -94,34 +94,26 @@
                             </td>
 
                             <td class="text-center">
-                                <!-- Nút xem chi tiết -->
-                                <button type="button"
-                                        class="btn btn-info btn-sm mb-1"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#detailModal{{ $type->id }}">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-
-                                <!-- Nút sửa -->
-                                <a href="{{ route('admin.roomtypes.edit', $type->id) }}"
-                                   class="btn btn-warning btn-sm">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-
-                                <form action="{{ route('admin.roomtypes.destroy', $type->id) }}"
-                                      method="POST"
-                                      class="d-inline"
-                                      onsubmit="return confirm('Bạn có chắc muốn xóa loại phòng này?')">
-
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button class="btn btn-outline-danger btn-sm">
-                                        <i class="bi bi-trash"></i>
+                                <div class="admin-action-row justify-content-center">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary btn-admin-icon"
+                                            title="Xem chi tiết"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#detailModal{{ $type->id }}">
+                                        <i class="bi bi-eye"></i>
                                     </button>
-
-                                </form>
-
+                                    <a href="{{ route('admin.roomtypes.edit', $type->id) }}"
+                                       class="btn btn-sm btn-outline-warning btn-admin-icon"
+                                       title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                                    <form action="{{ route('admin.roomtypes.destroy', $type->id) }}"
+                                          method="POST"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Bạn có chắc muốn xóa loại phòng này?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger btn-admin-icon" title="Xóa"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
                             </td>
 
                         </tr>
@@ -154,23 +146,16 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="row">
+                    <div class="row">
                     <div class="col-md-6 mb-3">
-                        @if($type->image && !empty($type->image))
-                            <img src="{{ asset('storage/' . $type->image) }}" alt="{{ $type->name }}" class="img-fluid rounded shadow-sm w-100" style="max-height: 300px; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px; border: 2px dashed #ccc; display: none;">
-                                <div style="text-align: center; color: #666;">
-                                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
-                                    <div>Không có ảnh</div>
-                                </div>
+                        @if($type->image_url)
+                            <div class="rounded overflow-hidden shadow-sm bg-light" style="max-height: 300px;">
+                                <img src="{{ $type->image_url }}" alt="{{ $type->name }}" class="img-fluid w-100 d-block" style="max-height: 300px; object-fit: cover;"
+                                     onerror="this.style.display='none'; document.getElementById('roomtype-img-fb-{{ $type->id }}')?.classList.remove('d-none');">
                             </div>
+                            <p id="roomtype-img-fb-{{ $type->id }}" class="text-muted small mb-0 mt-2 d-none">Không tải được ảnh.</p>
                         @else
-                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px; border: 2px dashed #ccc;">
-                                <div style="text-align: center; color: #666;">
-                                    <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
-                                    <div>Không có ảnh</div>
-                                </div>
-                            </div>
+                            <p class="text-muted small fst-italic mb-0">Chưa có ảnh đại diện.</p>
                         @endif
                     </div>
                     <div class="col-md-6">
@@ -214,10 +199,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <a href="{{ route('admin.roomtypes.edit', $type->id) }}" class="btn btn-warning">
-                    <i class="bi bi-pencil"></i> Chỉnh sửa
-                </a>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <a href="{{ route('admin.roomtypes.edit', $type->id) }}" class="btn btn-outline-warning btn-admin-icon" title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                <button type="button" class="btn btn-outline-secondary btn-admin-icon" data-bs-dismiss="modal" title="Đóng"><i class="bi bi-x-lg"></i></button>
             </div>
         </div>
     </div>

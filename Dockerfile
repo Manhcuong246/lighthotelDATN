@@ -3,14 +3,6 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader --no-scripts
 
-FROM node:20-alpine AS assets
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-COPY vite.config.* ./
-COPY resources ./resources
-RUN npm run build
-
 FROM php:8.2-fpm-alpine AS app
 WORKDIR /var/www/html
 
@@ -30,12 +22,14 @@ RUN apk add --no-cache \
 
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
-COPY --from=assets /app/public/build ./public/build
 
 RUN php artisan package:discover --ansi
 
 RUN mkdir -p storage bootstrap/cache \
   && chown -R www-data:www-data storage bootstrap/cache
+
+# PHP-FPM mặc định clear_env=yes → Laravel trong container không thấy DB_HOST từ docker compose (chỉ đọc .env host).
+RUN sed -i 's/^;clear_env = no/clear_env = no/' /usr/local/etc/php-fpm.d/www.conf
 
 EXPOSE 9000
 CMD ["php-fpm"]
