@@ -42,5 +42,6 @@
 </table>
 
 </div>
+{{-- Update UI for staff dashboard --}}
 
 @endsection
