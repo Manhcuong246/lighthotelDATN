@@ -201,11 +201,8 @@ class BookingService
         $basePrice = (float) $room->catalogueBasePrice();
         $roomType = $room->roomType;
 
-        try {
-            RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5, $roomType);
-        } catch (\InvalidArgumentException $e) {
-            throw new \Exception("Phòng \"{$room->displayLabel()}\": " . $e->getMessage());
-        }
+        // Không giới hạn số khách - chỉ tính phụ thu khi vượt tiêu chuẩn
+        RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5, $roomType);
 
         $t = RoomOccupancyPricing::total($basePrice, $nights, $adults, $children_6_11, $children_0_5, $roomType);
 
