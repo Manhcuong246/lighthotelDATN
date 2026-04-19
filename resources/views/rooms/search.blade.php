@@ -611,8 +611,6 @@
                                             <li><i class="bi bi-check-lg"></i> Bao gồm ăn sáng</li>
                                             <li>
                                                 <i class="bi bi-check-lg"></i> Tối đa {{ (int) ($type->capacity ?? 6) }} khách/phòng
-                                                <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top"
-                                                   title="Tiêu chuẩn {{ (int) ($type->standard_capacity ?? 3) }} người (tính cả trẻ 0–5). Vượt tiêu chuẩn: tính phụ phí người lớn/trẻ 6–11 theo % giá phòng/đêm. Trẻ 0–5 miễn phụ thu nhưng tính sức chứa."></i>
                                             </li>
                                             <li><i class="bi bi-check-lg"></i> Không hoàn phí khi hủy</li>
                                         </ul>
@@ -731,9 +729,27 @@
                                 <input type="text" name="phone" class="form-control form-control-sm"
                                        value="{{ old('phone', $cust?->phone) }}" {{ $cust ? 'readonly' : '' }} required>
                             </div>
-                        </div>
 
-                        <!-- Guest inputs are now rendered dynamically by JavaScript in each room container -->
+                            <!-- Thông tin người đại diện - chỉ 1 form duy nhất -->
+                            <div class="mt-4 pt-3 border-top">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <i class="bi bi-person-badge text-primary"></i>
+                                    <span class="fw-bold">Người đại diện</span>
+                                    <span class="badge bg-primary">Bắt buộc</span>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="small text-muted mb-1">Họ và tên <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" class="form-control form-control-sm"
+                                           value="{{ old('name') }}" placeholder="Nhập họ tên người đại diện" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="small text-muted mb-1">CCCD/CMND <span class="text-danger">*</span></label>
+                                    <input type="text" name="cccd" class="form-control form-control-sm"
+                                           value="{{ old('cccd') }}" placeholder="Nhập số CCCD" maxlength="12" required>
+                                    <div class="form-text text-muted" style="font-size: 0.7rem;">Nhập đúng 12 số CCCD</div>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="summary-group">
                             <div class="summary-group-title">Mã giảm giá</div>
@@ -782,7 +798,6 @@
     </div>
 </div>
 @push('scripts')
-@include('partials.guest-inputs')
 <script>
 function changeRooms(delta) {
     var input = document.getElementById('rooms-input');
@@ -865,21 +880,42 @@ const __BP = @json(config('booking.pricing'));
  * Phụ phí = % giá phòng/đêm cho NL / trẻ 6–11 vượt slot
  */
 function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, stdCap, maxCap) {
-    const _stdCap = Number(stdCap ?? __BP.standard_capacity) || 3;
-    const _maxCap = Number(maxCap ?? __BP.max_capacity) || 6;
-    const maxC05 = Number(__BP.max_children_05) || 3;
+    const _stdCap = Number(stdCap ?? __BP.standard_capacity) || 2;
+    const _maxCap = Number(maxCap ?? __BP.max_capacity) || 3;
+    const maxC05Free = 2; // Chỉ 2 trẻ 0-5 được miễn phí
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
-    const total = adults + c611 + c05;
-    const billableSlots = Math.max(0, _stdCap - c05);
-    const extraAdults = Math.max(0, adults - billableSlots);
-    const remainingSlots = Math.max(0, billableSlots - adults);
-    const extraChildren = Math.max(0, c611 - remainingSlots);
+
+    // 2 trẻ 0-5 đầu miễn phí (không tính vào slot), từ trẻ thứ 3 tính phụ phí
+    const c05Free = Math.min(c05, maxC05Free);     // 2 trẻ miễn phí
+    const c05Pay = Math.max(0, c05 - maxC05Free);  // Trẻ 0-5 thứ 3+ trả phí
+
+    // Tổng người tính slot = người lớn + trẻ 6-11 + trẻ 0-5 phải trả phí
+    const billablePeople = adults + c611 + c05Pay;
+
+    // Tính slot còn trống sau khi trừ trẻ 0-5 miễn phí
+    const effectiveStdCap = Math.max(0, _stdCap); // Không trừ c05 nữa
+
+    // Người lớn vượt quá tiêu chuẩn
+    const extraAdults = Math.max(0, adults - effectiveStdCap);
+
+    // Slot còn lại sau khi đặt người lớn (tối đa đến tiêu chuẩn)
+    const slotsAfterAdults = Math.max(0, effectiveStdCap - adults);
+
+    // Trẻ phải trả phí = trẻ 6-11 + trẻ 0-5 thứ 3+
+    const totalPayChildren = c611 + c05Pay;
+    const extraChildren = Math.max(0, totalPayChildren - slotsAfterAdults);
+
     const adultFee = extraAdults * aRate * base;
     const childFee = extraChildren * cRate * base;
     const surcharge = adultFee + childFee;
     const perNight = base + surcharge;
-    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05, allowed: total <= _maxCap && c05 <= maxC05 };
+
+    // Tổng người = người lớn + tất cả trẻ (kể cả miễn phí)
+    const total = adults + c611 + c05;
+
+    // Không giới hạn số khách - chỉ tính phụ thu khi vượt tiêu chuẩn
+    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05: maxC05Free, allowed: true, c05Free, c05Pay };
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -891,6 +927,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomInputsContainer = document.getElementById('roomInputsContainer');
     let nights = {{ $nights }};
     let currentDiscountPercent = 0;
+    let isInitialLoad = true; // Flag để không hiển thị cảnh báo khi trang vừa load
 
     // Top bar date change → auto-update nights & re-calculate pricing
     const topCi = document.getElementById('search_check_in');
@@ -921,22 +958,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (inputPhone) inputPhone.addEventListener('input', saveSelection);
 
     if (checkoutForm) {
-        // Thêm hidden input chứa guests_json nếu chưa có
-        let guestsJsonInput = checkoutForm.querySelector('input[name="guests_json"]');
-        if (!guestsJsonInput) {
-            guestsJsonInput = document.createElement('input');
-            guestsJsonInput.type = 'hidden';
-            guestsJsonInput.name = 'guests_json';
-            checkoutForm.appendChild(guestsJsonInput);
-        }
-
         checkoutForm.addEventListener('submit', function(e) {
-            // Lưu snapshot cuối cùng trước khi submit
-            if (window.guestFormManager) {
-                window.guestFormManager.saveAllCurrentValues();
-                const flatList = window.guestFormManager.getFlatGuestList();
-                guestsJsonInput.value = JSON.stringify(flatList);
-            }
             sessionStorage.removeItem('hotel_booking_selection');
         });
     }
@@ -995,14 +1017,15 @@ document.addEventListener('DOMContentLoaded', function() {
         select.addEventListener('change', updateSummary);
     });
 
-    function updateSummary() {
+    function updateSummary(isInitialLoadParam = false) {
         let subtotal = 0;
         let htmlSnippet = '';
         let hiddenInputs = '';
+        let capacityWarnings = ''; // Lưu cảnh báo sức chứa riêng
 
         saveSelection();
 
-        let globalGuestIdx = 0; // Để tính toán index cho các ô input hắc ám
+        let globalGuestIdx = 0;
         qtySelectors.forEach(select => {
             const qty = parseInt(select.value);
             const typeId = select.getAttribute('data-type-id');
@@ -1017,22 +1040,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (qty > 0) {
                 guestRow.classList.remove('d-none');
-
-                // Keep sync with UI: check if we need to add/remove containers
+                // Chỉ hiển thị thông tin số lượng khách, không render form nhập chi tiết
                 let currentContainers = guestContainer.querySelectorAll('.guest-selector-item').length;
                 if (currentContainers !== qty) {
-                    // *** Lưu dữ liệu đã nhập trước khi re-render ***
-                    if (window.guestFormManager) {
-                        window.guestFormManager.saveAllCurrentValues();
-                    }
-
                     let containerHtml = '';
                     for (let i = 1; i <= qty; i++) {
                         const roomIdx = i - 1;
-
                         containerHtml += `
                             <div class="col-lg-4 col-md-6 mb-3 guest-selector-item" data-room-index="${roomIdx}" data-type-id="${typeId}">
                                 <div class="guest-selector-card">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-bold text-primary">Phòng ${i}</span>
+                                        <span class="small text-muted">${typeName}</span>
+                                    </div>
                                     <div class="row g-2">
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Người lớn</label>
@@ -1050,46 +1070,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                                    name="children_6_11[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="0" min="0" max="5">
                                         </div>
                                     </div>
-
-                                    <div class="guest-info-section mt-3 pt-3 border-top">
-                                        <div class="guest-info-section-title">
-                                            <i class="bi bi-person-lines-fill"></i> Thông tin khách hàng
-                                        </div>
-                                        <div class="guest-inputs-container" data-room-index="${roomIdx}" data-type-id="${typeId}">
-                                            <!-- Forms will be rendered dynamically by JavaScript -->
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         `;
-
                         globalGuestIdx++;
                     }
                     guestContainer.innerHTML = containerHtml;
-
-                    // *** Render form khách hàng theo số người lớn mặc định (1 người) ***
-                    if (window.guestFormManager) {
-                        const roomItems = guestContainer.querySelectorAll('.guest-selector-item');
-                        roomItems.forEach(roomItem => {
-                            window.guestFormManager.renderGuestFormsByAdultCount(roomItem);
-                        });
-                    }
-
-                    // *** Fill lại giá trị đã lưu sau khi render ***
-                    if (window.guestFormManager) {
-                        window.guestFormManager.forceRestoreAllValues();
-                    }
-
                 }
 
-                const adultsArr = guestContainer.querySelectorAll('.adults-count');
-                const child05Arr = guestContainer.querySelectorAll('.child-05-count');
-                const child611Arr = guestContainer.querySelectorAll('.child-611-count');
-
-                // Cập nhật lại danh sách input sau khi đã được vẽ lại để tránh lỗi undefined
+                // Cập nhật lại danh sách input sau khi đã được vẽ lại
                 const adultsArrNew = guestContainer.querySelectorAll('.adults-count');
                 const child05ArrNew = guestContainer.querySelectorAll('.child-05-count');
-                const child611ArrArrNew = guestContainer.querySelectorAll('.child-611-count');
+                const child611ArrNew = guestContainer.querySelectorAll('.child-611-count');
 
                 for (let i = 0; i < qty; i++) {
                     const roomIdForSlot = roomIds[i];
@@ -1097,10 +1089,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         continue;
                     }
 
-                    // Kiểm tra an toàn để tránh lỗi .value of undefined khi JS chưa vẽ kịp
+                    // Kiểm tra an toàn để tránh lỗi .value of undefined
                     const adults = (adultsArrNew[i]) ? parseInt(adultsArrNew[i].value || 1) : 1;
                     const c05 = (child05ArrNew[i]) ? parseInt(child05ArrNew[i].value || 0) : 0;
-                    const c611 = (child611ArrArrNew[i]) ? parseInt(child611ArrArrNew[i].value || 0) : 0;
+                    const c611 = (child611ArrNew[i]) ? parseInt(child611ArrNew[i].value || 0) : 0;
 
                     const stdGuests = parseInt(select.getAttribute('data-standard-guests') || '3');
                     const maxGuests = parseInt(select.getAttribute('data-max-guests') || '6');
@@ -1264,7 +1256,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        updateSummary();
+        updateSummary(true); // true = isInitialLoad, không hiển thị cảnh báo capacity
+        isInitialLoad = false; // Sau khi restore xong, cho phép hiển thị cảnh báo
     }
 
     // Call restore on load
