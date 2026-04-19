@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\CarbonPeriod;
 
 class BookingController extends Controller
@@ -58,34 +59,17 @@ class BookingController extends Controller
             $validated = $request->validated();
             $booking = $this->bookingService->createBooking($validated);
 
-            // Tạo Guests từ guests_json (cách mới, bền vững khi form re-render)
-            $guestList = [];
-
-            if ($request->filled('guests_json')) {
-                $decoded = json_decode($request->input('guests_json'), true);
-                if (is_array($decoded)) {
-                    $guestList = $this->normalizeGuestPayload($decoded);
-                }
-            }
-
-            // Fallback: dùng mảng guests[] cụ nếu không có guests_json
-            if (empty($guestList) && isset($validated['guests']) && is_array($validated['guests'])) {
-                $guestList = $this->normalizeGuestPayload($validated['guests']);
-            }
-
-            foreach ($guestList as $guestData) {
-                $name = trim($guestData['name'] ?? '');
-                $cccd = trim($guestData['cccd'] ?? '');
-                if ($name === '' && $cccd === '') continue;
-
+            // Tạo 1 Guest duy nhất - người đại diện
+            if ($request->filled('name') && $request->filled('cccd')) {
                 Guest::create([
-                    'booking_id'     => $booking->id,
-                    'room_type'      => $guestData['room_type'] ?? null,
-                    'room_index'     => (int) ($guestData['room_index'] ?? 0),
-                    'name'           => $name,
-                    'cccd'           => $cccd ?: null,
-                    'type'           => $guestData['type'] ?? 'adult',
-                    'checkin_status' => 'pending',
+                    'booking_id'       => $booking->id,
+                    'room_type'        => null,
+                    'room_index'       => 0,
+                    'name'             => trim($request->input('name')),
+                    'cccd'             => trim($request->input('cccd')),
+                    'type'             => 'adult',
+                    'is_representative'=> 1,
+                    'checkin_status'   => 'pending',
                 ]);
             }
 
@@ -205,6 +189,81 @@ class BookingController extends Controller
             'booking' => $booking,
             'refundLog' => $refundLog,
         ]);
+    }
+
+    /**
+     * Hiển thị form đặt phòng đơn giản
+     */
+    public function createSimple(Request $request)
+    {
+        $validated = $request->validate([
+            'room_id' => 'required|integer|exists:rooms,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+        ]);
+
+        $room = Room::with('roomType')->findOrFail($validated['room_id']);
+
+        return view('bookings.create-simple', [
+            'room' => $room,
+            'checkIn' => $validated['check_in'],
+            'checkOut' => $validated['check_out'],
+        ]);
+    }
+
+    /**
+     * Xử lý lưu đặt phòng đơn giản
+     */
+    public function storeSimple(\App\Http\Requests\StoreSimpleBookingRequest $request)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        try {
+            $validated = $request->validated();
+
+            DB::beginTransaction();
+
+            // 1. Tạo booking - tính giá theo số phòng
+            $nights = max(1, now()->parse($validated['check_in'])->diffInDays($validated['check_out']));
+            $room = Room::with('roomType')->findOrFail($validated['room_id']);
+            $roomsCount = $validated['rooms'];
+
+            $booking = Booking::create([
+                'user_id'     => $user?->id,
+                'check_in'    => $validated['check_in'],
+                'check_out'   => $validated['check_out'],
+                'adults'      => $roomsCount, // Lưu số phòng vào adults hoặc thêm field rooms_count
+                'total_price' => $room->base_price * $nights * $roomsCount, // Giá = giá phòng * số đêm * số phòng
+                'status'      => 'pending',
+            ]);
+
+            // 2. Gắn phòng vào booking (gắn 1 phòng, số lượng được tính qua total_price)
+            $booking->rooms()->attach($room->id, [
+                'price_per_night' => $room->base_price,
+                'nights'          => $nights,
+            ]);
+
+            // 3. Tạo 1 guest duy nhất - người đại diện
+            Guest::create([
+                'booking_id'       => $booking->id,
+                'name'             => $validated['name'],
+                'cccd'             => $validated['cccd'],
+                'type'             => 'adult',
+                'is_representative'=> 1,
+                'checkin_status'   => 'pending',
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('bookings.show', $booking)
+                ->with('success', 'Đặt phòng thành công! Vui lòng thanh toán để hoàn tất.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Simple booking error: ' . $e->getMessage());
+            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 }
 
