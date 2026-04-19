@@ -59,6 +59,7 @@ class Booking extends Model
         'placed_via',
         'coupon_code',
         'discount_amount',
+        'cccd',
     ];
 
     protected $casts = [
@@ -332,7 +333,7 @@ class Booking extends Model
      */
     public function isAdminCheckoutAllowed(): bool
     {
-        return $this->status === 'confirmed'
+        return in_array($this->status, ['confirmed', 'checked_in'])
             && !is_null($this->actual_check_in)
             && is_null($this->actual_check_out);
     }
