@@ -253,34 +253,55 @@ class AdminController extends Controller
         return view('admin.login');
     }
 
-    public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+   public function login(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
+
+    $remember = $request->filled('remember');
+
+    $user = User::with('roles')
+        ->where('email', $request->email)
+        ->first();
+
+    if (!$user) {
+        return back()->withErrors([
+            'email' => 'Thông tin đăng nhập không chính xác.'
         ]);
-
-        $remember = $request->filled('remember');
-
-        $user = User::with('roles')->where('email', $request->email)->first();
-
-        if (!$user) {
-            return back()->withErrors(['email' => 'Thông tin đăng nhập không chính xác.']);
-        }
-
-        $canAccess = $user->roles()->whereIn('name', ['admin', 'staff'])->exists();
-        if (!$canAccess) {
-            return back()->withErrors(['email' => 'Bạn không có quyền truy cập khu vực quản trị. Chỉ admin và nhân viên mới đăng nhập tại đây.']);
-        }
-
-        if (Hash::check($request->password, $user->password)) {
-            Auth::login($user, $remember);
-            return redirect()->intended(route('admin.dashboard'));
-        }
-
-        return back()->withErrors(['email' => 'Thông tin đăng nhập không chính xác.']);
     }
 
+    // Kiểm tra có role admin hoặc staff
+    $canAccess = $user->roles()
+        ->whereIn('name', ['admin', 'staff'])
+        ->exists();
+
+    if (!$canAccess) {
+        return back()->withErrors([
+            'email' => 'Bạn không có quyền truy cập khu vực quản trị.'
+        ]);
+    }
+
+    // Kiểm tra password
+    if (Hash::check($request->password, $user->password)) {
+
+        Auth::login($user, $remember);
+
+        // 🎯 PHÂN LUỒNG THEO ROLE
+        if ($user->roles()->where('name', 'staff')->exists()) {
+            return redirect()->route('staff.dashboard');
+        }
+
+        if ($user->roles()->where('name', 'admin')->exists()) {
+            return redirect()->route('admin.dashboard');
+        }
+    }
+
+    return back()->withErrors([
+        'email' => 'Thông tin đăng nhập không chính xác.'
+    ]);
+}
     public function logout()
     {
         Auth::logout();

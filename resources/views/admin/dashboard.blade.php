@@ -7,7 +7,13 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
             <h1 class="h4 fw-bold mb-1">Bảng điều khiển</h1>
-            <div class="text-muted small">Tổng quan doanh thu, tình trạng phòng và hiệu suất vận hành.</div>
+          <div class="text-muted small">
+@if(auth()->user()->isAdmin())
+    Tổng quan doanh thu, tình trạng phòng và hiệu suất vận hành.
+@else
+    Tổng quan tình trạng phòng hôm nay.
+@endif
+</div>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm btn-admin-icon rounded-2" title="Xuất báo cáo">
@@ -22,72 +28,123 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="row g-3 g-md-4 mb-4">
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-0">
-                <div class="card-body p-3 p-md-4">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                        <div>
-                            <div class="small text-muted fw-semibold text-uppercase">Doanh thu hôm nay</div>
-                            <div class="h5 mb-0 fw-bold mt-1">{{ number_format($todayRevenue, 0, ',', '.') }} ₫</div>
-                        </div>
-                        <div class="stat-icon bg-primary-light text-primary-dark flex-shrink-0">
-                            <i class="bi bi-cash-stack"></i>
-                        </div>
-                    </div>
+<div class="row g-3 g-md-4 mb-4">
+
+@if(auth()->user()->isAdmin())
+
+    <!-- ADMIN: Hiển thị doanh thu -->
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 border-0">
+            <div class="card-body p-3 p-md-4">
+                <div class="small text-muted text-uppercase">
+                    Doanh thu hôm nay
                 </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-0">
-                <div class="card-body p-3 p-md-4">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                        <div>
-                            <div class="small text-muted fw-semibold text-uppercase">Doanh thu tháng này</div>
-                            <div class="h5 mb-0 fw-bold mt-1">{{ number_format($monthlyRevenue, 0, ',', '.') }} ₫</div>
-                        </div>
-                        <div class="stat-icon bg-success-light text-success-dark flex-shrink-0">
-                            <i class="bi bi-currency-dollar"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-0">
-                <div class="card-body p-3 p-md-4">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                        <div>
-                            <div class="small text-muted fw-semibold text-uppercase">Tỉ lệ lấp phòng (hôm nay)</div>
-                            <div class="h5 mb-0 fw-bold mt-1">{{ $occupancyRate }}%</div>
-                            <div class="small text-muted mt-1">TB tháng: {{ $monthlyOccupancyRate }}%</div>
-                        </div>
-                        <div class="stat-icon bg-info-light text-info-dark flex-shrink-0">
-                            <i class="bi bi-pie-chart"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card stat-card h-100 border-0">
-                <div class="card-body p-3 p-md-4">
-                    <div class="d-flex justify-content-between align-items-start gap-3">
-                        <div>
-                            <div class="small text-muted fw-semibold text-uppercase">Tổng doanh thu</div>
-                            <div class="h5 mb-0 fw-bold mt-1">{{ number_format($totalRevenue, 0, ',', '.') }} ₫</div>
-                        </div>
-                        <div class="stat-icon bg-danger-light text-danger-dark flex-shrink-0">
-                            <i class="bi bi-wallet2"></i>
-                        </div>
-                    </div>
+                <div class="h5 fw-bold">
+                    {{ number_format($todayRevenue, 0, ',', '.') }} ₫
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Charts and Tables Row -->
-    <div class="row g-3 g-md-4 align-items-stretch">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 border-0">
+            <div class="card-body">
+                <div class="small text-muted text-uppercase">
+                    Doanh thu tháng này
+                </div>
+                <div class="h5 fw-bold">
+                    {{ number_format($monthlyRevenue, 0, ',', '.') }} ₫
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 border-0">
+            <div class="card-body">
+                <div class="small text-muted text-uppercase">
+                    Tỉ lệ lấp phòng
+                </div>
+                <div class="h5 fw-bold">
+                    {{ $occupancyRate }}%
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card stat-card h-100 border-0">
+            <div class="card-body">
+                <div class="small text-muted text-uppercase">
+                    Tổng doanh thu
+                </div>
+                <div class="h5 fw-bold">
+                    {{ number_format($totalRevenue, 0, ',', '.') }} ₫
+                </div>
+            </div>
+        </div>
+    </div>
+
+@else
+
+    <!-- STAFF: Chỉ hiển thị phòng -->
+
+    <div class="col-md-4">
+        <div class="card stat-card border-0">
+            <div class="card-body">
+
+                <div class="small text-muted text-uppercase">
+                    Phòng trống
+                </div>
+
+                <div class="h4 fw-bold text-success">
+                    {{ $roomsAvailable }}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card stat-card border-0">
+            <div class="card-body">
+
+                <div class="small text-muted text-uppercase">
+                    Có lịch hôm nay
+                </div>
+
+                <div class="h4 fw-bold text-warning">
+                    {{ $roomsBooked }}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card stat-card border-0">
+            <div class="card-body">
+
+                <div class="small text-muted text-uppercase">
+                    Bảo trì
+                </div>
+
+                <div class="h4 fw-bold text-secondary">
+                    {{ $roomsMaintenance }}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+@endif
+
+</div>
+   @if(auth()->user()->isAdmin())
+
+<!-- Charts and Tables Row -->
+<div class="row g-3 g-md-4 align-items-stretch">
         <div class="col-12 col-md-6 col-xl-6">
             <div class="card card-admin h-100 dash-card">
                 <div class="card-body p-3 p-md-4 d-flex flex-column">
@@ -214,6 +271,9 @@
         </div>
     </div>
 </div>
+</div>
+
+@endif
 
 <style>
     /* Dashboard polish (local) */
@@ -224,7 +284,10 @@
     .dash-toplist { max-height: 240px; overflow: auto; padding-right: 0.25rem; }
 </style>
 
+@if(auth()->user()->isAdmin())
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Biểu đồ tròn: Top 5 phòng doanh thu cao nhất
@@ -388,4 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+</script>
+
+@endif
 @endsection
