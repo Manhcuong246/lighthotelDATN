@@ -217,7 +217,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 });
 
 use App\Http\Controllers\Staff\StaffController;
-
+// Update staff routes version 1
 Route::middleware(['auth', 'staff'])
     ->prefix('staff')
     ->group(function () {
