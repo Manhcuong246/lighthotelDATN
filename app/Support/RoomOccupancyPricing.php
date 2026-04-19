@@ -72,18 +72,7 @@ final class RoomOccupancyPricing
             throw new \InvalidArgumentException('Cần ít nhất 1 người lớn trong phòng.');
         }
 
-        // Không giới hạn cứng số trẻ 0-5, nhưng trẻ thứ 3+ sẽ tính phụ phí
-
-        $total = $adults + $children611 + $children05;
-        $max = ($roomType && !is_null($roomType->capacity))
-            ? (int) $roomType->capacity
-            : self::maxCapacity();
-
-        if ($total > $max) {
-            throw new \InvalidArgumentException(
-                "Phòng tối đa {$max} người (bao gồm trẻ em). Hiện tại: {$total} người."
-            );
-        }
+        // Không giới hạn cứng số khách - chỉ tính phụ thu khi vượt tiêu chuẩn
     }
 
     /**
