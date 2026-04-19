@@ -9,9 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark fw-bold">Cập nhật loại phòng</h1>
 
-        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-secondary shadow-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại
-        </a>
+        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary shadow-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
 
@@ -62,6 +60,16 @@
                                required>
                     </div>
 
+                    <!-- Tiêu chuẩn (không phụ phí) — khóa sửa -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Tiêu chuẩn (không phụ phí)</label>
+                        <input type="number"
+                               class="form-control bg-light"
+                               value="{{ old('standard_capacity', $roomType->standard_capacity ?? 3) }}"
+                               disabled>
+                        <small class="text-muted">Chỉ thiết lập khi tạo mới loại phòng, không thể chỉnh sau.</small>
+                    </div>
+
                     <!-- Số giường -->
                     <div class="col-md-3 mb-3">
                         <label class="form-label fw-semibold">Số giường</label>
@@ -105,9 +113,9 @@
                     <!-- Ảnh đại diện -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-semibold">Ảnh đại diện</label>
-                        @if($roomType->image)
+                        @if($roomType->image_url)
                             <div class="mb-2">
-                                <img src="{{ asset('storage/' . $roomType->image) }}" alt="{{ $roomType->name }}" class="img-thumbnail" style="max-width: 200px;">
+                                <img src="{{ $roomType->image_url }}" alt="{{ $roomType->name }}" class="img-thumbnail" style="max-width: 200px;">
                             </div>
                         @endif
                         <input type="file" name="image" class="form-control" accept="image/*">
@@ -129,19 +137,34 @@
                         </select>
                     </div>
 
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-semibold">Dịch vụ đi kèm có sẵn</label>
+                        <p class="small text-muted mb-2">Chọn từ <a href="{{ route('admin.services.index') }}" target="_blank" rel="noopener">danh mục dịch vụ</a>. Khách tìm phòng có thể lọc theo các dịch vụ này (loại phòng phải gắn <strong>đủ</strong> các dịch vụ đã chọn).</p>
+                        <div class="row g-2 border rounded p-3 bg-light">
+                            @forelse($services as $svc)
+                                <div class="col-md-4 col-lg-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="service_ids[]" value="{{ $svc->id }}" id="svc_rt_{{ $roomType->id }}_{{ $svc->id }}"
+                                            {{ in_array($svc->id, old('service_ids', $roomType->services->pluck('id')->all()), true) ? 'checked' : '' }}>
+                                        <label class="form-check-label small" for="svc_rt_{{ $roomType->id }}_{{ $svc->id }}">{{ $svc->name }}</label>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="small text-warning mb-0">Chưa có dịch vụ — <a href="{{ route('admin.services.create') }}">thêm dịch vụ</a>.</p>
+                            @endforelse
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Button -->
                 <div class="d-flex justify-content-end gap-2 mt-3">
 
                     <a href="{{ route('admin.roomtypes.index') }}"
-                       class="btn btn-light border">
-                        Hủy
-                    </a>
+                       class="btn btn-outline-secondary btn-admin-icon"
+                       title="Hủy"><i class="bi bi-x-lg"></i></a>
 
-                    <button type="submit" class="btn btn-success px-4">
-                        <i class="bi bi-save"></i> Cập nhật
-                    </button>
+                    <button type="submit" class="btn btn-success btn-admin-icon" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
 
                 </div>
 

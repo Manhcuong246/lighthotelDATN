@@ -20,8 +20,12 @@ class RefundService
      */
     public function calculateRefund(Booking $booking): array
     {
-        // Giả sử giờ check-in mặc định là 14:00 (2 PM)
-        $checkInTime = Carbon::parse($booking->check_in)->setTime(14, 0, 0);
+        $base = $booking->check_in_date ?? $booking->check_in;
+        if ($base === null || $base === '') {
+            $checkInTime = Carbon::now();
+        } else {
+            $checkInTime = Carbon::parse($base)->setTime(14, 0, 0);
+        }
         $now = Carbon::now();
 
         $hoursDifference = $now->diffInHours($checkInTime, false);
@@ -37,7 +41,8 @@ class RefundService
         }
         // Case 3: After check-in time → No refund (0%)
 
-        $amount = ($booking->total_price * $percentage) / 100;
+        $totalPrice = (float) ($booking->total_price ?? 0);
+        $amount = ($totalPrice * $percentage) / 100;
 
         return [
             'percentage' => $percentage,
@@ -62,8 +67,15 @@ class RefundService
                 'refund_proof_image' => $data['refund_proof_image'] ?? null,
             ]);
 
-            // 2. Update Booking Status
-            $booking->update(['status' => 'cancelled']);
+            // 2. Update Booking + payment flags
+            $booking->update([
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+            ]);
+
+            if ($booking->payment) {
+                $booking->payment->update(['status' => 'refunded']);
+            }
 
             // 3. RELEASE ROOM DATES - Logic quan trọng nhất
             RoomBookedDate::where('booking_id', $booking->id)->delete();

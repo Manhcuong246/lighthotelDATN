@@ -6,8 +6,13 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Chi tiết thanh toán #{{ $payment->id }}</h1>
-        <div>
-            <a href="{{ route('admin.payments.index') }}" class="btn btn-outline-secondary">Quay lại</a>
+        <div class="d-flex flex-wrap gap-2">
+            @if($payment->booking_id)
+                <a href="{{ route('admin.bookings.show', $payment->booking_id) }}#payment-booking-settings" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil-square me-1"></i>Sửa trên đơn đặt phòng
+                </a>
+            @endif
+            <a href="{{ route('admin.bookings.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
         </div>
     </div>
 
@@ -39,6 +44,8 @@
                                     <span class="badge bg-success">Đã thanh toán</span>
                                 @elseif($payment->status === 'failed')
                                     <span class="badge bg-danger">Thất bại</span>
+                                @elseif($payment->status === 'refunded')
+                                    <span class="badge bg-info text-dark">Đã hoàn tiền</span>
                                 @else
                                     <span class="badge bg-secondary">{{ $payment->status }}</span>
                                 @endif

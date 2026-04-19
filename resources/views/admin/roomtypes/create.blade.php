@@ -9,9 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark fw-bold">Thêm loại phòng</h1>
 
-        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-secondary shadow-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại
-        </a>
+        <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary shadow-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
 
@@ -61,6 +59,19 @@
                                placeholder="Ví dụ: 2"
                                value="{{ old('capacity') }}"
                                required>
+                    </div>
+
+                    <!-- Số người tiêu chuẩn (không phụ phí) -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-semibold">Tiêu chuẩn (không phụ phí)</label>
+                        <input type="number"
+                               name="standard_capacity"
+                               class="form-control"
+                               placeholder="Ví dụ: 2"
+                               value="{{ old('standard_capacity') }}"
+                               min="1"
+                               required>
+                        <small class="text-muted">Chỉ thiết lập khi tạo mới. Vượt tiêu chuẩn sẽ tính phụ phí.</small>
                     </div>
 
                     <!-- Số giường -->
@@ -123,19 +134,34 @@
                         </select>
                     </div>
 
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-semibold">Dịch vụ đi kèm có sẵn</label>
+                        <p class="small text-muted mb-2">Chọn từ <a href="{{ route('admin.services.index') }}" target="_blank" rel="noopener">danh mục dịch vụ</a>. Khách tìm phòng có thể lọc theo các dịch vụ này.</p>
+                        <div class="row g-2 border rounded p-3 bg-light">
+                            @forelse($services as $svc)
+                                <div class="col-md-4 col-lg-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="service_ids[]" value="{{ $svc->id }}" id="svc_rt_new_{{ $svc->id }}"
+                                            {{ in_array($svc->id, old('service_ids', []), true) ? 'checked' : '' }}>
+                                        <label class="form-check-label small" for="svc_rt_new_{{ $svc->id }}">{{ $svc->name }}</label>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="small text-warning mb-0">Chưa có dịch vụ — <a href="{{ route('admin.services.create') }}">thêm dịch vụ</a>.</p>
+                            @endforelse
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Button -->
                 <div class="d-flex justify-content-end gap-2 mt-3">
 
                     <a href="{{ route('admin.roomtypes.index') }}"
-                       class="btn btn-light border">
-                        Hủy
-                    </a>
+                       class="btn btn-outline-secondary btn-admin-icon"
+                       title="Hủy"><i class="bi bi-x-lg"></i></a>
 
-                    <button class="btn btn-success px-4">
-                        <i class="bi bi-save"></i> Lưu loại phòng
-                    </button>
+                    <button type="submit" class="btn btn-success btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
 
                 </div>
 

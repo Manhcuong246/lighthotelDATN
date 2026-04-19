@@ -13,9 +13,9 @@
             <h5 class="mb-0">Danh sách người dùng</h5>
             <form action="{{ route('admin.users.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
                 <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Tìm tên, email, SĐT..." style="width: 220px;">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Tìm</button>
+                <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Tìm"><i class="bi bi-search"></i></button>
                 @if(request('q'))
-                <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-sm">Xóa bộ lọc</a>
+                <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
                 @endif
             </form>
         </div>
@@ -31,7 +31,7 @@
                             <th>Vai trò</th>
                             <th>Trạng thái</th>
                             <th>Ngày đăng ký</th>
-                            <th width="180">Hành động</th>
+                            <th width="130">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -66,16 +66,17 @@
                                 </td>
                                 <td>{{ $user->created_at ? $user->created_at->format('d/m/Y') : '—' }}</td>
                                 <td>
-                                    <a href="{{ route('admin.users.show', $user) }}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                                    @if(auth()->user()->isAdmin())
-                                    <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc muốn xóa người dùng này?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
-                                    </form>
-                                    @endif
+                                    <div class="admin-action-row">
+                                        <a href="{{ route('admin.users.show', $user) }}" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Xem &amp; chỉnh sửa"><i class="bi bi-person-lines-fill"></i></a>
+                                        @if(auth()->user()->isAdmin())
+                                        <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Bạn có chắc muốn xóa người dùng này?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger btn-admin-icon" title="Xóa"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty

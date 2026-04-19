@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Guest;
+use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\RefundLog;
 use App\Models\Room;
-use App\Models\RoomBookedDate;
 use App\Models\RoomPrice;
 use App\Models\User;
 use App\Models\Service;
@@ -19,6 +20,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\CarbonPeriod;
 
 class BookingController extends Controller
@@ -47,12 +49,29 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request)
     {
-        if (Auth::check() && Auth::user()?->canAccessAdmin()) {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if ($user && $user->canAccessAdmin()) {
             return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
         }
 
         try {
-            $booking = $this->bookingService->createBooking($request->validated());
+            $validated = $request->validated();
+            $booking = $this->bookingService->createBooking($validated);
+
+            // Tạo 1 Guest duy nhất - người đại diện
+            if ($request->filled('name') && $request->filled('cccd')) {
+                Guest::create([
+                    'booking_id'       => $booking->id,
+                    'room_type'        => null,
+                    'room_index'       => 0,
+                    'name'             => trim($request->input('name')),
+                    'cccd'             => trim($request->input('cccd')),
+                    'type'             => 'adult',
+                    'is_representative'=> 1,
+                    'checkin_status'   => 'pending',
+                ]);
+            }
 
             // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
@@ -72,15 +91,51 @@ class BookingController extends Controller
                 $bankCode
             );
 
-            // Khách không đăng nhập vẫn đặt được: không ép đăng nhập trước khi sang VNPay.
-
-            return redirect()->away($paymentUrl);
+            return $vnPayService->redirectAwayNoCache($paymentUrl);
 
         } catch (BookingException $e) {
             return back()->withErrors($e->getMessage())->withInput();
         } catch (\Exception $e) {
             return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
         }
+    }
+
+    private function normalizeGuestPayload(array $guests): array
+    {
+        $flattened = [];
+
+        foreach ($guests as $topKey => $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            if (isset($value['name']) || isset($value['cccd']) || isset($value['type']) || isset($value['room_index'])) {
+                $flattened[] = [
+                    'room_type' => null,
+                    'room_index' => isset($value['room_index']) ? (int) $value['room_index'] : 0,
+                    'name' => trim((string) ($value['name'] ?? '')),
+                    'cccd' => trim((string) ($value['cccd'] ?? '')),
+                    'type' => $value['type'] ?? 'adult',
+                ];
+                continue;
+            }
+
+            foreach ($value as $guestData) {
+                if (! is_array($guestData)) {
+                    continue;
+                }
+
+                $flattened[] = [
+                    'room_type' => trim((string) $topKey),
+                    'room_index' => 0,
+                    'name' => trim((string) ($guestData['name'] ?? '')),
+                    'cccd' => trim((string) ($guestData['cccd'] ?? '')),
+                    'type' => $guestData['type'] ?? 'adult',
+                ];
+            }
+        }
+
+        return $flattened;
     }
 
     public function update(Request $request, Booking $booking)
@@ -111,76 +166,6 @@ class BookingController extends Controller
     }
 
     /**
-     * Show cancellation confirmation page with refund preview.
-     *
-     * @param Booking $booking
-     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
-     */
-    public function showCancelConfirmation(Booking $booking)
-    {
-        // Kiểm tra quyền sở hữu booking
-        if ($booking->user_id !== Auth::id()) {
-            return redirect()->route('home')
-                ->withErrors('Bạn không có quyền hủy đơn đặt phòng này.');
-        }
-
-        try {
-            $preview = $this->bookingService->previewCancellation($booking->id);
-
-            return view('bookings.cancel-confirm', [
-                'booking' => $booking,
-                'preview' => $preview,
-            ]);
-        } catch (\Exception $e) {
-            return redirect()->route('bookings.show', $booking)
-                ->withErrors($e->getMessage());
-        }
-    }
-
-    /**
-     * Cancel booking with refund calculation.
-     *
-     * @param Request $request
-     * @param Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function cancel(Request $request, Booking $booking)
-    {
-        // Kiểm tra quyền sở hữu booking
-        if ($booking->user_id !== Auth::id()) {
-            return back()->withErrors('Bạn không có quyền hủy đơn đặt phòng này.');
-        }
-
-        // Validate lý do hủy (tùy chọn)
-        $request->validate([
-            'reason' => 'nullable|string|max:500',
-        ]);
-
-        try {
-            $reason = $request->input('reason');
-            $result = $this->bookingService->cancelBooking($booking->id, $reason);
-
-            // Xóa các ngày đã đặt
-            RoomBookedDate::where('booking_id', $booking->id)->delete();
-
-            // Build success message
-            $message = 'Đơn đặt phòng đã được hủy thành công.';
-            if ($result['refund_amount'] > 0) {
-                $message .= ' ' . $result['message'];
-            } else {
-                $message .= ' Không có khoản hoàn tiền nào.';
-            }
-
-            return redirect()->route('bookings.show', $booking)
-                ->with('success', $message)
-                ->with('refund_details', $result);
-
-        } catch (\Exception $e) {
-            return back()->withErrors('Có lỗi xảy ra khi hủy đơn: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * Display refund details for a cancelled booking.
      *
      * @param Booking $booking
@@ -204,6 +189,81 @@ class BookingController extends Controller
             'booking' => $booking,
             'refundLog' => $refundLog,
         ]);
+    }
+
+    /**
+     * Hiển thị form đặt phòng đơn giản
+     */
+    public function createSimple(Request $request)
+    {
+        $validated = $request->validate([
+            'room_id' => 'required|integer|exists:rooms,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+        ]);
+
+        $room = Room::with('roomType')->findOrFail($validated['room_id']);
+
+        return view('bookings.create-simple', [
+            'room' => $room,
+            'checkIn' => $validated['check_in'],
+            'checkOut' => $validated['check_out'],
+        ]);
+    }
+
+    /**
+     * Xử lý lưu đặt phòng đơn giản
+     */
+    public function storeSimple(\App\Http\Requests\StoreSimpleBookingRequest $request)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        try {
+            $validated = $request->validated();
+
+            DB::beginTransaction();
+
+            // 1. Tạo booking - tính giá theo số phòng
+            $nights = max(1, now()->parse($validated['check_in'])->diffInDays($validated['check_out']));
+            $room = Room::with('roomType')->findOrFail($validated['room_id']);
+            $roomsCount = $validated['rooms'];
+
+            $booking = Booking::create([
+                'user_id'     => $user?->id,
+                'check_in'    => $validated['check_in'],
+                'check_out'   => $validated['check_out'],
+                'adults'      => $roomsCount, // Lưu số phòng vào adults hoặc thêm field rooms_count
+                'total_price' => $room->base_price * $nights * $roomsCount, // Giá = giá phòng * số đêm * số phòng
+                'status'      => 'pending',
+            ]);
+
+            // 2. Gắn phòng vào booking (gắn 1 phòng, số lượng được tính qua total_price)
+            $booking->rooms()->attach($room->id, [
+                'price_per_night' => $room->base_price,
+                'nights'          => $nights,
+            ]);
+
+            // 3. Tạo 1 guest duy nhất - người đại diện
+            Guest::create([
+                'booking_id'       => $booking->id,
+                'name'             => $validated['name'],
+                'cccd'             => $validated['cccd'],
+                'type'             => 'adult',
+                'is_representative'=> 1,
+                'checkin_status'   => 'pending',
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('bookings.show', $booking)
+                ->with('success', 'Đặt phòng thành công! Vui lòng thanh toán để hoàn tất.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Simple booking error: ' . $e->getMessage());
+            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
     }
 }
 

@@ -20,7 +20,11 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
+use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
+use App\Http\Controllers\GuestCheckInController;
+use App\Http\Controllers\NewBookingController;
+
 
 
 // Serve storage files (fallback when symlink fails or PHP built-in server)
@@ -30,7 +34,13 @@ Route::get('/storage/{path}', function (string $path) {
         abort(404);
     }
     $fullPath = Storage::disk('public')->path($path);
-    $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
+    if (! is_file($fullPath)) {
+        abort(404);
+    }
+    $mime = @mime_content_type($fullPath);
+    if (! is_string($mime) || $mime === '') {
+        $mime = 'application/octet-stream';
+    }
     return response()->file($fullPath, [
         'Content-Type' => $mime,
         'Cache-Control' => 'public, max-age=86400',
@@ -70,6 +80,7 @@ Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.lo
 
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard/revenue-chart', [AdminController::class, 'revenueChartData'])->name('dashboard.revenue-chart');
     Route::get('/statistics/export', [AdminController::class, 'exportStatistics'])->name('statistics.export');
     Route::get('/rooms', [RoomAdminController::class, 'index'])->name('rooms.index');
     Route::get('/rooms/create', [RoomAdminController::class, 'create'])->name('rooms.create');
@@ -87,11 +98,17 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/bookings/validate-coupon', [BookingAdminController::class, 'validateCoupon'])->name('bookings.validate-coupon');
     Route::get('/bookings/{booking}/payment-instruction', [BookingAdminController::class, 'paymentInstruction'])->name('bookings.payment-instruction');
     Route::post('/bookings/{booking}/confirm-payment', [BookingAdminController::class, 'confirmPayment'])->name('bookings.confirm-payment');
+    Route::get('/bookings/{booking}/invoice', [BookingAdminController::class, 'bookingInvoice'])->name('bookings.invoice');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
+    Route::post('/bookings/{booking}/payment-settings', [BookingAdminController::class, 'updatePaymentSettings'])->name('bookings.update-payment-settings');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
+    Route::get('/bookings/{booking}/guest-info', [BookingAdminController::class, 'getGuestInfo'])->name('bookings.guest-info');
+    Route::put('/bookings/{booking}/guest-info', [BookingAdminController::class, 'updateGuestInfo'])->name('bookings.update-guest-info');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');
+    Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
+    Route::post('/bookings/{booking}/extras', [BookingAdminController::class, 'storeBookingExtras'])->name('bookings.storeExtras');
     Route::post('/bookings/{booking}/cancel', [BookingAdminController::class, 'cancel'])->name('bookings.cancel');
 
     Route::middleware(['admin_only'])->group(function () {
@@ -128,6 +145,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::put('/invoices/{invoice}', [InvoiceAdminController::class, 'update'])->name('invoices.update');
     Route::delete('/invoices/{invoice}', [InvoiceAdminController::class, 'destroy'])->name('invoices.destroy');
     Route::post('/invoices/{invoice}/paid', [InvoiceAdminController::class, 'markAsPaid'])->name('invoices.markAsPaid');
+    Route::post('/invoices/{invoice}/sync-booking-extras', [InvoiceAdminController::class, 'syncBookingExtras'])->name('invoices.sync-booking-extras');
     Route::get('/invoices/{invoice}/print', [InvoiceAdminController::class, 'print'])->name('invoices.print');
 
     Route::get('/settings', [SettingsAdminController::class, 'index'])->name('settings.index');
@@ -148,18 +166,36 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/damage-reports/{damageReport}/change-room', [\App\Http\Controllers\Admin\DamageReportController::class, 'changeRoom'])->name('damage-reports.change-room');
     Route::post('/damage-reports/{damageReport}/refund', [\App\Http\Controllers\Admin\DamageReportController::class, 'processRefund'])->name('damage-reports.process-refund');
 
-      // ====== QUẢN LÝ LOẠI PHÒNG ======
-Route::prefix('roomtypes')->name('roomtypes.')->group(function () {
-    Route::get('/', [RoomTypeController::class, 'index'])->name('index');
-    Route::get('/create', [RoomTypeController::class, 'create'])->name('create');
-    Route::post('/', [RoomTypeController::class, 'store'])->name('store');
-    Route::get('/{id}/edit', [RoomTypeController::class, 'edit'])->name('edit');
-    Route::put('/{id}', [RoomTypeController::class, 'update'])->name('update');
-    Route::delete('/{id}', [RoomTypeController::class, 'destroy'])->name('destroy');
+    // ====== QUẢN LÝ DỊCH VỤ ======
+    Route::prefix('services')->name('services.')->group(function () {
+        Route::get('/', [ServiceController::class, 'index'])->name('index');
+        Route::get('/create', [ServiceController::class, 'create'])->name('create');
+        Route::post('/', [ServiceController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [ServiceController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [ServiceController::class, 'update'])->name('update');
+        Route::delete('/{id}', [ServiceController::class, 'destroy'])->name('destroy');
+    });
+
+    // ====== QUẢN LÝ LOẠI PHÒNG ======
+    Route::prefix('roomtypes')->name('roomtypes.')->group(function () {
+        Route::get('/', [RoomTypeController::class, 'index'])->name('index');
+        Route::get('/create', [RoomTypeController::class, 'create'])->name('create');
+        Route::post('/', [RoomTypeController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [RoomTypeController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [RoomTypeController::class, 'update'])->name('update');
+        Route::delete('/{id}', [RoomTypeController::class, 'destroy'])->name('destroy');
+    });
+
+
+
 });
 
-
-
+// Check-in Routes
+Route::middleware('auth')->prefix('checkin')->name('checkin.')->group(function () {
+    Route::get('/bookings/{booking}', [GuestCheckInController::class, 'index'])->name('index');
+    Route::post('/guests/{guest}/status', [GuestCheckInController::class, 'updateGuestStatus'])->name('guest.status');
+    Route::post('/bookings/{booking}/checkin-all', [GuestCheckInController::class, 'checkInAll'])->name('all');
+    Route::get('/bookings/{booking}/guests', [GuestCheckInController::class, 'getGuestList'])->name('guests');
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -170,8 +206,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
     Route::get('/bookings', [AccountController::class, 'bookings'])->name('bookings');
+    Route::get('/bookings/{booking}/invoice', [AccountController::class, 'bookingInvoice'])->name('bookings.invoice');
     Route::get('/bookings/{booking}', [AccountController::class, 'showBooking'])->name('bookings.show');
-    Route::put('/bookings/{booking}/cancel', [AccountController::class, 'cancelBooking'])->name('bookings.cancel');
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [AccountController::class, 'updatePassword'])->name('profile.update.password');
@@ -181,4 +217,5 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
-
+// Include routes mới cho hệ thống đặt phòng
+require __DIR__ . '/new-bookings.php';

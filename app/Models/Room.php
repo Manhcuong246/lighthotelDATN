@@ -3,9 +3,30 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int         $id
+ * @property string      $name
+ * @property string      $room_number
+ * @property string|null $type
+ * @property float       $base_price
+ * @property int         $max_guests
+ * @property int         $beds
+ * @property int         $baths
+ * @property float|null  $area
+ * @property string|null $description
+ * @property string      $status
+ * @property int|null    $room_type_id
+ * @property string|null $image
+ * @property string|null $maintenance_note
+ * @property \Carbon\Carbon|null $maintenance_since
+ * @property int|null    $damage_report_id
+ */
 class Room extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'rooms';
 
     public $timestamps = false;
@@ -64,9 +85,52 @@ class Room extends Model
         return $this->hasMany(Review::class);
     }
 
-   public function roomType()
+    public function roomType()
     {
         return $this->belongsTo(RoomType::class);
+    }
+
+    /**
+     * Sức chứa hiển thị / nghiệp vụ: ưu tiên loại phòng khi phòng gắn room_type_id.
+     */
+    public function catalogueMaxGuests(): int
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (int) ($this->roomType->capacity ?? $this->max_guests ?? 1);
+        }
+
+        return (int) ($this->max_guests ?? 1);
+    }
+
+    public function catalogueBasePrice(): float
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (float) ($this->roomType->price ?? $this->base_price ?? 0);
+        }
+
+        return (float) ($this->base_price ?? 0);
+    }
+
+    public function catalogueBeds(): int
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (int) ($this->roomType->beds ?? $this->beds ?? 1);
+        }
+
+        return (int) ($this->beds ?? 1);
+    }
+
+    public function catalogueBaths(): int
+    {
+        $this->loadMissing('roomType');
+        if ($this->room_type_id && $this->roomType) {
+            return (int) ($this->roomType->baths ?? $this->baths ?? 0);
+        }
+
+        return (int) ($this->baths ?? 0);
     }
 
     public function damageReports()
@@ -77,6 +141,19 @@ class Room extends Model
     public function activeDamageReport()
     {
         return $this->belongsTo(DamageReport::class, 'damage_report_id');
+    }
+
+    /**
+     * Human-readable label for use in messages / logs.
+     * E.g. "101 - Deluxe" or "Deluxe" or "Phòng #5"
+     */
+    public function displayLabel(): string
+    {
+        $parts = array_filter([
+            $this->room_number ?? null,
+            $this->roomType?->name ?? ($this->name ?? null),
+        ]);
+        return $parts ? implode(' - ', $parts) : ('Phòng #' . $this->id);
     }
 
     /**
@@ -133,11 +210,21 @@ class Room extends Model
         if (empty($path)) {
             return null;
         }
-        $path = ltrim($path, '/');
+        $path = ltrim((string) $path, '/');
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;
         }
-        return asset('storage/' . $path);
+        // DB đôi khi lưu thừa "storage/..." → URL sẽ thành /storage/storage/... (404).
+        while (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+        if (str_starts_with($path, 'public/')) {
+            $path = substr($path, strlen('public/'));
+        }
+        if ($path === '') {
+            return null;
+        }
+        return '/storage/'.$path.'?v='.config('room_images.cache_version', '1');
     }
 
     /**
@@ -167,6 +254,16 @@ class Room extends Model
             }
         }
         return $urls;
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Room $room): void {
+            if ($room->isForceDeleting()) {
+                return;
+            }
+            $room->images()->delete();
+        });
     }
 }
 

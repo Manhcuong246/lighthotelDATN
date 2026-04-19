@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\RoomType;
+use App\Models\Service;
 use App\Support\RoomImageStorage;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -27,7 +28,9 @@ class RoomTypeController extends Controller
     // Form thêm
     public function create()
     {
-        return view('admin.roomtypes.create');
+        $services = Service::query()->orderBy('name')->get();
+
+        return view('admin.roomtypes.create', compact('services'));
     }
 
     // Lưu loại phòng
@@ -36,12 +39,15 @@ class RoomTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:room_types,name',
             'capacity' => 'required|integer|min:1',
+            'standard_capacity' => 'required|integer|min:1|lte:capacity',
             'beds' => 'required|integer|min:1',
             'baths' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'integer|exists:services,id',
         ]);
 
         if ($request->hasFile('image')) {
@@ -49,9 +55,10 @@ class RoomTypeController extends Controller
             $validated['image'] = $request->file('image')->store(RoomImageStorage::roomTypesDir(), 'public');
         }
 
-        RoomType::create([
+        $roomType = RoomType::create([
             'name' => $validated['name'],
             'capacity' => $validated['capacity'],
+            'standard_capacity' => $validated['standard_capacity'],
             'beds' => $validated['beds'],
             'baths' => $validated['baths'],
             'price' => $validated['price'],
@@ -60,6 +67,9 @@ class RoomTypeController extends Controller
             'status' => $validated['status'] ?? 1,
         ]);
 
+        $serviceIds = array_values(array_unique(array_map('intval', $validated['service_ids'] ?? [])));
+        $roomType->services()->sync($serviceIds);
+
         return redirect()->route('admin.roomtypes.index')
             ->with('success', 'Thêm loại phòng thành công');
     }
@@ -67,8 +77,10 @@ class RoomTypeController extends Controller
     // Form sửa
     public function edit($id)
     {
-        $roomType = RoomType::findOrFail($id);
-        return view('admin.roomtypes.edit', compact('roomType'));
+        $roomType = RoomType::with('services')->findOrFail($id);
+        $services = Service::query()->orderBy('name')->get();
+
+        return view('admin.roomtypes.edit', compact('roomType', 'services'));
     }
 
     // Cập nhật
@@ -85,6 +97,8 @@ class RoomTypeController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'integer|exists:services,id',
         ]);
 
         if ($request->hasFile('image')) {
@@ -93,9 +107,19 @@ class RoomTypeController extends Controller
             }
             RoomImageStorage::ensureDirectories();
             $validated['image'] = $request->file('image')->store(RoomImageStorage::roomTypesDir(), 'public');
+        } else {
+            unset($validated['image']);
         }
 
+        $serviceIds = array_values(array_unique(array_map('intval', $validated['service_ids'] ?? [])));
+        unset($validated['service_ids']);
+
+        // standard_capacity: chỉ set lúc tạo, không cho sửa sau khi đã tạo
+        unset($validated['standard_capacity']);
+
         $roomType->update($validated);
+
+        $roomType->services()->sync($serviceIds);
 
         return redirect()->route('admin.roomtypes.index')
             ->with('success', 'Cập nhật thành công');
@@ -106,14 +130,9 @@ class RoomTypeController extends Controller
     {
         $roomType = RoomType::findOrFail($id);
 
-        // Xóa ảnh nếu có
-        if ($roomType->image) {
-            Storage::disk('public')->delete($roomType->image);
-        }
-
         $roomType->delete();
 
         return redirect()->route('admin.roomtypes.index')
-            ->with('success', 'Đã xóa loại phòng');
+            ->with('success', 'Đã ẩn loại phòng');
     }
 }

@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin Dashboard - Light Hotel')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
+        @include('partials.scrollbar-theme')
         :root {
             --sidebar-width: 260px;
             --sidebar-collapsed: 72px;
@@ -18,6 +20,7 @@
         }
 
         * { box-sizing: border-box; }
+        .cursor-help { cursor: help; }
         html { scroll-behavior: smooth; }
         body {
             background-color: #f0f2f5;
@@ -213,6 +216,38 @@
         }
         /* Pagination spacing - avoid crowded look */
         .pagination.gap-2 .page-item .page-link { margin-left: 0; border-radius: 0.375rem; }
+
+        /* Unified icon-first buttons (admin lists & toolbars); use title="" for accessibility */
+        .btn-admin-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            padding: 0;
+            line-height: 1;
+            border-radius: 0.5rem;
+        }
+        .btn-admin-icon i { font-size: 1.05rem; pointer-events: none; }
+        .btn.btn-sm.btn-admin-icon {
+            width: 2rem;
+            height: 2rem;
+        }
+        .btn.btn-sm.btn-admin-icon i { font-size: 0.95rem; }
+        .admin-action-row {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .btn-admin-icon.dropdown-toggle::after {
+            display: none;
+        }
+        /* Full-width icon buttons (forms) */
+        .btn-admin-icon.w-100 {
+            width: 100% !important;
+            max-width: none;
+        }
     </style>
     @stack('styles')
 </head>
@@ -236,16 +271,28 @@
             <div class="d-flex align-items-center ms-auto">
                 <div class="dropdown">
                     <a class="dropdown-toggle d-flex align-items-center text-decoration-none text-white" href="#" role="button" data-bs-toggle="dropdown">
-                        @if(auth()->user()->avatar_url)
-                            <img src="{{ str_starts_with(auth()->user()->avatar_url, 'http') ? auth()->user()->avatar_url : asset('storage/' . auth()->user()->avatar_url) }}" alt="" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;border:2px solid rgba(255,255,255,0.5)">
+                        @php
+                            $adminAvatarInitial = strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1));
+                            $adminAvatarSrc = null;
+                            if (auth()->user()->avatar_url) {
+                                $adminAvatarSrc = str_starts_with(auth()->user()->avatar_url, 'http')
+                                    ? auth()->user()->avatar_url
+                                    : '/storage/' . auth()->user()->avatar_url . '?v=' . config('room_images.cache_version', '1');
+                            }
+                        @endphp
+                        @if($adminAvatarSrc)
+                            {{-- Không dùng d-inline-flex trên span ẩn: utility !important sẽ thắng display:none và hiện 2 avatar --}}
+                            <img src="{{ $adminAvatarSrc }}" alt="" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;border:2px solid rgba(255,255,255,0.5)"
+                                 onerror="var s=this.nextElementSibling; this.remove(); if(s){ s.style.display='inline-flex'; }">
+                            <span class="rounded-circle me-2 align-items-center justify-content-center text-white fw-bold" style="display:none;width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.9rem">{{ $adminAvatarInitial }}</span>
                         @else
-                            <span class="rounded-circle me-2 d-inline-flex align-items-center justify-content-center text-white fw-bold" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.9rem">{{ strtoupper(mb_substr(auth()->user()->full_name ?? 'U', 0, 1)) }}</span>
+                            <span class="rounded-circle me-2 d-inline-flex align-items-center justify-content-center text-white fw-bold" style="width:36px;height:36px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);font-size:0.9rem">{{ $adminAvatarInitial }}</span>
                         @endif
-                        <span class="d-none d-md-inline small">{{ auth()->user()->isAdmin() ? 'Quản trị viên' : 'Nhân viên' }}</span>
+                        <span class="d-none d-md-inline small">{{ auth()->user()->isAdmin() ? 'Admin' : 'Nhân viên' }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-1">
-                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Thông tin cá nhân</a></li>
-                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Lịch đặt phòng</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Hồ sơ</a></li>
+                        <li><a class="dropdown-item py-2" href="{{ route('account.bookings') }}"><i class="bi bi-calendar-check me-2"></i>Đơn của tôi</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item py-2 text-danger" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
                     </ul>
@@ -260,38 +307,39 @@
     <aside id="sidebar">
         <div class="sidebar-header">
             <h4><i class="bi bi-building me-2"></i>Light Hotel</h4>
-            <p class="small mb-0">Quản trị hệ thống</p>
+            <p class="small mb-0 opacity-75">Quản trị</p>
         </div>
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
                     <i class="bi bi-speedometer2"></i>
-                    Bảng điều khiển
+                    Tổng quan
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.roomtypes*') ? 'active' : '' }}" href="{{ route('admin.roomtypes.index') }}">
+                <a class="nav-link {{ request()->routeIs('admin.roomtypes.*') ? 'active' : '' }}" href="{{ route('admin.roomtypes.index') }}">
                     <i class="bi bi-layers"></i>
                     Loại phòng
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}"
+                   href="{{ route('admin.services.index') }}">
+                    <i class="bi bi-cone-striped"></i>
+                    Dịch vụ
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.rooms*') ? 'active' : '' }}" href="{{ route('admin.rooms.index') }}">
                     <i class="bi bi-door-open"></i>
-                    Quản lý phòng
+                    Phòng
                 </a>
             </li>
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.bookings.index') && !request('checkin_checkout') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
+                <a class="nav-link {{ request()->routeIs('admin.bookings.index') || request()->routeIs('admin.payments.show') || request()->routeIs('admin.payments.edit') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
                     <i class="bi bi-calendar-check"></i>
                     Đặt phòng
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.bookings.index') && request('checkin_checkout') ? 'active' : '' }}" href="{{ route('admin.bookings.index', ['checkin_checkout' => 1]) }}">
-                    <i class="bi bi-door-open"></i>
-                    Check-in / Check-out
                 </a>
             </li>
             <li class="nav-item">
@@ -301,11 +349,19 @@
                 </a>
             </li>
             @endif
+            @if(!auth()->user()->isAdmin())
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.bookings.index') || request()->routeIs('admin.payments.show') || request()->routeIs('admin.payments.edit') ? 'active' : '' }}" href="{{ route('admin.bookings.index') }}">
+                    <i class="bi bi-credit-card"></i>
+                    Đặt phòng
+                </a>
+            </li>
+            @endif
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.users*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                     <i class="bi bi-people"></i>
-                    Người dùng
+                    Tài khoản
                 </a>
             </li>
             @endif
@@ -316,15 +372,9 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.payments*') ? 'active' : '' }}" href="{{ route('admin.payments.index') }}">
-                    <i class="bi bi-credit-card"></i>
-                    Thanh toán
-                </a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.coupons*') ? 'active' : '' }}" href="{{ route('admin.coupons.index') }}">
                     <i class="bi bi-ticket-perforated"></i>
-                    Mã giảm giá
+                    Mã giảm
                 </a>
             </li>
             @if(auth()->user()->isAdmin())
@@ -405,5 +455,11 @@
         })();
     </script>
     @stack('scripts')
+    <script src="{{ asset('js/guest-edit.js') }}"></script>
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+    </script>
 </body>
 </html>

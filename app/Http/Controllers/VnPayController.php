@@ -8,6 +8,7 @@ use App\Models\RoomBookedDate;
 use App\Services\VnPayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 
 class VnPayController extends Controller
 {
@@ -33,7 +34,7 @@ class VnPayController extends Controller
         }
 
         $txnRef = 'LIGHT'.$booking->id;
-        $amountVnd = (int) round($booking->total_price);
+        $amountVnd = (int) round((float) ($booking->total_price ?? 0));
         $orderInfo = 'Dat phong Light Hotel #'.$booking->id;
         $paymentUrl = $this->vnPayService->createPaymentUrl(
             $txnRef,
@@ -45,7 +46,7 @@ class VnPayController extends Controller
             null
         );
 
-        return redirect()->away($paymentUrl);
+        return $this->vnPayService->redirectAwayNoCache($paymentUrl);
     }
 
     public function return(Request $request)
@@ -71,65 +72,70 @@ class VnPayController extends Controller
         $vnpAmount = isset($inputData['vnp_Amount']) ? (int) $inputData['vnp_Amount'] / 100 : 0;
 
         $bookingId = (int) str_replace('LIGHT', '', $vnpTxnRef);
-        $booking = Booking::find($bookingId);
 
-        if (! $booking) {
-            return redirect()->route('home')->withErrors('Không tìm thấy đơn đặt phòng.');
-        }
+        return DB::transaction(function () use ($bookingId, $vnpResponseCode, $vnpTransactionNo, $vnpAmount) {
+            $booking = Booking::query()->whereKey($bookingId)->lockForUpdate()->first();
 
-        $payment = Payment::where('booking_id', $booking->id)->where('method', 'vnpay')->first();
-
-        if (! $payment) {
-            return redirect()->route('home')->withErrors('Không tìm thấy thông tin thanh toán.');
-        }
-
-        if ($payment->status === 'paid') {
-            return redirect()->route('payment.success', ['booking' => $booking->id])
-                ->with('success', 'Đơn hàng đã được xác nhận thanh toán trước đó.');
-        }
-
-        if ($vnpResponseCode === '00') {
-            if (abs($payment->amount - $vnpAmount) > 1) {
-                return redirect()->route('home')->withErrors('Số tiền thanh toán không khớp.');
+            if (! $booking) {
+                return redirect()->route('home')->withErrors('Không tìm thấy đơn đặt phòng.');
             }
 
-            DB::beginTransaction();
-            try {
-                $payment->update([
-                    'status' => 'paid',
-                    'transaction_id' => $vnpTransactionNo,
-                    'paid_at' => now(),
-                ]);
+            $payment = Payment::query()
+                ->where('booking_id', $booking->id)
+                ->where('method', 'vnpay')
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $payment) {
+                return redirect()->route('home')->withErrors('Không tìm thấy thông tin thanh toán.');
+            }
+
+            if ($payment->status === 'paid') {
+                return redirect()->to(
+                    URL::temporarySignedRoute('payment.success', now()->addHour(), ['booking' => $booking->id])
+                )->with('success', 'Đơn hàng đã được xác nhận thanh toán trước đó.');
+            }
+
+            if ($vnpResponseCode === '00') {
+                if (abs($payment->amount - $vnpAmount) > 1) {
+                    return redirect()->route('home')->withErrors('Số tiền thanh toán không khớp.');
+                }
+
+                $updated = Payment::query()
+                    ->whereKey($payment->id)
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'paid',
+                        'transaction_id' => $vnpTransactionNo,
+                        'paid_at' => now(),
+                    ]);
+
+                if ($updated === 0) {
+                    return redirect()->to(
+                        URL::temporarySignedRoute('payment.success', now()->addHour(), ['booking' => $booking->id])
+                    )->with('success', 'Đơn hàng đã được xác nhận thanh toán trước đó.');
+                }
 
                 $booking->update([
                     'status' => 'confirmed',
                     'payment_status' => 'paid',
                 ]);
 
-                DB::commit();
-
-                return redirect()->route('payment.success', ['booking' => $booking->id])
-                    ->with('success', 'Thanh toán thành công! Đơn đặt phòng đã được xác nhận.');
-            } catch (\Exception $e) {
-                DB::rollBack();
-                return redirect()->route('home')->withErrors('Có lỗi xảy ra khi cập nhật đơn hàng.');
+                return redirect()->to(
+                    URL::temporarySignedRoute('payment.success', now()->addHour(), ['booking' => $booking->id])
+                )->with('success', 'Thanh toán thành công! Đơn đặt phòng đã được xác nhận.');
             }
-        }
 
-        // User hủy thanh toán hoặc giao dịch thất bại: cập nhật Payment + Booking + giải phóng ngày phòng
-        DB::beginTransaction();
-        try {
+            // User hủy thanh toán hoặc giao dịch thất bại
             $payment->update(['status' => 'failed']);
             if ($booking->status === 'pending') {
                 $booking->update(['status' => 'cancelled']);
                 RoomBookedDate::where('booking_id', $booking->id)->delete();
             }
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-        }
 
-        return redirect()->route('payment.failed')
-            ->with('error', 'Thanh toán không thành công. Mã lỗi: ' . $vnpResponseCode . '. Vui lòng thử lại hoặc chọn phương thức khác.');
+            return redirect()->route('payment.failed')
+                ->with('error', 'Thanh toán không thành công. Mã lỗi: '.$vnpResponseCode.'. Vui lòng thử lại hoặc chọn phương thức khác.');
+        });
     }
 }

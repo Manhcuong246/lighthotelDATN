@@ -1,0 +1,338 @@
+{{-- Modal Check-in khách hàng - Đơn #{{ $booking->id }} --}}
+<div class="modal fade" id="checkinModal{{ $booking->id }}" tabindex="-1" aria-labelledby="checkinModalLabel{{ $booking->id }}" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="checkinModalLabel{{ $booking->id }}">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Check-in - Đơn #{{ $booking->id }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ action([App\Http\Controllers\Admin\BookingAdminController::class, 'checkInWithAssignment'], $booking) }}" method="POST" id="checkinForm{{ $booking->id }}">
+                @csrf
+                <div class="modal-body">
+                    {{-- Thông tin booking --}}
+                    <div class="alert alert-info">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Người đại diện:</strong> {{ $booking->user?->full_name ?? '—' }}<br>
+                                <strong>Email:</strong> {{ $booking->user?->email ?? '—' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Số phòng đã đặt:</strong> {{ $booking->rooms->count() ?? 0 }} phòng<br>
+                                <strong>Nhận phòng:</strong> {{ $booking->check_in?->format('d/m/Y') ?? '—' }}<br>
+                                <strong>Trả phòng:</strong> {{ $booking->check_out?->format('d/m/Y') ?? '—' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Danh sách phòng đã đặt --}}
+                    <div class="mb-3">
+                        <h6><i class="bi bi-door-open me-2"></i>Phòng:</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($booking->rooms as $room)
+                                <span class="badge bg-primary">
+                                    {{ $room?->room_number ?? '—' }} ({{ $room?->roomType?->name ?? '—' }})
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    {{-- Thông báo lỗi/validate --}}
+                    <div id="validationErrors{{ $booking->id }}" class="alert alert-danger d-none">
+                        <ul class="mb-0" id="errorList{{ $booking->id }}"></ul>
+                    </div>
+
+                    {{-- Danh sách khách hàng --}}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0"><i class="bi bi-people me-2"></i>Danh sách khách hàng:</h6>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addNewGuest({{ $booking->id }})">
+                            <i class="bi bi-plus-circle me-1"></i>Thêm khách
+                        </button>
+                    </div>
+
+                    {{-- Bảng khách hàng --}}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover" id="guestTable{{ $booking->id }}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px">STT</th>
+                                    <th>Họ tên <span class="text-danger">*</span></th>
+                                    <th style="width: 150px">CCCD <span class="text-danger">*</span></th>
+                                    <th style="width: 100px">Loại</th>
+                                    <th style="width: 200px">Phòng <span class="text-danger">*</span></th>
+                                    <th style="width: 80px">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="guestTableBody{{ $booking->id }}">
+                                {{-- Dữ liệu sẽ được load bằng JS --}}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Template cho hàng khách mới (ẩn) --}}
+                    <template id="guestRowTemplate{{ $booking->id }}">
+                        <tr class="guest-row" data-guest-id="" data-is-new="true" data-is-representative="false">
+                            <td class="guest-stt"></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="text" name="guests[INDEX][name]" class="form-control form-control-sm guest-name-input" placeholder="Họ tên" required>
+                                    <input type="hidden" name="guests[INDEX][id]" class="guest-id-input" value="">
+                                    <span class="badge bg-primary representative-badge d-none">Người đại diện</span>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="text" name="guests[INDEX][cccd]" class="form-control form-control-sm guest-cccd-input" placeholder="12 số CCCD" maxlength="12" pattern="[0-9]{12}" required>
+                            </td>
+                            <td>
+                                <select name="guests[INDEX][type]" class="form-select form-select-sm guest-type-input">
+                                    <option value="adult">Người lớn</option>
+                                    <option value="child">Trẻ em</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="guests[INDEX][booking_room_id]" class="form-select form-select-sm guest-room-input" required>
+                                    <option value="">-- Chọn phòng --</option>
+                                    @foreach($booking->bookingRooms as $bookingRoom)
+                                        @php $room = $bookingRoom->room; @endphp
+                                        @if($room)
+                                            <option value="{{ $bookingRoom->id }}">
+                                                {{ $room->roomType?->name ?? 'Phòng' }} {{ $room->room_number ?? $room->name }}
+                                            </option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-danger" onclick="removeGuestRow(this)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Đóng
+                    </button>
+                    <button type="submit" class="btn btn-info" id="checkinSubmitBtn{{ $booking->id }}">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Xác nhận Check-in
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load dữ liệu khách khi modal hiển thị
+document.getElementById('checkinModal{{ $booking->id }}').addEventListener('show.bs.modal', function() {
+    loadGuestsForBooking({{ $booking->id }});
+});
+
+// Load danh sách khách từ server
+function loadGuestsForBooking(bookingId) {
+    const tbody = document.getElementById('guestTableBody' + bookingId);
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Đang tải...</td></tr>';
+
+    fetch(`/admin/bookings/${bookingId}/checkin-data`)
+        .then(response => response.json())
+        .then(data => {
+            tbody.innerHTML = '';
+
+            if (data.guests && data.guests.length > 0) {
+                data.guests.forEach((guest, index) => {
+                    addGuestRow(bookingId, guest, index + 1);
+                });
+            } else {
+                // Nếu chưa có khách nào, thêm form trống
+                tbody.innerHTML = '<tr class="no-guests"><td colspan="6" class="text-center text-muted py-4">Chưa có khách nào. Vui lòng thêm khách.</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading guests:', error);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Lỗi tải dữ liệu. Vui lòng thử lại.</td></tr>';
+        });
+}
+
+// Thêm hàng khách mới
+function addNewGuest(bookingId) {
+    const tbody = document.getElementById('guestTableBody' + bookingId);
+    const rowCount = tbody.querySelectorAll('.guest-row').length;
+
+    // Xóa dòng "Chưa có khách" nếu có
+    const noGuestsRow = tbody.querySelector('.no-guests');
+    if (noGuestsRow) {
+        noGuestsRow.remove();
+    }
+
+    addGuestRow(bookingId, null, rowCount + 1);
+}
+
+// Thêm hàng khách vào bảng
+function addGuestRow(bookingId, guestData, stt) {
+    const tbody = document.getElementById('guestTableBody' + bookingId);
+    const template = document.getElementById('guestRowTemplate' + bookingId);
+    const clone = template.content.cloneNode(true);
+    const row = clone.querySelector('tr');
+
+    // Gán số thứ tự
+    row.querySelector('.guest-stt').textContent = stt;
+
+    // Tạo index unique cho input names
+    const index = Date.now() + '_' + stt;
+
+    // Cập nhật name attributes
+    row.querySelector('.guest-name-input').name = `guests[${index}][name]`;
+    row.querySelector('.guest-cccd-input').name = `guests[${index}][cccd]`;
+    row.querySelector('.guest-type-input').name = `guests[${index}][type]`;
+    row.querySelector('.guest-room-input').name = `guests[${index}][booking_room_id]`;
+    row.querySelector('.guest-id-input').name = `guests[${index}][id]`;
+
+    // Điền dữ liệu nếu có
+    if (guestData) {
+        row.dataset.guestId = guestData.id;
+        row.dataset.isNew = 'false';
+        row.dataset.isRepresentative = guestData.is_representative ? 'true' : 'false';
+
+        row.querySelector('.guest-name-input').value = guestData.name || '';
+        row.querySelector('.guest-cccd-input').value = guestData.cccd || '';
+        row.querySelector('.guest-type-input').value = guestData.type || 'adult';
+        row.querySelector('.guest-id-input').value = guestData.id || '';
+
+        // Hiển thị badge người đại diện
+        if (guestData.is_representative) {
+            row.querySelector('.representative-badge').classList.remove('d-none');
+            // Readonly input cho người đại diện (không cho sửa)
+            row.querySelector('.guest-name-input').readOnly = true;
+            row.querySelector('.guest-cccd-input').readOnly = true;
+        }
+
+        // Chọn phòng nếu đã gán
+        if (guestData.booking_room_id) {
+            row.querySelector('.guest-room-input').value = guestData.booking_room_id;
+        }
+
+        // Disable input cho khách đã check-in (nếu cần)
+        if (guestData.status === 'checked_in') {
+            row.classList.add('table-success');
+            row.querySelector('.guest-name-input').readOnly = true;
+            row.querySelector('.guest-cccd-input').readOnly = true;
+            row.querySelector('.guest-type-input').disabled = true;
+            row.querySelector('.guest-room-input').disabled = true;
+            row.querySelector('.btn-danger').disabled = true;
+            row.querySelector('.btn-danger').classList.replace('btn-danger', 'btn-secondary');
+        }
+    }
+
+    tbody.appendChild(row);
+    renumberGuests(bookingId);
+}
+
+// Xóa hàng khách
+function removeGuestRow(btn) {
+    const row = btn.closest('tr');
+    const bookingId = row.closest('table').id.replace('guestTableBody', '');
+
+    // Không cho xóa người đại diện
+    if (row.dataset.isRepresentative === 'true') {
+        alert('Không thể xóa người đại diện!');
+        return;
+    }
+
+    // Nếu là khách đã có trong DB (có ID), cần gửi request xóa
+    const guestId = row.dataset.guestId;
+    if (guestId && row.dataset.isNew === 'false') {
+        if (!confirm('Bạn có chắc muốn xóa khách này?')) {
+            return;
+        }
+        // Xóa qua AJAX
+        fetch(`/admin/booking-guests/${guestId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        }).then(() => {
+            row.remove();
+            renumberGuests(bookingId);
+        });
+    } else {
+        row.remove();
+        renumberGuests(bookingId);
+    }
+}
+
+// Đánh số lại STT
+function renumberGuests(bookingId) {
+    const tbody = document.getElementById('guestTableBody' + bookingId);
+    const rows = tbody.querySelectorAll('.guest-row');
+
+    if (rows.length === 0) {
+        tbody.innerHTML = '<tr class="no-guests"><td colspan="6" class="text-center text-muted py-4">Chưa có khách nào. Vui lòng thêm khách.</td></tr>';
+        return;
+    }
+
+    rows.forEach((row, index) => {
+        row.querySelector('.guest-stt').textContent = index + 1;
+    });
+}
+
+// Validate trước khi submit
+document.getElementById('checkinForm{{ $booking->id }}').addEventListener('submit', function(e) {
+    const bookingId = {{ $booking->id }};
+    const tbody = document.getElementById('guestTableBody' + bookingId);
+    const rows = tbody.querySelectorAll('.guest-row');
+    const errors = [];
+
+    // Kiểm tra có khách không
+    if (rows.length === 0) {
+        errors.push('Vui lòng thêm ít nhất 1 khách');
+    }
+
+    // Kiểm tra từng khách
+    rows.forEach((row, index) => {
+        const name = row.querySelector('.guest-name-input').value.trim();
+        const cccd = row.querySelector('.guest-cccd-input').value.trim();
+        const room = row.querySelector('.guest-room-input').value;
+
+        if (!name) {
+            errors.push(`Khách ${index + 1}: Thiếu họ tên`);
+            row.querySelector('.guest-name-input').classList.add('is-invalid');
+        } else {
+            row.querySelector('.guest-name-input').classList.remove('is-invalid');
+        }
+
+        if (!cccd) {
+            errors.push(`Khách ${index + 1}: Thiếu CCCD`);
+            row.querySelector('.guest-cccd-input').classList.add('is-invalid');
+        } else if (!/^\d{12}$/.test(cccd)) {
+            errors.push(`Khách ${index + 1}: CCCD phải có 12 số`);
+            row.querySelector('.guest-cccd-input').classList.add('is-invalid');
+        } else {
+            row.querySelector('.guest-cccd-input').classList.remove('is-invalid');
+        }
+
+        if (!room) {
+            errors.push(`Khách ${index + 1}: Chưa chọn phòng`);
+            row.querySelector('.guest-room-input').classList.add('is-invalid');
+        } else {
+            row.querySelector('.guest-room-input').classList.remove('is-invalid');
+        }
+    });
+
+    // Hiển thị lỗi
+    const errorDiv = document.getElementById('validationErrors' + bookingId);
+    const errorList = document.getElementById('errorList' + bookingId);
+
+    if (errors.length > 0) {
+        e.preventDefault();
+        errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+        errorDiv.classList.remove('d-none');
+        return false;
+    } else {
+        errorDiv.classList.add('d-none');
+    }
+});
+</script>

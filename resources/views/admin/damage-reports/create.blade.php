@@ -5,9 +5,7 @@
 @section('content')
 <div class="container-fluid px-0">
     <div class="mb-4">
-        <a href="{{ route('admin.damage-reports.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại
-        </a>
+        <a href="{{ route('admin.damage-reports.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     <h1 class="text-dark fw-bold mb-4">🚨 Tạo báo cáo hư hỏng</h1>
@@ -115,8 +113,8 @@
                         <h5 class="mb-0">⚡ Hành động</h5>
                     </div>
                     <div class="card-body">
-                        <button type="submit" class="btn btn-danger w-100 mb-3">
-                            <i class="bi bi-exclamation-triangle"></i> Tạo báo cáo hư hỏng
+                        <button type="submit" class="btn btn-danger w-100 mb-3 d-flex align-items-center justify-content-center btn-admin-icon" style="height: 2.5rem;" title="Tạo báo cáo">
+                            <i class="bi bi-exclamation-triangle"></i>
                         </button>
 
                         <div class="alert alert-warning">

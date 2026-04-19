@@ -18,14 +18,10 @@
                        placeholder="Tìm khách, phòng, nội dung..." 
                        style="width: 240px;">
 
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="bi bi-search me-1"></i>Tìm
-                </button>
+                <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Tìm"><i class="bi bi-search"></i></button>
 
                 @if(request('q'))
-                    <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary btn-sm">
-                        Xóa bộ lọc
-                    </a>
+                    <a href="{{ route('admin.reviews.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
                 @endif
             </form>
         </div>
@@ -87,24 +83,21 @@
 
                                 {{-- Action --}}
                                 <td>
-                                    <a href="{{ route('admin.reviews.show', $review) }}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        Chi tiết
-                                    </a>
-
-                                    @if(auth()->user()->isAdmin())
-                                        <form action="{{ route('admin.reviews.destroy', $review) }}" 
-                                              method="POST" 
-                                              class="d-inline"
-                                              onsubmit="return confirm('Bạn có chắc muốn xóa đánh giá này?');">
-                                            @csrf
-                                            @method('DELETE')
-
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                Xóa
-                                            </button>
-                                        </form>
-                                    @endif
+                                    <div class="admin-action-row">
+                                        <a href="{{ route('admin.reviews.show', $review) }}"
+                                           class="btn btn-sm btn-outline-primary btn-admin-icon"
+                                           title="Xem chi tiết"><i class="bi bi-eye"></i></a>
+                                        @if(auth()->user()->isAdmin())
+                                            <form action="{{ route('admin.reviews.destroy', $review) }}"
+                                                  method="POST"
+                                                  class="d-inline"
+                                                  onsubmit="return confirm('Bạn có chắc muốn xóa đánh giá này?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger btn-admin-icon" title="Xóa"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty

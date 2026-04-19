@@ -7,8 +7,6 @@
     $placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%231e293b'/%3E%3Cstop offset='100%25' style='stop-color:%230f172a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='800' height='500'/%3E%3Ctext fill='%2394a3b8' font-family='system-ui,sans-serif' font-size='20' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3ELight Hotel%3C/text%3E%3C/svg%3E";
     $avgRating = $room->reviews()->avg('rating');
     $reviewCount = $room->reviews()->count();
-    $userHasReviewed = auth()->check() && $room->reviews()->where('user_id', auth()->id())->exists();
-    $hasCompletedBooking = auth()->check() ? \App\Models\Booking::where('user_id', auth()->id())->where('room_id', $room->id)->where('status', 'completed')->exists() : false;
 @endphp
 
 @section('content')
@@ -43,7 +41,7 @@
                 </div>
                 <div class="text-lg-end">
                     <div class="text-muted small text-uppercase fw-bold mb-1">Giá từ</div>
-                    <span class="h2 fw-bold text-primary mb-0">{{ number_format($room->base_price, 0, ',', '.') }} VNĐ</span>
+                    <span class="h2 fw-bold text-primary mb-0">{{ number_format($room->catalogueBasePrice(), 0, ',', '.') }} VNĐ</span>
                     <span class="text-muted">/ đêm</span>
                 </div>
             </div>
@@ -96,7 +94,7 @@
                     <div class="col-6 col-md-3">
                         <div class="feature-card h-100 p-3 rounded-4 bg-white shadow-sm border text-center">
                             <i class="bi bi-people text-primary fs-3 mb-2"></i>
-                            <div class="fw-bold">Tối đa {{ $room->max_guests }}</div>
+                            <div class="fw-bold">Tối đa {{ $room->catalogueMaxGuests() }}</div>
                             <div class="text-muted small">Người lớn & Trẻ em</div>
                         </div>
                     </div>
@@ -137,7 +135,7 @@
                 </div>
 
                 {{-- Reviews --}}
-                <div class="card border-0 rounded-4 shadow-sm mb-5 overflow-hidden">
+                <div id="reviews" class="card border-0 rounded-4 shadow-sm mb-5 overflow-hidden scroll-review-section">
                     <div class="card-header bg-white p-4 border-bottom-0">
                         <h4 class="fw-bold mb-0">Đánh giá từ khách hàng</h4>
                     </div>
@@ -179,6 +177,21 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Viết đánh giá (sau khi đã checkout + thanh toán — điều kiện giống ReviewController) --}}
+                <div id="write-review" class="card border-0 rounded-4 shadow-sm mb-5 overflow-hidden scroll-review-section">
+                    <div class="card-header bg-white p-4 border-bottom-0">
+                        <h4 class="fw-bold mb-0">Viết đánh giá</h4>
+                    </div>
+                    <div class="card-body p-4 p-md-5">
+                        <p class="small text-muted mb-4">
+                            Bạn có thể gửi <strong>nhiều đánh giá</strong> cho <strong>phòng vật lý này</strong>
+                            (<strong>{{ $room->name }}</strong>@if($room->roomType), loại <strong>{{ $room->roomType->name }}</strong>@endif) sau mỗi lần đã thanh toán và check-out phòng đó.
+                            Trong cùng một đơn có <strong>nhiều phòng khác số</strong>, mỗi phòng có trang riêng — đánh giá theo từng phòng bạn đã ở.
+                        </p>
+                        @include('rooms.partials.review-write-form', ['room' => $room])
+                    </div>
+                </div>
             </div>
 
             {{-- Right Content: Sidebar Booking Form --}}
@@ -211,6 +224,10 @@
     /* Remove flex stretching to ensure sticky calculates against container correctly */
     .align-items-start {
         align-items: flex-start !important;
+    }
+
+    .scroll-review-section {
+        scroll-margin-top: 6rem;
     }
 </style>
 @endpush
