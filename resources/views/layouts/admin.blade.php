@@ -316,12 +316,15 @@
                     Tổng quan
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.roomtypes.*') ? 'active' : '' }}" href="{{ route('admin.roomtypes.index') }}">
-                    <i class="bi bi-layers"></i>
-                    Loại phòng
-                </a>
-            </li>
+            @if(auth()->user()->isAdmin())
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('admin.roomtypes.*') ? 'active' : '' }}" 
+       href="{{ route('admin.roomtypes.index') }}">
+        <i class="bi bi-layers"></i>
+        Loại phòng
+    </a>
+</li>
+@endif
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}"
                    href="{{ route('admin.services.index') }}">
@@ -371,12 +374,15 @@
                     Đánh giá
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.coupons*') ? 'active' : '' }}" href="{{ route('admin.coupons.index') }}">
-                    <i class="bi bi-ticket-perforated"></i>
-                    Mã giảm
-                </a>
-            </li>
+           @if(auth()->user()->isAdmin())
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('admin.coupons*') ? 'active' : '' }}" 
+       href="{{ route('admin.coupons.index') }}">
+        <i class="bi bi-ticket-perforated"></i>
+        Mã giảm
+    </a>
+</li>
+@endif
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.settings*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
