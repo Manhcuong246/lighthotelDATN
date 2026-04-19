@@ -23,8 +23,6 @@
             overflow-x: hidden;
             background: #f5f7fb;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            display: flex;
-            flex-direction: column;
         }
         .navbar-brand span {
             font-weight: 700;
@@ -78,6 +76,15 @@
         .hero-content {
             position: relative;
             z-index: 2;
+        }
+        /* Fix alert bị chìm dưới navbar */
+        .alert {
+            position: relative;
+            z-index: 1050;
+        }
+        /* Đảm bảo alert ở container không bị đè */
+        main.container .alert {
+            margin-top: 1rem;
         }
         .hero-badge {
             display: inline-flex;
@@ -318,7 +325,7 @@
             background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 60%, #1e40af 100%);
             padding: 56px 0 80px;
             position: relative;
-            z-index: 5;
+            z-index: 0;
             overflow: visible;
         }
         .lh-hero::before {
@@ -330,7 +337,7 @@
             background-position: center;
             opacity: 0.18;
         }
-        .lh-hero-inner { position: relative; z-index: 2; overflow: visible; }
+        .lh-hero-inner { position: relative; z-index: 2; overflow: visible; padding-top: 76px; }
         /* Thêm lề ngang — tránh chữ và chip sát mép viewport */
         .lh-hero .container.lh-hero-inner,
         .lh-home-content-wrap .container.lh-home-landing-container {
@@ -1571,6 +1578,7 @@
     <script type="module" src="https://unpkg.com/deep-chat@2.4.2/dist/deepChat.bundle.js"></script>
 </head>
 <body>
+@if(!request()->routeIs('account.profile'))
 <nav class="navbar navbar-expand-lg navbar-dark mb-4">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('home') }}">
@@ -1651,6 +1659,7 @@
         </div>
     </div>
 </nav>
+@endif
 
 <main class="container mb-5">
     @if(session('success'))
