@@ -108,6 +108,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');
     Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
     Route::post('/bookings/{booking}/extras', [BookingAdminController::class, 'storeBookingExtras'])->name('bookings.storeExtras');
+    Route::post('/bookings/{booking}/change-room', [BookingAdminController::class, 'changeRoom'])->name('bookings.changeRoom');
     Route::post('/bookings/{booking}/cancel', [BookingAdminController::class, 'cancel'])->name('bookings.cancel');
 
     Route::middleware(['admin_only'])->group(function () {
