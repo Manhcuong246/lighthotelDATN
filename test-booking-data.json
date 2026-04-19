@@ -1,0 +1,30 @@
+{
+  "check_in": "2026-04-20",
+  "check_out": "2026-04-21",
+  "full_name": "Nguyen Van A",
+  "email": "nguyenvana@email.com",
+  "phone": "0123456789",
+  "rooms": {
+    "0": {
+      "guests": {
+        "0": {
+          "name": "Nguyen Van A",
+          "cccd": "123456789012"
+        },
+        "1": {
+          "name": "Nguyen Thi B",
+          "cccd": "234567890123"
+        }
+      }
+    },
+    "1": {
+      "guests": {
+        "0": {
+          "name": "Tran Van C",
+          "cccd": "345678901234"
+        }
+      }
+    }
+  },
+  "payment_method": "cash"
+}
