@@ -16,7 +16,32 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <strong>Người đại diện:</strong> {{ $booking->user?->full_name ?? '—' }}<br>
-                                <strong>Email:</strong> {{ $booking->user?->email ?? '—' }}
+                                <strong>Email:</strong> {{ $booking->user?->email ?? '—' }}<br>
+                                <strong>CCCD:</strong> 
+                                @php
+                                    // Thu 1: Lay truc tiep tu booking
+                                    $cccd = $booking->cccd ?? null;
+                                    
+                                    // Thu 2: Tim trong booking guests neu booking khong co
+                                    if (!$cccd) {
+                                        $representativeGuest = $booking->bookingGuests()->where('is_representative', true)->first();
+                                        $cccd = $representativeGuest?->cccd ?? null;
+                                    }
+                                    
+                                    // Thu 3: Thu tim trong booking user
+                                    if (!$cccd && $booking->user) {
+                                        $cccd = $booking->user->cccd ?? null;
+                                    }
+                                    
+                                    // Thu 4: Tim khach dau tien trong booking neu chua co
+                                    if (!$cccd && $booking->bookingGuests->isNotEmpty()) {
+                                        $firstGuest = $booking->bookingGuests->first();
+                                        $cccd = $firstGuest?->cccd ?? null;
+                                    }
+                                    
+                                    $cccdDisplay = $cccd ?? '—';
+                                @endphp
+                                {{ $cccdDisplay }}
                             </div>
                             <div class="col-md-6">
                                 <strong>Số phòng đã đặt:</strong> {{ $booking->rooms->count() ?? 0 }} phòng<br>
@@ -84,7 +109,12 @@
                                 </div>
                             </td>
                             <td>
-                                <input type="text" name="guests[INDEX][cccd]" class="form-control form-control-sm guest-cccd-input" placeholder="12 số CCCD" maxlength="12" pattern="[0-9]{12}" required>
+                                <input type="tel" name="guests[INDEX][cccd]" class="form-control form-control-sm guest-cccd-input" 
+       placeholder="12 số CCCD" maxlength="12" pattern="[0-9]{12}" required 
+       onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+       oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12)"
+       onpaste="return false"
+       ondrop="return false">
                             </td>
                             <td>
                                 <select name="guests[INDEX][type]" class="form-select form-select-sm guest-type-input">
@@ -127,6 +157,24 @@
 </div>
 
 <script>
+// Hàm giới hạn nhập CCCD chỉ 12 số
+function limitCCCDInput(e) {
+    const input = e.target;
+    const key = e.key;
+    
+    // Chỉ cho phép nhập số (0-9)
+    if (!/^[0-9]$/.test(key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) {
+        e.preventDefault();
+        return;
+    }
+    
+    // Ngăn không cho nhập thêm khi đã đủ 12 số (trừ các phim điều hướng)
+    if (input.value.length >= 12 && /^[0-9]$/.test(key)) {
+        e.preventDefault();
+        return;
+    }
+}
+
 // Load dữ liệu khách khi modal hiển thị
 document.getElementById('checkinModal{{ $booking->id }}').addEventListener('show.bs.modal', function() {
     loadGuestsForBooking({{ $booking->id }});
@@ -190,6 +238,27 @@ function addGuestRow(bookingId, guestData, stt) {
     row.querySelector('.guest-type-input').name = `guests[${index}][type]`;
     row.querySelector('.guest-room-input').name = `guests[${index}][booking_room_id]`;
     row.querySelector('.guest-id-input').name = `guests[${index}][id]`;
+    
+    // Áp dụng giới hạn cho input CCCD
+    const cccdInput = row.querySelector('.guest-cccd-input');
+    // Ngăn nhập chữ
+    cccdInput.addEventListener('keypress', function(e) {
+        return e.charCode >= 48 && e.charCode <= 57;
+    });
+    // Xử lý input
+    cccdInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g,'').slice(0,12);
+    });
+    // Ngăn paste
+    cccdInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        return false;
+    });
+    // Ngăn drag/drop
+    cccdInput.addEventListener('drop', function(e) {
+        e.preventDefault();
+        return false;
+    });
 
     // Điền dữ liệu nếu có
     if (guestData) {
