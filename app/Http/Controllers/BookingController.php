@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\CarbonPeriod;
+use App\Models\ActivityLog;
 
 class BookingController extends Controller
 {
@@ -48,7 +49,7 @@ class BookingController extends Controller
     {
         // Debug: Log request data
         \Log::info('Booking request data:', $request->all());
-        
+
         if (Auth::check() && Auth::user()?->canAccessAdmin()) {
             return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
         }
@@ -57,7 +58,13 @@ class BookingController extends Controller
             $validated = $request->validated();
             \Log::info('Validated data:', $validated);
             $booking = $this->bookingService->createBooking($validated);
-            
+            // ✅ Log tạo booking
+            ActivityLog::create([
+                'user_id' => Auth::id(),
+                'action' => 'Đặt phòng',
+                'description' => 'Tạo booking #' . $booking->id,
+            ]);
+
             // Process guest information for admin bookings
             \Log::info('Processing guest data for booking ' . $booking->id, [
                 'guest1_name' => $request->get('guest1_name'),
@@ -65,7 +72,7 @@ class BookingController extends Controller
                 'guest2_name' => $request->get('guest2_name'),
                 'guest2_cccd' => $request->get('guest2_cccd')
             ]);
-            
+
             // Create guest 1 if provided
             if (!empty($request->get('guest1_name'))) {
                 \App\Models\BookingGuest::create([
@@ -77,7 +84,7 @@ class BookingController extends Controller
                 ]);
                 \Log::info('Created guest 1 for booking ' . $booking->id);
             }
-            
+
             // Create guest 2 if provided
             if (!empty($request->get('guest2_name'))) {
                 \App\Models\BookingGuest::create([
@@ -92,11 +99,11 @@ class BookingController extends Controller
 
             // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
-            $returnUrl    = route('payment.vnpay.return');
-            $orderInfo    = 'Dat phong Light Hotel #' . $booking->id;
-            $txnRef       = 'LIGHT' . $booking->id;
-            $amountVND    = (int) round($booking->total_price);
-            $bankCode     = $request->input('bank_code') ?: null;
+            $returnUrl = route('payment.vnpay.return');
+            $orderInfo = 'Dat phong Light Hotel #' . $booking->id;
+            $txnRef = 'LIGHT' . $booking->id;
+            $amountVND = (int) round($booking->total_price);
+            $bankCode = $request->input('bank_code') ?: null;
 
             $paymentUrl = $vnPayService->createPaymentUrl(
                 $txnRef,
@@ -130,17 +137,37 @@ class BookingController extends Controller
     public function checkIn(Booking $booking)
     {
         abort_unless($booking->isCheckinAllowed(), 403);
-        $booking->update(['actual_check_in' => now()]);
+
+        $booking->update([
+            'actual_check_in' => now()
+        ]);
+
+        // ✅ Ghi Activity Log
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'Check-in',
+            'description' => 'Check-in booking #' . $booking->id,
+        ]);
+
         return back()->with('success', 'Check-in thành công');
     }
 
     public function checkOut(Booking $booking)
     {
         abort_unless($booking->isCheckoutAllowed(), 403);
+
         $booking->update([
             'actual_check_out' => now(),
             'status' => 'completed',
         ]);
+
+        // ✅ Ghi Activity Log
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'Check-out',
+            'description' => 'Check-out booking #' . $booking->id,
+        ]);
+
         return back()->with('success', 'Check-out thành công');
     }
 
