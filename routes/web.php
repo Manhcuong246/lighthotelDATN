@@ -57,6 +57,8 @@ Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show')
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::get('/bookings/simple/create', [BookingController::class, 'createSimple'])->name('bookings.create-simple');
+Route::post('/bookings/simple', [BookingController::class, 'storeSimple'])->name('bookings.store-simple');
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 Route::get('/bookings/{booking}/cancel', [BookingCancellationController::class, 'show'])->name('bookings.cancel');
 Route::post('/bookings/{booking}/cancel', [BookingCancellationController::class, 'cancel'])->name('bookings.cancel.post');
@@ -105,7 +107,12 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::get('/bookings/{booking}/guest-info', [BookingAdminController::class, 'getGuestInfo'])->name('bookings.guest-info');
     Route::put('/bookings/{booking}/guest-info', [BookingAdminController::class, 'updateGuestInfo'])->name('bookings.update-guest-info');
+    Route::post('/bookings/{booking}/assign-room', [BookingAdminController::class, 'assignGuestToRoom'])->name('bookings.assign-room');
+    Route::get('/bookings/{booking}/available-rooms', [BookingAdminController::class, 'getAvailableRoomsForAssignment'])->name('bookings.available-rooms');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
+    Route::get('/bookings/{booking}/checkin-data', [BookingAdminController::class, 'getCheckInData'])->name('bookings.checkin-data');
+    Route::post('/bookings/{booking}/checkin-with-assignment', [BookingAdminController::class, 'checkInWithAssignment'])->name('admin.bookings.checkin-with-assignment');
+    Route::delete('/booking-guests/{bookingGuest}', [BookingAdminController::class, 'deleteBookingGuest'])->name('admin.booking-guests.delete');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');
     Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
     Route::post('/bookings/{booking}/extras', [BookingAdminController::class, 'storeBookingExtras'])->name('bookings.storeExtras');
