@@ -7,7 +7,7 @@
 {{-- ============================
      HERO SECTION
      ============================ --}}
-<section class="lh-hero mb-0">
+<section class="lh-hero mb-0" style="margin-top: -20px;">
     <div class="lh-hero-mesh" aria-hidden="true"></div>
     <div class="container lh-hero-inner">
         <div class="row align-items-start align-items-lg-center g-4 lh-hero-top-row">
@@ -24,7 +24,7 @@
                     <span class="lh-hero-pill"><i class="bi bi-headset"></i> Hỗ trợ 24/7</span>
                 </div>
             </div>
-            <div class="col-12 col-lg-4 d-flex justify-content-lg-end lh-hero-rating-wrap">
+            <div class="col-12 col-lg-4 d-flex justify-content-lg-end lh-rating-wrap">
                 <div class="lh-rating-chip mt-3 mt-lg-0">
                     <div class="lh-rating-score">{{ number_format($hotel?->rating_avg ?? 4.8, 1) }}</div>
                     <div class="lh-rating-label"><span class="text-warning">★★★★★</span><br><small>Tuyệt vời</small></div>

@@ -75,25 +75,24 @@ class NewBookingController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'check_in' => 'required|date|after_or_equal:today',
+            'check_in'  => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'full_name' => 'required|string|max:150',
-            'email' => 'required|email|max:150',
-            'phone' => 'required|string|max:20',
-            'rooms' => 'required|array|min:1',
-            'rooms.*.guests' => 'required|array|min:1',
-            'rooms.*.guests.*.name' => 'required|string|max:150',
-            'rooms.*.guests.*.cccd' => 'required|string|regex:/^[0-9]{12}$/',
+            'email'     => 'required|email|max:150',
+            'phone'     => 'required|string|max:20',
+            'rooms'     => 'required|integer|min:1|max:10',
+            'name'      => 'required|string|max:150|min:2',
+            'cccd'      => 'required|string|regex:/^[0-9]{12}$/',
             'payment_method' => 'required|in:cash,vnpay',
         ], [
-            'rooms.*.guests.*.cccd.regex' => 'CCCD phải gồm 12 số',
+            'cccd.regex' => 'CCCD phải gồm 12 số',
         ]);
 
         try {
             DB::beginTransaction();
 
             // Tính tổng giá dựa trên số phòng
-            $roomCount = count($request->rooms);
+            $roomCount = (int) $request->rooms;
             $totalPrice = $this->calculateTotalPrice($roomCount);
 
             // Tạo booking
@@ -108,20 +107,16 @@ class NewBookingController extends Controller
                 'payment_status' => 'pending',
             ]);
 
-            // Lưu thông tin khách cho từng phòng
-            foreach ($request->rooms as $roomIndex => $room) {
-                if (isset($room['guests'])) {
-                    foreach ($room['guests'] as $guestIndex => $guestData) {
-                        Guest::create([
-                            'booking_id' => $booking->id,
-                            'room_index' => $roomIndex,
-                            'name' => $guestData['name'],
-                            'cccd' => $guestData['cccd'],
-                            'checkin_status' => 'pending',
-                        ]);
-                    }
-                }
-            }
+            // Lưu thông tin 1 người đại diện duy nhất
+            Guest::create([
+                'booking_id'       => $booking->id,
+                'room_index'       => 0,
+                'name'             => $request->name,
+                'cccd'             => $request->cccd,
+                'type'             => 'adult',
+                'is_representative'=> 1,
+                'checkin_status'   => 'pending',
+            ]);
 
             DB::commit();
 

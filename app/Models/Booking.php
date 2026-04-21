@@ -172,7 +172,6 @@ class Booking extends Model
             ->orderBy('room_index')
             ->orderBy('id');
     }
-
     /**
      * Get guests grouped by room_index (legacy)
      */

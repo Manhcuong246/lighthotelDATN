@@ -8,9 +8,10 @@
         <h1 class="text-dark fw-bold mb-0">Đơn đặt phòng &amp; thanh toán</h1>
         <div class="d-flex flex-wrap gap-2">
             @if(auth()->user()->isAdmin())
-            <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Tạo đơn nhiều phòng"><i class="bi bi-layers"></i></a>
+            <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary">
+                <i class="bi bi-layers me-1"></i> Tạo đơn nhiều phòng
+            </a>
             @endif
-
             <div class="dropdown">
                 <button class="btn btn-light btn-sm position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell-fill fs-5" style="color: #ff6b6b;"></i>
