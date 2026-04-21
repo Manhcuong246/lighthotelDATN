@@ -30,11 +30,21 @@ use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
 {
+    /**
+     * Initialize controller with admin middleware.
+     * Ensures only authenticated admin users can access these routes.
+     */
     public function __construct()
     {
         $this->middleware('admin');
     }
 
+    /**
+     * Display a listing of all bookings with filtering and pagination.
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View
+     */
     public function index(Request $request)
     {
         $counts = [
