@@ -368,6 +368,12 @@
                     Hoàn tiền
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.room-changes*') ? 'active' : '' }}" href="{{ route('admin.room-changes.index') }}">
+                    <i class="bi bi-arrow-left-right"></i>
+                    Đổi phòng
+                </a>
+            </li>
             @endif
             @if(!auth()->user()->isAdmin())
             <li class="nav-item">
