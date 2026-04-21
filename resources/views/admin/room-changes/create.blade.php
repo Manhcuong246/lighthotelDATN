@@ -1,3 +1,18 @@
+@php
+    $reasons = config('room_changes.reasons', [
+        'guest_request' => 'Khách yêu cầu đổi phòng',
+        'room_issue'    => 'Phòng bị lỗi thiết bị',
+        'upgrade'       => 'Khách muốn nâng hạng',
+        'noise'         => 'Tiếng ồn / không gian ồn ào',
+        'view_request'  => 'Khách muốn đổi view',
+        'maintenance'   => 'Bảo trì phòng',
+        'emergency'     => 'Khẩn cấp kỹ thuật',
+        'other'         => 'Lý do khác',
+    ]);
+    $timeRestriction = config('room_changes.time_restriction_hour', 22);
+    $upgradePolicy = config('room_changes.upgrade_policy', 'add_to_folio');
+    $downgradePolicy = config('room_changes.downgrade_policy', 'credit');
+@endphp
 @extends('layouts.admin')
 
 @section('title', 'Đổi phòng')
@@ -141,7 +156,7 @@
                             <select name="new_room_id" id="new_room_id" class="form-select" required>
                                 <option value="">-- Chọn phòng cần đổi trước --</option>
                             </select>
-                            <div class="form-text">Danh sách phòng trống trong khoảng thởi gian đặt</div>
+                            <div class="form-text">Chỉ hiển thị phòng sẵn sàng (Ready/Clean) trong khoảng thời gian đặt</div>
                         </div>
 
                         <!-- Chi tiết phòng mới -->
@@ -151,6 +166,7 @@
                                     <div class="col-6">
                                         <div class="mb-1"><strong>Phòng mới:</strong> <span id="newDetailRoomName">—</span></div>
                                         <div class="mb-1"><strong>Loại:</strong> <span id="newDetailRoomType">—</span></div>
+                                        <div class="mb-1"><strong>Sức chứa:</strong> <span id="newDetailCapacity">—</span></div>
                                     </div>
                                     <div class="col-6">
                                         <div class="mb-1"><strong>Giá/đêm:</strong> <span id="newDetailPrice">—</span></div>
@@ -158,8 +174,22 @@
                                     </div>
                                 </div>
                                 <hr class="my-2">
-                                <div class="text-end">
-                                    <strong>Tổng chênh lệch:</strong> <span id="totalDiff" class="fs-5">—</span>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div><strong>Số đêm còn lại:</strong> <span id="newDetailRemainingNights" class="fw-bold">—</span></div>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <strong>Tổng chênh lệch:</strong> <span id="totalDiff" class="fs-5">—</span>
+                                    </div>
+                                </div>
+                                <!-- Loại đổi phòng -->
+                                <div class="mt-2" id="changeTypeInfo"></div>
+                                <!-- Cảnh báo sức chứa -->
+                                <div class="mt-2 d-none" id="capacityWarning">
+                                    <div class="alert alert-danger mb-0 py-1 small">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                        <span id="capacityWarningText"></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -174,19 +204,44 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label fw-bold">Lý do đổi phòng <span class="text-danger">*</span></label>
-                            <textarea name="reason" class="form-control" rows="3" 
-                                placeholder="Ví dụ: Khách yêu cầu phòng rộng hơn, Thiết bị phòng hỏng, Tiếng ồn..." 
-                                required>{{ old('reason') }}</textarea>
+                            <select name="reason" id="reasonSelect" class="form-select mb-2" required>
+                                <option value="">-- Chọn lý do --</option>
+                                @foreach($reasons as $key => $label)
+                                <option value="{{ $label }}" {{ old('reason') === $label ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <input type="text" name="reason_custom" id="reasonCustom" class="form-control d-none"
+                                placeholder="Nhập lý do cụ thể..." maxlength="500">
+                        </div>
+
+                        <!-- Khẩn cấp -->
+                        <div class="form-check mb-3">
+                            <input type="checkbox" name="is_emergency" id="isEmergency" class="form-check-input" value="1">
+                            <label class="form-check-label text-danger fw-bold" for="isEmergency">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>Trường hợp khẩn cấp
+                            </label>
+                            <div class="form-text">Bỏ qua giới hạn giờ đổi phòng (sau {{ $timeRestriction }}:00). Chỉ dùng cho trường hợp khẩn cấp kỹ thuật.</div>
                         </div>
 
                         <div class="alert alert-warning d-flex align-items-start">
                             <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
                             <div>
-                                <strong>Lưu ý:</strong>
+                                <strong>Quy tắc nghiệp vụ:</strong>
                                 <ul class="mb-0 small">
-                                    <li>Giá sẽ được tính lại theo giá phòng mới</li>
-                                    <li>Lịch sử đổi phòng sẽ được ghi nhận</li>
-                                    <li>Trạng thái phòng sẽ được cập nhật nếu đang trong kỳ lưu trú</li>
+                                    <li>Chỉ cho đổi sang phòng trạng thái <strong>sẵn sàng</strong> (Ready/Clean)</li>
+                                    @if($upgradePolicy === 'pay_now')
+                                    <li>Nâng hạng: Khách phải thanh toán bổ sung ngay</li>
+                                    @elseif($upgradePolicy === 'add_to_folio')
+                                    <li>Nâng hạng: Phí bổ sung ghi nợ vào hóa đơn tổng (Folio)</li>
+                                    @endif
+                                    @if($downgradePolicy === 'refund')
+                                    <li>Hạ hạng: Hoàn tiền ngay cho khách</li>
+                                    @elseif($downgradePolicy === 'credit')
+                                    <li>Hạ hạng: Số tiền chênh lệch ghi credit vào Folio</li>
+                                    @endif
+                                    <li>Phòng cũ sẽ tự động chuyển sang trạng thái <strong>"Cần dọn dẹp"</strong></li>
+                                    <li>Lệnh dọn phòng tự động gửi cho Housekeeping</li>
+                                    <li>Giới hạn giờ: Không đổi phòng sau {{ $timeRestriction }}:00 (trừ khẩn cấp)</li>
                                 </ul>
                             </div>
                         </div>
@@ -217,9 +272,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const newRoomSelect = document.getElementById('new_room_id');
     const newRoomDetails = document.getElementById('newRoomDetails');
     const btnSubmit = document.getElementById('btnSubmit');
+    const reasonSelect = document.getElementById('reasonSelect');
+    const reasonCustom = document.getElementById('reasonCustom');
+    const isEmergency = document.getElementById('isEmergency');
+    const changeTypeInfo = document.getElementById('changeTypeInfo');
+    const capacityWarning = document.getElementById('capacityWarning');
+    const capacityWarningText = document.getElementById('capacityWarningText');
 
     let currentPricePerNight = 0;
     let currentNights = 0;
+    let currentGuests = 0;
+    let availableRoomsData = [];
+
+    // Lý do: hiện input custom khi chọn "Lý do khác"
+    reasonSelect.addEventListener('change', function() {
+        if (this.value === 'Lý do khác') {
+            reasonCustom.classList.remove('d-none');
+            reasonCustom.required = true;
+            reasonCustom.focus();
+        } else {
+            reasonCustom.classList.add('d-none');
+            reasonCustom.required = false;
+        }
+    });
 
     // Bước 1: Load thông tin booking
     btnLoadBooking.addEventListener('click', loadBooking);
@@ -254,12 +329,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.data.forEach(room => {
                     const opt = document.createElement('option');
                     opt.value = room.room_id;
-                    opt.textContent = `${room.room_name} - ${room.room_type} - ${new Intl.NumberFormat('vi-VN').format(room.price_per_night)}₫/đêm`;
+                    const totalGuests = (room.adults || 0) + (room.children_6_11 || 0) + (room.children_0_5 || 0);
+                    opt.textContent = `${room.room_name} - ${room.room_type} - ${new Intl.NumberFormat('vi-VN').format(room.price_per_night)}₫/đêm (${totalGuests} khách)`;
                     opt.dataset.price = room.price_per_night;
                     opt.dataset.nights = room.nights;
                     opt.dataset.subtotal = room.subtotal;
                     opt.dataset.roomName = room.room_name;
                     opt.dataset.roomType = room.room_type;
+                    opt.dataset.guests = totalGuests;
                     oldRoomSelect.appendChild(opt);
                 });
 
@@ -283,6 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.value) {
             currentPricePerNight = parseFloat(selected.dataset.price) || 0;
             currentNights = parseInt(selected.dataset.nights) || 1;
+            currentGuests = parseInt(selected.dataset.guests) || 0;
 
             currentRoomDetails.classList.remove('d-none');
             document.getElementById('detailRoomName').textContent = selected.dataset.roomName;
@@ -313,6 +391,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (!data.success) return;
 
+                availableRoomsData = data.data;
                 newRoomSelect.innerHTML = '<option value="">-- Chọn phòng mới --</option>';
 
                 if (data.data.length === 0) {
@@ -320,34 +399,72 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                const sameType = data.data.filter(r => r.is_same_type);
-                const diffType = data.data.filter(r => !r.is_same_type);
+                // Nhóm theo loại đổi phòng: cùng hạng, nâng hạng, hạ hạng
+                const sameGrade = data.data.filter(r => r.change_type === 'same_grade');
+                const upgrades = data.data.filter(r => r.change_type === 'upgrade');
+                const downgrades = data.data.filter(r => r.change_type === 'downgrade');
 
-                if (sameType.length > 0) {
+                if (sameGrade.length > 0) {
                     const group = document.createElement('optgroup');
-                    group.label = 'Cùng loại phòng (khuyến nghị)';
-                    sameType.forEach(room => {
+                    group.label = '🔵 Cùng hạng (không phụ phí)';
+                    sameGrade.forEach(room => {
                         const opt = document.createElement('option');
                         opt.value = room.id;
-                        opt.textContent = `${room.name} - ${room.room_type?.name || 'N/A'} (${new Intl.NumberFormat('vi-VN').format(room.base_price)}₫)`;
+                        const capacityWarn = !room.has_capacity ? ' ⚠️ Quá tải' : '';
+                        opt.textContent = `${room.name} - ${room.room_type?.name || 'N/A'} (${new Intl.NumberFormat('vi-VN').format(room.base_price)}₫)${capacityWarn}`;
                         opt.dataset.price = room.base_price;
                         opt.dataset.name = room.name;
                         opt.dataset.type = room.room_type?.name || 'N/A';
+                        opt.dataset.maxGuests = room.max_guests;
+                        opt.dataset.hasCapacity = room.has_capacity ? '1' : '0';
+                        opt.dataset.changeType = room.change_type;
+                        opt.dataset.remainingNights = room.remaining_nights;
+                        opt.dataset.totalDiff = room.total_price_difference;
+                        opt.dataset.priceDiffPerNight = room.price_diff_per_night;
                         group.appendChild(opt);
                     });
                     newRoomSelect.appendChild(group);
                 }
 
-                if (diffType.length > 0) {
+                if (upgrades.length > 0) {
                     const group = document.createElement('optgroup');
-                    group.label = 'Khác loại phòng';
-                    diffType.forEach(room => {
+                    group.label = '⬆️ Nâng hạng (phụ phí)';
+                    upgrades.forEach(room => {
                         const opt = document.createElement('option');
                         opt.value = room.id;
-                        opt.textContent = `${room.name} - ${room.room_type?.name || 'N/A'} (${new Intl.NumberFormat('vi-VN').format(room.base_price)}₫)`;
+                        const capacityWarn = !room.has_capacity ? ' ⚠️ Quá tải' : '';
+                        opt.textContent = `${room.name} - ${room.room_type?.name || 'N/A'} (${new Intl.NumberFormat('vi-VN').format(room.base_price)}₫) +${new Intl.NumberFormat('vi-VN').format(room.price_diff_per_night)}₫/đêm${capacityWarn}`;
                         opt.dataset.price = room.base_price;
                         opt.dataset.name = room.name;
                         opt.dataset.type = room.room_type?.name || 'N/A';
+                        opt.dataset.maxGuests = room.max_guests;
+                        opt.dataset.hasCapacity = room.has_capacity ? '1' : '0';
+                        opt.dataset.changeType = room.change_type;
+                        opt.dataset.remainingNights = room.remaining_nights;
+                        opt.dataset.totalDiff = room.total_price_difference;
+                        opt.dataset.priceDiffPerNight = room.price_diff_per_night;
+                        group.appendChild(opt);
+                    });
+                    newRoomSelect.appendChild(group);
+                }
+
+                if (downgrades.length > 0) {
+                    const group = document.createElement('optgroup');
+                    group.label = '⬇️ Hạ hạng (hoàn tiền)';
+                    downgrades.forEach(room => {
+                        const opt = document.createElement('option');
+                        opt.value = room.id;
+                        const capacityWarn = !room.has_capacity ? ' ⚠️ Quá tải' : '';
+                        opt.textContent = `${room.name} - ${room.room_type?.name || 'N/A'} (${new Intl.NumberFormat('vi-VN').format(room.base_price)}₫) ${new Intl.NumberFormat('vi-VN').format(room.price_diff_per_night)}₫/đêm${capacityWarn}`;
+                        opt.dataset.price = room.base_price;
+                        opt.dataset.name = room.name;
+                        opt.dataset.type = room.room_type?.name || 'N/A';
+                        opt.dataset.maxGuests = room.max_guests;
+                        opt.dataset.hasCapacity = room.has_capacity ? '1' : '0';
+                        opt.dataset.changeType = room.change_type;
+                        opt.dataset.remainingNights = room.remaining_nights;
+                        opt.dataset.totalDiff = room.total_price_difference;
+                        opt.dataset.priceDiffPerNight = room.price_diff_per_night;
                         group.appendChild(opt);
                     });
                     newRoomSelect.appendChild(group);
@@ -362,20 +479,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Bước 3: Chọn phòng mới -> Hiện chênh lệch giá
+    // Bước 3: Chọn phòng mới -> Hiện chênh lệch giá & thông tin nghiệp vụ
     newRoomSelect.addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
 
         if (this.value && selected.dataset.price) {
             const newPrice = parseFloat(selected.dataset.price);
-            const diffPerNight = newPrice - currentPricePerNight;
-            const totalDiff = diffPerNight * currentNights;
+            const diffPerNight = parseFloat(selected.dataset.priceDiffPerNight || (newPrice - currentPricePerNight));
+            const remainingNights = parseInt(selected.dataset.remainingNights || currentNights);
+            const totalDiff = parseFloat(selected.dataset.totalDiff || (diffPerNight * remainingNights));
+            const changeType = selected.dataset.changeType || 'same_grade';
+            const maxGuests = parseInt(selected.dataset.maxGuests || 0);
+            const hasCapacity = selected.dataset.hasCapacity === '1';
 
             newRoomDetails.classList.remove('d-none');
             document.getElementById('newDetailRoomName').textContent = selected.dataset.name;
             document.getElementById('newDetailRoomType').textContent = selected.dataset.type;
+            document.getElementById('newDetailCapacity').textContent = maxGuests + ' khách';
             document.getElementById('newDetailPrice').textContent = new Intl.NumberFormat('vi-VN').format(newPrice) + ' ₫';
+            document.getElementById('newDetailRemainingNights').textContent = remainingNights + ' đêm';
 
+            // Chênh lệch / đêm
             const diffEl = document.getElementById('newDetailDiff');
             if (diffPerNight > 0) {
                 diffEl.innerHTML = `<span class="text-danger">+${new Intl.NumberFormat('vi-VN').format(diffPerNight)} ₫</span>`;
@@ -385,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 diffEl.innerHTML = '<span class="text-muted">Không đổi</span>';
             }
 
+            // Tổng chênh lệch
             const totalDiffEl = document.getElementById('totalDiff');
             if (totalDiff > 0) {
                 totalDiffEl.innerHTML = `<span class="text-danger fw-bold">+${new Intl.NumberFormat('vi-VN').format(totalDiff)} ₫</span>`;
@@ -394,19 +519,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 totalDiffEl.innerHTML = '<span class="text-muted fw-bold">Không đổi</span>';
             }
 
-            btnSubmit.disabled = false;
+            // Loại đổi phòng
+            const changeTypeLabels = {
+                'same_grade': '<span class="badge bg-secondary">Cùng hạng</span> Không phụ phí',
+                'upgrade': '<span class="badge bg-primary">Nâng hạng</span> Phí bổ sung = (Giá mới - Giá cũ) × ' + remainingNights + ' đêm',
+                'downgrade': '<span class="badge bg-success">Hạ hạng</span> Hoàn tiền hoặc ghi credit',
+            };
+            changeTypeInfo.innerHTML = changeTypeLabels[changeType] || '';
+
+            // Cảnh báo sức chứa
+            if (!hasCapacity) {
+                capacityWarning.classList.remove('d-none');
+                capacityWarningText.textContent = `Phòng mới chỉ chứa tối đa ${maxGuests} khách, hiện có ${currentGuests} khách!`;
+            } else {
+                capacityWarning.classList.add('d-none');
+            }
+
+            btnSubmit.disabled = !hasCapacity;
         } else {
             newRoomDetails.classList.add('d-none');
+            capacityWarning.classList.add('d-none');
+            changeTypeInfo.innerHTML = '';
             btnSubmit.disabled = true;
         }
     });
+
+    // Xử lý lý do tùy chọn
+    function getReasonValue() {
+        if (reasonSelect.value === 'Lý do khác' && reasonCustom.value.trim()) {
+            return reasonCustom.value.trim();
+        }
+        return reasonSelect.value;
+    }
 
     // Confirm trước khi submit
     document.getElementById('roomChangeForm').addEventListener('submit', function(e) {
         const newRoom = newRoomSelect.options[newRoomSelect.selectedIndex];
         const roomName = newRoom?.dataset?.name;
-        if (!confirm(`Bạn có chắc muốn đổi sang phòng ${roomName}?`)) {
+        const reason = getReasonValue();
+        const isEmergencyChecked = isEmergency.checked;
+
+        let confirmMsg = `Bạn có chắc muốn đổi sang phòng ${roomName}?`;
+        if (isEmergencyChecked) {
+            confirmMsg += '\n\n⚠️ BẠN ĐANG ĐÁNH DẤU KHẨN CẤP - Giới hạn giờ sẽ bị bỏ qua.';
+        }
+        if (!confirm(confirmMsg)) {
             e.preventDefault();
+        } else {
+            // Nếu lý do là "Lý do khác", thay thế giá trị reason
+            if (reasonSelect.value === 'Lý do khác' && reasonCustom.value.trim()) {
+                // Tạo hidden input với lý do custom
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'reason';
+                hiddenInput.value = reasonCustom.value.trim();
+                this.appendChild(hiddenInput);
+                reasonSelect.removeAttribute('name');
+            }
         }
     });
 
