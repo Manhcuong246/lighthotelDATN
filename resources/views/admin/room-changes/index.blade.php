@@ -40,8 +40,16 @@
         <div class="col-6 col-md-4 col-lg">
             <div class="card shadow-sm border-0 rounded-3">
                 <div class="card-body text-center py-3">
-                    <div class="text-muted small">Tháng này</div>
-                    <div class="fs-4 fw-bold text-info">{{ $stats['this_month'] }}</div>
+                    <div class="text-muted small">Nâng hạng</div>
+                    <div class="fs-4 fw-bold text-primary">{{ $stats['upgrades'] }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg">
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-body text-center py-3">
+                    <div class="text-muted small">Hạ hạng</div>
+                    <div class="fs-4 fw-bold text-success">{{ $stats['downgrades'] }}</div>
                 </div>
             </div>
         </div>
@@ -91,6 +99,16 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label small">Loại đổi phòng</label>
+                    <select name="change_type" class="form-select form-select-sm">
+                        <option value="">Tất cả</option>
+                        <option value="same_grade" {{ request('change_type') === 'same_grade' ? 'selected' : '' }}>Cùng hạng</option>
+                        <option value="upgrade" {{ request('change_type') === 'upgrade' ? 'selected' : '' }}>Nâng hạng</option>
+                        <option value="downgrade" {{ request('change_type') === 'downgrade' ? 'selected' : '' }}>Hạ hạng</option>
+                        <option value="emergency" {{ request('change_type') === 'emergency' ? 'selected' : '' }}>Khẩn cấp</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label small">Từ ngày</label>
                     <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
                 </div>
@@ -120,10 +138,11 @@
                             <th>Từ phòng</th>
                             <th></th>
                             <th>Đến phòng</th>
+                            <th>Loại đổi</th>
+                            <th>Đêm còn lại</th>
                             <th>Chênh lệch</th>
-                            <th>Lý do</th>
                             <th>Người đổi</th>
-                            <th>Thởi gian</th>
+                            <th>Thời gian</th>
                             <th class="text-center pe-3">Thao tác</th>
                         </tr>
                     </thead>
@@ -162,6 +181,17 @@
                                 @endif
                             </td>
                             <td>
+                                <span class="badge {{ $h->change_type_badge }}">{{ $h->change_type_label }}</span>
+                            </td>
+                            <td class="text-center">
+                                @if($h->remaining_nights > 0)
+                                    <span class="fw-semibold">{{ $h->remaining_nights }}</span>
+                                    <small class="text-muted">đêm</small>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td>
                                 @php $diff = $h->price_difference ?? 0; @endphp
                                 @if($diff > 0)
                                     <span class="text-danger fw-semibold">+{{ number_format($diff, 0, ',', '.') }} ₫</span>
@@ -170,11 +200,6 @@
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif
-                            </td>
-                            <td>
-                                <span class="d-inline-block text-truncate" style="max-width: 150px;" title="{{ $h->reason }}">
-                                    {{ Str::limit($h->reason, 30) }}
-                                </span>
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark">
@@ -193,7 +218,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="11" class="text-center py-5">
+                            <td colspan="12" class="text-center py-5">
                                 <div class="text-muted">
                                     <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                     Chưa có lịch sử đổi phòng nào
