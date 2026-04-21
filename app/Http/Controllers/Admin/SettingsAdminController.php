@@ -48,6 +48,31 @@ class SettingsAdminController extends Controller
 
     public function updateSiteContent(Request $request)
     {
+        // Xử lý cập nhật hàng loạt (nếu có array contents)
+        if ($request->has('contents')) {
+            foreach ($request->contents as $item) {
+                if (!empty($item['type'])) {
+                    $content = null;
+                    if (!empty($item['content_id'])) {
+                        $content = SiteContent::find($item['content_id']);
+                    }
+                    
+                    if ($content) {
+                        $content->update(['content' => $item['content']]);
+                    } else {
+                        SiteContent::create([
+                            'type' => $item['type'],
+                            'title' => $item['type'], // Default title to type
+                            'content' => $item['content'],
+                            'is_active' => true
+                        ]);
+                    }
+                }
+            }
+            return redirect()->back()->with('success', 'Cập nhật toàn bộ chính sách thành công.');
+        }
+
+        // Xử lý cập nhật đơn lẻ (như cũ)
         $type = $request->input('type');
         $contentId = $request->input('content_id');
         
@@ -63,7 +88,7 @@ class SettingsAdminController extends Controller
                 $content->update($validated);
             }
         } else {
-            $content = SiteContent::create(array_merge($validated, ['type' => $type]));
+            SiteContent::create(array_merge($validated, ['type' => $type]));
         }
 
         return redirect()->back()->with('success', 'Cập nhật nội dung trang web thành công.');
