@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingLog;
 use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\Room;
@@ -14,74 +15,163 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Service xử lý chức năng đổi phòng
- * 
- * Chức năng:
- * - Kiểm tra tính khả dụng của phòng mới
- * - Thực hiện đổi phòng với transaction an toàn
- * - Ghi lại lịch sử đổi phòng
- * - Cập nhật giá và payment nếu cần
+ * Service xử lý chức năng đổi phòng theo nghiệp vụ khách sạn
+ *
+ * Luồng trực tiếp (Lễ tân/Quản lý):
+ *   1. Tiếp nhận yêu cầu → 2. Kiểm tra tình trạng phòng
+ *   3. Tính chênh lệch (cùng hạng $0 / nâng hạng tính theo số đêm còn lại)
+ *   4. Xác nhận khách → 5. Cập nhật PMS (phòng cũ → Dirty, phòng mới → Occupied)
+ *   6. Bàn giao khóa
+ *
+ * Luồng tự động (App/Website):
+ *   1. Chọn đổi phòng → 2. Kiểm tra chính sách → 3. Chọn phòng mới
+ *   4. Thanh toán chênh lệch → 5. Gửi Email/Notification
+ *
+ * Business Rules:
+ *   - Chỉ cho đổi sang phòng status = available (Ready/Clean)
+ *   - Phòng mới rẻ hơn → hoàn tiền hoặc credit
+ *   - Phòng mới đắt hơn → thanh toán ngay hoặc ghi nợ Folio
+ *   - Tự động push lệnh dọn phòng cho Housekeeping khi rời phòng cũ
+ *   - Giới hạn giờ đổi phòng (mặc định 22:00) trừ trường hợp khẩn cấp
+ *   - Phải kiểm tra sức chứa phòng mới đủ cho số lượng khách
  */
 class RoomChangeService
 {
     /**
-     * Lấy danh sách phòng có thể đổi cho một booking room cụ thể
-     *
-     * @param Booking $booking
-     * @param int $currentRoomId
-     * @return array
+     * Loại đổi phòng
+     */
+    public const TYPE_SAME_GRADE  = 'same_grade';   // Cùng hạng (không phụ phí)
+    public const TYPE_UPGRADE     = 'upgrade';       // Nâng hạng (phụ phí)
+    public const TYPE_DOWNGRADE   = 'downgrade';     // Hạ hạng (hoàn tiền)
+    public const TYPE_EMERGENCY   = 'emergency';     // Khẩn cấp (hỏng thiết bị)
+
+    /**
+     * Lý do đổi phòng mặc định
+     */
+    public const REASONS = [
+        'guest_request'    => 'Khách yêu cầu đổi phòng',
+        'room_issue'       => 'Phòng bị lỗi thiết bị',
+        'upgrade'          => 'Khách muốn nâng hạng',
+        'noise'            => 'Tiếng ồn / không gian ồn ào',
+        'view_request'     => 'Khách muốn đổi view',
+        'maintenance'      => 'Bảo trì phòng',
+        'emergency'        => 'Khẩn cấp kỹ thuật',
+        'other'            => 'Lý do khác',
+    ];
+
+    /**
+     * Kiểm tra xem có được đổi phòng vào thời điểm hiện tại không
+     * Business rule: Không cho đổi sau giờ giới hạn trừ khẩn cấp
+     */
+    public function isWithinAllowedTime(?string $reason = null): bool
+    {
+        // Lý do khẩn cấp thì luôn cho phép
+        if ($reason === self::TYPE_EMERGENCY || $reason === 'emergency') {
+            return true;
+        }
+
+        $deadline = (int) config('room_changes.time_restriction_hour', 22);
+        $now = Carbon::now();
+
+        // Nếu sau giờ giới hạn và không phải khẩn cấp → chặn
+        return $now->hour < $deadline;
+    }
+
+    /**
+     * Tính số đêm còn lại từ hiện tại đến check-out
+     * Công thức: Phí bổ sung = (Giá mới - Giá cũ) × Số đêm còn lại
+     */
+    public function calculateRemainingNights(Booking $booking): int
+    {
+        $now = Carbon::now()->startOfDay();
+        $checkOut = Carbon::parse($booking->check_out)->startOfDay();
+
+        if ($now >= $checkOut) {
+            return 0; // Đã quá hạn
+        }
+
+        $checkIn = Carbon::parse($booking->check_in)->startOfDay();
+
+        // Nếu chưa đến ngày check-in → tính toàn bộ số đêm
+        if ($now < $checkIn) {
+            return $checkIn->diffInDays($checkOut);
+        }
+
+        // Đang trong kỳ lưu trú → tính từ hôm nay đến check-out
+        return $now->diffInDays($checkOut);
+    }
+    /**
+     * Lấy danh sách phòng có thể đổi - Business rule: chỉ status = available (Ready/Clean)
      */
     public function getAvailableRoomsForChange(Booking $booking, int $currentRoomId): array
     {
         $booking->load('bookingRooms.room');
-        
-        // Lấy thông tin booking room hiện tại
         $bookingRoom = $booking->bookingRooms->firstWhere('room_id', $currentRoomId);
-        if (!$bookingRoom) {
-            return [];
-        }
+        if (!$bookingRoom) return [];
 
         $currentRoom = $bookingRoom->room;
-        $checkIn = Carbon::parse($booking->check_in);
         $checkOut = Carbon::parse($booking->check_out);
-        
-        // Lấy danh sách phòng đã được đặt trong khoảng thởi gian này (trừ booking hiện tại)
-        $bookedRoomIds = RoomBookedDate::whereBetween('booked_date', [$checkIn->toDateString(), $checkOut->copy()->subDay()->toDateString()])
+        $remainingNights = $this->calculateRemainingNights($booking);
+        $totalGuests = $bookingRoom->adults + $bookingRoom->children_6_11 + $bookingRoom->children_0_5;
+
+        // Phòng đã đặt trong khoảng còn lại (trừ booking hiện tại)
+        $bookedRoomIds = RoomBookedDate::whereBetween('booked_date', [
+                Carbon::now()->startOfDay()->toDateString(),
+                $checkOut->copy()->subDay()->toDateString()
+            ])
             ->whereHas('booking', function ($q) use ($booking) {
                 $q->where('id', '!=', $booking->id)
                   ->whereIn('status', ['pending', 'confirmed', 'checked_in']);
             })
-            ->distinct()
-            ->pluck('room_id')
-            ->toArray();
+            ->distinct()->pluck('room_id')->toArray();
 
-        // Query các phòng khả dụng
+        // CHỈ lấy phòng available (Ready/Clean) - Business rule
         $query = Room::with('roomType')
             ->where('id', '!=', $currentRoomId)
-            ->whereNotIn('id', $bookedRoomIds);
+            ->whereNotIn('id', $bookedRoomIds)
+            ->where('status', 'available');
 
-        // Ưu tiên cùng loại phòng
+        // Sắp xếp: cùng hạng → nâng hạng → hạ hạng
         if ($currentRoom && $currentRoom->room_type_id) {
-            $query->orderByRaw('CASE WHEN room_type_id = ? THEN 0 ELSE 1 END', [$currentRoom->room_type_id]);
+            $currentPrice = $currentRoom->catalogueBasePrice();
+            $query->orderByRaw("
+                CASE 
+                    WHEN room_type_id = ? THEN 0
+                    WHEN (SELECT price FROM room_types WHERE room_types.id = rooms.room_type_id AND room_types.deleted_at IS NULL) > ? THEN 1
+                    ELSE 2
+                END ASC
+            ", [$currentRoom->room_type_id, $currentPrice]);
         }
 
-        $rooms = $query->get();
-
-        return $rooms->map(function ($room) use ($currentRoom) {
+        return $query->get()->map(function ($room) use ($currentRoom, $remainingNights, $totalGuests) {
             $isSameType = $currentRoom && $room->room_type_id === $currentRoom->room_type_id;
-            $priceDiff = $room->catalogueBasePrice() - ($currentRoom ? $currentRoom->catalogueBasePrice() : 0);
-            
+            $currentPrice = $currentRoom ? $currentRoom->catalogueBasePrice() : 0;
+            $newPrice = $room->catalogueBasePrice();
+            $priceDiffPerNight = $newPrice - $currentPrice;
+
+            $changeType = self::TYPE_SAME_GRADE;
+            if ($priceDiffPerNight > 0) $changeType = self::TYPE_UPGRADE;
+            elseif ($priceDiffPerNight < 0) $changeType = self::TYPE_DOWNGRADE;
+
+            $totalDiff = $priceDiffPerNight * $remainingNights;
+            $maxGuests = $room->catalogueMaxGuests();
+
             return [
-                'id' => $room->id,
-                'name' => $room->name,
-                'room_number' => $room->room_number ?? $room->name,
-                'room_type' => $room->roomType,
-                'base_price' => $room->catalogueBasePrice(),
-                'max_guests' => $room->max_guests,
-                'is_same_type' => $isSameType,
-                'price_difference' => $priceDiff,
-                'status' => $room->status,
-                'is_available_now' => $room->status === 'available',
+                'id'                     => $room->id,
+                'name'                   => $room->name,
+                'room_number'            => $room->room_number ?? $room->name,
+                'room_type'              => $room->roomType ? ['id' => $room->roomType->id, 'name' => $room->roomType->name, 'price' => $room->roomType->price ?? 0] : null,
+                'base_price'             => $newPrice,
+                'max_guests'             => $maxGuests,
+                'is_same_type'           => $isSameType,
+                'change_type'            => $changeType,
+                'price_diff_per_night'   => $priceDiffPerNight,
+                'remaining_nights'       => $remainingNights,
+                'total_price_difference' => $totalDiff,
+                'has_capacity'           => $maxGuests >= $totalGuests,
+                'current_guests'         => $totalGuests,
+                'status'                 => $room->status,
+                'is_available_now'       => $room->status === 'available',
             ];
         })->toArray();
     }
@@ -116,13 +206,16 @@ class RoomChangeService
     }
 
     /**
-     * Thực hiện đổi phòng
+     * Thực hiện đổi phòng theo nghiệp vụ khách sạn
+     *
+     * Luồng: Validation → Execution → Housekeeping → Payment → Logging
      *
      * @param Booking $booking
      * @param int $oldRoomId
      * @param int $newRoomId
      * @param string|null $reason
      * @param int|null $changedBy
+     * @param bool $isEmergency Bỏ qua giới hạn giờ
      * @return array
      * @throws \Exception
      */
@@ -131,30 +224,75 @@ class RoomChangeService
         int $oldRoomId, 
         int $newRoomId, 
         ?string $reason = null, 
-        ?int $changedBy = null
+        ?int $changedBy = null,
+        bool $isEmergency = false
     ): array {
-        return DB::transaction(function () use ($booking, $oldRoomId, $newRoomId, $reason, $changedBy) {
-            // 1. Kiểm tra phòng mới có khả dụng không
-            if (!$this->isRoomAvailable($newRoomId, $booking->check_in, $booking->check_out, $booking->id)) {
-                throw new \Exception('Phòng mới đã được đặt trong khoảng thởi gian này');
-            }
+        // === VALIDATION (Bước 2: Kiểm tra tình trạng phòng) ===
 
-            // 2. Lấy thông tin
-            $newRoom = Room::with('roomType')->findOrFail($newRoomId);
-            $bookingRoom = BookingRoom::where('booking_id', $booking->id)
-                ->where('room_id', $oldRoomId)
-                ->firstOrFail();
+        // Kiểm tra giới hạn giờ (trừ khẩn cấp)
+        if (!$isEmergency && !$this->isWithinAllowedTime($reason)) {
+            $deadline = config('room_changes.time_restriction_hour', 22);
+            throw new \Exception("Không thể đổi phòng sau {$deadline}:00. Chỉ cho phép trong trường hợp khẩn cấp.");
+        }
 
-            $oldRoom = Room::find($oldRoomId);
+        // Kiểm tra phòng mới có khả dụng không
+        if (!$this->isRoomAvailable($newRoomId, $booking->check_in, $booking->check_out, $booking->id)) {
+            throw new \Exception('Phòng mới đã được đặt trong khoảng thời gian này');
+        }
+
+        $newRoom = Room::with('roomType')->findOrFail($newRoomId);
+
+        // Business rule: Phòng mới phải status = available (Ready/Clean)
+        if ($newRoom->status !== 'available') {
+            throw new \Exception('Phòng mới phải ở trạng thái sẵn sàng (Ready/Clean) mới được đổi sang.');
+        }
+
+        $bookingRoom = BookingRoom::where('booking_id', $booking->id)
+            ->where('room_id', $oldRoomId)
+            ->firstOrFail();
+
+        $oldRoom = Room::find($oldRoomId);
+
+        // Kiểm tra sức chứa phòng mới (Bước 2: Validation)
+        $totalGuests = $bookingRoom->adults + $bookingRoom->children_6_11 + $bookingRoom->children_0_5;
+        $maxGuests = $newRoom->catalogueMaxGuests();
+        if ($totalGuests > $maxGuests) {
+            throw new \Exception("Phòng mới chỉ chứa tối đa {$maxGuests} khách, hiện tại có {$totalGuests} khách.");
+        }
+
+        // === EXECUTION ===
+        return DB::transaction(function () use ($booking, $oldRoomId, $newRoomId, $newRoom, $bookingRoom, $oldRoom, $reason, $changedBy, $isEmergency, $totalGuests) {
             $nights = $bookingRoom->nights;
+            $remainingNights = $this->calculateRemainingNights($booking);
             $oldPricePerNight = $bookingRoom->price_per_night;
 
-            // 3. Tính toán giá mới
-            $newPricePerNight = $this->calculateNewPrice($booking, $newRoom, $oldPricePerNight);
-            $newSubtotal = $newPricePerNight * $nights;
-            $oldSubtotal = $bookingRoom->subtotal;
-            $priceDifference = $newSubtotal - $oldSubtotal;
+            // === Bước 3: Tính chênh lệch ===
+            // Công thức: Phí bổ sung = (Giá mới - Giá cũ) × Số đêm còn lại
+            $newPricePerNight = $this->calculateNewPrice($oldRoom, $newRoom, $oldPricePerNight);
 
+            // Xác định loại đổi phòng
+            $changeType = self::TYPE_SAME_GRADE;
+            if ($newPricePerNight > $oldPricePerNight) $changeType = self::TYPE_UPGRADE;
+            elseif ($newPricePerNight < $oldPricePerNight) $changeType = self::TYPE_DOWNGRADE;
+            if ($isEmergency) $changeType = self::TYPE_EMERGENCY;
+
+            // Tính chênh lệch theo số đêm còn lại (nếu đã check-in)
+            // Chưa check-in: tính toàn bộ booking
+            $isCheckedIn = $booking->actual_check_in !== null;
+            if ($isCheckedIn && $remainingNights > 0) {
+                // Đã check-in: chỉ tính chênh lệch cho số đêm còn lại
+                $nightsAlreadyUsed = $nights - $remainingNights;
+                $oldSubtotal = $oldPricePerNight * $nights;
+                $newSubtotal = ($oldPricePerNight * $nightsAlreadyUsed) + ($newPricePerNight * $remainingNights);
+                $priceDifference = $newSubtotal - $oldSubtotal;
+            } else {
+                // Chưa check-in: tính lại toàn bộ
+                $newSubtotal = $newPricePerNight * $nights;
+                $oldSubtotal = $bookingRoom->subtotal;
+                $priceDifference = $newSubtotal - $oldSubtotal;
+            }
+
+            // === Bước 5: Cập nhật PMS ===
             // 4. Cập nhật booking_rooms
             $bookingRoom->update([
                 'room_id' => $newRoomId,
@@ -165,45 +303,55 @@ class RoomChangeService
             // 5. Cập nhật room_booked_dates
             $this->updateRoomBookedDates($booking, $oldRoomId, $newRoomId);
 
-            // 6. Cập nhật trạng thái phòng nếu đang trong thởi gian ở
-            $this->updateRoomStatuses($oldRoomId, $newRoomId, $booking);
+            // 6. Cập nhật trạng thái phòng
+            // Business rule: Phòng cũ → "cleaning" (Dirty/Cần dọn dẹp)
+            //               Phòng mới → "occupied" (Đang sử dụng)
+            $oldRoomStatus = $this->updateRoomStatuses($oldRoomId, $newRoomId, $booking);
 
             // 7. Tính lại tổng tiền booking
             $newTotalPrice = $this->recalculateBookingTotal($booking);
 
             // 8. Ghi lịch sử đổi phòng
             $history = $this->createChangeHistory(
-                $booking->id,
-                $oldRoomId,
-                $newRoomId,
-                $reason,
-                $changedBy,
-                $oldPricePerNight,
-                $newPricePerNight,
-                $priceDifference
+                $booking->id, $oldRoomId, $newRoomId, $reason, $changedBy,
+                $oldPricePerNight, $newPricePerNight, $priceDifference,
+                $changeType, $remainingNights, $oldRoomStatus
             );
 
-            // 9. Cập nhật payment nếu cần
-            $paymentUpdate = $this->updatePaymentIfNeeded($booking, $newTotalPrice);
+            // 9. Xử lý tài chính (Bước 3 tiếp)
+            $paymentUpdate = $this->handleFinancialAdjustment($booking, $newTotalPrice, $priceDifference);
 
-            // 10. Ghi log
+            // 10. Ghi BookingLog
+            BookingLog::create([
+                'booking_id'  => $booking->id,
+                'old_status'  => $booking->status,
+                'new_status'  => $booking->status,
+                'notes'       => "Đổi phòng: " . ($oldRoom?->name ?? '#'.$oldRoomId) . " → " . $newRoom->name . ($reason ? " ({$reason})" : ''),
+                'changed_at'  => now(),
+            ]);
+
+            // 11. Ghi log hệ thống
             Log::info('Room change completed', [
-                'booking_id' => $booking->id,
-                'from_room_id' => $oldRoomId,
-                'to_room_id' => $newRoomId,
-                'price_difference' => $priceDifference,
-                'changed_by' => $changedBy,
+                'booking_id'      => $booking->id,
+                'from_room_id'    => $oldRoomId,
+                'to_room_id'      => $newRoomId,
+                'change_type'     => $changeType,
+                'price_difference'=> $priceDifference,
+                'remaining_nights'=> $remainingNights,
+                'changed_by'      => $changedBy,
             ]);
 
             return [
-                'success' => true,
-                'history_id' => $history->id,
-                'old_room' => $oldRoom?->name ?? 'Unknown',
-                'new_room' => $newRoom->name,
-                'old_price' => $oldSubtotal,
-                'new_price' => $newSubtotal,
+                'success'          => true,
+                'history_id'       => $history->id,
+                'old_room'         => $oldRoom?->name ?? 'Unknown',
+                'new_room'         => $newRoom->name,
+                'old_price'        => $oldSubtotal,
+                'new_price'        => $newSubtotal,
                 'price_difference' => $priceDifference,
-                'payment_updated' => $paymentUpdate,
+                'change_type'      => $changeType,
+                'remaining_nights' => $remainingNights,
+                'payment_updated'  => $paymentUpdate,
             ];
         });
     }
@@ -211,15 +359,13 @@ class RoomChangeService
     /**
      * Tính giá mới cho phòng
      */
-    private function calculateNewPrice(Booking $booking, Room $newRoom, float $oldPricePerNight): float
+    private function calculateNewPrice(?Room $oldRoom, Room $newRoom, float $oldPricePerNight): float
     {
-        // Nếu cùng loại phòng, giữ nguyên giá cũ
-        $oldRoom = $booking->bookingRooms->firstWhere('room_id', $booking->bookingRooms->first()->room_id);
-        if ($oldRoom && $oldRoom->room && $oldRoom->room->room_type_id === $newRoom->room_type_id) {
+        // Cùng loại phòng → giữ nguyên giá cũ
+        if ($oldRoom && $oldRoom->room_type_id === $newRoom->room_type_id) {
             return $oldPricePerNight;
         }
-
-        // Nếu khác loại phòng, lấy giá catalogue
+        // Khác loại phòng → lấy giá catalogue
         return $newRoom->catalogueBasePrice();
     }
 
@@ -253,19 +399,41 @@ class RoomChangeService
     }
 
     /**
-     * Cập nhật trạng thái phòng
+     * Cập nhật trạng thái phòng theo nghiệp vụ KS
+     * Business rule: Phòng cũ → cleaning (Dirty/Cần dọn dẹp), Phòng mới → occupied
+     * Tự động push lệnh dọn phòng cho Housekeeping
      */
-    private function updateRoomStatuses(int $oldRoomId, int $newRoomId, Booking $booking): void
+    private function updateRoomStatuses(int $oldRoomId, int $newRoomId, Booking $booking): string
     {
         $today = now()->toDateString();
         $checkIn = $booking->check_in->toDateString();
         $checkOut = $booking->check_out->toDateString();
+        $oldRoomStatus = Room::find($oldRoomId)?->status ?? 'available';
 
-        // Nếu đang trong thởi gian ở
+        // Nếu đang trong kỳ lưu trú
         if ($today >= $checkIn && $today < $checkOut) {
-            Room::where('id', $oldRoomId)->update(['status' => 'available']);
+            // Phòng cũ → cleaning (Dirty) - tự động push lệnh dọn cho Housekeeping
+            Room::where('id', $oldRoomId)->update([
+                'status'           => 'cleaning',
+                'maintenance_note' => 'Cần dọn dẹp sau khi khách đổi phòng từ đơn #' . $booking->id,
+            ]);
+            // Phòng mới → occupied
             Room::where('id', $newRoomId)->update(['status' => 'occupied']);
+
+            Log::info('Housekeeping notification: room needs cleaning', [
+                'room_id'    => $oldRoomId,
+                'booking_id' => $booking->id,
+                'action'     => 'auto_cleaning_after_room_change',
+            ]);
+        } else {
+            // Chưa check-in hoặc đã check-out → phòng cũ available, phòng mới booked
+            Room::where('id', $oldRoomId)->update(['status' => 'available']);
+            if ($today < $checkIn) {
+                Room::where('id', $newRoomId)->update(['status' => 'booked']);
+            }
         }
+
+        return $oldRoomStatus;
     }
 
     /**
@@ -289,47 +457,68 @@ class RoomChangeService
     }
 
     /**
-     * Tạo lịch sử đổi phòng
+     * Tạo lịch sử đổi phòng với đầy đủ thông tin nghiệp vụ
      */
     private function createChangeHistory(
-        int $bookingId,
-        int $fromRoomId,
-        int $toRoomId,
-        ?string $reason,
-        ?int $changedBy,
-        float $oldPrice,
-        float $newPrice,
-        float $priceDifference
+        int $bookingId, int $fromRoomId, int $toRoomId,
+        ?string $reason, ?int $changedBy,
+        float $oldPrice, float $newPrice, float $priceDifference,
+        string $changeType = self::TYPE_SAME_GRADE,
+        int $remainingNights = 0,
+        string $oldRoomStatus = 'available'
     ): RoomChangeHistory {
         return RoomChangeHistory::create([
-            'booking_id' => $bookingId,
-            'from_room_id' => $fromRoomId,
-            'to_room_id' => $toRoomId,
-            'damage_report_id' => null,
-            'reason' => $reason ?? 'Khách yêu cầu đổi phòng',
-            'changed_by' => $changedBy,
-            'changed_at' => now(),
-            'old_price_per_night' => $oldPrice,
-            'new_price_per_night' => $newPrice,
-            'price_difference' => $priceDifference,
+            'booking_id'         => $bookingId,
+            'from_room_id'       => $fromRoomId,
+            'to_room_id'         => $toRoomId,
+            'damage_report_id'   => null,
+            'reason'             => $reason ?? 'Khách yêu cầu đổi phòng',
+            'changed_by'         => $changedBy,
+            'changed_at'         => now(),
+            'old_price_per_night'=> $oldPrice,
+            'new_price_per_night'=> $newPrice,
+            'price_difference'   => $priceDifference,
+            'change_type'        => $changeType,
+            'remaining_nights'   => $remainingNights,
+            'old_room_status'    => $oldRoomStatus,
         ]);
     }
 
     /**
-     * Cập nhật payment nếu cần
+     * Xử lý tài chính theo nghiệp vụ KS
+     * - Phòng mới rẻ hơn → hoàn tiền hoặc credit
+     * - Phòng mới đắt hơn → thanh toán ngay hoặc ghi nợ Folio
      */
-    private function updatePaymentIfNeeded(Booking $booking, float $newTotalPrice): bool
+    private function handleFinancialAdjustment(Booking $booking, float $newTotalPrice, float $priceDifference): bool
     {
         $payment = Payment::where('booking_id', $booking->id)
             ->orderByDesc('id')
             ->first();
 
-        if ($payment && in_array($payment->status, ['paid', 'partial', 'pending'])) {
-            $payment->update(['amount' => $newTotalPrice]);
-            return true;
+        if (!$payment || !in_array($payment->status, ['paid', 'partial', 'pending'])) {
+            return false;
         }
 
-        return false;
+        // Cập nhật số tiền payment
+        $payment->update(['amount' => $newTotalPrice]);
+
+        if ($priceDifference < 0) {
+            // Hạ hạng: phát sinh hoàn tiền hoặc credit
+            Log::info('Room change: downgrade refund/credit', [
+                'booking_id'       => $booking->id,
+                'refund_amount'    => abs($priceDifference),
+                'action'           => config('room_changes.downgrade_policy', 'credit'),
+            ]);
+        } elseif ($priceDifference > 0) {
+            // Nâng hạng: cần thanh toán bổ sung hoặc ghi nợ Folio
+            Log::info('Room change: upgrade surcharge', [
+                'booking_id'       => $booking->id,
+                'surcharge_amount' => $priceDifference,
+                'action'           => config('room_changes.upgrade_policy', 'add_to_folio'),
+            ]);
+        }
+
+        return true;
     }
 
     /**
