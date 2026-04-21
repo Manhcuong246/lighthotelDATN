@@ -5,6 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int         $id
+ * @property string      $name
+ * @property string      $room_number
+ * @property string|null $type
+ * @property float       $base_price
+ * @property int         $max_guests
+ * @property int         $beds
+ * @property int         $baths
+ * @property float|null  $area
+ * @property string|null $description
+ * @property string      $status
+ * @property int|null    $room_type_id
+ * @property string|null $image
+ * @property string|null $maintenance_note
+ * @property \Carbon\Carbon|null $maintenance_since
+ * @property int|null    $damage_report_id
+ */
 class Room extends Model
 {
     use SoftDeletes;
@@ -123,6 +141,19 @@ class Room extends Model
     public function activeDamageReport()
     {
         return $this->belongsTo(DamageReport::class, 'damage_report_id');
+    }
+
+    /**
+     * Human-readable label for use in messages / logs.
+     * E.g. "101 - Deluxe" or "Deluxe" or "Phòng #5"
+     */
+    public function displayLabel(): string
+    {
+        $parts = array_filter([
+            $this->room_number ?? null,
+            $this->roomType?->name ?? ($this->name ?? null),
+        ]);
+        return $parts ? implode(' - ', $parts) : ('Phòng #' . $this->id);
     }
 
     /**
