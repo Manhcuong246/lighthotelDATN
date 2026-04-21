@@ -22,7 +22,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\CarbonPeriod;
-use App\Models\ActivityLog;
 
 class BookingController extends Controller
 {
@@ -76,11 +75,11 @@ class BookingController extends Controller
 
             // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
-            $returnUrl = route('payment.vnpay.return');
-            $orderInfo = 'Dat phong Light Hotel #' . $booking->id;
-            $txnRef = 'LIGHT' . $booking->id;
-            $amountVND = (int) round($booking->total_price);
-            $bankCode = $request->input('bank_code') ?: null;
+            $returnUrl    = route('payment.vnpay.return');
+            $orderInfo    = 'Dat phong Light Hotel #' . $booking->id;
+            $txnRef       = 'LIGHT' . $booking->id;
+            $amountVND    = (int) round($booking->total_price);
+            $bankCode     = $request->input('bank_code') ?: null;
 
             $paymentUrl = $vnPayService->createPaymentUrl(
                 $txnRef,
@@ -152,37 +151,17 @@ class BookingController extends Controller
     public function checkIn(Booking $booking)
     {
         abort_unless($booking->isCheckinAllowed(), 403);
-
-        $booking->update([
-            'actual_check_in' => now()
-        ]);
-
-        // ✅ Ghi Activity Log
-        ActivityLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'Check-in',
-            'description' => 'Check-in booking #' . $booking->id,
-        ]);
-
+        $booking->update(['actual_check_in' => now()]);
         return back()->with('success', 'Check-in thành công');
     }
 
     public function checkOut(Booking $booking)
     {
         abort_unless($booking->isCheckoutAllowed(), 403);
-
         $booking->update([
             'actual_check_out' => now(),
             'status' => 'completed',
         ]);
-
-        // ✅ Ghi Activity Log
-        ActivityLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'Check-out',
-            'description' => 'Check-out booking #' . $booking->id,
-        ]);
-
         return back()->with('success', 'Check-out thành công');
     }
 
