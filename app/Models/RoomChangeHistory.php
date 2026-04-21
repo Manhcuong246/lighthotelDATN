@@ -17,10 +17,16 @@ class RoomChangeHistory extends Model
         'reason',
         'changed_by',
         'changed_at',
+        'old_price_per_night',
+        'new_price_per_night',
+        'price_difference',
     ];
 
     protected $casts = [
         'changed_at' => 'datetime',
+        'old_price_per_night' => 'decimal:2',
+        'new_price_per_night' => 'decimal:2',
+        'price_difference' => 'decimal:2',
     ];
 
     public function booking(): BelongsTo
