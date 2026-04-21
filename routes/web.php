@@ -218,3 +218,22 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 });
 
 
+use App\Http\Controllers\Staff\StaffController;
+use App\Http\Controllers\Staff\ActivityLogController;
+
+Route::middleware(['auth', 'staff'])
+    ->prefix('staff')
+    ->name('staff.')
+    ->group(function () {
+
+        // Dashboard staff
+        Route::get('/dashboard', [StaffController::class, 'dashboard'])
+            ->name('dashboard');
+
+        // Activity Logs
+        Route::get(
+            '/activity-logs',
+            [ActivityLogController::class, 'index']
+        )->name('activity_logs.index');
+
+});
