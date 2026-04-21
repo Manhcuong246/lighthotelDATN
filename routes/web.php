@@ -176,16 +176,15 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/damage-reports/{damageReport}/change-room', [\App\Http\Controllers\Admin\DamageReportController::class, 'changeRoom'])->name('damage-reports.change-room');
     Route::post('/damage-reports/{damageReport}/refund', [\App\Http\Controllers\Admin\DamageReportController::class, 'processRefund'])->name('damage-reports.process-refund');
 
-    // ====== ĐỔI PHÒNG RIÊNG (MODULE ĐỘC LẬP) ======
+    // ====== ĐỔI PHÒNG (CUSTOM DATN) ======
     Route::prefix('room-changes')->name('room-changes.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\RoomChangeController::class, 'index'])->name('index');
-        Route::get('/create', [\App\Http\Controllers\Admin\RoomChangeController::class, 'create'])->name('create');
-        Route::post('/', [\App\Http\Controllers\Admin\RoomChangeController::class, 'store'])->name('store');
+        Route::get('/create/{booking?}', [\App\Http\Controllers\Admin\RoomChangeController::class, 'create'])->name('create');
+        Route::get('/search-booking', [\App\Http\Controllers\Admin\RoomChangeController::class, 'searchBooking'])->name('search-booking');
+        Route::get('/available-rooms', [\App\Http\Controllers\Admin\RoomChangeController::class, 'getAvailableRooms'])->name('available-rooms');
+        Route::post('/store', [\App\Http\Controllers\Admin\RoomChangeController::class, 'store'])->name('store');
         Route::get('/{id}', [\App\Http\Controllers\Admin\RoomChangeController::class, 'show'])->name('show');
         Route::post('/{id}/revert', [\App\Http\Controllers\Admin\RoomChangeController::class, 'revert'])->name('revert');
-        // API endpoints
-        Route::get('/api/available-rooms', [\App\Http\Controllers\Admin\RoomChangeController::class, 'getAvailableRooms'])->name('available-rooms');
-        Route::get('/api/booking-rooms', [\App\Http\Controllers\Admin\RoomChangeController::class, 'getBookingRooms'])->name('booking-rooms');
     });
 
     // ====== QUẢN LÝ DỊCH VỤ ======
