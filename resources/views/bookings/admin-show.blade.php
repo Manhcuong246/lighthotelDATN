@@ -103,19 +103,9 @@
                                 });
                             @endphp
 
-                            @if($groupedGuests->count() > 0)
-                                @foreach($groupedGuests as $roomKey => $guests)
+                            @if($booking->bookingGuests->count() > 0)
+                                @foreach($booking->bookingGuests as $guest)
                                     <div class="card mb-3 border-light shadow-sm">
-                                        <div class="card-header bg-light py-2">
-                                            <h6 class="mb-0 text-primary">
-                                                <i class="bi bi-door-closed me-2"></i>
-                                                @if(str_starts_with($roomKey, 'room_'))
-                                                    Phòng {{ intval(substr($roomKey, 5)) }}
-                                                @else
-                                                    Phòng {{ ucwords(str_replace(['_', '-'], ' ', $roomKey)) }}
-                                                @endif
-                                            </h6>
-                                        </div>
                                         <div class="card-body p-0">
                                             <div class="table-responsive">
                                                 <table class="table table-hover table-sm mb-0">
@@ -123,25 +113,26 @@
                                                         <tr>
                                                             <th class="ps-3">Tên khách hàng</th>
                                                             <th>CCCD</th>
+                                                            <th>Phòng</th>
                                                             <th>Trạng thái</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        @foreach($guests as $guest)
-                                                            <tr>
-                                                                <td class="ps-3">{{ $guest->name }}</td>
-                                                                <td>{{ $guest->cccd }}</td>
-                                                                <td>
-                                                                    @if($booking->actual_check_out)
-                                                                        <span class="badge bg-secondary">Đã check-out</span>
-                                                                    @else
-                                                                        <span class="badge bg-{{ $guest->checkin_status === 'checked_in' ? 'success' : 'warning' }}">
-                                                                            {{ $guest->checkin_status === 'checked_in' ? 'Đã check-in' : 'Chờ check-in' }}
-                                                                        </span>
-                                                                    @endif
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
+                                                        <tr>
+                                                            <td class="ps-3">
+                                                                {{ $guest->name }}
+                                                                @if($guest->is_representative)
+                                                                    <span class="badge bg-primary ms-2">Người đại diện</span>
+                                                                @endif
+                                                            </td>
+                                                            <td>{{ $guest->cccd }}</td>
+                                                            <td>{{ $guest->bookingRoom?->room?->roomType?->name }} {{ $guest->bookingRoom?->room?->room_number }}</td>
+                                                            <td>
+                                                                <span class="badge bg-{{ $guest->status === 'checked_in' ? 'success' : 'warning' }}">
+                                                                    {{ $guest->status === 'checked_in' ? 'Đã check-in' : 'Chờ check-in' }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -157,51 +148,20 @@
                         </div>
                     </div>
 
-                    <!-- Actions -->
-                    @if($booking->status !== 'checked_out' && $booking->status !== 'cancelled' && $booking->status !== 'completed')
-                        <div class="row">
-                            <div class="col-12">
-                                <h5 class="mb-3">
-                                    <i class="bi bi-shield-check me-2"></i>
-                                    Thao tác lưu trú
-                                </h5>
 
-                                <form method="POST" action="{{ route('admin.bookings.checkin', $booking->id) }}" class="mb-4">
-                                    @csrf
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <label class="form-label">Chọn khách hàng:</label>
-                                            <select name="guest_id" class="form-select" required>
-                                                <option value="">-- Chọn khách --</option>
-                                                @foreach(($booking->guests ?? collect()) as $guest)
-                                                    <option value="{{ $guest->id }}">{{ $guest->name }} - Phòng {{ $guest->room_index + 1 }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label">Nhập CCCD để xác nhận:</label>
-                                            <input type="text" name="cccd_input" class="form-control"
-                                                   placeholder="Nhập 12 số CCCD" maxlength="12" required>
-                                            <div class="form-text small text-muted">Nhập chính xác CCCD của khách hàng</div>
-                                        </div>
-                                    </div>
-                                    <button type="submit" class="btn btn-success">
-                                        <i class="bi bi-check-circle me-2"></i>
-                                        Check-in
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    @endif
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="bi bi-box-arrow-right me-2"></i>
+                                Check-out khách hàng
+                            </h5>
 
-                    @if($booking->status === 'checked_in')
-                        <div class="row">
-                            <div class="col-12">
-                                <h5 class="mb-3">
-                                    <i class="bi bi-box-arrow-right me-2"></i>
-                                    Check-out khách hàng
-                                </h5>
-
+                            @if($booking->actual_check_out)
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    Đã check-out lúc {{ $booking->actual_check_out->format('d/m/Y H:i') }}
+                                </div>
+                            @else
                                 <form method="POST" action="{{ route('admin.bookings.checkout', $booking->id) }}">
                                     @csrf
                                     <button type="submit" class="btn btn-warning"
@@ -210,9 +170,9 @@
                                         Check-out
                                     </button>
                                 </form>
-                            </div>
+                            @endif
                         </div>
-                    @endif
+                    </div>
 
                     <div class="text-center mt-4">
                         <a href="{{ route('admin.bookings.index') }}" class="btn btn-secondary">

@@ -23,97 +23,107 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $request->merge(['email' => Str::lower(trim((string) $request->email))]);
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->email))
+        ]);
 
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
-        $user = User::query()
-            ->whereRaw('LOWER(email) = ?', [$request->email])
-            ->first();
+        $user = User::whereRaw('LOWER(email) = ?', [$request->email])->first();
 
+        // Nếu là tài khoản guest tạm
         if ($user && $user->isProvisionalGuestAccount()) {
             return back()->withErrors([
-                'email' => 'Email này đã dùng khi đặt phòng nhưng tài khoản chưa đặt mật khẩu. Vui lòng dùng trang Đăng ký với cùng email để tạo mật khẩu — các đơn đặt phòng trước đó sẽ tự gắn với tài khoản.',
+                'email' => 'Tài khoản chưa kích hoạt, vui lòng đăng ký lại để đặt mật khẩu.',
             ]);
         }
 
+        // Nếu user tồn tại và đúng password
         if ($user && Hash::check($request->password, $user->password)) {
-            // Ngăn admin/staff đăng nhập qua trang user
-            if ($user->isAdmin() || $user->isStaff()) {
-                return back()->withErrors([
-                    'email' => 'Tài khoản quản trị vui lòng đăng nhập tại trang Admin.',
-                ]);
-            }
-            
+
             Auth::login($user, $request->filled('remember'));
-            return redirect()->intended('/');
+
+            // 🔴 ADMIN LOGIN
+            if ($user->isAdmin()) {
+                return redirect('/admin/dashboard');
+            }
+
+            // 🔵 STAFF LOGIN
+            if ($user->isStaff()) {
+                return redirect('/staff/dashboard');
+            }
+
+            // 🟢 CUSTOMER LOGIN
+            return redirect('/');
         }
 
         return back()->withErrors([
-            'email' => 'Thông tin đăng nhập không chính xác.',
+            'email' => 'Email hoặc mật khẩu không chính xác.',
         ]);
     }
 
     public function register(Request $request)
     {
-        $request->merge(['email' => Str::lower(trim((string) $request->email))]);
+        $request->merge([
+            'email' => Str::lower(trim((string) $request->email))
+        ]);
 
-        $existing = User::query()
-            ->whereRaw('LOWER(email) = ?', [$request->email])
-            ->first();
+        $existing = User::whereRaw('LOWER(email) = ?', [$request->email])->first();
 
-        $emailUnique = Rule::unique('users', 'email');
+        $emailRule = Rule::unique('users', 'email');
+
         if ($existing && $existing->isProvisionalGuestAccount()) {
-            $emailUnique = Rule::unique('users', 'email')->ignore($existing->id);
+            $emailRule = Rule::unique('users', 'email')->ignore($existing->id);
         }
 
         $request->validate([
             'full_name' => 'required|string|max:150',
-            'email' => ['required', 'string', 'email', 'max:150', $emailUnique],
-            'password' => 'required|string|min:6|confirmed',
+            'email' => ['required', 'email', 'max:150', $emailRule],
+            'password' => 'required|min:6|confirmed',
         ]);
 
+        // Nếu là guest tạm → nâng cấp account
         if ($existing && $existing->isProvisionalGuestAccount()) {
-            $existing->forceFill([
+
+            $existing->update([
                 'full_name' => $request->full_name,
-                'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'phone' => $request->phone ?? $existing->phone,
                 'status' => 'active',
-            ])->save();
+            ]);
 
             $guestRole = \App\Models\Role::where('name', 'guest')->first();
-            if ($guestRole && ! $existing->hasRole('guest')) {
+
+            if ($guestRole && !$existing->hasRole('guest')) {
                 $existing->roles()->attach($guestRole->id);
             }
 
             Auth::login($existing);
 
-            return redirect()->intended('/')->with(
-                'success',
-                'Tài khoản đã được kích hoạt. Các đơn đặt phòng trước đó (nếu có) nằm trong mục Đặt phòng của tôi.'
-            );
+            return redirect('/')->with('success', 'Kích hoạt tài khoản thành công!');
         }
 
+        // Tạo user mới
         $user = User::create([
             'full_name' => $request->full_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'phone' => $request->phone ?? null,
+            'phone' => $request->phone,
             'status' => 'active',
         ]);
 
         $guestRole = \App\Models\Role::where('name', 'guest')->first();
+
         if ($guestRole) {
             $user->roles()->attach($guestRole->id);
         }
 
         Auth::login($user);
 
-        return redirect()->intended('/')->with('success', 'Đăng ký thành công! Chào mừng bạn đến với Light Hotel.');
+        return redirect('/')->with('success', 'Đăng ký thành công!');
     }
 
     public function logout(Request $request)
@@ -126,5 +136,3 @@ class AuthController extends Controller
         return redirect('/');
     }
 }
-
-

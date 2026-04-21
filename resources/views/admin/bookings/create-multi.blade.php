@@ -228,7 +228,8 @@ function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, st
     const childFee = extraChildren * cRate * base;
     const surcharge = adultFee + childFee;
     const perNight = base + surcharge;
-    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05, allowed: total <= _maxCap && c05 <= maxC05 };
+    // Không giới hạn số khách - chỉ tính phụ thu khi vượt tiêu chuẩn
+    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05, allowed: true };
 }
 
 let availableRoomsData = [];
@@ -333,7 +334,7 @@ function renderAvailableRooms(rooms) {
                         <h6 class="fw-bold mb-1">${roomType.name}</h6>
                         <div class="text-muted small mb-1">
                             <i class="bi bi-aspect-ratio me-1"></i>${roomType.area || 30} m² ·
-                            <i class="bi bi-people me-1"></i>Tiêu chuẩn ${roomType.standard_capacity ?? 3} người; tối đa ${roomType.max_occupancy ?? 6} người · Tối đa 3 trẻ 0–5
+                            <i class="bi bi-people me-1"></i>Tối đa ${roomType.max_occupancy ?? 6} người
                         </div>
                         <p class="text-muted small mb-0" style="font-size: 0.85rem;">${roomType.description ? roomType.description.substring(0, 80) + '...' : 'Phòng tiêu chuẩn với đầy đủ tiện nghi'}</p>
                     </div>
@@ -501,7 +502,7 @@ function generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, chi
                                    style="font-size: 0.85rem;" onchange="updateRoomGuestData('${roomTypeId}', ${roomIndex})">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small mb-1" style="font-size: 0.75rem;" title="Miễn phí nhưng tính vào sức chứa phòng (tối đa 3)">Trẻ 0–5 tuổi</label>
+                            <label class="form-label small mb-1" style="font-size: 0.75rem;">Trẻ 0–5 tuổi</label>
                             <input type="number" class="form-control form-control-sm room-children-0-5"
                                    id="children05_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
@@ -560,18 +561,9 @@ function updateRoomPriceDetails(roomTypeId, roomIndex, adults, children05, child
     const cRate = room.child_surcharge_rate ?? null;
     const br = bookingPriceBreakdown(basePrice, adults, children05, children611, aRate, cRate, room.standard_capacity, room.max_occupancy);
 
+    // Không hiển thị cảnh báo giới hạn sức chứa - chỉ tính phụ thu
     const limitError = document.getElementById(`limitError_${roomTypeId}_${roomIndex}`);
-    if (!br.allowed) {
-        if (!limitError) {
-            const formCard = document.getElementById(`roomForm_${roomTypeId}_${roomIndex}`);
-            const errorHtml = `
-                <div id="limitError_${roomTypeId}_${roomIndex}" class="alert alert-danger py-1 small mb-2 mt-2">
-                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Phòng tối đa ${br.maxCap} người (bao gồm trẻ em) và tối đa ${br.maxC05} trẻ 0–5 tuổi
-                </div>
-            `;
-            formCard.querySelector('.card-body').insertAdjacentHTML('beforeend', errorHtml);
-        }
-    } else if (limitError) {
+    if (limitError) {
         limitError.remove();
     }
 

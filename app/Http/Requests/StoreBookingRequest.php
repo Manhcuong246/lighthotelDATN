@@ -7,6 +7,9 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
+/**
+ * @property \App\Models\User|null $user
+ */
 class StoreBookingRequest extends FormRequest
 {
     /**
@@ -21,9 +24,11 @@ class StoreBookingRequest extends FormRequest
     {
         /** @var User|null $user */
         $user = Auth::user();
-        if (Auth::check() && $user && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
+        if (Auth::check() && $user instanceof User && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
+            /** @var User $authUser */
+            $authUser = $user;
             $this->merge([
-                'email' => $user->email,
+                'email' => $authUser->email,
             ]);
         }
     }
@@ -36,8 +41,10 @@ class StoreBookingRequest extends FormRequest
         $emailRules = ['required', 'email', 'max:150'];
         /** @var User|null $user */
         $user = Auth::user();
-        if (Auth::check() && $user && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
-            $emailRules[] = Rule::in([$user->email]);
+        if (Auth::check() && $user instanceof User && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
+            /** @var User $authUser */
+            $authUser = $user;
+            $emailRules[] = Rule::in([$authUser->email]);
         }
 
         return [

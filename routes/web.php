@@ -22,6 +22,8 @@ use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
+use App\Http\Controllers\Admin\SiteContentAdminController;
+use App\Http\Controllers\DynamicPageController;
 use App\Http\Controllers\GuestCheckInController;
 use App\Http\Controllers\NewBookingController;
 
@@ -49,9 +51,9 @@ Route::get('/storage/{path}', function (string $path) {
 
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
-Route::view('/lien-he', 'pages.contact')->name('pages.contact');
-Route::view('/tro-giup', 'pages.help')->name('pages.help');
-Route::view('/chinh-sach', 'pages.policy')->name('pages.policy');
+Route::get('/lien-he', [DynamicPageController::class, 'contact'])->name('pages.contact');
+Route::get('/tro-giup', [DynamicPageController::class, 'help'])->name('pages.help');
+Route::get('/chinh-sach', [DynamicPageController::class, 'policy'])->name('pages.policy');
 
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
@@ -193,16 +195,18 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
         Route::delete('/{id}', [RoomTypeController::class, 'destroy'])->name('destroy');
     });
 
+    // ====== QUẢN LÝ NỘI DUNG WEBSITE (CMS) ======
+    Route::prefix('site-contents')->name('site-contents.')->group(function () {
+        Route::get('/', [SiteContentAdminController::class, 'index'])->name('index');
+        Route::get('/create', [SiteContentAdminController::class, 'create'])->name('create');
+        Route::post('/', [SiteContentAdminController::class, 'store'])->name('store');
+        Route::get('/{siteContent}/edit', [SiteContentAdminController::class, 'edit'])->name('edit');
+        Route::put('/{siteContent}', [SiteContentAdminController::class, 'update'])->name('update');
+        Route::delete('/{siteContent}', [SiteContentAdminController::class, 'destroy'])->name('destroy');
+    });
 
 
-});
 
-// Check-in Routes
-Route::middleware('auth')->prefix('checkin')->name('checkin.')->group(function () {
-    Route::get('/bookings/{booking}', [GuestCheckInController::class, 'index'])->name('index');
-    Route::post('/guests/{guest}/status', [GuestCheckInController::class, 'updateGuestStatus'])->name('guest.status');
-    Route::post('/bookings/{booking}/checkin-all', [GuestCheckInController::class, 'checkInAll'])->name('all');
-    Route::get('/bookings/{booking}/guests', [GuestCheckInController::class, 'getGuestList'])->name('guests');
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
