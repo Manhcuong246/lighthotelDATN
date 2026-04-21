@@ -4,11 +4,32 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use App\Models\RefundLog;
 use Illuminate\Support\Facades\URL;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $room_id
+ * @property string $check_in
+ * @property string $check_out
+ * @property string|null $actual_check_in
+ * @property string|null $actual_check_out
+ * @property string $status
+ * @property float $total_price
+ * @property string|null $payment_status
+ * @property string|null $payment_method
+ * @property int $guests
+ * @property-read string $formatted_check_in
+ * @property-read string $formatted_check_out
+ * @property-read string|null $formatted_actual_check_in
+ * @property-read string|null $formatted_actual_check_out
+ * @property-read int $nights
+ */
 class Booking extends Model
 {
     use SoftDeletes;
@@ -28,23 +49,17 @@ class Booking extends Model
         'room_id',
         'check_in',
         'check_out',
-        'check_in_date',
-        'check_out_date',
-        'actual_check_in',
-        'actual_check_out',
-        'guests',
-        'adults',
-        'children',
+        'actual_check_in', // thời gian check-in thực tế
+        'actual_check_out', // thời gian check-out thực tế
+        'status', // enum: 'pending', 'checked_in', 'checked_out'
         'total_price',
-        'status',
-        'payment_status',
         'payment_method',
+        'payment_status',
+        'notes',
         'placed_via',
         'coupon_code',
         'discount_amount',
-        'cancellation_reason',
-        'cancel_reason',
-        'cancelled_at',
+        'cccd',
     ];
 
     protected $casts = [
@@ -148,6 +163,137 @@ class Booking extends Model
     }
 
     /**
+     * Get all guests for this booking (new system)
+     */
+    public function guests()
+    {
+        return $this->hasMany(Guest::class, 'booking_id')
+            ->orderBy('room_type')
+            ->orderBy('room_index')
+            ->orderBy('id');
+    }
+
+    /**
+     * Get guests grouped by room_index (legacy)
+     */
+    public function guestsByRoom(): array
+    {
+        return $this->guests()->groupBy('room_index')->toArray();
+    }
+
+    /**
+     * Get guests grouped by ACTUAL assigned room_id
+     * Returns: [room_id => ['room' => Room, 'guests' => [Guest, ...]]]
+     */
+    public function guestsByAssignedRoom(): array
+    {
+        $guests = $this->guests()->with('room.roomType')->get();
+        $grouped = [];
+
+        foreach ($guests as $guest) {
+            $roomId = $guest->room_id ?? 'unassigned';
+            if (!isset($grouped[$roomId])) {
+                $grouped[$roomId] = [
+                    'room' => $guest->room,
+                    'guests' => []
+                ];
+            }
+            $grouped[$roomId]['guests'][] = $guest;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * Get available rooms for this booking that can be assigned to guests
+     */
+    public function getAvailableRoomsForAssignment(): \Illuminate\Support\Collection
+    {
+        return $this->rooms()->with('roomType')->available()->get();
+    }
+
+    /**
+     * Check if booking is pending
+     */
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Check if booking is checked in
+     */
+    public function isCheckedIn(): bool
+    {
+        return $this->status === 'checked_in';
+    }
+
+    /**
+     * Check if booking is checked out
+     */
+    public function isCheckedOut(): bool
+    {
+        return $this->status === 'checked_out';
+    }
+
+    /**
+     * Get formatted check-in date
+     */
+    public function getFormattedCheckInAttribute(): string
+    {
+        return Carbon::parse($this->check_in)->format('d/m/Y');
+    }
+
+    /**
+     * Get formatted check-out date
+     */
+    public function getFormattedCheckOutAttribute(): string
+    {
+        return Carbon::parse($this->check_out)->format('d/m/Y');
+    }
+
+    /**
+     * Get formatted actual check-in datetime
+     */
+    public function getFormattedActualCheckInAttribute(): ?string
+    {
+        return $this->actual_check_in
+            ? Carbon::parse($this->actual_check_in)->format('d/m/Y H:i')
+            : null;
+    }
+
+    /**
+     * Get formatted actual check-out datetime
+     */
+    public function getFormattedActualCheckOutAttribute(): ?string
+    {
+        return $this->actual_check_out
+            ? Carbon::parse($this->actual_check_out)->format('d/m/Y H:i')
+            : null;
+    }
+
+    /**
+     * Get nights count
+     */
+    public function getNightsAttribute(): int
+    {
+        return Carbon::parse($this->check_in)->diffInDays(Carbon::parse($this->check_out));
+    }
+
+    /**
+     * Mask CCCD for non-admin users
+     */
+    public function getMaskedCccdAttribute(): string
+    {
+        if (!$this->cccd) {
+            return '';
+        }
+
+        // Show first 6 digits, mask the rest
+        return substr($this->cccd, 0, 6) . '****';
+    }
+
+    /**
      * Khách tự check-in trên web: từ ngày nhận phòng, đơn đã xác nhận.
      */
     public function isCheckinAllowed(): bool
@@ -187,7 +333,7 @@ class Booking extends Model
      */
     public function isAdminCheckoutAllowed(): bool
     {
-        return $this->status === 'confirmed'
+        return in_array($this->status, ['confirmed', 'checked_in'])
             && !is_null($this->actual_check_in)
             && is_null($this->actual_check_out);
     }
@@ -280,7 +426,7 @@ class Booking extends Model
             Carbon::parse($this->check_in),
             Carbon::parse($this->check_out)->copy()->subDay()
         );
-        $dates = collect($period)->map(static fn ($d) => Carbon::parse($d)->toDateString())->all();
+        $dates = collect($period)->map(static fn (Carbon $d) => $d->toDateString())->all();
         if ($dates === []) {
             return false;
         }

@@ -242,7 +242,7 @@
 
                                                 @if($booking->isAdminCheckoutAllowed())
                                                 <li>
-                                                    <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST">
+                                                    <form action="{{ route('admin.bookings.checkout', $booking) }}" method="POST">
                                                         @csrf
                                                         <button class="dropdown-item text-warning" type="submit">
                                                             <i class="bi bi-box-arrow-right me-2"></i> Check-out
@@ -331,7 +331,7 @@
         padding: 0.25rem 0.5rem;
         font-size: 0.8rem;
     }
-    
+
     /* Modal check-in custom styles */
     .modal-lg {
         max-width: 800px;
@@ -378,16 +378,16 @@
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         <strong>Chỉ dùng cho đơn chờ xác nhận / chưa thanh toán.</strong> Đơn khách đã trả tiền: xử lý hoàn tiền trong mục Hoàn tiền.
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="cancelReason{{ $booking->id }}" class="form-label fw-bold">
                             Lý do hủy đơn <span class="text-danger">*</span>
                         </label>
-                        <textarea name="cancel_reason" id="cancelReason{{ $booking->id }}" class="form-control" rows="4" 
+                        <textarea name="cancel_reason" id="cancelReason{{ $booking->id }}" class="form-control" rows="4"
                                   placeholder="Nhập lý do hủy đơn đặt phòng..." required></textarea>
                         <div class="form-text">Lý do sẽ được hiển thị cho khách hàng trong lịch sử đặt phòng.</div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <strong>Khách hàng:</strong><br>
@@ -432,14 +432,14 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
             </div>
-            <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST" id="checkinForm{{ $booking->id }}">
+            <form action="{{ route('admin.bookings.checkin', $booking) }}" method="POST" id="checkinForm{{ $booking->id }}">
                 @csrf
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Kiểm tra thông tin khách hàng trước khi check-in:</strong> Vui lòng xác nhận thông tin CCCD và tên của khách hàng cho từng phòng.
                     </div>
-                    
+
                     <!-- Thông tin booking -->
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -455,7 +455,7 @@
                             @endif
                         </div>
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <strong>Ngày nhận phòng:</strong> {{ $booking->check_in?->format('d/m/Y') ?? '—' }}
@@ -464,9 +464,9 @@
                             <strong>Ngày trả phòng:</strong> {{ $booking->check_out?->format('d/m/Y') ?? '—' }}
                         </div>
                     </div>
-                    
+
                     <hr>
-                    
+
                     <!-- Danh sách khách hàng -->
                     <div class="guest-list-container">
                         <div class="text-center py-3">
@@ -481,7 +481,7 @@
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="bi bi-x-lg me-1"></i>Đóng
                     </button>
-                    <button type="submit" class="btn btn-info" id="checkinSubmitBtn{{ $booking->id }}" disabled style="display: none;">
+                    <button type="submit" class="btn btn-info" id="checkinSubmitBtn{{ $booking->id }}" disabled>
                         <i class="bi bi-box-arrow-in-right me-1"></i>Xác nhận Check-in
                     </button>
                 </div>
@@ -498,12 +498,12 @@ document.addEventListener('DOMContentLoaded', function() {
         let submitBtn = document.getElementById('checkinSubmitBtn{{ $booking->id }}');
         let confirmedCount = document.getElementById('confirmedCount{{ $booking->id }}');
         let remainingCount = document.getElementById('remainingCount{{ $booking->id }}');
-        
+
         // Load guest info when modal is shown
         modal.addEventListener('show.bs.modal', function () {
             const url = `/admin/bookings/{{ $booking->id }}/guest-info`;
             console.log('Fetching guest info from:', url);
-            
+
             fetch(url)
                 .then(response => {
                     console.log('Response status:', response.status);
@@ -514,16 +514,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Received data:', data);
                     if (data.error) {
                         console.error('Server error:', data.error);
+                        const guestListContainer = modal.querySelector('.guest-list-container');
+                        if (guestListContainer) {
+                            guestListContainer.innerHTML = `
+                                <div class="alert alert-danger">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    Lỗi: ${data.error}
+                                </div>
+                            `;
+                        }
                         return;
                     }
-                    
+
                     // Update booking info
                     const bookingInfo = data.booking;
-                    const guestList = data.guests;
-                    
+                    const guestsByRoom = data.guests_by_room || [];
+
+                    console.log('Guests by room from API:', guestsByRoom);
+                    console.log('Type of guests_by_room:', typeof guestsByRoom, Array.isArray(guestsByRoom));
+
                     // Update guest list
                     const guestListContainer = modal.querySelector('.guest-list-container');
-                    if (guestList.length === 0) {
+                    if (guestsByRoom.length === 0) {
                         guestListContainer.innerHTML = `
                             <div class="alert alert-warning">
                                 <i class="bi bi-exclamation-triangle me-2"></i>
@@ -533,8 +545,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (submitBtn) submitBtn.style.display = 'none';
                         return;
                     }
-                    
-                    // Build guest table
+
+                    // Calculate total guests
+                    let totalGuests = 0;
+                    guestsByRoom.forEach(room => {
+                        totalGuests += room.guests.length;
+                    });
+
+                    // Build guest table grouped by room
                     let guestTableHTML = `
                         <h6 class="mb-3">
                             <i class="bi bi-people-fill me-2"></i>Danh sách khách hàng
@@ -544,6 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width: 30px;">STT</th>
+                                        <th style="width: 150px;">Phòng</th>
                                         <th>Tên khách hàng</th>
                                         <th>Loại</th>
                                         <th>CCCD</th>
@@ -552,78 +571,85 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </thead>
                                 <tbody>
                     `;
-                    
-                    guestList.forEach((guest, index) => {
-                        guestTableHTML += `
-                            <tr>
-                                <td>${index + 1}</td>
-                                <td>
-                                    <span class="guest-name">${guest.name}</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-${guest.type === 'adult' ? 'primary' : 'info'}">
-                                        ${guest.type === 'adult' ? 'Người lớn' : 'Trẻ em'}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="guest-cccd">${guest.cccd || '-'}</span>
-                                </td>
-                                <td class="text-center">
-                                    <div class="form-check">
-                                        <input class="form-check-input guest-confirmation" 
-                                               type="checkbox" 
-                                               id="guestConfirm${guest.id}" 
-                                               data-guest-id="${guest.id}"
-                                               data-guest-name="${guest.name}"
-                                               data-guest-cccd="${guest.cccd || ''}">
-                                        <label class="form-check-label" for="guestConfirm${guest.id}">
-                                            Xác nhận
-                                        </label>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
+
+                    let stt = 1;
+                    guestsByRoom.forEach(room => {
+                        const roomName = room.room_name;
+                        room.guests.forEach((guest, idx) => {
+                            guestTableHTML += `
+                                <tr>
+                                    <td>${stt++}</td>
+                                    <td class="fw-bold text-primary">${idx === 0 ? roomName : ''}</td>
+                                    <td>
+                                        <span class="guest-name">${guest.name}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-${guest.type === 'adult' ? 'primary' : 'info'}">
+                                            ${guest.type === 'adult' ? 'Người lớn' : 'Trẻ em'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="guest-cccd">${guest.cccd || '-'}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="form-check">
+                                            <input class="form-check-input guest-confirmation"
+                                                   type="checkbox"
+                                                   id="guestConfirm${guest.id}"
+                                                   data-guest-id="${guest.id}"
+                                                   data-guest-name="${guest.name}"
+                                                   data-guest-cccd="${guest.cccd || ''}">
+                                            <label class="form-check-label" for="guestConfirm${guest.id}">
+                                                Xác nhận
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
                     });
-                    
+
                     guestTableHTML += `
                                 </tbody>
                             </table>
                         </div>
-                        
+
                         <!-- Tóm tắt xác nhận -->
                         <div class="alert alert-light mt-3">
                             <div class="row">
                                 <div class="col-md-4">
-                                    <strong>Tổng khách:</strong> ${guestList.length}
+                                    <strong>Tổng khách:</strong> ${totalGuests}
                                 </div>
                                 <div class="col-md-4">
                                     <strong>Đã xác nhận:</strong> <span id="confirmedCount{{ $booking->id }}">0</span>
                                 </div>
                                 <div class="col-md-4">
-                                    <strong>Cần xác nhận:</strong> <span id="remainingCount{{ $booking->id }}">${guestList.length}</span>
+                                    <strong>Cần xác nhận:</strong> <span id="remainingCount{{ $booking->id }}">${totalGuests}</span>
                                 </div>
                             </div>
                         </div>
                     `;
-                    
+
+                    console.log('Final HTML:', guestTableHTML);
                     guestListContainer.innerHTML = guestTableHTML;
-                    
+
                     // Re-initialize checkboxes and event listeners
                     confirmCheckboxes = modal.querySelectorAll('.guest-confirmation');
                     confirmedCount = document.getElementById('confirmedCount{{ $booking->id }}');
                     remainingCount = document.getElementById('remainingCount{{ $booking->id }}');
-                    
+
                     function updateConfirmationStatus() {
                         const totalGuests = confirmCheckboxes.length;
                         const confirmed = Array.from(confirmCheckboxes).filter(cb => cb.checked).length;
                         const remaining = totalGuests - confirmed;
-                        
+
                         if (confirmedCount) confirmedCount.textContent = confirmed;
                         if (remainingCount) remainingCount.textContent = remaining;
-                        
+
                         if (submitBtn) {
                             submitBtn.disabled = confirmed < totalGuests;
                             if (confirmed >= totalGuests) {
+                                submitBtn.style.display = 'inline-block';
                                 submitBtn.classList.remove('btn-info');
                                 submitBtn.classList.add('btn-success');
                             } else {
@@ -632,19 +658,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     }
-                    
+
                     confirmCheckboxes.forEach(checkbox => {
                         checkbox.addEventListener('change', updateConfirmationStatus);
                     });
-                    
+
                     // Initialize status
                     updateConfirmationStatus();
-                    
+
                 })
                 .catch(error => {
                     console.error('Error loading guest info:', error);
                     console.error('Error details:', error.message);
-                    
+
                     // Show error message to user
                     const guestListContainer = modal.querySelector('.guest-list-container');
                     if (guestListContainer) {

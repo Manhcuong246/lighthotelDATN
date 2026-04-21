@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -18,9 +19,11 @@ class StoreBookingRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if (Auth::check() && Auth::user() && ! Auth::user()->canAccessAdmin()) {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (Auth::check() && $user && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
             $this->merge([
-                'email' => Auth::user()->email,
+                'email' => $user->email,
             ]);
         }
     }
@@ -31,8 +34,10 @@ class StoreBookingRequest extends FormRequest
     public function rules(): array
     {
         $emailRules = ['required', 'email', 'max:150'];
-        if (Auth::check() && Auth::user() && ! Auth::user()->canAccessAdmin()) {
-            $emailRules[] = Rule::in([Auth::user()->email]);
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (Auth::check() && $user && ! $user->roles()->whereIn('name', ['admin', 'staff'])->exists()) {
+            $emailRules[] = Rule::in([$user->email]);
         }
 
         return [
@@ -61,11 +66,14 @@ class StoreBookingRequest extends FormRequest
             'adults'         => 'required|array',
             'children_0_5'   => 'required|array',
             'children_6_11'  => 'required|array',
+            'name'           => 'required|string|max:150|min:2',
+            'cccd'           => 'required|string|regex:/^[0-9]{12}$/',
             'guests'         => 'nullable|array',
-           'guests.*.name'  => 'required_with:guests|string|max:150',
-           'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
+            'guests.*.name'  => 'required_with:guests|string|max:150',
+            'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
             'guests.*.type'  => 'required_with:guests|in:adult,child',
             'guests.*.room_index' => 'nullable|integer|min:0',
+            'guests_json'    => 'nullable|string',
         ];
     }
 
@@ -90,7 +98,11 @@ class StoreBookingRequest extends FormRequest
             'check_out.required'     => 'Vui lòng chọn ngày trả phòng.',
             'check_out.date'         => 'Ngày trả phòng không hợp lệ.',
             'check_out.after'        => 'Ngày trả phòng phải sau ngày nhận phòng.',
-              'guests.required'        => 'Vui lòng cung cấp thông tin khách.',
+            'name.required'          => 'Vui lòng nhập tên người đại diện.',
+            'name.min'               => 'Tên người đại diện phải có ít nhất 2 ký tự.',
+            'cccd.required'          => 'Vui lòng nhập CCCD người đại diện.',
+            'cccd.regex'             => 'CCCD phải gồm đúng 12 số.',
+            'guests.required'        => 'Vui lòng cung cấp thông tin khách.',
             'guests.*.name.required' => 'Vui lòng nhập tên khách.',
             'guests.*.name.max'      => 'Tên khách không được vượt quá 150 ký tự.',
             'guests.*.cccd.regex'    => 'CCCD phải gồm 12 số.',

@@ -22,8 +22,8 @@ use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
-use App\Http\Controllers\Admin\SiteContentAdminController;
-use App\Http\Controllers\DynamicPageController;
+use App\Http\Controllers\GuestCheckInController;
+use App\Http\Controllers\NewBookingController;
 
 
 
@@ -217,23 +217,5 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
-
-use App\Http\Controllers\Staff\StaffController;
-use App\Http\Controllers\Staff\ActivityLogController;
-
-Route::middleware(['auth', 'staff'])
-    ->prefix('staff')
-    ->name('staff.')
-    ->group(function () {
-
-        // Dashboard staff
-        Route::get('/dashboard', [StaffController::class, 'dashboard'])
-            ->name('dashboard');
-
-        // Activity Logs
-        Route::get(
-            '/activity-logs',
-            [ActivityLogController::class, 'index']
-        )->name('activity_logs.index');
-
-});
+// Include routes mới cho hệ thống đặt phòng
+require __DIR__ . '/new-bookings.php';
