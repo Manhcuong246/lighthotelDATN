@@ -531,33 +531,6 @@ function updatePricePreview() {
         new Intl.NumberFormat('vi-VN').format(basePrice) + 'đ';
     document.getElementById('total-price').textContent =
         new Intl.NumberFormat('vi-VN').format(total) + 'đ';
-    
-    document.getElementById('standard-capacity').textContent = standardCapacity;
-    document.getElementById('max-capacity').textContent = maxGuests;
-
-    // Hiển thị phụ thu nếu có
-    const surchargeDetails = document.getElementById('surcharge-details');
-    const surchargeBreakdown = document.getElementById('surcharge-breakdown');
-    
-    if (totalSurchargePerNight > 0) {
-        let breakdownHtml = '';
-        
-        if (extraAdults > 0) {
-            breakdownHtml += `<div class="text-danger mb-1">• Người lớn vượt TC: ${extraAdults} × ${adultSurchargeRate * 100}% = +${new Intl.NumberFormat('vi-VN').format(adultSurchargePerNight)}đ/đêm</div>`;
-        }
-        
-        if (extraChildren611 > 0) {
-            breakdownHtml += `<div class="text-danger mb-1">• Trẻ 6-11 vượt TC: ${extraChildren611} × ${childSurchargeRate * 100}% = +${new Intl.NumberFormat('vi-VN').format(childSurchargePerNight)}đ/đêm</div>`;
-        }
-        
-        breakdownHtml += `<div class="fw-bold mt-2 pt-2 border-top">Tổng phụ thu/đêm: ${new Intl.NumberFormat('vi-VN').format(totalSurchargePerNight)}đ</div>`;
-        breakdownHtml += `<div class="fw-bold text-success">Tổng phụ thu (${nights} đêm): ${new Intl.NumberFormat('vi-VN').format(totalSurchargePerNight * nights)}đ</div>`;
-        
-        surchargeBreakdown.innerHTML = breakdownHtml;
-        surchargeDetails.style.display = 'block';
-    } else {
-        surchargeDetails.style.display = 'none';
-    }
 
     document.getElementById('standard-capacity').textContent = standardCapacity;
     document.getElementById('max-capacity').textContent = maxGuests;
