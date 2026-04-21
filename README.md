@@ -83,6 +83,97 @@ Thank you for considering contributing to the Laravel framework! The contributio
 
 In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
+## Installation
+
+### Requirements
+
+- PHP >= 8.2
+- Composer
+- MySQL/MariaDB
+- Node.js & NPM
+
+### Quick Start
+
+```bash
+# Clone repository
+git clone https://github.com/Manhcuong246/lighthotelDATN.git
+cd lighthotelDATN
+
+# Install dependencies
+composer install
+npm install
+
+# Setup environment
+cp .env.example .env
+php artisan key:generate
+
+# Configure database in .env
+DB_DATABASE=lighthotel
+DB_USERNAME=root
+DB_PASSWORD=
+
+# Run migrations
+php artisan migrate --seed
+
+# Start development server
+php artisan serve
+```
+
+### Email Configuration
+
+To enable VNPay payment emails:
+
+1. Create Gmail App Password: https://myaccount.google.com/apppasswords
+2. Update `.env`:
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_FROM_ADDRESS=your-email@gmail.com
+MAIL_FROM_NAME="Light Hotel"
+```
+
+3. Clear cache:
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+## Admin Features
+
+### Booking Management
+
+- **Create Single Booking**: Create booking for individual guests
+- **Create Multi-Room Booking**: Book multiple rooms at once
+- **Occupancy-Based Pricing**: Automatic surcharge calculation
+- **Payment Methods**: Cash or VNPay
+- **Status Tracking**: Separate booking and payment status
+
+### Payment Status Flow
+
+1. **Unpaid** → Initial state
+2. **Deposited** → Partial payment received
+3. **Paid** → Full payment completed
+
+### Booking Status Flow
+
+1. **Pending** → Awaiting confirmation
+2. **Confirmed** → Booking confirmed
+
+## Testing
+
+```bash
+# Run test suite
+php artisan test
+
+# Test VNPay email (after email config)
+php test_vnpay_email.php
+```
+
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+
 ## Security Vulnerabilities
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
