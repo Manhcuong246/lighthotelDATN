@@ -71,64 +71,65 @@
 
                     <section id="privacy" class="lh-policy-section scroll-mt-4">
                         <h2>Chính sách bảo mật</h2>
-                        <p>
-                            Chúng tôi thu thập thông tin cần thiết để xử lý đặt phòng (họ tên, email, số điện thoại, chi tiết lưu trú, và khi cần thông tin thanh toán theo kênh bạn chọn) và bảo mật theo quy định hiện hành tại Việt Nam.
-                        </p>
-                        <p>
-                            Dữ liệu được dùng để xác nhận đơn, liên hệ khi cần, xử lý thanh toán/hoàn tiền và cải thiện dịch vụ. Chúng tôi không bán thông tin cá nhân cho bên thứ ba cho mục đích tiếp thị.
-                        </p>
-                        <p>
-                            Hệ thống có thể ghi nhật ký kỹ thuật (địa chỉ IP, loại trình duyệt, thời gian truy cập) nhằm bảo mật và phân tích lỗi — dữ liệu này được lưu giữ có thời hạn và hạn chế quyền truy cập nội bộ.
-                        </p>
-                        <p class="mb-0">
-                            Bạn có thể yêu cầu chỉnh sửa hoặc xóa thông tin liên quan tài khoản qua kênh hỗ trợ trên trang <a href="{{ route('pages.contact') }}" class="fw-semibold text-decoration-none">Liên hệ</a>. Thời gian xử lý yêu cầu phụ thuộc loại dữ liệu và nghĩa vụ lưu trữ hợp đồng.
-                        </p>
+                        @php
+                            $policyPrivacy = \App\Models\SiteContent::where('type', 'policy_privacy')->first();
+                        @endphp
+                        @if($policyPrivacy)
+                            {!! nl2br(e($policyPrivacy->content)) !!}
+                        @else
+                            <p>Chúng tôi thu thập thông tin cần thiết để xử lý đặt phòng (họ tên, email, số điện thoại, chi tiết lưu trú, và khi cần thông tin thanh toán theo kênh bạn chọn) và bảo mật theo quy định hiện hành tại Việt Nam.</p>
+                            <p>Dữ liệu được dùng để xác nhận đơn, liên hệ khi cần, xử lý thanh toán/hoàn tiền và cải thiện dịch vụ. Chúng tôi không bán thông tin cá nhân cho bên thứ ba cho mục đích tiếp thị.</p>
+                            <p>Hệ thống có thể ghi nhật ký kỹ thuật (địa chỉ IP, loại trình duyệt, thời gian truy cập) nhằm bảo mật và phân tích lỗi — dữ liệu này được lưu giữ có thời hạn và hạn chế quyền truy cập nội bộ.</p>
+                        @endif
                     </section>
 
                     <section id="terms" class="lh-policy-section scroll-mt-4">
                         <h2>Điều khoản sử dụng</h2>
-                        <p>
-                            Khi sử dụng website để tìm kiếm và đặt phòng, bạn đồng ý cung cấp thông tin trung thực và tuân thủ quy định của khách sạn trong thời gian lưu trú, bao gồm an ninh, an toàn cháy nổ và trật tự chung.
-                        </p>
-                        <p>
-                            Nội dung, hình ảnh và mô tả trên website thuộc quyền sở hữu hoặc được cấp phép sử dụng. Việc sao chép cho mục đích thương mại cần có sự đồng ý bằng văn bản.
-                        </p>
-                        <p class="mb-0">
-                            Khách sạn có quyền từ chối phục vụ trong trường hợp vi phạm nội quy, an ninh hoặc gây ảnh hưởng đến khách khác.
-                        </p>
+                        @php
+                            $policyTerms = \App\Models\SiteContent::where('type', 'policy_terms')->first();
+                        @endphp
+                        @if($policyTerms)
+                            {!! nl2br(e($policyTerms->content)) !!}
+                        @else
+                            <p>Khi sử dụng website để tìm kiếm và đặt phòng, bạn đồng ý cung cấp thông tin trung thực và tuân thủ quy định của khách sạn trong thời gian lưu trú, bao gồm an ninh, an toàn cháy nổ và trật tự chung.</p>
+                            <p>Nội dung, hình ảnh và mô tả trên website thuộc quyền sở hữu hoặc được cấp phép sử dụng. Việc sao chép cho mục đích thương mại cần có sự đồng ý bằng văn bản.</p>
+                        @endif
                     </section>
 
                     <section id="booking" class="lh-policy-section scroll-mt-4">
                         <h2>Đặt phòng &amp; thanh toán</h2>
-                        <p>
-                            Giá hiển thị theo từng loại phòng và ngày có thể thay đổi theo thời điểm, số lượng phòng còn trống và chương trình khuyến mãi. Giá cuối cùng được xác nhận tại bước thanh toán trước khi bạn hoàn tất đơn.
-                        </p>
-                        <p>
-                            Đơn đặt chỉ được coi là xác nhận sau khi hệ thống ghi nhận thanh toán thành công (hoặc theo điều kiện “giữ phòng” nếu được hiển thị rõ) và bạn nhận thông báo/email xác nhận từ khách sạn.
-                        </p>
-                        <p class="mb-0">
-                            Phụ thu (extra bed, giờ nhận/trả phòng sớm/muộn, dịch vụ thêm) được áp dụng theo bảng giá tại khách sạn và có thể được thông báo khi nhận phòng hoặc qua email trước ngày đến.
-                        </p>
+                        @php
+                            $policyBooking = \App\Models\SiteContent::where('type', 'policy_booking')->first();
+                        @endphp
+                        @if($policyBooking)
+                            {!! nl2br(e($policyBooking->content)) !!}
+                        @else
+                            <p>Giá hiển thị theo từng loại phòng và ngày có thể thay đổi theo thời điểm, số lượng phòng còn trống và chương trình khuyến mãi. Giá cuối cùng được xác nhận tại bước thanh toán trước khi bạn hoàn tất đơn.</p>
+                        @endif
                     </section>
 
                     <section id="cancellation" class="lh-policy-section scroll-mt-4">
                         <h2>Hủy phòng &amp; hoàn tiền</h2>
-                        <p>
-                            Điều kiện hủy miễn phí, hủy có phí và mức hoàn tiền phụ thuộc gói giá và thời điểm bạn gửi yêu cầu. Thông tin cụ thể được hiển thị trên trang đặt phòng và trong email xác nhận.
-                        </p>
-                        <p class="mb-0">
-                            Trường hợp bất khả kháng (thiên tai, sự cố hệ thống ngân hàng…), khách sạn sẽ phối hợp xử lý theo chính sách từng thời kỳ và thông báo qua kênh liên hệ đã đăng ký.
-                        </p>
+                        @php
+                            $policyCancellation = \App\Models\SiteContent::where('type', 'policy_cancellation')->first();
+                        @endphp
+                        @if($policyCancellation)
+                            {!! nl2br(e($policyCancellation->content)) !!}
+                        @else
+                            <p>Điều kiện hủy miễn phí, hủy có phí và mức hoàn tiền phụ thuộc gói giá và thời điểm bạn gửi yêu cầu. Thông tin cụ thể được hiển thị trên trang đặt phòng và trong email xác nhận.</p>
+                        @endif
                     </section>
 
                     <section id="cookies" class="lh-policy-section scroll-mt-4 mb-0">
                         <h2>Cookie &amp; công nghệ tương tự</h2>
-                        <p>
-                            Website có thể sử dụng cookie phiên và cookie chức năng để duy trì phiên đăng nhập (nếu có), ghi nhớ tùy chọn ngôn ngữ và bảo vệ chống lạm dụng (CSRF). Bạn có thể điều chỉnh trình duyệt để từ chối cookie, tuy nhiên một số tính năng có thể không hoạt động đầy đủ.
-                        </p>
-                        <p class="mb-0">
-                            Chúng tôi không dùng cookie để theo dõi hành vi nhạy cảm ngoài phạm vi vận hành website và xử lý đặt phòng.
-                        </p>
+                        @php
+                            $policyCookies = \App\Models\SiteContent::where('type', 'policy_cookies')->first();
+                        @endphp
+                        @if($policyCookies)
+                            {!! nl2br(e($policyCookies->content)) !!}
+                        @else
+                            <p>Website có thể sử dụng cookie phiên và cookie chức năng để duy trì phiên đăng nhập (nếu có), ghi nhớ tùy chọn ngôn ngữ và bảo vệ chống lạm dụng (CSRF).</p>
+                        @endif
                     </section>
                 </div>
             </div>
