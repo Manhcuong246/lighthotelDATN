@@ -135,52 +135,7 @@
                                             <td class="text-end pe-3 fw-bold text-secondary">{{ number_format($br->subtotal, 0, ',', '.') }} ₫</td>
                                             @if(auth()->user() && auth()->user()->role === 'admin' && $booking->status !== 'cancelled' && $booking->status !== 'completed')
                                             <td class="text-center">
-                                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#changeRoomModal_{{ $br->room_id }}">
-                                                    C.Room
-                                                </button>
-                                                
-                                                <!-- Modal Đổi phòng cho phòng {{ $br->room->name ?? $br->room_id }} -->
-                                                <div class="modal fade text-start" id="changeRoomModal_{{ $br->room_id }}" tabindex="-1">
-                                                    <div class="modal-dialog modal-dialog-centered">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title">Đổi phòng - Đang ở: {{ $br->room->name ?? '—' }}</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                            </div>
-                                                            <form action="{{ route('admin.bookings.changeRoom', $booking) }}" method="POST">
-                                                                @csrf
-                                                                <div class="modal-body">
-                                                                    <p class="small text-muted mb-3">Đổi phòng sẽ cập nhật lại giá theo loại phòng mới, cập nhật bảng đặt phòng và ghi nhận lịch sử.</p>
-                                                                    <input type="hidden" name="old_room_id" value="{{ $br->room_id }}">
-                                                                    
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label fw-bold">Chọn phòng mới</label>
-                                                                        <select name="new_room_id" class="form-select" required>
-                                                                            <option value="">-- Chọn phòng thay thế --</option>
-                                                                            @php
-                                                                                $availableRooms = \App\Models\Room::where('status', 'available')
-                                                                                    ->where('id', '!=', $br->room_id)
-                                                                                    ->get();
-                                                                            @endphp
-                                                                            @foreach($availableRooms as $availRoom)
-                                                                                <option value="{{ $availRoom->id }}">{{ $availRoom->name }} ({{ $availRoom->roomType->name ?? 'N/A' }} - {{ number_format($availRoom->catalogueBasePrice(), 0, ',', '.') }}₫)</option>
-                                                                            @endforeach
-                                                                        </select>
-                                                                    </div>
-                                                                    
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label fw-bold">Lý do đổi</label>
-                                                                        <textarea name="reason" class="form-control" rows="2" placeholder="Ví dụ: Khách yêu cầu, Phòng hỏng thiết bị, ..."></textarea>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                                                                    <button type="submit" class="btn btn-primary">Xác nhận đổi</button>
-                                                                </div>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                @include('admin.bookings.partials.room-change-modal', ['booking' => $booking, 'bookingRoom' => $br])
                                             </td>
                                             @endif
                                         </tr>
@@ -190,6 +145,9 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Lịch sử đổi phòng -->
+                    @include('admin.bookings.partials.room-change-history', ['booking' => $booking])
 
                     <div id="booking-extras" class="row mt-3 pt-3 border-top" style="scroll-margin-top: 5rem;">
                         <div class="col-12">
