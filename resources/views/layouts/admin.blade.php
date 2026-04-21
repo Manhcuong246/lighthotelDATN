@@ -352,6 +352,12 @@
 </li>
 @endif
             <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.site-contents.*') ? 'active' : '' }}" href="{{ route('admin.site-contents.index') }}">
+                    <i class="bi bi-file-earmark-text"></i>
+                    Nội dung website
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}"
                    href="{{ route('admin.services.index') }}">
                     <i class="bi bi-cone-striped"></i>
