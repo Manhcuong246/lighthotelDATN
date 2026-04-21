@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
 use App\Http\Controllers\Admin\SiteContentAdminController;
+use App\Http\Controllers\DynamicPageController;
 
 
 
@@ -48,9 +49,9 @@ Route::get('/storage/{path}', function (string $path) {
 
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
-Route::view('/lien-he', 'pages.contact')->name('pages.contact');
-Route::view('/tro-giup', 'pages.help')->name('pages.help');
-Route::view('/chinh-sach', 'pages.policy')->name('pages.policy');
+Route::get('/lien-he', [DynamicPageController::class, 'contact'])->name('pages.contact');
+Route::get('/tro-giup', [DynamicPageController::class, 'help'])->name('pages.help');
+Route::get('/chinh-sach', [DynamicPageController::class, 'policy'])->name('pages.policy');
 
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
