@@ -27,6 +27,11 @@ class RoomType extends Model
         'status',
     ];
 
+    /**
+     * @property string|null $image
+     * @property-read string|null $image_url
+     */
+
     protected $casts = [
         'standard_capacity' => 'integer',
         'capacity' => 'integer',

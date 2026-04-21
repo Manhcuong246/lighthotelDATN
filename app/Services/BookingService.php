@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use Illuminate\Support\Facades\Log;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
@@ -66,7 +67,7 @@ class BookingService
                 ->whereIn('booked_date', $dates)
                 ->exists();
             if ($conflict) {
-                $roomName = Room::find($rid)->name ?? 'Phòng';
+                $roomName = Room::with('roomType')->find($rid)?->displayLabel() ?? 'Phòng';
                 throw new BookingException("Phòng \"{$roomName}\" đã có người đặt trong khoảng thời gian này.");
             }
         }
@@ -183,18 +184,9 @@ class BookingService
                 'status'     => 'pending',
             ]);
 
-            // Tạo BookingGuests
-             if (isset($data['guests']) && is_array($data['guests'])) {
-                foreach ($data['guests'] as $guestData) {
-                                        BookingGuest::create([
-                        'booking_id' => $booking->id,
-                        'name'       => $guestData['name'],
-                         'cccd'       => $guestData['cccd'] ?? null,
-                        'type'       => $guestData['type'],
-                        'status'     => 'pending',
-                    ]);
-                }
-            }
+            // 11/04: Gä bỏ logic lưu BookingGuest cũ tại đây để chuyển sang lưu Guest trong Controller
+            // hoặc gộp chung vào một chỗ để tránh trùng lặp.
+            // (Đã được thực hiện trong BookingController@store theo yêu cầu người dùng)
 
             // Trả về booking để controller xử lý tiếp (vnpay)
             return $booking;
@@ -209,11 +201,8 @@ class BookingService
         $basePrice = (float) $room->catalogueBasePrice();
         $roomType = $room->roomType;
 
-        try {
-            RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5, $roomType);
-        } catch (\InvalidArgumentException $e) {
-            throw new \Exception("Phòng \"{$room->name}\": " . $e->getMessage());
-        }
+        // Không giới hạn số khách - chỉ tính phụ thu khi vượt tiêu chuẩn
+        RoomOccupancyPricing::validate($adults, $children_6_11, $children_0_5, $roomType);
 
         $t = RoomOccupancyPricing::total($basePrice, $nights, $adults, $children_6_11, $children_0_5, $roomType);
 

@@ -29,9 +29,9 @@ return [
     |
     */
     'pricing' => [
-        'standard_capacity' => (int) env('BOOKING_STANDARD_CAPACITY', 3),
-        'max_capacity' => (int) env('BOOKING_MAX_CAPACITY', 6),
-        'max_children_05' => (int) env('BOOKING_MAX_CHILDREN_05', 3),
+        'standard_capacity' => (int) env('BOOKING_STANDARD_CAPACITY', 2), // Phụ phí từ người thứ 3
+        'max_capacity' => (int) env('BOOKING_MAX_CAPACITY', 3),             // Tối đa 3 người/phòng
+        'max_children_05' => (int) env('BOOKING_MAX_CHILDREN_05', 2), // Giới hạn 2 trẻ 0-5 miễn phí
         'default_adult_surcharge_rate' => (float) env('BOOKING_DEFAULT_ADULT_SURCHARGE_RATE', 0.25),
         'default_child_surcharge_rate' => (float) env('BOOKING_DEFAULT_CHILD_SURCHARGE_RATE', 0.125),
     ],

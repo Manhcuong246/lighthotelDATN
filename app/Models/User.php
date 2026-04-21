@@ -9,6 +9,21 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 
+/**
+ * @method bool hasRole(string $name)
+ * @method bool isAdmin()
+ * @method bool isStaff()
+ * @method bool canAccessAdmin()
+ * @property int $id
+ * @property string $email
+ * @property string $full_name
+ * @property string $phone
+ * @property string $password
+ * @property string $avatar_url
+ * @property string $status
+ * @property \Illuminate\Database\Eloquent\Collection $roles
+ * @property-read string $email
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, Authorizable, SoftDeletes;
@@ -27,6 +42,14 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+    /**
+     * Get the user's email address.
+     */
+    public function getEmailAttribute(): string
+    {
+        return $this->attributes['email'] ?? '';
+    }
 
     public function roles()
     {

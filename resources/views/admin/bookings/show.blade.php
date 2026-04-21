@@ -127,8 +127,8 @@
                                             <td>{{ $br->room->roomType->name ?? '—' }}</td>
                                             <td class="text-center">{{ $br->adults }}</td>
                                             <td class="text-center">
-                                                @if($br->children_6_11 > 0)<span title="Trẻ 6–11 tuổi (tính vào occupancy)">{{ $br->children_6_11 }}<small class="text-muted ms-1">6–11t</small></span>@endif
-                                                @if($br->children_0_5 > 0)<span title="Trẻ 0–5 tuổi (miễn phí, tính sức chứa)">{{ $br->children_6_11 > 0 ? ' + ' : '' }}{{ $br->children_0_5 }}<small class="text-muted ms-1">0–5t</small></span>@endif
+                                                @if($br->children_6_11 > 0)<span>{{ $br->children_6_11 }}<small class="text-muted ms-1">6–11t</small></span>@endif
+                                                @if($br->children_0_5 > 0)<span>{{ $br->children_6_11 > 0 ? ' + ' : '' }}{{ $br->children_0_5 }}<small class="text-muted ms-1">0–5t</small></span>@endif
                                                 @if($br->children_6_11 + $br->children_0_5 === 0) — @endif
                                             </td>
                                             <td class="text-end text-muted">{{ number_format($br->price_per_night, 0, ',', '.') }} ₫</td>
@@ -403,20 +403,6 @@
                     <div class="row g-3 align-items-center">
                         <div class="col-md-6">
                             <div class="d-flex flex-wrap gap-2">
-                                @if($booking->isAdminCheckinAllowed())
-                                <form action="{{ route('admin.bookings.checkIn', $booking) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="btn btn-success btn-sm rounded-2 btn-admin-icon" title="Nhận phòng"><i class="bi bi-box-arrow-in-right"></i></button>
-                                </form>
-                                @endif
-
-                                @if($booking->isAdminCheckoutAllowed())
-                                <form action="{{ route('admin.bookings.checkOut', $booking) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="btn btn-warning btn-sm rounded-2 btn-admin-icon" title="Trả phòng"><i class="bi bi-box-arrow-right"></i></button>
-                                </form>
-                                @endif
-
                                 @if($booking->invoice)
                                 <a href="{{ route('admin.invoices.show', $booking->invoice) }}" class="btn btn-outline-secondary btn-sm rounded-2 btn-admin-icon" title="Xem hóa đơn"><i class="bi bi-receipt-cutoff"></i></a>
                                 @elseif($booking->isPaidAndCheckedOutForInvoice())
