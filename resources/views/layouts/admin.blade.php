@@ -364,12 +364,15 @@
     </a>
 </li>
 @endif
+            {{-- Bỏ phần nội dung website ở sidebar theo yêu cầu user --}}
+            {{-- 
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.site-contents.*') ? 'active' : '' }}" href="{{ route('admin.site-contents.index') }}">
                     <i class="bi bi-file-earmark-text"></i>
                     Nội dung website
                 </a>
-            </li>
+            </li> 
+            --}}
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.services.*') ? 'active' : '' }}"
                    href="{{ route('admin.services.index') }}">
