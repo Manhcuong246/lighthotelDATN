@@ -22,6 +22,7 @@ use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
+use App\Http\Controllers\Admin\SiteContentAdminController;
 
 
 
@@ -180,6 +181,16 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
         Route::get('/{id}/edit', [RoomTypeController::class, 'edit'])->name('edit');
         Route::put('/{id}', [RoomTypeController::class, 'update'])->name('update');
         Route::delete('/{id}', [RoomTypeController::class, 'destroy'])->name('destroy');
+    });
+
+    // ====== QUẢN LÝ NỘI DUNG WEBSITE (CMS) ======
+    Route::prefix('site-contents')->name('site-contents.')->group(function () {
+        Route::get('/', [SiteContentAdminController::class, 'index'])->name('index');
+        Route::get('/create', [SiteContentAdminController::class, 'create'])->name('create');
+        Route::post('/', [SiteContentAdminController::class, 'store'])->name('store');
+        Route::get('/{siteContent}/edit', [SiteContentAdminController::class, 'edit'])->name('edit');
+        Route::put('/{siteContent}', [SiteContentAdminController::class, 'update'])->name('update');
+        Route::delete('/{siteContent}', [SiteContentAdminController::class, 'destroy'])->name('destroy');
     });
 
 
