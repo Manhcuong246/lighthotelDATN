@@ -254,7 +254,10 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-admin">
         <div class="container-fluid px-3 px-md-4">
-            <a class="navbar-brand navbar-brand-admin" href="{{ route('admin.dashboard') }}">
+            <a class="navbar-brand navbar-brand-admin" 
+   href="{{ auth()->user()->isAdmin() 
+        ? route('admin.dashboard') 
+        : route('staff.dashboard') }}">
                 <i class="bi bi-speedometer2"></i>
                 <span class="d-none d-sm-inline">Admin</span>
             </a>
@@ -311,15 +314,47 @@
         </div>
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
-                    <i class="bi bi-speedometer2"></i>
-                    Tổng quan
-                </a>
-            </li>
+    <a class="nav-link 
+        {{ (auth()->user()->isAdmin() && request()->routeIs('admin.dashboard')) 
+        || (!auth()->user()->isAdmin() && request()->routeIs('staff.dashboard')) 
+        ? 'active' : '' }}"
+        
+        href="{{ auth()->user()->isAdmin() 
+            ? route('admin.dashboard') 
+            : route('staff.dashboard') }}">
+            
+        <i class="bi bi-speedometer2"></i>
+        Tổng quan
+    </a>
+</li>
+@if(!auth()->user()->isAdmin())
+<li class="nav-item">
+
+    <a class="nav-link 
+        {{ request()->routeIs('staff.activity_logs.*') ? 'active' : '' }}"
+
+        href="{{ route('staff.activity_logs.index') }}">
+
+        <i class="bi bi-clock-history"></i>
+        Nhật ký hoạt động
+
+    </a>
+
+</li>
+@endif
+            @if(auth()->user()->isAdmin())
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('admin.roomtypes.*') ? 'active' : '' }}" 
+       href="{{ route('admin.roomtypes.index') }}">
+        <i class="bi bi-layers"></i>
+        Loại phòng
+    </a>
+</li>
+@endif
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.roomtypes.*') ? 'active' : '' }}" href="{{ route('admin.roomtypes.index') }}">
-                    <i class="bi bi-layers"></i>
-                    Loại phòng
+                <a class="nav-link {{ request()->routeIs('admin.site-contents.*') ? 'active' : '' }}" href="{{ route('admin.site-contents.index') }}">
+                    <i class="bi bi-file-earmark-text"></i>
+                    Nội dung website
                 </a>
             </li>
             <li class="nav-item">
@@ -371,12 +406,15 @@
                     Đánh giá
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.coupons*') ? 'active' : '' }}" href="{{ route('admin.coupons.index') }}">
-                    <i class="bi bi-ticket-perforated"></i>
-                    Mã giảm
-                </a>
-            </li>
+           @if(auth()->user()->isAdmin())
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('admin.coupons*') ? 'active' : '' }}" 
+       href="{{ route('admin.coupons.index') }}">
+        <i class="bi bi-ticket-perforated"></i>
+        Mã giảm
+    </a>
+</li>
+@endif
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.settings*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
