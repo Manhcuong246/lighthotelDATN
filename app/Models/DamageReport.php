@@ -13,6 +13,7 @@ class DamageReport extends Model
     protected $fillable = [
         'room_id',
         'reported_by',
+        
         'booking_id',
         'damage_type',
         'description',
