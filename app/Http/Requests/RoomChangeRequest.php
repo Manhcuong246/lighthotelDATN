@@ -25,15 +25,20 @@ class RoomChangeRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'booking_id' => [
+                'nullable',
+                'integer',
+                'exists:bookings,id',
+            ],
             'old_room_id' => [
                 'required',
                 'integer',
                 'exists:rooms,id',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     // Kiểm tra phòng cũ có thuộc booking này không
-                    $booking = $this->route('booking');
-                    if ($booking) {
-                        $hasRoom = $booking->bookingRooms()
+                    $bookingId = $this->input('booking_id') ?? $this->route('booking')?->id;
+                    if ($bookingId) {
+                        $hasRoom = \App\Models\BookingRoom::where('booking_id', $bookingId)
                             ->where('room_id', $value)
                             ->exists();
                         if (!$hasRoom) {
@@ -49,9 +54,9 @@ class RoomChangeRequest extends FormRequest
                 'different:old_room_id',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     // Kiểm tra phòng mới không được trùng với phòng khác trong cùng booking
-                    $booking = $this->route('booking');
-                    if ($booking) {
-                        $existsInBooking = $booking->bookingRooms()
+                    $bookingId = $this->input('booking_id') ?? $this->route('booking')?->id;
+                    if ($bookingId) {
+                        $existsInBooking = \App\Models\BookingRoom::where('booking_id', $bookingId)
                             ->where('room_id', $value)
                             ->exists();
                         if ($existsInBooking) {
@@ -65,9 +70,18 @@ class RoomChangeRequest extends FormRequest
                 'string',
                 'max:500',
             ],
+            'is_emergency' => [
+                'nullable',
+                'boolean',
+            ],
             'keep_price' => [
                 'nullable',
                 'boolean',
+            ],
+            'reason_custom' => [
+                'nullable',
+                'string',
+                'max:500',
             ],
         ];
     }
@@ -92,10 +106,15 @@ class RoomChangeRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Convert keep_price to boolean
+        // Convert boolean fields
         if ($this->has('keep_price')) {
             $this->merge([
                 'keep_price' => filter_var($this->keep_price, FILTER_VALIDATE_BOOLEAN),
+            ]);
+        }
+        if ($this->has('is_emergency')) {
+            $this->merge([
+                'is_emergency' => filter_var($this->is_emergency, FILTER_VALIDATE_BOOLEAN),
             ]);
         }
     }
