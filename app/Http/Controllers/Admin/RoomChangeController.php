@@ -56,12 +56,17 @@ class RoomChangeController extends Controller
             $query->where('changed_by', $request->changed_by);
         }
 
-        // Bộ lọc theo khoảng thởi gian
+        // Bộ lọc theo khoảng thời gian
         if ($request->filled('date_from')) {
             $query->whereDate('changed_at', '>=', $request->date_from);
         }
         if ($request->filled('date_to')) {
             $query->whereDate('changed_at', '<=', $request->date_to);
+        }
+
+        // Bộ lọc theo loại đổi phòng
+        if ($request->filled('change_type')) {
+            $query->where('change_type', $request->change_type);
         }
 
         // Bộ lọc theo chênh lệch giá
@@ -97,6 +102,10 @@ class RoomChangeController extends Controller
                 ->count(),
             'total_price_increase' => RoomChangeHistory::where('price_difference', '>', 0)->sum('price_difference'),
             'total_price_decrease' => RoomChangeHistory::where('price_difference', '<', 0)->sum('price_difference'),
+            'upgrades' => RoomChangeHistory::where('change_type', 'upgrade')->count(),
+            'downgrades' => RoomChangeHistory::where('change_type', 'downgrade')->count(),
+            'same_grade' => RoomChangeHistory::where('change_type', 'same_grade')->count(),
+            'emergencies' => RoomChangeHistory::where('change_type', 'emergency')->count(),
         ];
 
         // Dữ liệu cho bộ lọc
@@ -144,17 +153,20 @@ class RoomChangeController extends Controller
         $booking = Booking::findOrFail($request->booking_id ?? $request->route('booking')?->id);
 
         try {
+            $isEmergency = $request->boolean('is_emergency');
+
             $result = $this->roomChangeService->changeRoom(
                 $booking,
                 (int) $request->old_room_id,
                 (int) $request->new_room_id,
                 $request->reason,
-                auth()->id()
+                auth()->id(),
+                $isEmergency
             );
 
             return redirect()
                 ->route('admin.room-changes.show', $result['history_id'])
-                ->with('success', 'Đổi phòng thành công! ' . $this->formatPriceDifference($result['price_difference']));
+                ->with('success', 'Đổi phòng thành công! ' . $this->formatResultMessage($result));
 
         } catch (\Exception $e) {
             Log::error('Room change failed', [
@@ -326,5 +338,41 @@ class RoomChangeController extends Controller
             return 'Giá giảm: ' . number_format(abs($diff), 0, ',', '.') . ' ₫';
         }
         return 'Giá không đổi';
+    }
+
+    /**
+     * Format kết quả đổi phòng với đầy đủ thông tin nghiệp vụ
+     */
+    private function formatResultMessage(array $result): string
+    {
+        $parts = [];
+
+        // Chênh lệch giá
+        $diff = $result['price_difference'] ?? 0;
+        if ($diff > 0) {
+            $parts[] = 'Giá tăng thêm: ' . number_format($diff, 0, ',', '.') . ' ₫';
+        } elseif ($diff < 0) {
+            $parts[] = 'Giá giảm: ' . number_format(abs($diff), 0, ',', '.') . ' ₫';
+        } else {
+            $parts[] = 'Giá không đổi';
+        }
+
+        // Loại đổi phòng
+        $changeTypeLabels = [
+            'same_grade' => 'Cùng hạng',
+            'upgrade'    => 'Nâng hạng',
+            'downgrade'  => 'Hạ hạng',
+            'emergency'  => 'Khẩn cấp',
+        ];
+        $changeType = $result['change_type'] ?? 'same_grade';
+        $parts[] = 'Loại: ' . ($changeTypeLabels[$changeType] ?? $changeType);
+
+        // Số đêm còn lại
+        $remainingNights = $result['remaining_nights'] ?? 0;
+        if ($remainingNights > 0) {
+            $parts[] = $remainingNights . ' đêm còn lại';
+        }
+
+        return implode(' | ', $parts);
     }
 }
