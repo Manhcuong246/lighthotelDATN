@@ -1694,9 +1694,192 @@
 @include('partials.footer')
 @include('components.chat-widget')
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {{-- Floating Admin Edit Button --}}
+    @if(auth()->check() && auth()->user()->isAdmin())
+        <div class="admin-quick-edit" style="position: fixed; bottom: 30px; left: 30px; z-index: 10000;">
+            <button type="button" 
+               class="btn btn-warning rounded-circle shadow-lg d-flex align-items-center justify-content-center pulse-animation" 
+               style="width: 60px; height: 60px; border: 3px solid #fff;"
+               data-bs-toggle="modal" 
+               data-bs-target="#quickEditModal"
+               title="Chỉnh sửa trực tiếp">
+                <i class="bi bi-pencil-fill" style="font-size: 1.6rem; color: #1e293b;"></i>
+            </button>
+        </div>
+
+        <!-- Quick Edit Modal -->
+        <div class="modal fade" id="quickEditModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content shadow-lg border-0">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-magic me-2"></i>Chỉnh sửa nội dung nhanh</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        @php
+                            $isPolicyPage = request()->routeIs('pages.policy');
+                        @endphp
+                        
+                        @if($isPolicyPage)
+                            <ul class="nav nav-pills mb-4 gap-2" id="quickEditTabs">
+                                <li class="nav-item">
+                                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-footer">Thông tin & Footer</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-policy">Chính sách & Điều khoản</button>
+                                </li>
+                            </ul>
+                        @endif
+
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="tab-footer">
+                                <form action="{{ route('admin.settings.update.general') }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Tên khách sạn</label>
+                                            <input type="text" name="name" class="form-control" value="{{ $hotelInfo->name ?? '' }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Điện thoại</label>
+                                            <input type="text" name="phone" class="form-control" value="{{ $hotelInfo->phone ?? '' }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label small fw-bold">Địa chỉ</label>
+                                            <input type="text" name="address" class="form-control" value="{{ $hotelInfo->address ?? '' }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label small fw-bold">Email</label>
+                                            <input type="email" name="email" class="form-control" value="{{ $hotelInfo->email ?? '' }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label small fw-bold">Mô tả Footer (Mô tả ngắn)</label>
+                                            <textarea name="description" class="form-control" rows="3">{{ $hotelInfo->description ?? '' }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 text-end">
+                                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
+                                        <button type="submit" class="btn btn-primary px-4">Lưu thay đổi</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            @if($isPolicyPage)
+                            <div class="tab-pane fade" id="tab-policy">
+                                <form action="{{ route('admin.settings.update.site.content') }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+                                    @php
+                                        $policyPrivacy = \App\Models\SiteContent::where('type', 'policy_privacy')->first();
+                                        $policyTerms = \App\Models\SiteContent::where('type', 'policy_terms')->first();
+                                        $policyBooking = \App\Models\SiteContent::where('type', 'policy_booking')->first();
+                                        $policyCancellation = \App\Models\SiteContent::where('type', 'policy_cancellation')->first();
+                                        $policyCookies = \App\Models\SiteContent::where('type', 'policy_cookies')->first();
+                                    @endphp
+                                    
+                                    <div class="accordion" id="accordionPolicy">
+                                        <!-- Privacy -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivacy">
+                                                    Chính sách bảo mật
+                                                </button>
+                                            </h2>
+                                            <div id="collapsePrivacy" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
+                                                <div class="accordion-body">
+                                                    <input type="hidden" name="contents[0][type]" value="policy_privacy">
+                                                    <input type="hidden" name="contents[0][content_id]" value="{{ $policyPrivacy->id ?? '' }}">
+                                                    <textarea name="contents[0][content]" class="form-control" rows="5">{{ $policyPrivacy->content ?? "Chúng tôi thu thập thông tin cần thiết để xử lý đặt phòng (họ tên, email, số điện thoại, chi tiết lưu trú, và khi cần thông tin thanh toán theo kênh bạn chọn) và bảo mật theo quy định hiện hành tại Việt Nam.\n\nDữ liệu được dùng để xác nhận đơn, liên hệ khi cần, xử lý thanh toán/hoàn tiền và cải thiện dịch vụ. Chúng tôi không bán thông tin cá nhân cho bên thứ ba cho mục đích tiếp thị.\n\nHệ thống có thể ghi nhật ký kỹ thuật (địa chỉ IP, loại trình duyệt, thời gian truy cập) nhằm bảo mật và phân tích lỗi — dữ liệu này được lưu giữ có thời hạn và hạn chế quyền truy cập nội bộ." }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Terms -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTerms">
+                                                    Điều khoản sử dụng
+                                                </button>
+                                            </h2>
+                                            <div id="collapseTerms" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
+                                                <div class="accordion-body">
+                                                    <input type="hidden" name="contents[1][type]" value="policy_terms">
+                                                    <input type="hidden" name="contents[1][content_id]" value="{{ $policyTerms->id ?? '' }}">
+                                                    <textarea name="contents[1][content]" class="form-control" rows="5">{{ $policyTerms->content ?? "Khi sử dụng website để tìm kiếm và đặt phòng, bạn đồng ý cung cấp thông tin trung thực và tuân thủ quy định của khách sạn trong thời gian lưu trú, bao gồm an ninh, an toàn cháy nổ và trật tự chung.\n\nNội dung, hình ảnh và mô tả trên website thuộc quyền sở hữu hoặc được cấp phép sử dụng. Việc sao chép cho mục đích thương mại cần có sự đồng ý bằng văn bản.\n\nKhách sạn có quyền từ chối phục vụ trong trường hợp vi phạm nội quy, an ninh hoặc gây ảnh hưởng đến khách khác." }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Booking -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBooking">
+                                                    Đặt phòng & thanh toán
+                                                </button>
+                                            </h2>
+                                            <div id="collapseBooking" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
+                                                <div class="accordion-body">
+                                                    <input type="hidden" name="contents[2][type]" value="policy_booking">
+                                                    <input type="hidden" name="contents[2][content_id]" value="{{ $policyBooking->id ?? '' }}">
+                                                    <textarea name="contents[2][content]" class="form-control" rows="5">{{ $policyBooking->content ?? "Giá hiển thị theo từng loại phòng và ngày có thể thay đổi theo thời điểm, số lượng phòng còn trống và chương trình khuyến mãi. Giá cuối cùng được xác nhận tại bước thanh toán trước khi bạn hoàn tất đơn.\n\nĐơn đặt chỉ được coi là xác nhận sau khi hệ thống ghi nhận thanh toán thành công (hoặc theo điều kiện “giữ phòng” nếu được hiển thị rõ) và bạn nhận thông báo/email xác nhận từ khách sạn." }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Cancellation -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCancellation">
+                                                    Hủy phòng & hoàn tiền
+                                                </button>
+                                            </h2>
+                                            <div id="collapseCancellation" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
+                                                <div class="accordion-body">
+                                                    <input type="hidden" name="contents[3][type]" value="policy_cancellation">
+                                                    <input type="hidden" name="contents[3][content_id]" value="{{ $policyCancellation->id ?? '' }}">
+                                                    <textarea name="contents[3][content]" class="form-control" rows="5">{{ $policyCancellation->content ?? "Điều kiện hủy miễn phí, hủy có phí và mức hoàn tiền phụ thuộc gói giá và thời điểm bạn gửi yêu cầu. Thông tin cụ thể được hiển thị trên trang đặt phòng và trong email xác nhận.\n\nTrường hợp bất khả kháng (thiên tai, sự cố hệ thống ngân hàng…), khách sạn sẽ phối hợp xử lý theo chính sách từng thời kỳ và thông báo qua kênh liên hệ đã đăng ký." }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Cookies -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCookies">
+                                                    Cookie & công nghệ tương tự
+                                                </button>
+                                            </h2>
+                                            <div id="collapseCookies" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
+                                                <div class="accordion-body">
+                                                    <input type="hidden" name="contents[4][type]" value="policy_cookies">
+                                                    <input type="hidden" name="contents[4][content_id]" value="{{ $policyCookies->id ?? '' }}">
+                                                    <textarea name="contents[4][content]" class="form-control" rows="5">{{ $policyCookies->content ?? "Website có thể sử dụng cookie phiên và cookie chức năng để duy trì phiên đăng nhập (nếu có), ghi nhớ tùy chọn ngôn ngữ và bảo vệ chống lạm dụng (CSRF). Bạn có thể điều chỉnh trình duyệt để từ chối cookie, tuy nhiên một số tính năng có thể không hoạt động đầy đủ.\n\nChúng tôi không dùng cookie để theo dõi hành vi nhạy cảm ngoài phạm vi vận hành website và xử lý đặt phòng." }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 text-end">
+                                        <button type="submit" class="btn btn-success px-4">Cập nhật toàn bộ chính sách</button>
+                                    </div>
+                                </form>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .pulse-animation { animation: pulse-yellow 2s infinite; }
+            @keyframes pulse-yellow {
+                0% { box-shadow: 0 0 0 0 rgba(254, 190, 2, 0.7); }
+                70% { box-shadow: 0 0 0 15px rgba(254, 190, 2, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(254, 190, 2, 0); }
+            }
+            .nav-pills .nav-link { color: #64748b; font-weight: 600; border-radius: 8px; }
+            .nav-pills .nav-link.active { background-color: #febb02; color: #1e293b; }
+        </style>
+    @endif
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 @stack('scripts')
 </body>
 </html>
-
-
