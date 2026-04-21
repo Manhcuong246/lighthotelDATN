@@ -40,6 +40,24 @@
                     <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Thông tin đổi phòng</h5>
                 </div>
                 <div class="card-body">
+                    <!-- Loại đổi phòng & Số đêm còn lại -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted">Loại đổi phòng:</span>
+                                <span class="badge {{ $history->change_type_badge }} fs-6">{{ $history->change_type_label }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted">Số đêm còn lại:</span>
+                                <span class="fw-bold fs-5">{{ $history->remaining_nights ?? 0 }}</span>
+                                <span class="text-muted">đêm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phòng cũ → Phòng mới -->
                     <div class="row g-3">
                         <!-- Phòng cũ -->
                         <div class="col-md-5">
@@ -117,7 +135,20 @@
                                     <td class="fw-bold">{{ number_format($history->new_price_per_night ?? 0, 0, ',', '.') }} ₫</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Chênh lệch</td>
+                                    <td class="text-muted">Chênh lệch / đêm</td>
+                                    <td>
+                                        @php $perNightDiff = ($history->new_price_per_night ?? 0) - ($history->old_price_per_night ?? 0); @endphp
+                                        @if($perNightDiff > 0)
+                                            <span class="text-danger fw-bold">+{{ number_format($perNightDiff, 0, ',', '.') }} ₫</span>
+                                        @elseif($perNightDiff < 0)
+                                            <span class="text-success fw-bold">{{ number_format($perNightDiff, 0, ',', '.') }} ₫</span>
+                                        @else
+                                            <span class="text-muted">0 ₫</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Tổng chênh lệch</td>
                                     <td>
                                         @if($diff > 0)
                                             <span class="text-danger fw-bold">+{{ number_format($diff, 0, ',', '.') }} ₫</span>
@@ -126,6 +157,12 @@
                                         @else
                                             <span class="text-muted">0 ₫</span>
                                         @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Trạng thái phòng cũ trước đổi</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ $history->old_room_status_label }}</span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -191,6 +228,45 @@
                     <p class="mb-0">{{ $history->reason ?? 'Không ghi lý do' }}</p>
                 </div>
             </div>
+
+            <!-- Chính sách tài chính -->
+            @php
+                $changeType = $history->change_type ?? 'same_grade';
+                $upgradePolicy = config('room_changes.upgrade_policy', 'add_to_folio');
+                $downgradePolicy = config('room_changes.downgrade_policy', 'credit');
+            @endphp
+            @if($changeType === 'upgrade' || $changeType === 'downgrade')
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-wallet2 me-2"></i>Chính sách tài chính</h5>
+                </div>
+                <div class="card-body">
+                    @if($changeType === 'upgrade')
+                        <div class="alert alert-info mb-0 small">
+                            <strong>Nâng hạng:</strong>
+                            @if($upgradePolicy === 'pay_now')
+                                Khách phải thanh toán bổ sung ngay.
+                            @elseif($upgradePolicy === 'add_to_folio')
+                                Phí bổ sung được ghi nợ vào hóa đơn tổng (Folio).
+                            @elseif($upgradePolicy === 'auto_confirm')
+                                Tự động xác nhận (dành cho admin).
+                            @endif
+                        </div>
+                    @elseif($changeType === 'downgrade')
+                        <div class="alert alert-success mb-0 small">
+                            <strong>Hạ hạng:</strong>
+                            @if($downgradePolicy === 'refund')
+                                Hoàn tiền ngay cho khách.
+                            @elseif($downgradePolicy === 'credit')
+                                Số tiền chênh lệch được ghi credit vào Folio cho lần sau.
+                            @elseif($downgradePolicy === 'none')
+                                Không hoàn tiền (chỉ cập nhật giá).
+                            @endif
+                        </div>
+                    @endif
+                </div>
+            </div>
+            @endif
 
             <!-- Người thực hiện -->
             <div class="card shadow-sm border-0 rounded-3 mb-4">
