@@ -157,7 +157,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Phụ thu chi tiết -->
                     <div id="surcharge-details" class="mt-2" style="display: none;">
                         <div class="alert alert-warning py-2 mb-0">
@@ -165,16 +165,31 @@
                             <div id="surcharge-breakdown" class="small"></div>
                         </div>
                     </div>
-                    
+
                     <!-- Ghi chú -->
                     <div class="mt-2 small text-muted">
-                        <i class="bi bi-info-circle"></i> 
+                        <i class="bi bi-info-circle"></i>
                         Tiêu chuẩn: <strong id="standard-capacity">3</strong> khách | Tối đa: <strong id="max-capacity">6</strong> khách
                         | Trẻ 0-5 miễn phí nhưng tính sức chứa
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="card shadow-sm border-0 rounded-3 mb-3">
+            <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
+                <h5 class="mb-0 fw-bold">Thông tin chi tiết khách hàng</h5>
+                <small class="text-muted">Nhập tên và CCCD cho tất cả khách</small>
+            </div>
+            <div class="card-body">
+                <div id="guestDetailsContainer">
+                    <!-- Sẽ được render bằng JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Store guest data as JSON -->
+        <input type="hidden" name="guests_json" id="guests_json" value="{}">
 
         <!-- Thông tin thanh toán -->
         <div class="card shadow-sm border-0 rounded-3 mb-3">
@@ -225,7 +240,7 @@
                 <!-- VNPay Info -->
                 <div class="mt-3 pt-3 border-top" id="vnpay-section" style="display: none;">
                     <div class="alert alert-info py-2">
-                        <i class="bi bi-info-circle"></i> 
+                        <i class="bi bi-info-circle"></i>
                         <strong>VNPay:</strong> Sau khi tạo đơn, hệ thống sẽ tự động gửi email cho khách với link thanh toán VNPay.
                         <br><small class="text-muted">Link có hiệu lực trong {{ (int) config('vnpay.pay_entry_signed_ttl_days', 14) }} ngày. Khách có {{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút để hoàn tất thanh toán từ lúc bấm link.</small>
                     </div>
@@ -352,6 +367,107 @@ const bankConfigEl = document.getElementById('bank-config');
 const bankConfig = bankConfigEl ? JSON.parse(bankConfigEl.dataset.config) : {};
 
 /* =========================
+GUEST DATA MANAGEMENT
+========================= */
+
+// Object to store guest data by room ID
+let guestData = {};
+
+// Function to get unique room ID key
+function getRoomKey() {
+    const roomId = roomSelect.value;
+    return `room_${roomId}`;
+}
+
+// Function to render guest detail form
+function renderGuestForm() {
+    const adults = parseInt(adultsInput.value) || 1;
+    const children611 = parseInt(document.getElementById('children_6_11').value) || 0;
+    const children05 = parseInt(document.getElementById('children_0_5').value) || 0;
+    const totalGuests = adults + children611 + children05;
+
+    const roomKey = getRoomKey();
+    let html = '';
+
+    // Initialize room data if not exists
+    if (!guestData[roomKey]) {
+        guestData[roomKey] = {};
+    }
+
+    for (let i = 0; i < totalGuests; i++) {
+        const guestIndex = i + 1;
+        const isAdult = i < adults;
+        const guestType = isAdult ? 'adult' : (i < adults + children611 ? 'child_6_11' : 'child_0_5');
+
+        // Get saved values from guestData
+        const savedName = guestData[roomKey]?.[i]?.name || '';
+        const savedCccd = guestData[roomKey]?.[i]?.cccd || '';
+
+        html += `
+            <div class="row g-3 mb-3" data-guest-index="${i}">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        Khách ${guestIndex} (${isAdult ? 'Người lớn' : (guestType === 'child_6_11' ? 'Trẻ 6-11' : 'Trẻ 0-5')}) ${isAdult ? '*' : ''}
+                    </label>
+                    <input type="text"
+                           class="form-control guest-input"
+                           data-room="${roomKey}"
+                           data-index="${i}"
+                           data-field="name"
+                           placeholder="Nhập họ tên"
+                           value="${savedName}"
+                           ${isAdult ? 'required' : ''}>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">
+                        CCCD Khách ${guestIndex} ${isAdult ? '*' : '(không bắt buộc)'}
+                    </label>
+                    <input type="text"
+                           class="form-control guest-input"
+                           data-room="${roomKey}"
+                           data-index="${i}"
+                           data-field="cccd"
+                           placeholder="Nhập số CCCD"
+                           value="${savedCccd}"
+                           ${isAdult ? 'required' : ''}>
+                </div>
+            </div>
+        `;
+    }
+
+    document.getElementById('guestDetailsContainer').innerHTML = html;
+
+    // Attach event listeners to newly created inputs
+    attachGuestInputListeners();
+}
+
+// Attach event listeners to guest inputs
+function attachGuestInputListeners() {
+    document.querySelectorAll('.guest-input').forEach(input => {
+        input.addEventListener('input', function () {
+            const roomKey = this.dataset.room;
+            const index = parseInt(this.dataset.index);
+            const field = this.dataset.field;
+
+            if (!guestData[roomKey]) {
+                guestData[roomKey] = {};
+            }
+            if (!guestData[roomKey][index]) {
+                guestData[roomKey][index] = {};
+            }
+
+            guestData[roomKey][index][field] = this.value;
+        });
+    });
+}
+
+// Update form when room or guest count changes
+function updateGuestForm() {
+    renderGuestForm();
+}
+
+
+/* =========================
 PRICE PREVIEW
 ========================= */
 
@@ -405,7 +521,7 @@ function updatePricePreview() {
     const adultSurchargePerNight = extraAdults * adultSurchargeRate * basePrice;
     const childSurchargePerNight = extraChildren611 * childSurchargeRate * basePrice;
     const totalSurchargePerNight = adultSurchargePerNight + childSurchargePerNight;
-    
+
     const pricePerNight = basePrice + totalSurchargePerNight;
     const total = pricePerNight * nights;
 
@@ -415,28 +531,28 @@ function updatePricePreview() {
         new Intl.NumberFormat('vi-VN').format(basePrice) + 'đ';
     document.getElementById('total-price').textContent =
         new Intl.NumberFormat('vi-VN').format(total) + 'đ';
-    
+
     document.getElementById('standard-capacity').textContent = standardCapacity;
     document.getElementById('max-capacity').textContent = maxGuests;
 
     // Hiển thị phụ thu nếu có
     const surchargeDetails = document.getElementById('surcharge-details');
     const surchargeBreakdown = document.getElementById('surcharge-breakdown');
-    
+
     if (totalSurchargePerNight > 0) {
         let breakdownHtml = '';
-        
+
         if (extraAdults > 0) {
             breakdownHtml += `<div class="text-danger mb-1">• Người lớn vượt TC: ${extraAdults} × ${adultSurchargeRate * 100}% = +${new Intl.NumberFormat('vi-VN').format(adultSurchargePerNight)}đ/đêm</div>`;
         }
-        
+
         if (extraChildren611 > 0) {
             breakdownHtml += `<div class="text-danger mb-1">• Trẻ 6-11 vượt TC: ${extraChildren611} × ${childSurchargeRate * 100}% = +${new Intl.NumberFormat('vi-VN').format(childSurchargePerNight)}đ/đêm</div>`;
         }
-        
+
         breakdownHtml += `<div class="fw-bold mt-2 pt-2 border-top">Tổng phụ thu/đêm: ${new Intl.NumberFormat('vi-VN').format(totalSurchargePerNight)}đ</div>`;
         breakdownHtml += `<div class="fw-bold text-success">Tổng phụ thu (${nights} đêm): ${new Intl.NumberFormat('vi-VN').format(totalSurchargePerNight * nights)}đ</div>`;
-        
+
         surchargeBreakdown.innerHTML = breakdownHtml;
         surchargeDetails.style.display = 'block';
     } else {
@@ -622,6 +738,7 @@ EVENTS
 ========================= */
 
 roomSelect.addEventListener('change', function () {
+    updateGuestForm();
     updatePricePreview();
     setTimeout(generateQR, 100);
 });
@@ -653,9 +770,23 @@ paymentStatusSelect.addEventListener('change', generateQR);
 amountPaidInput.addEventListener('input', generateQR);
 
 // Thêm event listeners cho số khách
-adultsInput.addEventListener('input', updatePricePreview);
-document.getElementById('children_6_11').addEventListener('input', updatePricePreview);
-document.getElementById('children_0_5').addEventListener('input', updatePricePreview);
+adultsInput.addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+document.getElementById('children_6_11').addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+document.getElementById('children_0_5').addEventListener('input', function() {
+    updateGuestForm();
+    updatePricePreview();
+});
+
+// Initialize guest form on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateGuestForm();
+});
 
 
 /* =========================
@@ -673,6 +804,18 @@ BOOTSTRAP VALIDATION
         Array.prototype.slice.call(forms).forEach(function (form) {
 
             form.addEventListener('submit', function (event) {
+
+                // Fill guests_json with current guestData before submit
+                const roomKey = getRoomKey();
+                const currentRoomGuests = guestData[roomKey] || {};
+
+                // Convert to array format
+                const guestsArray = [];
+                Object.keys(currentRoomGuests).forEach(index => {
+                    guestsArray[parseInt(index)] = currentRoomGuests[index];
+                });
+
+                document.getElementById('guests_json').value = JSON.stringify(guestsArray);
 
                 if (!form.checkValidity()) {
 

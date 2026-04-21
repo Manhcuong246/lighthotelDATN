@@ -7,7 +7,7 @@
 {{-- ============================
      HERO SECTION
      ============================ --}}
-<section class="lh-hero mb-0">
+<section class="lh-hero mb-0" style="margin-top: -20px;">
     <div class="lh-hero-mesh" aria-hidden="true"></div>
     <div class="container lh-hero-inner">
         <div class="row align-items-start align-items-lg-center g-4 lh-hero-top-row">
@@ -24,7 +24,7 @@
                     <span class="lh-hero-pill"><i class="bi bi-headset"></i> Hỗ trợ 24/7</span>
                 </div>
             </div>
-            <div class="col-12 col-lg-4 d-flex justify-content-lg-end lh-hero-rating-wrap">
+            <div class="col-12 col-lg-4 d-flex justify-content-lg-end lh-rating-wrap">
                 <div class="lh-rating-chip mt-3 mt-lg-0">
                     <div class="lh-rating-score">{{ number_format($hotel?->rating_avg ?? 4.8, 1) }}</div>
                     <div class="lh-rating-label"><span class="text-warning">★★★★★</span><br><small>Tuyệt vời</small></div>
@@ -37,13 +37,6 @@
              ============================ --}}
         <form method="GET" action="{{ route('rooms.search') }}" id="search-form" novalidate class="mt-5" onsubmit="return validateSearchForm(this)">
             <input type="hidden" name="search" value="1">
-            <input type="hidden" name="adults" value="{{ request('adults', 1) }}">
-            <input type="hidden" name="children" value="{{ request('children', 0) }}">
-            @if(request('child_ages'))
-                @foreach(request('child_ages') as $age)
-                    <input type="hidden" name="child_ages[]" value="{{ $age }}">
-                @endforeach
-            @endif
 
             <div class="bk-search-stack">
                 <div class="bk-search-bar bk-search-bar--in-stack">
@@ -91,73 +84,6 @@
                     <button type="submit" class="bk-search-btn">
                         Tìm
                     </button>
-                </div>
-
-                {{-- Bộ lọc (cùng form — chỉ gửi bằng nút Tìm) --}}
-                <div class="bk-filter-row">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label small text-muted mb-1">Loại phòng</label>
-                            <select name="room_type" class="form-select form-select-sm">
-                                <option value="">Tất cả loại phòng</option>
-                                @foreach($allRoomTypes as $rt)
-                                    <option value="{{ $rt->id }}" {{ request('room_type') == $rt->id ? 'selected' : '' }}>
-                                        {{ $rt->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label small text-muted mb-1">Khoảng giá</label>
-                            <select id="price_range_select" class="form-select form-select-sm" onchange="applyPriceRange(this)">
-                                <option value="">Tất cả mức giá</option>
-                                <option value="0-500000" {{ request('min_price') == 0 && request('max_price') == 500000 ? 'selected' : '' }}>Dưới 500.000đ</option>
-                                <option value="500000-1000000" {{ request('min_price') == 500000 && request('max_price') == 1000000 ? 'selected' : '' }}>500.000đ - 1.000.000đ</option>
-                                <option value="1000000-2000000" {{ request('min_price') == 1000000 && request('max_price') == 2000000 ? 'selected' : '' }}>1.000.000đ - 2.000.000đ</option>
-                                <option value="2000000-" {{ request('min_price') == 2000000 && !request('max_price') ? 'selected' : '' }}>Trên 2.000.000đ</option>
-                            </select>
-                            <input type="hidden" name="min_price" id="min_price_input" value="{{ request('min_price') }}">
-                            <input type="hidden" name="max_price" id="max_price_input" value="{{ request('max_price') }}">
-                        </div>
-                        <div class="col-lg-2 col-md-6">
-                            <label class="form-label small text-muted mb-1">Sắp xếp theo</label>
-                            <select name="sort_by" class="form-select form-select-sm">
-                                <option value="price_asc" {{ request('sort_by', 'price_asc') == 'price_asc' ? 'selected' : '' }}>Giá thấp → cao</option>
-                                <option value="price_desc" {{ request('sort_by') == 'price_desc' ? 'selected' : '' }}>Giá cao → thấp</option>
-                                <option value="name_asc" {{ request('sort_by') == 'name_asc' ? 'selected' : '' }}>Tên A → Z</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label small text-muted mb-1">Dịch vụ đi kèm</label>
-                            <div class="dropdown">
-                                <button class="btn btn-sm bk-amenities-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="included-services-filter-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-haspopup="true" aria-controls="included-services-filter-menu">
-                                    <span id="included-services-text">Chọn dịch vụ</span>
-                                    <i class="bi bi-chevron-down small"></i>
-                                </button>
-                                <div class="dropdown-menu bk-amenities-menu p-3 shadow" id="included-services-filter-menu" role="menu" aria-labelledby="included-services-filter-toggle" onclick="event.stopPropagation()">
-                                    @forelse($catalogServices as $svc)
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" name="included_services[]"
-                                                   value="{{ $svc->id }}" id="isvc_{{ $svc->id }}"
-                                                   {{ in_array($svc->id, (array) request('included_services')) ? 'checked' : '' }}
-                                                   onchange="updateIncludedServicesFilterText()">
-                                            <label class="form-check-label small" for="isvc_{{ $svc->id }}">
-                                                {{ $svc->name }}
-                                            </label>
-                                        </div>
-                                    @empty
-                                        <p class="small text-muted mb-0">Chưa có dịch vụ trong danh mục.</p>
-                                    @endforelse
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-1 col-md-12">
-                            <label class="form-label small text-muted mb-1 d-none d-lg-block">&nbsp;</label>
-                            <a href="{{ route('home') }}" class="btn btn-outline-danger btn-sm w-100">
-                                <i class="bi bi-x-lg"></i> Xóa
-                            </a>
-                        </div>
-                    </div>
                 </div>
             </div>
         </form>

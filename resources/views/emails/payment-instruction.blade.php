@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Thanh toán đơn #{{ $booking->id }}</title>
+    {{-- 
+        VNPay Payment Instruction Email Template
+        - Displays detailed booking information
+        - Shows VNPay payment link with timeout info
+        - Includes room, dates, guests, and pricing
+    --}}
 </head>
 <body style="margin:0; padding:0; background-color:#eef1f6; -webkit-text-size-adjust:100%;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef1f6;">
