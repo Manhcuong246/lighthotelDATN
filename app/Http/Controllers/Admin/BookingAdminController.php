@@ -37,11 +37,21 @@ use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
 {
+    /**
+     * Initialize controller with admin middleware.
+     * Ensures only authenticated admin users can access these routes.
+     */
     public function __construct()
     {
         $this->middleware('admin');
     }
 
+    /**
+     * Display a listing of all bookings with filtering and pagination.
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View
+     */
     public function index(Request $request)
     {
         $counts = [
@@ -178,6 +188,11 @@ class BookingAdminController extends Controller
         $room = Room::findOrFail($validated['room_id']);
         $checkIn = new \Carbon\Carbon($validated['check_in']);
         $checkOut = new \Carbon\Carbon($validated['check_out']);
+        
+        $adults = $validated['adults'];
+        $children611 = $validated['children_6_11'] ?? 0;
+        $children05 = $validated['children_0_5'] ?? 0;
+        $totalGuests = $adults + $children611 + $children05;
 
         $adults = $validated['adults'];
         $children611 = $validated['children_6_11'] ?? 0;
@@ -683,7 +698,7 @@ class BookingAdminController extends Controller
             'changed_at' => now(),
         ]);
 
-        return back()->with('success', 'Khách đã được check-in. Tất cả thông tin khách hàng đã được xác nhận.');
+        return back()->with('success', 'Khách đã được check-in.');
     }
 
     public function checkOut(Booking $booking)
@@ -2584,4 +2599,64 @@ class BookingAdminController extends Controller
     }
 }
 
+            // 3. Xử lý bảng room_booked_dates
+            RoomBookedDate::where('booking_id', $booking->id)
+                ->where('room_id', $oldRoomId)
+                ->delete();
 
+            $days = [];
+            foreach ($period as $date) {
+                $days[] = [
+                    'room_id' => $newRoom->id,
+                    'booking_id' => $booking->id,
+                    'booked_date' => $date->toDateString(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            RoomBookedDate::insert($days);
+
+            // 4. Cập nhật trạng thái bảng rooms
+            // Nếu thay đổi cho một phòng hôm nay
+            $today = now()->toDateString();
+            if ($today >= $booking->check_in && $today < $booking->check_out) {
+                Room::where('id', $oldRoomId)->update(['status' => 'maintenance']); 
+                $newRoom->update(['status' => 'occupied']);
+            }
+
+            // 5. Tính lại Total Price của cả đơn đặt phòng
+            $newTotalPrice = $booking->bookingRooms()->sum('subtotal');
+            // Cộng thêm các phụ phí hoặc dịch vụ nếu có tính trong total
+            $servicesTotal = $booking->bookingServices()->get()->sum(function($bs) {
+                return $bs->quantity * $bs->price;
+            });
+            $surchargesTotal = $booking->surcharges()->sum('amount');
+            
+            $booking->update([
+                'total_price' => $newTotalPrice + $servicesTotal + $surchargesTotal
+            ]);
+
+            // 6. Ghi lịch sử đổi phòng
+            \App\Models\RoomChangeHistory::create([
+                'booking_id' => $booking->id,
+                'from_room_id' => $oldRoomId,
+                'to_room_id' => $newRoom->id,
+                'reason' => $request->reason ?? 'Khách yêu cầu đổi phòng',
+                'changed_by' => auth()->id(),
+                'changed_at' => now(),
+            ]);
+            
+            // Cập nhật lại thanh toán nếu thiếu tiền hoặc thừa tiền
+            $payment = Payment::where('booking_id', $booking->id)->orderByDesc('id')->first();
+            if ($payment && in_array($payment->status, ['paid', 'partial'])) {
+                // Nếu đổi phòng rẻ hơn hoặc bằng giá tiền thì có thể chuyển tiền thừa thành Hoàn tiền?
+                // Đối với admin, có thể chỉ cần cập nhật payment.
+                $payment->update([
+                    'amount' => $booking->total_price
+                ]);
+            }
+
+            return back()->with('success', 'Đổi phòng thành công! Số dư phòng cũ đã được ghi nhận.');
+        });
+    }
+}
