@@ -14,6 +14,8 @@ use App\Models\Service;
 use App\Models\RoomPrice;
 use App\Models\User;
 use App\Models\BookingService as BookingServiceRow;
+use App\Http\Requests\RoomChangeRequest;
+use App\Services\RoomChangeService;
 use App\Support\BookingInvoiceViewData;
 use App\Support\InvoiceExtrasSynchronizer;
 use App\Support\RoomOccupancyPricing;
@@ -1844,5 +1846,69 @@ class BookingAdminController extends Controller
 
             return back()->with('success', 'Đổi phòng thành công! Số dư phòng cũ đã được ghi nhận.');
         });
+    }
+
+    /**
+     * Thay đổi phòng cho khách hàng - Sử dụng RoomChangeService (NEW)
+     */
+    public function changeRoomV2(RoomChangeRequest $request, Booking $booking, RoomChangeService $roomChangeService)
+    {
+        try {
+            $result = $roomChangeService->changeRoom(
+                $booking,
+                (int) $request->old_room_id,
+                (int) $request->new_room_id,
+                $request->reason,
+                auth()->id()
+            );
+
+            $message = 'Đổi phòng thành công!';
+            if ($result['price_difference'] > 0) {
+                $message .= ' Giá tăng thêm: ' . number_format($result['price_difference'], 0, ',', '.') . ' ₫';
+            } elseif ($result['price_difference'] < 0) {
+                $message .= ' Giá giảm: ' . number_format(abs($result['price_difference']), 0, ',', '.') . ' ₫';
+            }
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('Room change failed', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Đổi phòng thất bại: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Lấy danh sách phòng có thể đổi (API)
+     */
+    public function getAvailableRoomsForChange(Request $request, Booking $booking, RoomChangeService $roomChangeService)
+    {
+        $request->validate([
+            'current_room_id' => 'required|integer|exists:rooms,id',
+        ]);
+
+        $rooms = $roomChangeService->getAvailableRoomsForChange(
+            $booking,
+            (int) $request->current_room_id
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $rooms,
+        ]);
+    }
+
+    /**
+     * Lấy lịch sử đổi phòng của booking (API)
+     */
+    public function getRoomChangeHistory(Booking $booking, RoomChangeService $roomChangeService)
+    {
+        $history = $roomChangeService->getChangeHistory($booking->id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $history,
+        ]);
     }
 }
