@@ -46,7 +46,13 @@ class BookingAdminController extends Controller
         $this->middleware('admin');
     }
 
-    public function index(Request $request)
+    /**
+     * Display a listing of all bookings with filtering and pagination.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\View\View
+     */
+    public function index(Request $request): \Illuminate\View\View
     {
         $counts = [
             'total' => Booking::count(),
@@ -202,11 +208,6 @@ class BookingAdminController extends Controller
         $room = Room::findOrFail($validated['room_id']);
         $checkIn = new \Carbon\Carbon($validated['check_in']);
         $checkOut = new \Carbon\Carbon($validated['check_out']);
-
-        $adults = $validated['adults'];
-        $children611 = $validated['children_6_11'] ?? 0;
-        $children05 = $validated['children_0_5'] ?? 0;
-        $totalGuests = $adults + $children611 + $children05;
 
         $adults = $validated['adults'];
         $children611 = $validated['children_6_11'] ?? 0;
@@ -2799,6 +2800,243 @@ class BookingAdminController extends Controller
             return response()->json(['error' => 'Lỗi: ' . $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Thay đổi phòng cho khách hàng
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function changeRoom(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'old_room_id' => 'required|exists:rooms,id',
+            'new_room_id' => 'required|exists:rooms,id|different:old_room_id',
+            'reason'      => 'nullable|string|max:500',
+        ]);
+
+        return DB::transaction(fn () => $this->executeChangeRoomTransaction($validated, $booking));
+    }
+
+    /**
+     * Execute the room change transaction logic
+     *
+     * @param array{old_room_id: int, new_room_id: int, reason?: string} $validated
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    private function executeChangeRoomTransaction(array $validated, Booking $booking): \Illuminate\Http\RedirectResponse
+    {
+        $newRoom = Room::findOrFail($validated['new_room_id']);
+        $oldRoomId = $validated['old_room_id'];
+
+        // 1. Kiểm tra phòng mới có trống trong khoảng thời gian đó không
+        $isOccupied = $this->isRoomOccupied($newRoom->id, $booking->id, $booking->check_in, $booking->check_out);
+        if ($isOccupied) {
+            return back()->with('error', 'Phòng mới đã có người đặt trong thời gian này!');
+        }
+
+        // 2. Cập nhật bảng booking_rooms
+        $bookingRoom = \App\Models\BookingRoom::where('booking_id', $booking->id)
+            ->where('room_id', $oldRoomId)
+            ->first();
+
+        if (!$bookingRoom) {
+            return back()->with('error', 'Không tìm thấy thông tin phòng cũ trong đơn đặt phòng này.');
+        }
+
+        // 3. Tính toán giá phòng mới
+        $checkIn = new \Carbon\Carbon($booking->check_in);
+        $checkOut = new \Carbon\Carbon($booking->check_out);
+        $nights = $bookingRoom->nights ?: $checkIn->diffInDays($checkOut) ?: 1;
+
+        $priceData = $this->calculateNewRoomPrice($newRoom, $bookingRoom, $checkIn, $checkOut);
+
+        $bookingRoom->update([
+            'room_id' => $newRoom->id,
+            'price_per_night' => $priceData['avg_price_per_night'],
+            'subtotal' => $priceData['subtotal_new_room']
+        ]);
+
+        // 4. Xử lý bảng room_booked_dates
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $this->updateRoomBookedDates($booking->id, $oldRoomId, $newRoom->id, $period);
+
+        // 5. Cập nhật trạng thái bảng rooms
+        $this->updateRoomStatuses($oldRoomId, $newRoom->id, $booking->check_in, $booking->check_out);
+
+        // 6. Tính lại Total Price của cả đơn đặt phòng
+        $this->recalculateBookingTotalPrice($booking);
+
+        // 7. Ghi lịch sử đổi phòng
+        \App\Models\RoomChangeHistory::create([
+            'booking_id' => $booking->id,
+            'from_room_id' => $oldRoomId,
+            'to_room_id' => $newRoom->id,
+            'reason' => $validated['reason'] ?? 'Khách yêu cầu đổi phòng',
+            'changed_by' => Auth::id(),
+            'changed_at' => now(),
+        ]);
+
+        // 8. Cập nhật lại thanh toán nếu thiếu tiền hoặc thừa tiền
+        $this->updatePaymentAmount($booking);
+
+        return back()->with('success', 'Đổi phòng thành công! Số dư phòng cũ đã được ghi nhận.');
+    }
+
+    /**
+     * Check if room is occupied during the booking period
+     *
+     * @param int $roomId
+     * @param int $bookingId
+     * @param string $checkIn
+     * @param string $checkOut
+     * @return bool
+     */
+    private function isRoomOccupied(int $roomId, int $bookingId, string $checkIn, string $checkOut): bool
+    {
+        return RoomBookedDate::where('room_id', $roomId)
+            ->where('booking_id', '!=', $bookingId)
+            ->whereBetween('booked_date', [$checkIn, \Carbon\Carbon::parse($checkOut)->subDay()->toDateString()])
+            ->exists();
+    }
+
+    /**
+     * Calculate new room price with occupancy surcharge
+     *
+     * @param \App\Models\Room $newRoom
+     * @param \App\Models\BookingRoom $bookingRoom
+     * @param \Carbon\Carbon $checkIn
+     * @param \Carbon\Carbon $checkOut
+     * @return array{avg_price_per_night: float, subtotal_new_room: float}
+     */
+    private function calculateNewRoomPrice(Room $newRoom, \App\Models\BookingRoom $bookingRoom, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): array
+    {
+        $bookingRoomPrices = [];
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $prices = RoomPrice::where('room_id', $newRoom->id)->get();
+        $roomType = $newRoom->roomType;
+        $subtotalNewRoom = 0;
+
+        foreach ($period as $date) {
+            $basePrice = $newRoom->catalogueBasePrice();
+            foreach ($prices as $price) {
+                if ($date->betweenIncluded($price->start_date, $price->end_date)) {
+                    $basePrice = $price->price;
+                    break;
+                }
+            }
+
+            $adults = $bookingRoom->adults;
+            $children611 = $bookingRoom->children_6_11;
+            $children05 = $bookingRoom->children_0_5;
+
+            RoomOccupancyPricing::validate($adults, $children611, $children05, $roomType);
+            $breakdown = RoomOccupancyPricing::breakdown($basePrice, $adults, $children611, $children05, $roomType);
+            $subtotalNewRoom += $breakdown['price_per_night'];
+            $bookingRoomPrices[] = $breakdown['price_per_night'];
+        }
+
+        $avgPricePerNight = count($bookingRoomPrices) > 0
+            ? (array_sum($bookingRoomPrices) / count($bookingRoomPrices))
+            : $newRoom->catalogueBasePrice();
+
+        return [
+            'avg_price_per_night' => $avgPricePerNight,
+            'subtotal_new_room' => $subtotalNewRoom
+        ];
+    }
+
+    /**
+     * Update room booked dates for room change
+     *
+     * @param int $bookingId
+     * @param int $oldRoomId
+     * @param int $newRoomId
+     * @param \Carbon\CarbonPeriod $period
+     * @return void
+     */
+    private function updateRoomBookedDates(int $bookingId, int $oldRoomId, int $newRoomId, \Carbon\CarbonPeriod $period): void
+    {
+        RoomBookedDate::where('booking_id', $bookingId)
+            ->where('room_id', $oldRoomId)
+            ->delete();
+
+        $days = [];
+        foreach ($period as $date) {
+            $days[] = [
+                'room_id' => $newRoomId,
+                'booking_id' => $bookingId,
+                'booked_date' => $date->toDateString(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        RoomBookedDate::insert($days);
+    }
+
+    /**
+     * Update room statuses after room change
+     *
+     * @param int $oldRoomId
+     * @param int $newRoomId
+     * @param string $checkIn
+     * @param string $checkOut
+     * @return void
+     */
+    private function updateRoomStatuses(int $oldRoomId, int $newRoomId, string $checkIn, string $checkOut): void
+    {
+        $today = now()->toDateString();
+        if ($today >= $checkIn && $today < $checkOut) {
+            Room::where('id', $oldRoomId)->update(['status' => 'maintenance']);
+            Room::where('id', $newRoomId)->update(['status' => 'occupied']);
+        }
+    }
+
+    /**
+     * Recalculate booking total price including services and surcharges
+     *
+     * @param \App\Models\Booking $booking
+     * @return void
+     */
+    private function recalculateBookingTotalPrice(Booking $booking): void
+    {
+        $newTotalPrice = $booking->bookingRooms()->sum('subtotal');
+        $servicesTotal = $this->calculateBookingServicesTotal($booking);
+        $surchargesTotal = $booking->surcharges()->sum('amount');
+
+        $booking->update([
+            'total_price' => $newTotalPrice + $servicesTotal + $surchargesTotal
+        ]);
+    }
+
+    /**
+     * Calculate total for booking services
+     *
+     * @param \App\Models\Booking $booking
+     * @return float
+     */
+    private function calculateBookingServicesTotal(Booking $booking): float
+    {
+        return (float) $booking->bookingServices()->get()->sum(function ($bs) {
+            return $bs->quantity * $bs->price;
+        });
+    }
+
+    /**
+     * Update payment amount to match new booking total
+     *
+     * @param \App\Models\Booking $booking
+     * @return void
+     */
+    private function updatePaymentAmount(Booking $booking): void
+    {
+        $payment = Payment::where('booking_id', $booking->id)->orderByDesc('id')->first();
+        if ($payment && in_array($payment->status, ['paid', 'partial'], true)) {
+            $payment->update([
+                'amount' => $booking->total_price
+            ]);
+        }
+    }
 }
-
-
