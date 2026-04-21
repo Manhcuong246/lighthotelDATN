@@ -24,6 +24,8 @@ use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
 use App\Http\Controllers\Admin\SiteContentAdminController;
 use App\Http\Controllers\DynamicPageController;
+use App\Http\Controllers\GuestCheckInController;
+use App\Http\Controllers\NewBookingController;
 
 
 
@@ -57,6 +59,8 @@ Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show')
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::get('/bookings/simple/create', [BookingController::class, 'createSimple'])->name('bookings.create-simple');
+Route::post('/bookings/simple', [BookingController::class, 'storeSimple'])->name('bookings.store-simple');
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 Route::get('/bookings/{booking}/cancel', [BookingCancellationController::class, 'show'])->name('bookings.cancel');
 Route::post('/bookings/{booking}/cancel', [BookingCancellationController::class, 'cancel'])->name('bookings.cancel.post');
@@ -103,10 +107,18 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
     Route::post('/bookings/{booking}/payment-settings', [BookingAdminController::class, 'updatePaymentSettings'])->name('bookings.update-payment-settings');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
+    Route::get('/bookings/{booking}/guest-info', [BookingAdminController::class, 'getGuestInfo'])->name('bookings.guest-info');
+    Route::put('/bookings/{booking}/guest-info', [BookingAdminController::class, 'updateGuestInfo'])->name('bookings.update-guest-info');
+    Route::post('/bookings/{booking}/assign-room', [BookingAdminController::class, 'assignGuestToRoom'])->name('bookings.assign-room');
+    Route::get('/bookings/{booking}/available-rooms', [BookingAdminController::class, 'getAvailableRoomsForAssignment'])->name('bookings.available-rooms');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
+    Route::get('/bookings/{booking}/checkin-data', [BookingAdminController::class, 'getCheckInData'])->name('bookings.checkin-data');
+    Route::post('/bookings/{booking}/checkin-with-assignment', [BookingAdminController::class, 'checkInWithAssignment'])->name('admin.bookings.checkin-with-assignment');
+    Route::delete('/booking-guests/{bookingGuest}', [BookingAdminController::class, 'deleteBookingGuest'])->name('admin.booking-guests.delete');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');
     Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
     Route::post('/bookings/{booking}/extras', [BookingAdminController::class, 'storeBookingExtras'])->name('bookings.storeExtras');
+    Route::post('/bookings/{booking}/change-room', [BookingAdminController::class, 'changeRoom'])->name('bookings.changeRoom');
     Route::post('/bookings/{booking}/cancel', [BookingAdminController::class, 'cancel'])->name('bookings.cancel');
 
     Route::middleware(['admin_only'])->group(function () {
@@ -163,6 +175,18 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/damage-reports/{damageReport}/status', [\App\Http\Controllers\Admin\DamageReportController::class, 'updateStatus'])->name('damage-reports.update-status');
     Route::post('/damage-reports/{damageReport}/change-room', [\App\Http\Controllers\Admin\DamageReportController::class, 'changeRoom'])->name('damage-reports.change-room');
     Route::post('/damage-reports/{damageReport}/refund', [\App\Http\Controllers\Admin\DamageReportController::class, 'processRefund'])->name('damage-reports.process-refund');
+
+    // ====== ĐỔI PHÒNG RIÊNG (MODULE ĐỘC LẬP) ======
+    Route::prefix('room-changes')->name('room-changes.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\RoomChangeController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Admin\RoomChangeController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Admin\RoomChangeController::class, 'store'])->name('store');
+        Route::get('/{id}', [\App\Http\Controllers\Admin\RoomChangeController::class, 'show'])->name('show');
+        Route::post('/{id}/revert', [\App\Http\Controllers\Admin\RoomChangeController::class, 'revert'])->name('revert');
+        // API endpoints
+        Route::get('/api/available-rooms', [\App\Http\Controllers\Admin\RoomChangeController::class, 'getAvailableRooms'])->name('available-rooms');
+        Route::get('/api/booking-rooms', [\App\Http\Controllers\Admin\RoomChangeController::class, 'getBookingRooms'])->name('booking-rooms');
+    });
 
     // ====== QUẢN LÝ DỊCH VỤ ======
     Route::prefix('services')->name('services.')->group(function () {
@@ -238,3 +262,6 @@ Route::middleware(['auth', 'staff'])
         Route::resource('damage-reports', DamageReportController::class);
 
     });
+
+// Include routes mới cho hệ thống đặt phòng
+require __DIR__ . '/new-bookings.php';

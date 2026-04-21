@@ -332,22 +332,18 @@
         <i class="bi bi-speedometer2"></i>
         Tổng quan
     </a>
-</li>
-@if(!auth()->user()->isAdmin())
+</li>@if(!auth()->user()->isAdmin())
 <li class="nav-item">
-
     <a class="nav-link 
         {{ request()->routeIs('staff.activity_logs.*') ? 'active' : '' }}"
-
         href="{{ route('staff.activity_logs.index') }}">
 
         <i class="bi bi-clock-history"></i>
         Nhật ký hoạt động
-
     </a>
-
 </li>
 @endif
+
 @if(!auth()->user()->isAdmin())
 <li class="nav-item">
     <a class="nav-link 
@@ -356,7 +352,6 @@
         
         <i class="bi bi-exclamation-triangle"></i>
         Báo cáo hư hỏng
-
     </a>
 </li>
 @endif
@@ -399,6 +394,12 @@
                 <a class="nav-link {{ request()->routeIs('admin.refunds*') ? 'active' : '' }}" href="{{ route('admin.refunds.index') }}">
                     <i class="bi bi-wallet2"></i>
                     Hoàn tiền
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.room-changes*') ? 'active' : '' }}" href="{{ route('admin.room-changes.index') }}">
+                    <i class="bi bi-arrow-left-right"></i>
+                    Đổi phòng
                 </a>
             </li>
             @endif
