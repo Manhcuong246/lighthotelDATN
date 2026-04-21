@@ -7,6 +7,39 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Light Hotel Booking System
+
+A comprehensive hotel booking management system built with Laravel 12.
+
+### Features
+
+- 🏨 **Room Management** - Manage room types, pricing, and availability
+- 📅 **Booking System** - Single and multi-room bookings
+- 💳 **Payment Integration** - VNPay payment gateway support
+- 👥 **Guest Management** - Track guests with occupancy-based pricing
+- 📧 **Email Notifications** - Automated payment instructions
+- 📊 **Admin Dashboard** - Complete booking management interface
+- 💰 **Surcharge Calculation** - Automatic pricing for extra guests
+- 🎫 **Coupon System** - Discount and promotion support
+- ⭐ **Review System** - Guest reviews and ratings
+
+### VNPay Payment Feature
+
+When customers select VNPay payment method:
+- Automatic email with detailed booking information
+- Secure signed payment links
+- 15-minute payment session timeout
+- 14-day link validity period
+- Real-time payment status tracking
+
+### Guest Capacity & Pricing
+
+- Standard capacity: 3 guests per room
+- Maximum capacity: 6 guests per room
+- Children 0-5 years: Free (occupies slot)
+- Children 6-11 years: 12.5% surcharge
+- Adults: 25% surcharge (when exceeding standard capacity)
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
