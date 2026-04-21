@@ -105,13 +105,23 @@ Bảng `site_contents` đã có sẵn với cấu trúc:
 3. **Test kỹ** - Kiểm tra upload ảnh, validation, CRUD operations
 4. **Backup** - Sao lưu database trước khi merge vào lastcode
 
-## 🎯下一步
+## 🎯 Triển khai
 
-Sau khi test xong trên nhánh `vinam`:
+Code đã được merge vào nhánh `lastcode`. Để sử dụng:
+
+1. Pull code mới nhất:
 ```bash
-git checkout lastcode
-git merge vinam
-git push origin lastcode
+git pull origin lastcode
+```
+
+2. Chạy migration (nếu cần):
+```bash
+php artisan migrate
+```
+
+3. Tạo storage link (cho upload ảnh):
+```bash
+php artisan storage:link
 ```
 
 ## 📸 Screenshots
@@ -133,6 +143,6 @@ git push origin lastcode
 
 ---
 
-**Ngày tạo:** {{ date('d/m/Y H:i') }}
-**Branch:** vinam
-**Status:** ✅ Backend 100%, ⏳ Frontend pending manual update
+**Ngày cập nhật:** 2026-04-13
+**Branch:** lastcode (đã merge)
+**Status:** ✅ Hoàn thành 100%, sẵn sàng sử dụng
