@@ -81,13 +81,9 @@
         </div>
         <div class="card-body">
             <form method="GET" action="{{ route('admin.room-changes.index') }}" class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small">Tìm kiếm</label>
                     <input type="text" name="q" class="form-control form-control-sm" value="{{ request('q') }}" placeholder="Mã đơn, phòng, lý do...">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">Mã booking</label>
-                    <input type="number" name="booking_id" class="form-control form-control-sm" value="{{ request('booking_id') }}" placeholder="ID">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small">Chênh lệch giá</label>
