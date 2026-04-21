@@ -217,23 +217,24 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
-
 use App\Http\Controllers\Staff\StaffController;
 use App\Http\Controllers\Staff\ActivityLogController;
+use App\Http\Controllers\Staff\DamageReportController;
 
 Route::middleware(['auth', 'staff'])
     ->prefix('staff')
     ->name('staff.')
     ->group(function () {
 
-        // Dashboard staff
+        // 📊 Dashboard
         Route::get('/dashboard', [StaffController::class, 'dashboard'])
             ->name('dashboard');
 
-        // Activity Logs
-        Route::get(
-            '/activity-logs',
-            [ActivityLogController::class, 'index']
-        )->name('activity_logs.index');
+        // 📜 Activity Logs
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])
+            ->name('activity_logs.index');
 
-});
+        // ⚠️ Damage Reports (FULL CRUD)
+        Route::resource('damage-reports', DamageReportController::class);
+
+    });
