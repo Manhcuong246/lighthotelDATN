@@ -227,3 +227,15 @@ Route::middleware(['auth', 'staff'])
             ->name('dashboard');
 
 });
+use App\Http\Controllers\Staff\ActivityLogController;
+
+Route::prefix('staff')
+    ->middleware(['auth'])
+    ->group(function () {
+
+        Route::get(
+            '/activity-logs',
+            [ActivityLogController::class, 'index']
+        )->name('staff.activity_logs.index');
+
+});
