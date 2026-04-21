@@ -18,6 +18,12 @@
             --dark-color: #1d3557;
             --light-color: #f8f9fa;
         }
+        .skeleton {
+    height: 20px;
+    background: #eee;
+    margin-bottom: 10px;
+    animation: pulse 1.5s infinite;
+}
 
         * { box-sizing: border-box; }
         .cursor-help { cursor: help; }
@@ -340,6 +346,18 @@
 
     </a>
 
+</li>
+@endif
+@if(!auth()->user()->isAdmin())
+<li class="nav-item">
+    <a class="nav-link 
+        {{ request()->routeIs('staff.damage-reports.*') ? 'active' : '' }}"
+        href="{{ route('staff.damage-reports.index') }}">
+        
+        <i class="bi bi-exclamation-triangle"></i>
+        Báo cáo hư hỏng
+
+    </a>
 </li>
 @endif
             @if(auth()->user()->isAdmin())
