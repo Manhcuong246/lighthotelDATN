@@ -2344,7 +2344,7 @@ class BookingAdminController extends Controller
                 $nameValue = $booking->user?->full_name ?? $booking->user?->name ?? 'Khách hàng';
                 $cccdValue = $booking->user?->cccd ?? $booking->cccd ?? null;
 
-                \App\Models\BookingGuest::create([
+                BookingGuest::create([
                     'booking_id' => $booking->id,
                     'name' => $nameValue,
                     'cccd' => $cccdValue,
