@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\PaymentInstructionMail;
 use App\Models\Booking;
+use App\Models\BookingGuest;
+use App\Models\BookingLog;
 use App\Models\Coupon;
+use App\Models\Guest;
 use App\Models\HotelInfo;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
+use App\Models\RoomType;
 use App\Models\Service;
 use App\Models\RoomPrice;
 use App\Models\User;
@@ -21,23 +25,36 @@ use App\Support\InvoiceExtrasSynchronizer;
 use App\Support\RoomOccupancyPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
 {
+    /**
+     * Initialize controller with admin middleware.
+     * Ensures only authenticated admin users can access these routes.
+     */
     public function __construct()
     {
         $this->middleware('admin');
     }
 
-    public function index(Request $request)
+    /**
+     * Display a listing of all bookings with filtering and pagination.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\View\View
+     */
+    public function index(Request $request): \Illuminate\View\View
     {
         $counts = [
             'total' => Booking::count(),
@@ -81,7 +98,13 @@ class BookingAdminController extends Controller
         return view('admin.bookings.index', compact('bookings', 'counts'));
     }
 
-    public function show(Booking $booking)
+    /**
+     * Display the specified booking details.
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\View\View
+     */
+    public function show(Booking $booking): \Illuminate\View\View
     {
         $booking->load([
             'user',
@@ -91,6 +114,7 @@ class BookingAdminController extends Controller
             'bookingServices.service',
             'surcharges.service',
             'bookingRooms.room.roomType',
+            'bookingGuests.bookingRoom.room',
             'payments',
         ]);
         $latestPayment = $booking->payments->first();
@@ -101,8 +125,11 @@ class BookingAdminController extends Controller
 
     /**
      * Biên lai / hóa đơn tóm tắt đơn — chỉ khi đã thanh toán và đã checkout (cùng quy tắc khách).
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
      */
-    public function bookingInvoice(Booking $booking)
+    public function bookingInvoice(Booking $booking): \Illuminate\Http\RedirectResponse|\Illuminate\View\View
     {
         if (! BookingInvoiceViewData::customerCanView($booking)) {
             return redirect()
@@ -113,18 +140,37 @@ class BookingAdminController extends Controller
         return view('admin.bookings.invoice', BookingInvoiceViewData::make($booking));
     }
 
-    public function create()
+    /**
+     * Show the form for creating a new booking.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function create(): \Illuminate\View\View
     {
         $rooms = Room::where('status', 'available')
             ->with('roomType')
             ->orderBy('room_number')
             ->get();
-        $hotelInfo = \App\Models\HotelInfo::first();
+        $hotelInfo = HotelInfo::first();
         return view('admin.bookings.create', compact('rooms', 'hotelInfo'));
     }
 
-    public function store(Request $request)
+    /**
+     * Store a newly created booking in storage.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
+        Log::info('store() called with request data', [
+            'all_data' => $request->all(),
+            'has_guests_json' => $request->has('guests_json'),
+            'guests_json_data' => $request->input('guests_json'),
+            'method' => $request->method(),
+            'ajax' => $request->ajax()
+        ]);
+
         $validated = $request->validate([
             'room_id' => 'required|exists:rooms,id',
             'full_name' => 'required|string|max:150',
@@ -140,12 +186,31 @@ class BookingAdminController extends Controller
             'payment_status' => 'required|in:pending,paid,partial',
             'amount_paid' => 'nullable|numeric|min:0',
             'payment_note' => 'nullable|string|max:500',
+            'guests_json' => 'nullable|json',
         ]);
+
+        // Decode guests JSON
+        $guestsArray = json_decode($validated['guests_json'], true);
+
+        // Validate guests data
+        if (!is_array($guestsArray) || empty($guestsArray)) {
+            return back()->withErrors(['guests_json' => 'Vui lòng nhập thông tin khách hàng.'])->withInput();
+        }
+
+        // Validate each guest
+        foreach ($guestsArray as $index => $guest) {
+            if (empty($guest['name'])) {
+                return back()->withErrors(["guests.{$index}.name" => "Tên khách hàng không được để trống."])->withInput();
+            }
+            if ($index === 0 && empty($guest['cccd'])) {
+                return back()->withErrors(["guests.{$index}.cccd" => "CCCD khách hàng chính không được để trống."])->withInput();
+            }
+        }
 
         $room = Room::findOrFail($validated['room_id']);
         $checkIn = new \Carbon\Carbon($validated['check_in']);
         $checkOut = new \Carbon\Carbon($validated['check_out']);
-        
+
         $adults = $validated['adults'];
         $children611 = $validated['children_6_11'] ?? 0;
         $children05 = $validated['children_0_5'] ?? 0;
@@ -212,7 +277,7 @@ class BookingAdminController extends Controller
             }
 
             // Log
-            \App\Models\BookingLog::create([
+            BookingLog::create([
                 'booking_id' => $booking->id,
                 'old_status' => 'new',
                 'new_status' => $booking->status,
@@ -224,7 +289,7 @@ class BookingAdminController extends Controller
                 $ps = $validated['payment_status'];
                 $paymentMethod = $validated['payment_method'];
                 $paymentPaid = in_array($ps, ['paid', 'partial'], true);
-                
+
                 Payment::create([
                     'booking_id' => $booking->id,
                     'amount' => $validated['amount_paid'] ?? 0,
@@ -233,13 +298,45 @@ class BookingAdminController extends Controller
                     'transaction_id' => 'ADM' . time() . rand(1000, 9999),
                     'paid_at' => $paymentPaid ? now() : null,
                 ]);
-                
+
                 // Nếu thanh toán qua VNPay, gửi email cho khách
                 if ($paymentMethod === 'vnpay' && $ps === 'pending') {
                     $this->sendVnPayPaymentEmail($booking, $adults, $children611, $children05);
                 }
             } catch (\Exception $e) {
                 // Continue even if payment creation fails
+            }
+
+            // Save guest information
+            Log::info('Processing guest data for booking ' . $booking->id, [
+                'guests_data' => $guestsArray,
+                'is_array' => is_array($guestsArray),
+                'count' => count($guestsArray)
+            ]);
+
+            if (is_array($guestsArray) && count($guestsArray) > 0) {
+                foreach ($guestsArray as $index => $guestData) {
+                    Log::info("Creating guest {$index}", [
+                        'name' => $guestData['name'] ?? 'MISSING',
+                        'cccd' => $guestData['cccd'] ?? 'MISSING',
+                    ]);
+
+                    // Determine guest type based on index and counts
+                    $guestType = 'adult';
+                    if ($index >= $adults) {
+                        $guestType = ($index < $adults + $children611) ? 'child_6_11' : 'child_0_5';
+                    }
+
+                    BookingGuest::create([
+                        'booking_id' => $booking->id,
+                        'name' => $guestData['name'] ?? '',
+                        'cccd' => $guestData['cccd'] ?? null,
+                        'type' => $guestType,
+                        'status' => 'pending',
+                    ]);
+                }
+            } else {
+                Log::warning('No guest data found in request for booking ' . $booking->id);
             }
 
             DB::commit();
@@ -277,8 +374,8 @@ class BookingAdminController extends Controller
      * Tính tổng giá với phụ phí số khách vượt sức chứa tiêu chuẩn
      */
     protected function calculateTotalPriceWithSurcharge(
-        Room $room, 
-        \Carbon\Carbon $checkIn, 
+        Room $room,
+        \Carbon\Carbon $checkIn,
         \Carbon\Carbon $checkOut,
         int $adults,
         int $children611 = 0,
@@ -287,7 +384,7 @@ class BookingAdminController extends Controller
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
         $prices = RoomPrice::where('room_id', $room->id)->get();
         $roomType = $room->roomType;
-        
+
         $standardCapacity = $roomType->standard_capacity ?? 3;
         $adultSurchargeRate = $roomType->adult_surcharge_rate ?? 0.25;
         $childSurchargeRate = $roomType->child_surcharge_rate ?? 0.125;
@@ -311,19 +408,32 @@ class BookingAdminController extends Controller
 
             $adultSurcharge = $extraAdults * $adultSurchargeRate * $basePrice;
             $childSurcharge = $extraChildren611 * $childSurchargeRate * $basePrice;
-            
+
             $total += $basePrice + $adultSurcharge + $childSurcharge;
         }
 
         return $total;
     }
 
-    public function edit(Booking $booking)
+    /**
+     * Redirect to booking show page (edit not supported directly).
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function edit(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         return redirect()->route('admin.bookings.show', $booking);
     }
 
-    public function update(Request $request, Booking $booking)
+    /**
+     * Update the specified booking in storage.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function update(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'check_in'    => 'required|date',
@@ -381,7 +491,7 @@ class BookingAdminController extends Controller
             }
 
             if ($old_status !== $booking->status) {
-                \App\Models\BookingLog::create([
+                BookingLog::create([
                     'booking_id' => $booking->id,
                     'old_status' => $old_status,
                     'new_status' => $booking->status,
@@ -398,7 +508,13 @@ class BookingAdminController extends Controller
         }
     }
 
-    public function destroy(Booking $booking)
+    /**
+     * Remove the specified booking from storage.
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
@@ -417,7 +533,14 @@ class BookingAdminController extends Controller
         }
     }
 
-    public function updateStatus(Request $request, Booking $booking)
+    /**
+     * Update the booking status.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateStatus(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'status' => 'required|in:pending,confirmed,cancelled,completed',
@@ -459,7 +582,7 @@ class BookingAdminController extends Controller
 
         $booking->save();
 
-        \App\Models\BookingLog::create([
+        BookingLog::create([
             'booking_id' => $booking->id,
             'old_status' => $old,
             'new_status' => $booking->status,
@@ -471,8 +594,12 @@ class BookingAdminController extends Controller
 
     /**
      * Chỉnh trạng thái đơn + thanh toán + đồng bộ bảng payments (nghiệp vụ: ví dụ gửi link VNPay nhưng khách trả tiền mặt).
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function updatePaymentSettings(Request $request, Booking $booking)
+    public function updatePaymentSettings(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'booking_status' => 'required|in:pending,confirmed,cancelled,completed',
@@ -575,7 +702,7 @@ class BookingAdminController extends Controller
             }
 
             if ($oldBookingStatus !== $booking->status) {
-                \App\Models\BookingLog::create([
+                BookingLog::create([
                     'booking_id' => $booking->id,
                     'old_status' => $oldBookingStatus,
                     'new_status' => $booking->status,
@@ -598,17 +725,29 @@ class BookingAdminController extends Controller
         }
     }
 
-    public function checkIn(Booking $booking)
+    /**
+     * Check in the booking.
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function checkIn(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         if (!$booking->isAdminCheckinAllowed()) {
             return back()->with('error', 'Không thể thực hiện check-in cho đơn này.');
         }
 
         $old = $booking->status;
-        $booking->actual_check_in = now();
+        $booking->actual_check_in = Carbon::now();
         $booking->save();
 
-        \App\Models\BookingLog::create([
+        // Cập nhật trạng thái tất cả khách hàng thành checked_in
+        $booking->guests()->update(['checkin_status' => 'checked_in']);
+
+        // Xóa cache để cập nhật giao diện ngay lập tức
+        Cache::forget("guest_info_{$booking->id}");
+
+        BookingLog::create([
             'booking_id' => $booking->id,
             'old_status' => $old,
             'new_status' => 'checked_in',
@@ -618,37 +757,473 @@ class BookingAdminController extends Controller
         return back()->with('success', 'Khách đã được check-in.');
     }
 
-    public function checkOut(Booking $booking)
+    /**
+     * Check out the booking.
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function checkOut(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         if (!$booking->isAdminCheckoutAllowed()) {
             return back()->with('error', 'Không thể thực hiện check-out cho đơn này.');
         }
 
         $old = $booking->status;
-        $booking->actual_check_out = now();
+        $booking->actual_check_out = Carbon::now();
         // mark completed on checkout
         $booking->status = 'completed';
         $booking->save();
 
-        \App\Models\BookingLog::create([
+        BookingLog::create([
             'booking_id' => $booking->id,
             'old_status' => $old,
             'new_status' => 'completed',
-            'changed_at' => now(),
+            'changed_at' => Carbon::now(),
         ]);
 
-        return back()->with('success', 'Khách đã check-out.');
+        return back()->with('success', 'Khách hàng check-out thành công.');
+    }
+
+    /**
+     * Lấy thông tin khách hàng cho modal check-in
+     * Group by booking_rooms
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getGuestInfo(Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        try {
+            if (!$booking->isAdminCheckinAllowed()) {
+                return response()->json(['error' => 'Không thể thực hiện check-in cho đơn này.'], 403);
+            }
+
+            $bookingData = $this->loadBookingGuestData($booking);
+            $guestsByRoom = $this->buildGuestsByRoomResponse($bookingData);
+
+            if (empty($guestsByRoom)) {
+                return $this->createEmptyGuestResponse($booking);
+            }
+
+            return $this->createGuestInfoResponse($booking, $guestsByRoom);
+
+        } catch (\Exception $e) {
+            return $this->handleGuestInfoError($e, $booking);
+        }
+    }
+
+    /**
+     * Load booking data with relationships for guest info
+     *
+     * @param \App\Models\Booking $booking
+     * @return array{booking: \App\Models\Booking, bookingRooms: \Illuminate\Database\Eloquent\Collection, allGuests: \Illuminate\Database\Eloquent\Collection, rooms: \Illuminate\Database\Eloquent\Collection}
+     */
+    private function loadBookingGuestData(Booking $booking): array
+    {
+        $booking->load([
+            'bookingRooms.room.roomType',
+            'guests:id,booking_id,name,type,cccd,checkin_status,room_index,room_type,room_id',
+            'user:id,full_name',
+            'rooms:id,name'
+        ]);
+
+        return [
+            'booking' => $booking,
+            'bookingRooms' => $booking->bookingRooms()->with('room.roomType')->orderBy('id')->get(),
+            'allGuests' => $booking->guests()->orderBy('id')->get(),
+            'rooms' => $booking->rooms
+        ];
+    }
+
+    /**
+     * Build guests by room response based on booking type
+     *
+     * @param array{booking: \App\Models\Booking, bookingRooms: \Illuminate\Database\Eloquent\Collection, allGuests: \Illuminate\Database\Eloquent\Collection, rooms: \Illuminate\Database\Eloquent\Collection} $data
+     * @return array
+     */
+    private function buildGuestsByRoomResponse(array $data): array
+    {
+        if ($data['bookingRooms']->isEmpty()) {
+            return $this->buildLegacyGuestResponse($data['rooms'], $data['allGuests']);
+        }
+
+        return $this->buildAssignmentGuestResponse($data['bookingRooms'], $data['allGuests']);
+    }
+
+    /**
+     * Build response for legacy bookings without booking_rooms
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $rooms
+     * @param \Illuminate\Database\Eloquent\Collection $allGuests
+     * @return array
+     */
+    private function buildLegacyGuestResponse($rooms, $allGuests): array
+    {
+        $guestsByRoom = [];
+        $guestIndex = 0;
+
+        foreach ($rooms as $roomIndex => $room) {
+            $roomTypeName = $room->roomType?->name ?? 'Phòng';
+            $roomName = $room->name ?? ($roomIndex + 1);
+            $roomDisplayName = $roomTypeName . ' ' . $roomName;
+
+            $roomGuests = [];
+            $roomGuestCount = ($roomIndex === 0) ? $allGuests->count() : 0;
+
+            for ($i = 0; $i < $roomGuestCount && $guestIndex < $allGuests->count(); $i++) {
+                $guest = $allGuests[$guestIndex++];
+                $roomGuests[] = $this->formatGuestData($guest);
+            }
+
+            if (!empty($roomGuests)) {
+                $guestsByRoom[] = $this->formatRoomGroupData($room, $roomDisplayName, $roomTypeName, $roomGuests);
+            }
+        }
+
+        return $guestsByRoom;
+    }
+
+    /**
+     * Build response grouped by actual room assignment
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $bookingRooms
+     * @param \Illuminate\Database\Eloquent\Collection $allGuests
+     * @return array
+     */
+    private function buildAssignmentGuestResponse($bookingRooms, $allGuests): array
+    {
+        $guestsByRoom = [];
+        $guestsByAssignedRoom = $allGuests->groupBy(fn($g) => $g->room_id ?? 'unassigned');
+        $roomMap = $this->buildRoomMap($bookingRooms);
+
+        foreach ($guestsByAssignedRoom as $roomId => $guests) {
+            if ($roomId === 'unassigned') {
+                $guestsByRoom[] = $this->buildUnassignedRoomGroup($guests);
+            } else {
+                $guestsByRoom[] = $this->buildAssignedRoomGroup($roomId, $guests, $roomMap);
+            }
+        }
+
+        return $guestsByRoom;
+    }
+
+    /**
+     * Build room map from booking rooms
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $bookingRooms
+     * @return array<int, array{room: \App\Models\Room, booking_room: \App\Models\BookingRoom}>
+     */
+    private function buildRoomMap($bookingRooms): array
+    {
+        $roomMap = [];
+        foreach ($bookingRooms as $bookingRoom) {
+            $room = $bookingRoom->room;
+            if ($room) {
+                $roomMap[$room->id] = ['room' => $room, 'booking_room' => $bookingRoom];
+            }
+        }
+        return $roomMap;
+    }
+
+    /**
+     * Build unassigned room group
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $guests
+     * @return array
+     */
+    private function buildUnassignedRoomGroup($guests): array
+    {
+        return [
+            'room_id' => null,
+            'room_name' => 'Chưa gán phòng',
+            'room_number' => null,
+            'room_type' => null,
+            'guests' => $guests->map(fn($g) => $this->formatGuestData($g, false))->toArray()
+        ];
+    }
+
+    /**
+     * Build assigned room group
+     *
+     * @param int $roomId
+     * @param \Illuminate\Database\Eloquent\Collection $guests
+     * @param array $roomMap
+     * @return array
+     */
+    private function buildAssignedRoomGroup(int $roomId, $guests, array $roomMap): array
+    {
+        $roomInfo = $roomMap[$roomId] ?? null;
+        $room = $roomInfo['room'] ?? null;
+        $roomTypeName = $room?->roomType?->name ?? 'Phòng';
+        $roomNumber = $room?->room_number ?? $room?->name ?? '#' . $roomId;
+
+        return [
+            'room_id' => $roomId,
+            'room_name' => $roomNumber . ' (' . $roomTypeName . ')',
+            'room_number' => $roomNumber,
+            'room_type' => $roomTypeName,
+            'guests' => $guests->map(fn($g) => $this->formatGuestData($g, true))->toArray()
+        ];
+    }
+
+    /**
+     * Format single guest data
+     *
+     * @param \App\Models\Guest $guest
+     * @param bool|null $assigned
+     * @return array
+     */
+    private function formatGuestData($guest, $assigned = null): array
+    {
+        $isAssigned = $assigned ?? !is_null($guest->room_id);
+
+        return [
+            'id' => $guest->id,
+            'name' => $guest->name,
+            'type' => $guest->type ?? 'adult',
+            'cccd' => $guest->cccd ?: '',
+            'status' => $guest->checkin_status,
+            'room_id' => $guest->room_id,
+            'room_assigned' => $isAssigned,
+        ];
+    }
+
+    /**
+     * Format room group data
+     *
+     * @param \App\Models\Room|null $room
+     * @param string $roomDisplayName
+     * @param string $roomTypeName
+     * @param array $guests
+     * @return array
+     */
+    private function formatRoomGroupData($room, string $roomDisplayName, string $roomTypeName, array $guests): array
+    {
+        return [
+            'room_id' => $room?->id,
+            'room_name' => $roomDisplayName,
+            'room_number' => $room?->room_number ?? $room?->name ?? null,
+            'room_type' => $room?->roomType?->name ?? $roomTypeName ?? null,
+            'guests' => $guests
+        ];
+    }
+
+    /**
+     * Create empty guest response
+     */
+    private function createEmptyGuestResponse(Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'booking' => [
+                'id' => $booking->id,
+                'status' => $booking->status,
+                'check_in' => $booking->check_in,
+                'check_out' => $booking->check_out,
+                'user' => $booking->user?->full_name ?? '—',
+            ],
+            'guests_by_room' => [],
+            'message' => 'Không có thông tin khách hàng. Vui lòng thêm thông tin khách hàng.'
+        ]);
+    }
+
+    /**
+     * Create guest info success response
+     */
+    private function createGuestInfoResponse(Booking $booking, array $guestsByRoom): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'booking' => [
+                'id' => $booking->id,
+                'user_name' => $booking->user?->full_name ?? '—',
+                'rooms' => $booking->rooms->pluck('name')->implode(', '),
+                'check_in' => $booking->check_in ? \Carbon\Carbon::parse($booking->check_in)->format('d/m/Y') : '—',
+                'check_out' => $booking->check_out ? \Carbon\Carbon::parse($booking->check_out)->format('d/m/Y') : '—',
+            ],
+            'guests_by_room' => $guestsByRoom,
+        ]);
+    }
+
+    /**
+     * Handle guest info error
+     */
+    private function handleGuestInfoError(\Exception $e, Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        Log::error('Error in getGuestInfo for booking ' . $booking->id, [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'error' => 'Lỗi server: ' . $e->getMessage(),
+            'booking' => [
+                'id' => $booking->id,
+                'status' => $booking->status,
+                'check_in' => $booking->check_in,
+                'check_out' => $booking->check_out,
+                'user' => $booking->user?->full_name,
+            ],
+            'guests' => []
+        ], 500);
+    }
+
+    /**
+     * Cập nhật thông tin khách hàng
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateGuestInfo(Request $request, Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'guests' => 'required|array|min:1',
+            'guests.*.id' => 'required|exists:guests,id',
+            'guests.*.name' => 'required|string|max:150',
+            'guests.*.cccd' => 'nullable|string|max:20',
+            'guests.*.type' => 'required|in:adult,child,child_6_11,child_0_5',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['guests'] as $guestData) {
+                /** @var \App\Models\Guest $guest */
+                $guest = Guest::find($guestData['id']);
+                if ($guest && $guest->booking_id === $booking->id) {
+                    $guest->update([
+                        'name' => $guestData['name'],
+                        'cccd' => $guestData['cccd'] ?? null,
+                        'type' => $guestData['type'],
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Clear cache for this booking to ensure fresh data
+            Cache::forget("guest_info_{$booking->id}");
+
+            // Return updated guest list
+            return $this->getGuestInfo($booking);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Gán phòng cụ thể cho khách khi check-in
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function assignGuestToRoom(Request $request, Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'guest_id' => 'required|exists:guests,id',
+            'room_id'  => 'required|exists:rooms,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $guest = Guest::find($validated['guest_id']);
+
+            // Verify guest belongs to this booking
+            if ($guest->booking_id !== $booking->id) {
+                return response()->json(['error' => 'Khách không thuộc đơn đặt này'], 403);
+            }
+
+            // Verify room is part of this booking
+            $roomExists = $booking->bookingRooms()->where('room_id', $validated['room_id'])->exists();
+            if (!$roomExists) {
+                return response()->json(['error' => 'Phòng không thuộc đơn đặt này'], 403);
+            }
+
+            // Assign room to guest
+            $guest->update(['room_id' => $validated['room_id']]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã gán phòng thành công',
+                'guest' => [
+                    'id' => $guest->id,
+                    'name' => $guest->name,
+                    'room_display' => $guest->room_display
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error assigning room to guest', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Lấy danh sách phòng trống có thể gán cho khách
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailableRoomsForAssignment(Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        try {
+            // Get rooms from this booking
+            $bookingRooms = $booking->bookingRooms()
+                ->with('room.roomType')
+                ->get();
+
+            $rooms = $bookingRooms->map(function ($br) {
+                $room = $br->room;
+                return [
+                    'id' => $room->id,
+                    'room_number' => $room->room_number ?? $room->name ?? '#' . $room->id,
+                    'room_type' => $room->roomType?->name ?? 'Phòng',
+                    'status' => $room->status,
+                    'max_guests' => $room->catalogueMaxGuests(),
+                    'current_guests' => Guest::where('room_id', $room->id)
+                        ->whereHas('booking', function ($q) {
+                            $q->whereIn('status', ['confirmed', 'checked_in']);
+                        })
+                        ->count()
+                ];
+            });
+
+            return response()->json([
+                'rooms' => $rooms,
+                'booking_id' => $booking->id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting available rooms', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Có lỗi xảy ra'], 500);
+        }
     }
 
     // ===================== MULTI-ROOM BOOKING =====================
 
-    public function createMulti()
+    /**
+     * Show the form for creating a multi-room booking.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function createMulti(): \Illuminate\View\View
     {
-        $hotelInfo = \App\Models\HotelInfo::first();
+        $hotelInfo = HotelInfo::first();
         return view('admin.bookings.create-multi', compact('hotelInfo'));
     }
 
-    public function checkAvailability(Request $request)
+    /**
+     * Check room availability for the given date range.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkAvailability(Request $request): \Illuminate\Http\JsonResponse
     {
         $checkIn = $request->query('check_in');
         $checkOut = $request->query('check_out');
@@ -663,8 +1238,11 @@ class BookingAdminController extends Controller
             ->get();
 
         // Get booked dates in range
-        $period = CarbonPeriod::create($checkIn, \Carbon\Carbon::parse($checkOut)->subDay());
-        $dates = collect($period)->map(fn($d) => $d->toDateString())->toArray();
+        $period = CarbonPeriod::create($checkIn, Carbon::parse($checkOut)->subDay());
+        $dates = [];
+        foreach ($period as $date) {
+            $dates[] = $date->toDateString();
+        }
 
         $bookedRoomIds = RoomBookedDate::whereIn('booked_date', $dates)
             ->pluck('room_id')
@@ -674,6 +1252,7 @@ class BookingAdminController extends Controller
         // Group by room type
         $roomTypes = [];
         foreach ($rooms as $room) {
+            /** @var Room $room */
             // Skip if room is already booked
             if (in_array($room->id, $bookedRoomIds)) {
                 continue;
@@ -684,7 +1263,7 @@ class BookingAdminController extends Controller
                 $roomTypes[$typeId] = [
                     'room_type_id' => $typeId,
                     'name' => $room->roomType->name ?? 'Không xác định',
-                    'description' => $room->roomType->description ?? '',
+                    'description' => strip_tags(html_entity_decode($room->roomType->description ?? '')),
                     'base_price' => $room->catalogueBasePrice(),
                     'max_occupancy' => (int) ($room->roomType->capacity ?? $room->catalogueMaxGuests() ?? 6),
                     'standard_capacity' => (int) ($room->roomType->standard_capacity ?? config('booking.pricing.standard_capacity', 3)),
@@ -693,7 +1272,7 @@ class BookingAdminController extends Controller
                     'adult_surcharge_rate' => RoomOccupancyPricing::adultSurchargeRate($room->roomType),
                     'child_surcharge_rate' => RoomOccupancyPricing::childSurchargeRate($room->roomType),
                     'area' => $room->roomType->area ?? 30,
-                    'image' => $room->roomType ? \App\Models\RoomType::resolveImageUrl($room->roomType->image) : null,
+                    'image' => $room->roomType ? RoomType::resolveImageUrl($room->roomType->image) : null,
                     'total_count' => 0,
                     'available_count' => 0,
                 ];
@@ -711,7 +1290,13 @@ class BookingAdminController extends Controller
         ]);
     }
 
-    public function validateCoupon(Request $request)
+    /**
+     * Validate coupon code.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function validateCoupon(Request $request): \Illuminate\Http\JsonResponse
     {
         $code = $request->query('code');
         $coupon = Coupon::where('code', $code)
@@ -732,8 +1317,22 @@ class BookingAdminController extends Controller
         ]);
     }
 
-    public function storeMulti(Request $request)
+    /**
+     * Store a newly created multi-room booking in storage.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeMulti(Request $request): \Illuminate\Http\RedirectResponse
     {
+        Log::info('storeMulti called with request data', [
+            'all_data' => $request->all(),
+            'has_guests' => $request->has('guests'),
+            'guests_data' => $request->input('guests'),
+            'method' => $request->method(),
+            'ajax' => $request->ajax()
+        ]);
+
         $validated = $request->validate([
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
@@ -753,72 +1352,61 @@ class BookingAdminController extends Controller
             'payment_method' => 'required|in:cash,vnpay',
             'payment_status' => 'nullable|in:pending,paid',
             'amount_paid' => 'nullable|numeric|min:0',
+            'guests' => 'nullable|array',
+            'guests.*' => 'array',
         ]);
 
-        $checkIn = new \Carbon\Carbon($validated['check_in']);
-        $checkOut = new \Carbon\Carbon($validated['check_out']);
+        $normalizedGuests = $this->flattenGuestPayloadByRoomType($request->input('guests', []));
+        if (count($normalizedGuests) === 0) {
+            return back()->withErrors(['guests' => 'Vui lòng nhập thông tin khách.'])->withInput();
+        }
+
+        foreach ($normalizedGuests as $index => $guestData) {
+            $name = trim((string) ($guestData['name'] ?? ''));
+            $cccd = trim((string) ($guestData['cccd'] ?? ''));
+
+            if ($name === '') {
+                return back()->withErrors(['guests' => "Tên khách thứ " . ($index + 1) . " không được để trống."])->withInput();
+            }
+            if (! preg_match('/^[0-9]{12}$/', $cccd)) {
+                return back()->withErrors(['guests' => "CCCD của khách \"{$name}\" phải gồm đúng 12 chữ số."])->withInput();
+            }
+        }
+
+        $checkIn = Carbon::parse($validated['check_in']);
+        $checkOut = Carbon::parse($validated['check_out']);
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
-        $dates = collect($period)->map(fn($d) => $d->toDateString())->toArray();
+        $dates = [];
+        foreach ($period as $date) {
+            $dates[] = $date->toDateString();
+        }
 
         DB::beginTransaction();
         try {
-            // Find or create user — cập nhật tên/SĐT khi đặt hộ lại cho cùng email
-            $guestEmail = Str::lower(trim((string) $validated['email']));
-            $user = User::firstOrCreate(
-                ['email' => $guestEmail],
-                [
-                    'full_name' => $validated['full_name'],
-                    'phone' => $validated['phone'] ?? null,
-                    'password' => bcrypt(Str::random(12)),
-                ]
-            );
-            $user->forceFill([
-                'email' => $guestEmail,
-                'full_name' => $validated['full_name'],
-                'phone' => $validated['phone'] ?? $user->phone,
-            ])->save();
+            // 1. Tìm hoặc tạo User
+            $user = $this->findOrCreateGuestUser($validated);
 
-            // Calculate totals with surcharge logic (always from room's actual base_price)
-            $subtotal = 0;
-            $totalGuests = 0;
-            $calculatedRoomData = [];
-            foreach ($validated['rooms'] as $roomIndex => $roomData) {
-                $roomTypeId = $roomData['room_type_id'];
-                $room = Room::where('room_type_id', $roomTypeId)->where('status', 'available')->first();
-
-                $basePrice = (float) ($room ? $room->catalogueBasePrice() : 0);
-                $roomType = $room?->roomType;
-
-                $adults = $roomData['adults'] ?? 1;
-                $children05 = $roomData['children_0_5'] ?? 0;
-                $children611 = $roomData['children_6_11'] ?? 0;
-
-                RoomOccupancyPricing::validate($adults, $children611, $children05, $roomType);
-                $breakdown = RoomOccupancyPricing::breakdown($basePrice, $adults, $children611, $children05, $roomType);
-
-                $actualPricePerNight = $breakdown['price_per_night'];
-                $roomSubtotal = $actualPricePerNight * $roomData['quantity'] * count($dates);
-
-                $subtotal += $roomSubtotal;
-                $totalGuests += $adults * $roomData['quantity'];
-
-                $key = $roomTypeId . '_' . $roomIndex;
-                $calculatedRoomData[$key] = [
-                    'room_type_id' => $roomTypeId,
-                    'quantity' => $roomData['quantity'],
-                    'actualPricePerNight' => $actualPricePerNight,
-                    'roomSubtotalPerRoom' => $actualPricePerNight * count($dates),
-                    'adults' => $adults,
-                    'children05' => $children05,
-                    'children611' => $children611,
-                ];
-            }
+            // 2. Tính toán dữ liệu giá và phòng
+            $pricingData = $this->calculateMultiRoomData($validated['rooms'], $dates);
+            $subtotal = $pricingData['subtotal'];
+            $totalGuests = $pricingData['total_guests'];
+            $calculatedRoomData = $pricingData['calculatedRoomData'];
 
             $discount = $validated['discount_amount'] ?? 0;
             $totalPrice = max(0, $subtotal - $discount);
 
-            // Create booking
+            // 3. Tạo đơn Booking
             $paymentMethodInitial = $validated['payment_method'];
+
+            // Lấy CCCD của người đại diện từ khách đầu tiên
+            $representativeCccd = null;
+            if (!empty($validated['guests'])) {
+                $guestRows = $this->flattenGuestPayloadByRoomType($validated['guests']);
+                if (!empty($guestRows) && !empty($guestRows[0]['cccd'])) {
+                    $representativeCccd = $guestRows[0]['cccd'];
+                }
+            }
+
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'room_id' => null,
@@ -834,70 +1422,32 @@ class BookingAdminController extends Controller
                 'payment_status' => $paymentMethodInitial === 'vnpay' ? 'pending' : 'paid',
                 'payment_method' => $validated['payment_method'],
                 'placed_via' => Booking::PLACED_VIA_ADMIN,
+                'cccd' => $representativeCccd,
             ]);
 
-            // Create booking_rooms and assign specific rooms
-            foreach ($calculatedRoomData as $key => $calculated) {
-                $roomTypeId = $calculated['room_type_id'];
-                $quantity = $calculated['quantity'];
+            // 4. Gán phòng cụ thể và lưu ngày đã đặt
+            $this->assignRoomsToBooking($booking, $calculatedRoomData, $dates);
 
-                $bookedRoomIds = RoomBookedDate::whereIn('booked_date', $dates)
-                    ->pluck('room_id')
-                    ->unique()
-                    ->toArray();
+            // 5. Lưu thông tin khách hàng (legacy)
+            $this->createBookingLegacyGuests($booking, $validated);
 
-                $availableRooms = Room::where('room_type_id', $roomTypeId)
-                    ->where('status', 'available')
-                    ->whereNotIn('id', $bookedRoomIds)
-                    ->take($quantity)
-                    ->get();
-
-                if ($availableRooms->count() < $quantity) {
-                    throw new \Exception("Không đủ phòng trống cho loại phòng đã chọn");
-                }
-
-                foreach ($availableRooms as $room) {
-                    $booking->bookingRooms()->create([
-                        'room_id' => $room->id,
-                        'price_per_night' => $calculated['actualPricePerNight'],
-                        'nights' => count($dates),
-                        'subtotal' => $calculated['roomSubtotalPerRoom'],
-                        'adults' => $calculated['adults'],
-                        'children_0_5' => $calculated['children05'],
-                        'children_6_11' => $calculated['children611'],
-                    ]);
-
-                    foreach ($dates as $date) {
-                        RoomBookedDate::create([
-                            'room_id' => $room->id,
-                            'booked_date' => $date,
-                            'booking_id' => $booking->id,
-                        ]);
-                    }
-                }
-            }
-
-            // Log
-            \App\Models\BookingLog::create([
+            // 6. Ghi log
+            BookingLog::create([
                 'booking_id' => $booking->id,
                 'old_status' => 'new',
                 'new_status' => $booking->status,
-                'changed_at' => now(),
+                'changed_at' => Carbon::now(),
             ]);
 
-            // Handle payment based on method
-            $paymentMethod = $validated['payment_method'];
-            $paymentStatus = $validated['payment_status'] ?? 'pending';
-            $amountPaid = $validated['amount_paid'] ?? 0;
-
-            if ($paymentMethod === 'cash') {
+            // 7. Xử lý thanh toán
+            if ($paymentMethodInitial === 'cash') {
                 Payment::create([
                     'booking_id'     => $booking->id,
                     'amount'         => $booking->total_price,
                     'method'         => 'cash',
                     'status'         => 'paid',
-                    'transaction_id' => 'CASH_' . now()->format('YmdHis') . '_' . $booking->id,
-                    'paid_at'        => now(),
+                    'transaction_id' => 'CASH_' . Carbon::now()->format('YmdHis') . '_' . $booking->id,
+                    'paid_at'        => Carbon::now(),
                 ]);
 
                 DB::commit();
@@ -905,7 +1455,7 @@ class BookingAdminController extends Controller
                     ->with('success', 'Tạo đơn đặt phòng thành công! Đã ghi nhận thanh toán tiền mặt.');
             }
 
-            if ($paymentMethod === 'vnpay') {
+            if ($paymentMethodInitial === 'vnpay') {
                 Payment::create([
                     'booking_id' => $booking->id,
                     'amount' => $booking->total_price,
@@ -948,6 +1498,12 @@ class BookingAdminController extends Controller
         }
     }
 
+    /**
+     * Generate signed URL for VNPay payment entry.
+     *
+     * @param \App\Models\Booking $booking
+     * @return string
+     */
     protected function signedVnPayEntryUrl(Booking $booking): string
     {
         $days = max(1, (int) config('vnpay.pay_entry_signed_ttl_days', 14));
@@ -959,6 +1515,17 @@ class BookingAdminController extends Controller
         );
     }
 
+    /**
+     * Send payment instruction email to customer.
+     *
+     * @param \App\Models\Booking $booking
+     * @param \App\Models\HotelInfo|null $hotelInfo
+     * @param int $nights
+     * @param string|null $qrCodeUrl
+     * @param string|null $vnpayPayUrl
+     * @param string $toEmail
+     * @return bool
+     */
     protected function sendPaymentInstructionMail(
         Booking $booking,
         ?HotelInfo $hotelInfo,
@@ -976,7 +1543,7 @@ class BookingAdminController extends Controller
                 $vnpayPayUrl
             ));
         } catch (\Throwable $e) {
-            \Log::error('Payment instruction email failed: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Payment instruction email failed: '.$e->getMessage(), ['exception' => $e]);
 
             return false;
         }
@@ -987,6 +1554,12 @@ class BookingAdminController extends Controller
 
     /**
      * Gửi email thanh toán VNPay cho khách khi admin tạo đơn
+     *
+     * @param \App\Models\Booking $booking
+     * @param int $adults
+     * @param int $children611
+     * @param int $children05
+     * @return void
      */
     protected function sendVnPayPaymentEmail(
         Booking $booking,
@@ -997,15 +1570,15 @@ class BookingAdminController extends Controller
         try {
             // Tạo link VNPay có chữ ký
             $vnpayPayUrl = $this->signedVnPayEntryUrl($booking);
-            
+
             // Tính số đêm
             $checkIn = new \Carbon\Carbon($booking->check_in);
             $checkOut = new \Carbon\Carbon($booking->check_out);
             $nights = $checkIn->diffInDays($checkOut);
-            
+
             // Lấy thông tin khách sạn
-            $hotelInfo = \App\Models\HotelInfo::first();
-            
+            $hotelInfo = HotelInfo::first();
+
             // Gửi email
             $emailSent = $this->sendPaymentInstructionMail(
                 $booking,
@@ -1015,28 +1588,33 @@ class BookingAdminController extends Controller
                 $vnpayPayUrl,
                 $booking->user->email
             );
-            
+
             // Log kết quả
             if ($emailSent) {
-                \Log::info('VNPay payment email sent successfully', [
+                Log::info('VNPay payment email sent successfully', [
                     'booking_id' => $booking->id,
-                    'email' => $booking->user->email,
-                    'amount' => $booking->total_price,
+                    'user_email' => $booking->user->email,
                 ]);
             } else {
-                \Log::warning('VNPay payment email was not delivered (check MAIL_MAILER config)', [
+                Log::warning('VNPay payment email failed to send', [
                     'booking_id' => $booking->id,
-                    'email' => $booking->user->email,
+                    'user_email' => $booking->user->email,
                 ]);
             }
         } catch (\Throwable $e) {
-            \Log::error('Failed to send VNPay payment email: '.$e->getMessage(), [
-                'exception' => $e,
+            Log::error('Error sending VNPay payment email', [
                 'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
 
+    /**
+     * Get failure message for payment instruction mail
+     *
+     * @return string
+     */
     protected function paymentInstructionMailFailureMessage(): string
     {
         if (in_array(config('mail.default'), ['log', 'array'], true)) {
@@ -1048,6 +1626,12 @@ class BookingAdminController extends Controller
 
     /**
      * Generate VietQR code URL
+     *
+     * @param string $accountNumber
+     * @param string $bankName
+     * @param float $amount
+     * @param string $content
+     * @return string
      */
     protected function generateVietQRUrl(string $accountNumber, string $bankName, float $amount, string $content): string
     {
@@ -1074,11 +1658,14 @@ class BookingAdminController extends Controller
 
     /**
      * Show payment instruction for bank transfer
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
      */
     public function paymentInstruction(Booking $booking)
     {
         // Load hotel info for bank details
-        $hotelInfo = \App\Models\HotelInfo::first();
+        $hotelInfo = HotelInfo::first();
 
         // Check if payment already exists
         $existingPayment = Payment::where('booking_id', $booking->id)
@@ -1105,8 +1692,12 @@ class BookingAdminController extends Controller
 
     /**
      * Confirm bank transfer payment received
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function confirmPayment(Request $request, Booking $booking)
+    public function confirmPayment(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         // Validate - chỉ kiểm tra payment_method nếu có
         if ($booking->payment_method && $booking->payment_method !== 'bank_transfer') {
@@ -1140,7 +1731,7 @@ class BookingAdminController extends Controller
             ]);
 
             // Log
-            \App\Models\BookingLog::create([
+            BookingLog::create([
                 'booking_id' => $booking->id,
                 'old_status' => $booking->status,
                 'new_status' => 'payment_received',
@@ -1161,8 +1752,12 @@ class BookingAdminController extends Controller
 
     /**
      * Cancel booking with reason
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function cancel(Request $request, Booking $booking)
+    public function cancel(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         // Validate
         if ($booking->status !== 'pending') {
@@ -1187,12 +1782,12 @@ class BookingAdminController extends Controller
 
             RoomBookedDate::where('booking_id', $booking->id)->delete();
 
-            \App\Models\Payment::where('booking_id', $booking->id)
+            Payment::where('booking_id', $booking->id)
                 ->where('status', 'pending')
                 ->update(['status' => 'failed']);
 
             // Log
-            \App\Models\BookingLog::create([
+            BookingLog::create([
                 'booking_id' => $booking->id,
                 'old_status' => 'pending',
                 'new_status' => 'cancelled',
@@ -1309,7 +1904,7 @@ class BookingAdminController extends Controller
                 : 'Thêm ' . count($logParts) . ' dịch vụ danh mục: ' . implode(' | ', $logParts);
 
             try {
-                \App\Models\BookingLog::create([
+                BookingLog::create([
                     'booking_id' => $booking->id,
                     'old_status' => $booking->status,
                     'new_status' => $booking->status,
@@ -1506,7 +2101,7 @@ class BookingAdminController extends Controller
             }
 
             try {
-                \App\Models\BookingLog::create([
+                BookingLog::create([
                     'booking_id' => $booking->id,
                     'old_status' => $booking->status,
                     'new_status' => $booking->status,
@@ -1591,7 +2186,7 @@ class BookingAdminController extends Controller
                 : 'Phụ phí (' . $count . ' dòng): ' . implode(' | ', $logParts);
 
             try {
-                \App\Models\BookingLog::create([
+                BookingLog::create([
                     'booking_id' => $booking->id,
                     'old_status' => $booking->status,
                     'new_status' => $booking->status,
@@ -1687,6 +2282,9 @@ class BookingAdminController extends Controller
 
     /**
      * Sau khi đơn đã commit — nếu có hóa đơn thì cập nhật dịch vụ/phụ phí trên HĐ theo đơn.
+     *
+     * @param \App\Models\Booking $booking
+     * @return string
      */
     private function syncInvoiceExtrasIfExists(Booking $booking): string
     {
@@ -1709,143 +2307,739 @@ class BookingAdminController extends Controller
             return '';
         }
     }
+
+    /**
+     * Tìm hoặc tạo User dựa trên thông tin gửi lên
+     *
+     * @param array{email: string, full_name: string, phone?: string} $validated
+     * @return \App\Models\User
+     */
+    private function findOrCreateGuestUser(array $validated): User
+    {
+        $guestEmail = Str::lower(trim((string) $validated['email']));
+        $user = User::firstOrCreate(
+            ['email' => $guestEmail],
+            [
+                'full_name' => $validated['full_name'],
+                'phone' => $validated['phone'] ?? null,
+                'password' => Hash::make(Str::random(12)),
+            ]
+        );
+
+        $user->forceFill([
+            'email' => $guestEmail,
+            'full_name' => $validated['full_name'],
+            'phone' => $validated['phone'] ?? $user->phone,
+        ])->save();
+
+        return $user;
+    }
+
+    /**
+     * Tính toán giá và dữ liệu phòng cho nhiều loại phòng
+     *
+     * @param array $roomsData
+     * @param array $dates
+     * @return array{subtotal: float, total_guests: int, calculatedRoomData: array}
+     */
+    private function calculateMultiRoomData(array $roomsData, array $dates): array
+    {
+        $subtotal = 0;
+        $totalGuests = 0;
+        $calculatedRoomData = [];
+
+        foreach ($roomsData as $roomIndex => $roomData) {
+            $roomTypeId = $roomData['room_type_id'];
+            $room = Room::where('room_type_id', $roomTypeId)->where('status', 'available')->first();
+
+            $basePrice = (float) ($room ? $room->catalogueBasePrice() : 0);
+            $roomType = $room?->roomType;
+
+            $adults = $roomData['adults'] ?? 1;
+            $children05 = $roomData['children_0_5'] ?? 0;
+            $children611 = $roomData['children_6_11'] ?? 0;
+
+            RoomOccupancyPricing::validate($adults, $children611, $children05, $roomType);
+            $breakdown = RoomOccupancyPricing::breakdown($basePrice, $adults, $children611, $children05, $roomType);
+
+            $actualPricePerNight = $breakdown['price_per_night'];
+            $roomSubtotal = $actualPricePerNight * $roomData['quantity'] * count($dates);
+
+            $subtotal += $roomSubtotal;
+            $totalGuests += $adults * $roomData['quantity'];
+
+            $key = $roomTypeId . '_' . $roomIndex;
+            $calculatedRoomData[$key] = [
+                'room_type_id' => $roomTypeId,
+                'quantity' => $roomData['quantity'],
+                'actualPricePerNight' => $actualPricePerNight,
+                'roomSubtotalPerRoom' => $actualPricePerNight * count($dates),
+                'adults' => $adults,
+                'children05' => $children05,
+                'children611' => $children611,
+            ];
+        }
+
+        return [
+            'subtotal' => $subtotal,
+            'total_guests' => $totalGuests,
+            'calculatedRoomData' => $calculatedRoomData
+        ];
+    }
+
+    /**
+     * Gán phòng cụ thể và lưu ngày đã đặt
+     *
+     * @param \App\Models\Booking $booking
+     * @param array $calculatedRoomData
+     * @param array $dates
+     * @return void
+     */
+    private function assignRoomsToBooking(Booking $booking, array $calculatedRoomData, array $dates): void
+    {
+        foreach ($calculatedRoomData as $key => $calculated) {
+            $roomTypeId = $calculated['room_type_id'];
+            $quantity = $calculated['quantity'];
+
+            $bookedRoomIds = RoomBookedDate::whereIn('booked_date', $dates)
+                ->pluck('room_id')
+                ->unique()
+                ->toArray();
+
+            $availableRooms = Room::where('room_type_id', $roomTypeId)
+                ->where('status', 'available')
+                ->whereNotIn('id', $bookedRoomIds)
+                ->take($quantity)
+                ->get();
+
+            if ($availableRooms->count() < $quantity) {
+                throw new \Exception("Không đủ phòng trống cho loại phòng đã chọn");
+            }
+
+            foreach ($availableRooms as $room) {
+                $booking->bookingRooms()->create([
+                    'room_id' => $room->id,
+                    'price_per_night' => $calculated['actualPricePerNight'],
+                    'nights' => count($dates),
+                    'subtotal' => $calculated['roomSubtotalPerRoom'],
+                    'adults' => $calculated['adults'],
+                    'children_0_5' => $calculated['children05'],
+                    'children_6_11' => $calculated['children611'],
+                ]);
+
+                foreach ($dates as $date) {
+                    RoomBookedDate::create([
+                        'room_id' => $room->id,
+                        'booked_date' => $date,
+                        'booking_id' => $booking->id,
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Tạo thông tin khách hàng (legacy)
+     *
+     * @param \App\Models\Booking $booking
+     * @param array $validated
+     * @return void
+     */
+    private function createBookingLegacyGuests(Booking $booking, array $validated): void
+    {
+        if (empty($validated['guests'])) {
+            return;
+        }
+
+        $guestRows = $this->flattenGuestPayloadByRoomType($validated['guests']);
+
+        foreach ($guestRows as $guestData) {
+            if (!empty($guestData['name'])) {
+                Guest::create([
+                    'booking_id' => $booking->id,
+                    'room_type' => $guestData['room_type'] ?? null,
+                    'name' => $guestData['name'],
+                    'cccd' => $guestData['cccd'] ?? null,
+                    'type' => $guestData['type'] ?? 'adult',
+                    'checkin_status' => 'pending',
+                    'room_index' => $guestData['room_index'] ?? 0,
+                ]);
+            }
+        }
+
+        Cache::forget("guest_info_{$booking->id}");
+    }
+
+    /**
+     * Flatten guest payloads nested by room_type or flat by index.
+     *
+     * @param array $guests
+     * @return array<int, array<string, mixed>>
+     */
+    private function flattenGuestPayloadByRoomType(array $guests): array
+    {
+        $rows = [];
+
+        foreach ($guests as $roomKey => $roomGuests) {
+            if (!is_array($roomGuests)) {
+                continue;
+            }
+
+            if (isset($roomGuests['name']) || isset($roomGuests['cccd']) || isset($roomGuests['room_index'])) {
+                $rows[] = [
+                    'room_type' => null,
+                    'room_index' => isset($roomGuests['room_index']) ? (int) $roomGuests['room_index'] : 0,
+                    'name' => trim((string) ($roomGuests['name'] ?? '')),
+                    'cccd' => trim((string) ($roomGuests['cccd'] ?? '')),
+                    'type' => $roomGuests['type'] ?? 'adult',
+                ];
+                continue;
+            }
+
+            foreach ($roomGuests as $guestData) {
+                if (!is_array($guestData)) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'room_type' => trim((string) $roomKey),
+                    'room_index' => isset($guestData['room_index']) ? (int) $guestData['room_index'] : 0,
+                    'name' => trim((string) ($guestData['name'] ?? '')),
+                    'cccd' => trim((string) ($guestData['cccd'] ?? '')),
+                    'type' => $guestData['type'] ?? 'adult',
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Toggle trạng thái check-in của một khách hàng
+     *
+     * @param \App\Models\Guest $guest
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function toggleGuestStatus(Guest $guest): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $newStatus = ($guest->checkin_status === 'checked_in') ? 'pending' : 'checked_in';
+            $guest->update(['checkin_status' => $newStatus]);
+
+            // Xóa cache thông tin khách của đơn này để khi load lại sẽ lấy data mới
+            Cache::forget("guest_info_{$guest->booking_id}");
+
+            return response()->json([
+                'success' => true,
+                'new_status' => $newStatus,
+                'message' => 'Đã cập nhật trạng thái khách hàng.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * API: Lấy dữ liệu check-in cho booking
+     * Trả về danh sách khách và phòng để gán
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getCheckInData(Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        try {
+            if (!$booking->isAdminCheckinAllowed()) {
+                return response()->json(['error' => 'Không thể thực hiện check-in cho đơn này.'], 403);
+            }
+
+            // Load booking với phòng và khách
+            $booking->load(['user', 'bookingRooms.room.roomType', 'rooms.roomType', 'bookingGuests.bookingRoom.room', 'guests']);
+
+            // Nếu chưa có khách nào, tự động thêm người đại diện từ user
+            if ($booking->bookingGuests->isEmpty()) {
+                $nameValue = $booking->user?->full_name ?? $booking->user?->name ?? 'Khách hàng';
+                $cccdValue = $booking->user?->cccd ?? $booking->cccd ?? null;
+
+                BookingGuest::create([
+                    'booking_id' => $booking->id,
+                    'name' => $nameValue,
+                    'cccd' => $cccdValue,
+                    'type' => 'adult',
+                    'status' => 'pending',
+                    'is_representative' => 1,
+                    'checkin_status' => 'pending',
+                ]);
+
+                // Reload lại booking để lấy khách mới tạo
+                $booking->load('bookingGuests.bookingRoom.room');
+            }
+
+            // Lấy danh sách khách
+            $guests = $booking->bookingGuests->map(function ($guest) {
+                return [
+                    'id' => $guest->id,
+                    'name' => $guest->name,
+                    'cccd' => $guest->cccd,
+                    'type' => $guest->type,
+                    'status' => $guest->status,
+                    'booking_room_id' => $guest->booking_room_id,
+                    'is_representative' => $guest->is_representative,
+                    'room_name' => $guest->bookingRoom?->room?->roomType?->name . ' ' . $guest->bookingRoom?->room?->room_number,
+                ];
+            });
+
+            // Parse dates nếu là string
+            $checkIn = $booking->check_in;
+            $checkOut = $booking->check_out;
+            if (is_string($checkIn)) {
+                $checkIn = \Carbon\Carbon::parse($checkIn);
+            }
+            if (is_string($checkOut)) {
+                $checkOut = \Carbon\Carbon::parse($checkOut);
+            }
+
+            return response()->json([
+                'success' => true,
+                'booking' => [
+                    'id' => $booking->id,
+                    'user' => $booking->user?->only(['id', 'full_name', 'email', 'phone']),
+                    'check_in' => $checkIn?->format('d/m/Y'),
+                    'check_out' => $checkOut?->format('d/m/Y'),
+                ],
+                'guests' => $guests,
+                'booking_rooms' => $booking->bookingRooms->map(function ($br) {
+                    return [
+                        'id' => $br->id,
+                        'room_id' => $br->room_id,
+                        'room_name' => $br->room?->roomType?->name . ' ' . $br->room?->room_number,
+                    ];
+                }),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Lỗi tải dữ liệu: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Xử lý check-in với gán phòng cho từng khách
+     */
+    public function checkInWithAssignment(Request $request, Booking $booking)
+    {
+        try {
+            if (!$booking->isAdminCheckinAllowed()) {
+                return back()->with('error', 'Không thể thực hiện check-in cho đơn này.');
+            }
+
+            // Validate dữ liệu
+            $validated = $request->validate([
+                'guests' => 'required|array',
+                'guests.*.name' => 'required|string|max:150',
+                'guests.*.cccd' => 'required|string|regex:/^[0-9]{12}$/',
+                'guests.*.type' => 'required|in:adult,child,child_6_11,child_0_5',
+                'guests.*.booking_room_id' => 'required|exists:booking_rooms,id',
+            ], [
+                'guests.required' => 'Vui lòng thêm ít nhất 1 khách',
+                'guests.*.name.required' => 'Vui lòng nhập tên khách',
+                'guests.*.cccd.required' => 'Vui lòng nhập CCCD',
+                'guests.*.cccd.regex' => 'CCCD phải có đúng 12 số',
+                'guests.*.type.required' => 'Vui lòng chọn loại khách',
+                'guests.*.booking_room_id.required' => 'Vui lòng chọn phòng cho tất cả khách',
+                'guests.*.booking_room_id.exists' => 'Phòng không tồn tại',
+            ]);
+
+            // Kiểm tra tất cả booking_room_id thuộc về booking này
+            $bookingRoomIds = $booking->bookingRooms->pluck('id')->toArray();
+            foreach ($validated['guests'] as $guestData) {
+                if (!in_array($guestData['booking_room_id'], $bookingRoomIds)) {
+                    return back()->withErrors(['Phòng được chọn không thuộc đơn đặt này'])->withInput();
+                }
+            }
+
+            DB::beginTransaction();
+
+            try {
+                // Lấy danh sách khách hiện tại
+                $existingGuestIds = $booking->bookingGuests->pluck('id')->toArray();
+                $processedGuestIds = [];
+
+                // Xử lý từng khách
+                foreach ($validated['guests'] as $index => $guestData) {
+                    // Kiểm tra xem có phải khách đã tồn tại (có ID trong request)
+                    if (isset($guestData['id']) && in_array($guestData['id'], $existingGuestIds)) {
+                        // Update khách hiện có
+                        $guest = BookingGuest::find($guestData['id']);
+                        if ($guest && $guest->booking_id == $booking->id) {
+                            $guest->update([
+                                'name' => $guestData['name'],
+                                'cccd' => $guestData['cccd'],
+                                'type' => $guestData['type'],
+                                'booking_room_id' => $guestData['booking_room_id'],
+                                'status' => 'checked_in',
+                            ]);
+                            $processedGuestIds[] = $guest->id;
+                        }
+                    } else {
+                        // Tạo khách mới
+                        $guest = BookingGuest::create([
+                            'booking_id' => $booking->id,
+                            'booking_room_id' => $guestData['booking_room_id'],
+                            'name' => $guestData['name'],
+                            'cccd' => $guestData['cccd'],
+                            'type' => $guestData['type'],
+                            'status' => 'checked_in',
+                        ]);
+                        $processedGuestIds[] = $guest->id;
+                    }
+                }
+
+                // Đảm bảo người đại diện được update (nếu có trong danh sách form)
+                $representativeGuestId = $booking->bookingGuests()->where('is_representative', 1)->value('id');
+                if ($representativeGuestId && !in_array($representativeGuestId, $processedGuestIds)) {
+                    // Nếu người đại diện không được xử lý trong form, tìm và update nó
+                    $representative = BookingGuest::find($representativeGuestId);
+                    if ($representative) {
+                        // Tìm phòng cho người đại diện từ form (dùng phòng đầu tiên nếu chưa có)
+                        $representativeRoomId = null;
+                        foreach ($validated['guests'] as $guestData) {
+                            if (!empty($guestData['booking_room_id'])) {
+                                $representativeRoomId = $guestData['booking_room_id'];
+                                break;
+                            }
+                        }
+
+                        $representative->update([
+                            'booking_room_id' => $representativeRoomId,
+                            'status' => 'checked_in',
+                        ]);
+                        $processedGuestIds[] = $representativeGuestId;
+                    }
+                }
+
+                // Xóa khách không còn trong danh sách (nếu có), nhưng không xóa người đại diện
+                $guestsToDelete = array_diff($existingGuestIds, $processedGuestIds);
+                if (!empty($guestsToDelete)) {
+                    // Loại bỏ người đại diện khỏi danh sách xóa
+                    $guestsToDelete = array_filter($guestsToDelete, function($id) use ($representativeGuestId) {
+                        return $id != $representativeGuestId;
+                    });
+                    if (!empty($guestsToDelete)) {
+                        BookingGuest::whereIn('id', $guestsToDelete)->delete();
+                    }
+                }
+
+                // Cập nhật trạng thái booking
+                $old = $booking->status;
+                $booking->status = 'checked_in';
+                $booking->actual_check_in = Carbon::now();
+                $booking->save();
+
+                // Reload booking để đảm bảo dữ liệu mới nhất
+                $booking->refresh();
+
+                // Log
+                BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'old_status' => $old,
+                    'new_status' => 'checked_in',
+                    'changed_at' => now(),
+                ]);
+
+                // Xóa cache
+                Cache::forget("guest_info_{$booking->id}");
+
+                DB::commit();
+
+                return back()->with('success', 'Check-in thành công! Đã gán phòng cho ' . count($processedGuestIds) . ' khách.');
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['Có lỗi xảy ra: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Xóa khách khỏi booking
+     */
+    public function deleteBookingGuest(BookingGuest $bookingGuest)
+    {
+        try {
+            $booking = Booking::find($bookingGuest->booking_id);
+
+            // Kiểm tra quyền (admin hoặc staff)
+            /** @var \App\Models\User|null $user */
+            $user = Auth::user();
+            if (!$booking || !$user) {
+                return response()->json(['error' => 'Không có quyền'], 403);
+            }
+            /** @var \Illuminate\Database\Eloquent\Collection $roles */
+            $roles = $user->roles();
+            $hasRole = $roles->whereIn('name', ['admin', 'staff'])->exists();
+            if (!$hasRole) {
+                return response()->json(['error' => 'Không có quyền'], 403);
+            }
+
+            // Không cho xóa nếu đã check-in
+            if ($bookingGuest->status === 'checked_in') {
+                return response()->json(['error' => 'Không thể xóa khách đã check-in'], 400);
+            }
+
+            $bookingGuest->delete();
+
+            return response()->json(['success' => true, 'message' => 'Đã xóa khách']);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Lỗi: ' . $e->getMessage()], 500);
+        }
+    }
+
     /**
      * Thay đổi phòng cho khách hàng
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function changeRoom(Request $request, Booking $booking)
+    public function changeRoom(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'old_room_id' => 'required|exists:rooms,id',
             'new_room_id' => 'required|exists:rooms,id|different:old_room_id',
             'reason'      => 'nullable|string|max:500',
         ]);
 
-        return DB::transaction(function () use ($request, $booking) {
-            $newRoom = Room::findOrFail($request->new_room_id);
-            $oldRoomId = $request->old_room_id;
+        return DB::transaction(fn () => $this->executeChangeRoomTransaction($validated, $booking));
+    }
 
-            // 1. Kiểm tra phòng mới có trống trong khoảng thời gian đó không
-            $isOccupied = RoomBookedDate::where('room_id', $newRoom->id)
-                ->where('booking_id', '!=', $booking->id)
-                ->whereBetween('booked_date', [$booking->check_in, \Carbon\Carbon::parse($booking->check_out)->subDay()->toDateString()])
-                ->exists();
+    /**
+     * Execute the room change transaction logic
+     *
+     * @param array{old_room_id: int, new_room_id: int, reason?: string} $validated
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    private function executeChangeRoomTransaction(array $validated, Booking $booking): \Illuminate\Http\RedirectResponse
+    {
+        $newRoom = Room::findOrFail($validated['new_room_id']);
+        $oldRoomId = $validated['old_room_id'];
 
-            if ($isOccupied) {
-                return back()->with('error', 'Phòng mới đã có người đặt trong thời gian này!');
-            }
+        // 1. Kiểm tra phòng mới có trống trong khoảng thời gian đó không
+        $isOccupied = $this->isRoomOccupied($newRoom->id, $booking->id, $booking->check_in, $booking->check_out);
+        if ($isOccupied) {
+            return back()->with('error', 'Phòng mới đã có người đặt trong thời gian này!');
+        }
 
-            // 2. Cập nhật bảng booking_rooms
-            $bookingRoom = \App\Models\BookingRoom::where('booking_id', $booking->id)
-                ->where('room_id', $oldRoomId)
-                ->first();
+        // 2. Cập nhật bảng booking_rooms
+        $bookingRoom = \App\Models\BookingRoom::where('booking_id', $booking->id)
+            ->where('room_id', $oldRoomId)
+            ->first();
 
-            if (!$bookingRoom) {
-                return back()->with('error', 'Không tìm thấy thông tin phòng cũ trong đơn đặt phòng này.');
-            }
+        if (!$bookingRoom) {
+            return back()->with('error', 'Không tìm thấy thông tin phòng cũ trong đơn đặt phòng này.');
+        }
 
-            // Khởi tạo $checkIn và $checkOut để tính toán giá nếu phòng mới khác giá
-            $checkIn = new \Carbon\Carbon($booking->check_in);
-            $checkOut = new \Carbon\Carbon($booking->check_out);
-            $nights = $bookingRoom->nights ?: $checkIn->diffInDays($checkOut) ?: 1;
+        // 3. Tính toán giá phòng mới
+        $checkIn = new \Carbon\Carbon($booking->check_in);
+        $checkOut = new \Carbon\Carbon($booking->check_out);
+        $nights = $bookingRoom->nights ?: $checkIn->diffInDays($checkOut) ?: 1;
 
-            $bookingRoomPrices = [];
-            $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
-            $prices = RoomPrice::where('room_id', $newRoom->id)->get();
-            $roomType = $newRoom->roomType;
-            
-            $subtotalNewRoom = 0;
-            
-            foreach ($period as $date) {
-                $basePrice = $newRoom->catalogueBasePrice();
-                foreach ($prices as $price) {
-                    if ($date->betweenIncluded($price->start_date, $price->end_date)) {
-                        $basePrice = $price->price;
-                        break;
-                    }
+        $priceData = $this->calculateNewRoomPrice($newRoom, $bookingRoom, $checkIn, $checkOut);
+
+        $bookingRoom->update([
+            'room_id' => $newRoom->id,
+            'price_per_night' => $priceData['avg_price_per_night'],
+            'subtotal' => $priceData['subtotal_new_room']
+        ]);
+
+        // 4. Xử lý bảng room_booked_dates
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $this->updateRoomBookedDates($booking->id, $oldRoomId, $newRoom->id, $period);
+
+        // 5. Cập nhật trạng thái bảng rooms
+        $this->updateRoomStatuses($oldRoomId, $newRoom->id, $booking->check_in, $booking->check_out);
+
+        // 6. Tính lại Total Price của cả đơn đặt phòng
+        $this->recalculateBookingTotalPrice($booking);
+
+        // 7. Ghi lịch sử đổi phòng
+        \App\Models\RoomChangeHistory::create([
+            'booking_id' => $booking->id,
+            'from_room_id' => $oldRoomId,
+            'to_room_id' => $newRoom->id,
+            'reason' => $validated['reason'] ?? 'Khách yêu cầu đổi phòng',
+            'changed_by' => Auth::id(),
+            'changed_at' => now(),
+        ]);
+
+        // 8. Cập nhật lại thanh toán nếu thiếu tiền hoặc thừa tiền
+        $this->updatePaymentAmount($booking);
+
+        return back()->with('success', 'Đổi phòng thành công! Số dư phòng cũ đã được ghi nhận.');
+    }
+
+    /**
+     * Check if room is occupied during the booking period
+     *
+     * @param int $roomId
+     * @param int $bookingId
+     * @param string $checkIn
+     * @param string $checkOut
+     * @return bool
+     */
+    private function isRoomOccupied(int $roomId, int $bookingId, string $checkIn, string $checkOut): bool
+    {
+        return RoomBookedDate::where('room_id', $roomId)
+            ->where('booking_id', '!=', $bookingId)
+            ->whereBetween('booked_date', [$checkIn, \Carbon\Carbon::parse($checkOut)->subDay()->toDateString()])
+            ->exists();
+    }
+
+    /**
+     * Calculate new room price with occupancy surcharge
+     *
+     * @param \App\Models\Room $newRoom
+     * @param \App\Models\BookingRoom $bookingRoom
+     * @param \Carbon\Carbon $checkIn
+     * @param \Carbon\Carbon $checkOut
+     * @return array{avg_price_per_night: float, subtotal_new_room: float}
+     */
+    private function calculateNewRoomPrice(Room $newRoom, \App\Models\BookingRoom $bookingRoom, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): array
+    {
+        $bookingRoomPrices = [];
+        $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
+        $prices = RoomPrice::where('room_id', $newRoom->id)->get();
+        $roomType = $newRoom->roomType;
+        $subtotalNewRoom = 0;
+
+        foreach ($period as $date) {
+            $basePrice = $newRoom->catalogueBasePrice();
+            foreach ($prices as $price) {
+                if ($date->betweenIncluded($price->start_date, $price->end_date)) {
+                    $basePrice = $price->price;
+                    break;
                 }
-                
-                $adults = $bookingRoom->adults;
-                $children611 = $bookingRoom->children_6_11;
-                $children05 = $bookingRoom->children_0_5;
-                
-                try {
-                    RoomOccupancyPricing::validate($adults, $children611, $children05, $roomType);
-                } catch (\Exception $e) {
-                    return back()->with('error', 'Phòng mới không đủ sức chứa cho số lượng khách hiện tại: ' . $e->getMessage());
-                }
-                
-                $breakdown = RoomOccupancyPricing::breakdown($basePrice, $adults, $children611, $children05, $roomType);
-                $subtotalNewRoom += $breakdown['price_per_night'];
-                $bookingRoomPrices[] = $breakdown['price_per_night'];
             }
 
-            $avgPricePerNight = count($bookingRoomPrices) > 0 ? (array_sum($bookingRoomPrices) / count($bookingRoomPrices)) : $newRoom->catalogueBasePrice();
+            $adults = $bookingRoom->adults;
+            $children611 = $bookingRoom->children_6_11;
+            $children05 = $bookingRoom->children_0_5;
 
-            $bookingRoom->update([
-                'room_id' => $newRoom->id,
-                'price_per_night' => $avgPricePerNight,
-                'subtotal' => $subtotalNewRoom
-            ]);
+            RoomOccupancyPricing::validate($adults, $children611, $children05, $roomType);
+            $breakdown = RoomOccupancyPricing::breakdown($basePrice, $adults, $children611, $children05, $roomType);
+            $subtotalNewRoom += $breakdown['price_per_night'];
+            $bookingRoomPrices[] = $breakdown['price_per_night'];
+        }
 
-            // 3. Xử lý bảng room_booked_dates
-            RoomBookedDate::where('booking_id', $booking->id)
-                ->where('room_id', $oldRoomId)
-                ->delete();
+        $avgPricePerNight = count($bookingRoomPrices) > 0
+            ? (array_sum($bookingRoomPrices) / count($bookingRoomPrices))
+            : $newRoom->catalogueBasePrice();
 
-            $days = [];
-            foreach ($period as $date) {
-                $days[] = [
-                    'room_id' => $newRoom->id,
-                    'booking_id' => $booking->id,
-                    'booked_date' => $date->toDateString(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-            RoomBookedDate::insert($days);
+        return [
+            'avg_price_per_night' => $avgPricePerNight,
+            'subtotal_new_room' => $subtotalNewRoom
+        ];
+    }
 
-            // 4. Cập nhật trạng thái bảng rooms
-            // Nếu thay đổi cho một phòng hôm nay
-            $today = now()->toDateString();
-            if ($today >= $booking->check_in && $today < $booking->check_out) {
-                Room::where('id', $oldRoomId)->update(['status' => 'maintenance']); 
-                $newRoom->update(['status' => 'occupied']);
-            }
+    /**
+     * Update room booked dates for room change
+     *
+     * @param int $bookingId
+     * @param int $oldRoomId
+     * @param int $newRoomId
+     * @param \Carbon\CarbonPeriod $period
+     * @return void
+     */
+    private function updateRoomBookedDates(int $bookingId, int $oldRoomId, int $newRoomId, \Carbon\CarbonPeriod $period): void
+    {
+        RoomBookedDate::where('booking_id', $bookingId)
+            ->where('room_id', $oldRoomId)
+            ->delete();
 
-            // 5. Tính lại Total Price của cả đơn đặt phòng
-            $newTotalPrice = $booking->bookingRooms()->sum('subtotal');
-            // Cộng thêm các phụ phí hoặc dịch vụ nếu có tính trong total
-            $servicesTotal = $booking->bookingServices()->get()->sum(function($bs) {
-                return $bs->quantity * $bs->price;
-            });
-            $surchargesTotal = $booking->surcharges()->sum('amount');
-            
-            $booking->update([
-                'total_price' => $newTotalPrice + $servicesTotal + $surchargesTotal
-            ]);
+        $days = [];
+        foreach ($period as $date) {
+            $days[] = [
+                'room_id' => $newRoomId,
+                'booking_id' => $bookingId,
+                'booked_date' => $date->toDateString(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+        RoomBookedDate::insert($days);
+    }
 
-            // 6. Ghi lịch sử đổi phòng
-            \App\Models\RoomChangeHistory::create([
-                'booking_id' => $booking->id,
-                'from_room_id' => $oldRoomId,
-                'to_room_id' => $newRoom->id,
-                'reason' => $request->reason ?? 'Khách yêu cầu đổi phòng',
-                'changed_by' => auth()->id(),
-                'changed_at' => now(),
-            ]);
-            
-            // Cập nhật lại thanh toán nếu thiếu tiền hoặc thừa tiền
-            $payment = Payment::where('booking_id', $booking->id)->orderByDesc('id')->first();
-            if ($payment && in_array($payment->status, ['paid', 'partial'])) {
-                // Nếu đổi phòng rẻ hơn hoặc bằng giá tiền thì có thể chuyển tiền thừa thành Hoàn tiền?
-                // Đối với admin, có thể chỉ cần cập nhật payment.
-                $payment->update([
-                    'amount' => $booking->total_price
-                ]);
-            }
+    /**
+     * Update room statuses after room change
+     *
+     * @param int $oldRoomId
+     * @param int $newRoomId
+     * @param string $checkIn
+     * @param string $checkOut
+     * @return void
+     */
+    private function updateRoomStatuses(int $oldRoomId, int $newRoomId, string $checkIn, string $checkOut): void
+    {
+        $today = now()->toDateString();
+        if ($today >= $checkIn && $today < $checkOut) {
+            Room::where('id', $oldRoomId)->update(['status' => 'maintenance']);
+            Room::where('id', $newRoomId)->update(['status' => 'occupied']);
+        }
+    }
 
-            return back()->with('success', 'Đổi phòng thành công! Số dư phòng cũ đã được ghi nhận.');
+    /**
+     * Recalculate booking total price including services and surcharges
+     *
+     * @param \App\Models\Booking $booking
+     * @return void
+     */
+    private function recalculateBookingTotalPrice(Booking $booking): void
+    {
+        $newTotalPrice = $booking->bookingRooms()->sum('subtotal');
+        $servicesTotal = $this->calculateBookingServicesTotal($booking);
+        $surchargesTotal = $booking->surcharges()->sum('amount');
+
+        $booking->update([
+            'total_price' => $newTotalPrice + $servicesTotal + $surchargesTotal
+        ]);
+    }
+
+    /**
+     * Calculate total for booking services
+     *
+     * @param \App\Models\Booking $booking
+     * @return float
+     */
+    private function calculateBookingServicesTotal(Booking $booking): float
+    {
+        return (float) $booking->bookingServices()->get()->sum(function ($bs) {
+            return $bs->quantity * $bs->price;
         });
+    }
+
+    /**
+     * Update payment amount to match new booking total
+     *
+     * @param \App\Models\Booking $booking
+     * @return void
+     */
+    private function updatePaymentAmount(Booking $booking): void
+    {
+        $payment = Payment::where('booking_id', $booking->id)->orderByDesc('id')->first();
+        if ($payment && in_array($payment->status, ['paid', 'partial'], true)) {
+            $payment->update([
+                'amount' => $booking->total_price
+            ]);
+        }
     }
 
     /**

@@ -201,7 +201,6 @@ class SeedImagesCommand extends Command
         ob_start();
         imagejpeg($img, null, 85);
         $content = ob_get_clean();
-        imagedestroy($img);
 
         return $content ?: $this->createMinimalJpeg();
     }
@@ -214,7 +213,6 @@ class SeedImagesCommand extends Command
         ob_start();
         imagejpeg($img, null, 85);
         $content = ob_get_clean();
-        imagedestroy($img);
         return $content ?? '';
     }
 }

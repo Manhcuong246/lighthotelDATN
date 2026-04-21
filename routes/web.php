@@ -22,7 +22,10 @@ use App\Http\Controllers\VnPayController;
 use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
+use App\Http\Controllers\Admin\SiteContentAdminController;
+use App\Http\Controllers\DynamicPageController;
 use App\Http\Controllers\GuestCheckInController;
+use App\Http\Controllers\NewBookingController;
 
 
 
@@ -48,14 +51,16 @@ Route::get('/storage/{path}', function (string $path) {
 
 Route::get('/', [RoomController::class, 'index'])->name('home');
 
-Route::view('/lien-he', 'pages.contact')->name('pages.contact');
-Route::view('/tro-giup', 'pages.help')->name('pages.help');
-Route::view('/chinh-sach', 'pages.policy')->name('pages.policy');
+Route::get('/lien-he', [DynamicPageController::class, 'contact'])->name('pages.contact');
+Route::get('/tro-giup', [DynamicPageController::class, 'help'])->name('pages.help');
+Route::get('/chinh-sach', [DynamicPageController::class, 'policy'])->name('pages.policy');
 
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::get('/bookings/simple/create', [BookingController::class, 'createSimple'])->name('bookings.create-simple');
+Route::post('/bookings/simple', [BookingController::class, 'storeSimple'])->name('bookings.store-simple');
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 Route::get('/bookings/{booking}/cancel', [BookingCancellationController::class, 'show'])->name('bookings.cancel');
 Route::post('/bookings/{booking}/cancel', [BookingCancellationController::class, 'cancel'])->name('bookings.cancel.post');
@@ -104,14 +109,16 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
     Route::get('/bookings/{booking}/guest-info', [BookingAdminController::class, 'getGuestInfo'])->name('bookings.guest-info');
     Route::put('/bookings/{booking}/guest-info', [BookingAdminController::class, 'updateGuestInfo'])->name('bookings.update-guest-info');
+    Route::post('/bookings/{booking}/assign-room', [BookingAdminController::class, 'assignGuestToRoom'])->name('bookings.assign-room');
+    Route::get('/bookings/{booking}/available-rooms', [BookingAdminController::class, 'getAvailableRoomsForAssignment'])->name('bookings.available-rooms');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
+    Route::get('/bookings/{booking}/checkin-data', [BookingAdminController::class, 'getCheckInData'])->name('bookings.checkin-data');
+    Route::post('/bookings/{booking}/checkin-with-assignment', [BookingAdminController::class, 'checkInWithAssignment'])->name('admin.bookings.checkin-with-assignment');
+    Route::delete('/booking-guests/{bookingGuest}', [BookingAdminController::class, 'deleteBookingGuest'])->name('admin.booking-guests.delete');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');
     Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
     Route::post('/bookings/{booking}/extras', [BookingAdminController::class, 'storeBookingExtras'])->name('bookings.storeExtras');
     Route::post('/bookings/{booking}/change-room', [BookingAdminController::class, 'changeRoom'])->name('bookings.changeRoom');
-    Route::post('/bookings/{booking}/change-room-v2', [BookingAdminController::class, 'changeRoomV2'])->name('bookings.changeRoomV2');
-    Route::get('/bookings/{booking}/available-rooms-for-change', [BookingAdminController::class, 'getAvailableRoomsForChange'])->name('bookings.available-rooms-for-change');
-    Route::get('/bookings/{booking}/room-change-history', [BookingAdminController::class, 'getRoomChangeHistory'])->name('bookings.room-change-history');
     Route::post('/bookings/{booking}/cancel', [BookingAdminController::class, 'cancel'])->name('bookings.cancel');
 
     Route::middleware(['admin_only'])->group(function () {
@@ -189,16 +196,18 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
         Route::delete('/{id}', [RoomTypeController::class, 'destroy'])->name('destroy');
     });
 
+    // ====== QUẢN LÝ NỘI DUNG WEBSITE (CMS) ======
+    Route::prefix('site-contents')->name('site-contents.')->group(function () {
+        Route::get('/', [SiteContentAdminController::class, 'index'])->name('index');
+        Route::get('/create', [SiteContentAdminController::class, 'create'])->name('create');
+        Route::post('/', [SiteContentAdminController::class, 'store'])->name('store');
+        Route::get('/{siteContent}/edit', [SiteContentAdminController::class, 'edit'])->name('edit');
+        Route::put('/{siteContent}', [SiteContentAdminController::class, 'update'])->name('update');
+        Route::delete('/{siteContent}', [SiteContentAdminController::class, 'destroy'])->name('destroy');
+    });
 
 
-});
 
-// Check-in Routes
-Route::middleware('auth')->prefix('checkin')->name('checkin.')->group(function () {
-    Route::get('/bookings/{booking}', [GuestCheckInController::class, 'index'])->name('index');
-    Route::post('/guests/{guest}/status', [GuestCheckInController::class, 'updateGuestStatus'])->name('guest.status');
-    Route::post('/bookings/{booking}/checkin-all', [GuestCheckInController::class, 'checkInAll'])->name('all');
-    Route::get('/bookings/{booking}/guests', [GuestCheckInController::class, 'getGuestList'])->name('guests');
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -220,14 +229,5 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
-use App\Http\Controllers\Staff\StaffController;
-
-Route::middleware(['auth', 'staff'])
-    ->prefix('staff')
-    ->name('staff.')
-    ->group(function () {
-
-        Route::get('/dashboard', [StaffController::class, 'dashboard'])
-            ->name('dashboard');
-
-});
+// Include routes mới cho hệ thống đặt phòng
+require __DIR__ . '/new-bookings.php';

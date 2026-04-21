@@ -7,6 +7,39 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Light Hotel Booking System
+
+A comprehensive hotel booking management system built with Laravel 12.
+
+### Features
+
+- 🏨 **Room Management** - Manage room types, pricing, and availability
+- 📅 **Booking System** - Single and multi-room bookings
+- 💳 **Payment Integration** - VNPay payment gateway support
+- 👥 **Guest Management** - Track guests with occupancy-based pricing
+- 📧 **Email Notifications** - Automated payment instructions
+- 📊 **Admin Dashboard** - Complete booking management interface
+- 💰 **Surcharge Calculation** - Automatic pricing for extra guests
+- 🎫 **Coupon System** - Discount and promotion support
+- ⭐ **Review System** - Guest reviews and ratings
+
+### VNPay Payment Feature
+
+When customers select VNPay payment method:
+- Automatic email with detailed booking information
+- Secure signed payment links
+- 15-minute payment session timeout
+- 14-day link validity period
+- Real-time payment status tracking
+
+### Guest Capacity & Pricing
+
+- Standard capacity: 3 guests per room
+- Maximum capacity: 6 guests per room
+- Children 0-5 years: Free (occupies slot)
+- Children 6-11 years: 12.5% surcharge
+- Adults: 25% surcharge (when exceeding standard capacity)
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
@@ -47,6 +80,97 @@ We would like to extend our thanks to the following sponsors for funding Laravel
 Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
 ## Code of Conduct
+
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+
+## Installation
+
+### Requirements
+
+- PHP >= 8.2
+- Composer
+- MySQL/MariaDB
+- Node.js & NPM
+
+### Quick Start
+
+```bash
+# Clone repository
+git clone https://github.com/Manhcuong246/lighthotelDATN.git
+cd lighthotelDATN
+
+# Install dependencies
+composer install
+npm install
+
+# Setup environment
+cp .env.example .env
+php artisan key:generate
+
+# Configure database in .env
+DB_DATABASE=lighthotel
+DB_USERNAME=root
+DB_PASSWORD=
+
+# Run migrations
+php artisan migrate --seed
+
+# Start development server
+php artisan serve
+```
+
+### Email Configuration
+
+To enable VNPay payment emails:
+
+1. Create Gmail App Password: https://myaccount.google.com/apppasswords
+2. Update `.env`:
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_FROM_ADDRESS=your-email@gmail.com
+MAIL_FROM_NAME="Light Hotel"
+```
+
+3. Clear cache:
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+## Admin Features
+
+### Booking Management
+
+- **Create Single Booking**: Create booking for individual guests
+- **Create Multi-Room Booking**: Book multiple rooms at once
+- **Occupancy-Based Pricing**: Automatic surcharge calculation
+- **Payment Methods**: Cash or VNPay
+- **Status Tracking**: Separate booking and payment status
+
+### Payment Status Flow
+
+1. **Unpaid** → Initial state
+2. **Deposited** → Partial payment received
+3. **Paid** → Full payment completed
+
+### Booking Status Flow
+
+1. **Pending** → Awaiting confirmation
+2. **Confirmed** → Booking confirmed
+
+## Testing
+
+```bash
+# Run test suite
+php artisan test
+
+# Test VNPay email (after email config)
+php test_vnpay_email.php
+```
 
 In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
