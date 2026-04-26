@@ -12,7 +12,7 @@ Route::prefix('bookings')->name('bookings.')->group(function () {
     Route::post('/search', [NewBookingController::class, 'search'])->name('search');
 
     // Form đặt phòng
-    Route::get('/booking-form', [NewBookingController::class, 'bookingForm'])->name('booking-form');
+    Route::post('/booking-form', [NewBookingController::class, 'bookingForm'])->name('booking-form');
 
     // Test form
     Route::get('/test', function() {
