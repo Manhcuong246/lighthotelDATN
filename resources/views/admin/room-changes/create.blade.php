@@ -9,7 +9,6 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb bg-transparent mb-4 px-0">
                     <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('bookings.index') }}">Quản lý Booking</a></li>
                     <li class="breadcrumb-item active" aria-current="page">Đổi phòng</li>
                 </ol>
             </nav>
@@ -92,7 +91,7 @@
                                     </select>
                                     <small class="text-muted fw-normal mt-1 d-block">Booking này có nhiều phòng. Hãy chọn phòng cần đổi.</small>
                                 @else
-                                    {{ $currentBookingRoom->room->room_number ?? 'N/A' }} 
+                                    {{ $currentBookingRoom->room->room_number ?? 'N/A' }}
                                     ({{ $currentBookingRoom->room->roomType->name ?? 'N/A' }})
                                 @endif
                             </div>
@@ -218,7 +217,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Hidden Inputs for logic -->
         <input type="hidden" name="new_room_id" id="inputNewRoomId">
         <input type="hidden" name="adults" value="{{ $booking->guests()->where('type', 'adult')->count() ?: 1 }}">
@@ -243,13 +242,13 @@ document.addEventListener('DOMContentLoaded', function() {
     @if(!$booking)
         // Logic tìm kiếm booking (Vanilla JS)
         let searchTimeout;
-        
+
         function loadBookings(query = '') {
             const resultsContainer = document.getElementById('bookingSearchResults');
             if(!resultsContainer) return;
-            
+
             resultsContainer.innerHTML = '<div class="list-group-item text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Đang tìm kiếm...</div>';
-            
+
             fetch("{{ route('admin.room-changes.search-booking') }}?q=" + encodeURIComponent(query))
                 .then(response => response.json())
                 .then(res => {
@@ -307,14 +306,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const oldPrice = {{ $currentBookingRoom->price_per_night ?? 0 }};
         const totalAdults = {{ $booking->guests()->where('type', 'adult')->count() ?: 1 }};
         const totalChildren = {{ $booking->guests()->where('type', '!=', 'adult')->count() ?: 0 }};
-        
+
         let allRooms = [];
         let selectedRoom = null;
 
         function loadRooms() {
             const roomsList = document.getElementById('roomsList');
             roomsList.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Đang tải...</td></tr>';
-            
+
             const params = new URLSearchParams({
                 booking_id: bookingId,
                 total_adults: totalAdults,
@@ -356,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             roomsList.innerHTML = html;
-            
+
             // Re-attach event listeners to rows
             document.querySelectorAll('.room-row').forEach(row => {
                 row.addEventListener('click', function() {
@@ -368,10 +367,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function handleRoomSelection(roomId, rowElement) {
             selectedRoom = allRooms.find(r => r.id == roomId);
-            
+
             document.querySelectorAll('.room-row').forEach(r => r.classList.remove('selected-room'));
             rowElement.classList.add('selected-room');
-            
+
             document.getElementById('inputNewRoomId').value = roomId;
             calculateFinal(selectedRoom);
             document.getElementById('predictionPanel').classList.remove('d-none');
@@ -437,10 +436,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const searchVal = searchRoom.value.toLowerCase();
                 const roomNum = String(r.room_number || '').toLowerCase();
                 const roomType = String(r.room_type || '').toLowerCase();
-                
+
                 const matchSearch = roomNum.includes(searchVal) || roomType.includes(searchVal);
                 const matchType = filterType.value === '' || r.room_type === filterType.value;
-                
+
                 return matchSearch && matchType;
             });
             if(filterPrice.value === 'asc') filtered.sort((a, b) => a.price - b.price);
