@@ -69,7 +69,7 @@
                             allowfullscreen=""
                             loading="lazy"
                             referrerpolicy="no-referrer-when-downgrade"
-                            title="Bản đồ Light Hotel">
+                            title="Bản đồ {{ $hotelInfo?->name ?? 'Light Hotel' }}">
                         </iframe>
                     </div>
                     <a href="https://www.google.com/maps?q={{ $lat }},{{ $lng }}" target="_blank" rel="noopener" class="footer-map-link small mt-2 d-inline-block">
