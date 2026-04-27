@@ -88,13 +88,13 @@
             </div>
         </form>
         <div class="d-flex flex-wrap gap-2 mt-3">
-            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="1">
+            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="1" aria-label="Đặt ngày trả phòng sau 1 đêm">
                 1 đêm cuối tuần
             </button>
-            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="2">
+            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="2" aria-label="Đặt ngày trả phòng sau 2 đêm">
                 2 đêm thư giãn
             </button>
-            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="3">
+            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="3" aria-label="Đặt ngày trả phòng sau 3 đêm">
                 3 đêm nghỉ dưỡng
             </button>
         </div>
