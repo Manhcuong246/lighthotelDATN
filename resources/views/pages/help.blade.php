@@ -32,11 +32,11 @@
                 </div>
             </div>
             <div class="col-lg-8 order-lg-1">
-                <div class="lh-glass-card p-4 p-lg-5" id="faq-section">
+                <div class="lh-glass-card p-4 p-lg-5" id="faq-section" role="region" aria-labelledby="help-faq-heading">
                     <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
-                        <div class="lh-contact-icon mb-0"><i class="bi bi-question-circle"></i></div>
+                        <div class="lh-contact-icon mb-0" aria-hidden="true"><i class="bi bi-question-circle"></i></div>
                         <div>
-                            <h2 class="h5 fw-bold mb-0 text-dark">Câu hỏi thường gặp</h2>
+                            <h2 id="help-faq-heading" class="h5 fw-bold mb-0 text-dark">Câu hỏi thường gặp</h2>
                             <p class="small text-secondary mb-0">Mở từng mục để xem hướng dẫn chi tiết</p>
                         </div>
                     </div>
