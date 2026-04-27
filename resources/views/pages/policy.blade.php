@@ -19,7 +19,7 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-10">
-                <span class="lh-updated-tag"><i class="bi bi-info-circle"></i> Áp dụng cho giao dịch qua website hiện tại</span>
+                <span class="lh-updated-tag"><i class="bi bi-info-circle" aria-hidden="true"></i> Áp dụng cho giao dịch qua website hiện tại</span>
             </div>
         </div>
         <div class="row justify-content-center">
