@@ -1569,6 +1569,34 @@
             min-height: 200px;
             display: block;
         }
+        .lh-back-to-top {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 46px;
+            height: 46px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 24px rgba(30, 64, 175, 0.35);
+            z-index: 1040;
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+        }
+        .lh-back-to-top.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .lh-back-to-top:hover {
+            background: linear-gradient(135deg, #1e40af, #1d4ed8);
+        }
     </style>
     @stack('styles')
     {{-- Thanh cuộn: đặt sau stack để thắng CSS từng trang; trước đây thiếu include nên site khách không áp dụng --}}
@@ -1693,6 +1721,9 @@
 
 @include('partials.footer')
 @include('components.chat-widget')
+<button type="button" id="lh-back-to-top" class="lh-back-to-top" aria-label="Lên đầu trang">
+    <i class="bi bi-arrow-up"></i>
+</button>
 
     {{-- Floating Admin Edit Button --}}
     @if(auth()->check() && auth()->user()->isAdmin())
@@ -1880,6 +1911,24 @@
     @endif
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            var backToTopBtn = document.getElementById('lh-back-to-top');
+            if (!backToTopBtn) return;
+
+            function toggleBackToTop() {
+                var shouldShow = window.scrollY > 300;
+                backToTopBtn.classList.toggle('is-visible', shouldShow);
+            }
+
+            backToTopBtn.addEventListener('click', function () {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            window.addEventListener('scroll', toggleBackToTop, { passive: true });
+            toggleBackToTop();
+        })();
+    </script>
 @stack('scripts')
 </body>
 </html>
