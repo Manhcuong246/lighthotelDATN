@@ -23,34 +23,34 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Họ và tên</label>
-                                <input type="text" class="form-control @error('full_name') is-invalid @enderror" name="full_name" value="{{ old('full_name') }}" placeholder="Nguyễn Văn A" required>
+                                <input type="text" autocomplete="name" class="form-control @error('full_name') is-invalid @enderror" name="full_name" value="{{ old('full_name') }}" placeholder="Nguyễn Văn A" required>
                                 @error('full_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Số điện thoại</label>
-                                <input type="text" class="form-control" name="phone" value="{{ old('phone') }}" placeholder="09xx xxx xxx">
+                                <input type="text" autocomplete="tel" class="form-control" name="phone" value="{{ old('phone') }}" placeholder="09xx xxx xxx">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="you@example.com" required>
+                            <input type="email" autocomplete="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="you@example.com" required>
                             @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Mật khẩu</label>
-                                <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="••••••••" required>
+                                <input type="password" autocomplete="new-password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="••••••••" required>
                                 @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Xác nhận mật khẩu</label>
-                                <input type="password" class="form-control" name="password_confirmation" placeholder="••••••••" required>
+                                <input type="password" autocomplete="new-password" class="form-control" name="password_confirmation" placeholder="••••••••" required>
                             </div>
                         </div>
                         <div class="form-check mb-3 small">
                             <input class="form-check-input" type="checkbox" id="terms">
                             <label class="form-check-label" for="terms">
-                                Tôi đồng ý với các điều khoản sử dụng và chính sách bảo mật.
+                                Tôi đồng ý với các <a href="{{ route('pages.policy') }}#terms" target="_blank" rel="noopener">điều khoản sử dụng</a> và <a href="{{ route('pages.policy') }}#privacy" target="_blank" rel="noopener">chính sách bảo mật</a>.
                             </label>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">
