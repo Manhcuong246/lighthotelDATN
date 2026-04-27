@@ -117,6 +117,14 @@
                                 <span>Xem loại phòng</span>
                             </a>
                         </div>
+                        @if($hotelInfo?->phone)
+                        <div class="col-12">
+                            <a href="sms:{{ preg_replace('/\s+/', '', $hotelInfo->phone) }}" class="lh-contact-quick-link w-100">
+                                <i class="bi bi-chat-dots"></i>
+                                <span>Nhắn tin nhanh qua số {{ $hotelInfo->phone }}</span>
+                            </a>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
