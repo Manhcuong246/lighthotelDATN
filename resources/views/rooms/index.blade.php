@@ -87,6 +87,17 @@
                 </div>
             </div>
         </form>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="1">
+                1 đêm cuối tuần
+            </button>
+            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="2">
+                2 đêm thư giãn
+            </button>
+            <button type="button" class="btn btn-sm btn-light border lh-quick-date-chip" data-days="3">
+                3 đêm nghỉ dưỡng
+            </button>
+        </div>
     </div>
 </section>
 
@@ -591,6 +602,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // Khởi tạo nút +/- phòng
     updateRoomsBtnState();
     updateIncludedServicesFilterText();
+
+    document.querySelectorAll('.lh-quick-date-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            var ci = document.getElementById('check_in_input');
+            var co = document.getElementById('check_out_input');
+            if (!ci || !co || !ci.value) return;
+
+            var nights = parseInt(chip.getAttribute('data-days'), 10) || 1;
+            var checkInDate = new Date(ci.value + 'T00:00:00');
+            checkInDate.setDate(checkInDate.getDate() + nights);
+
+            co.value = checkInDate.toISOString().split('T')[0];
+            co.min = ci.value;
+        });
+    });
 });
 
 function changeRooms(delta) {
