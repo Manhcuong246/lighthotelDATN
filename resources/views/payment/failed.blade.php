@@ -7,7 +7,7 @@
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body text-center py-5">
-                <div class="text-danger mb-3">
+                <div class="text-danger mb-3" aria-hidden="true">
                     <i class="bi bi-x-circle display-4"></i>
                 </div>
                 <h3 class="card-title mb-3">Thanh toán không thành công</h3>
