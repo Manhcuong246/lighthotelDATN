@@ -11,7 +11,7 @@
             <span class="active">Trợ giúp</span>
         </nav>
         <h1>Trợ giúp</h1>
-        <p class="lh-page-lead mt-2">aaaa đặt phòng và sử dụng dịch vụ tại {{ $hotelInfo?->name ?? 'Light Hotel' }}.</p>
+        <p class="lh-page-lead mt-2">Hướng dẫn nhanh để bạn đặt phòng và sử dụng dịch vụ thuận tiện tại {{ $hotelInfo?->name ?? 'Light Hotel' }}.</p>
     </div>
 </div>
 
@@ -96,7 +96,7 @@
                         <div class="row g-3 align-items-center">
                             <div class="col-md-8">
                                 <h3 class="h6 fw-bold text-dark mb-1">Tài liệu pháp lý &amp; minh bạch</h3>
-                                <p class="small text-secondary mb-0">Đọc thêm về bảo mật, điều khoản và chính sách hủy trước khi đặt phòng.</p>
+                                <p class="small text-secondary mb-0">Đọc thêm về bảo mật, điều khoản và chính sách hủy để đặt phòng tự tin hơn.</p>
                             </div>
                             <div class="col-md-4 text-md-end">
                                 <a href="{{ route('pages.policy') }}" class="btn btn-outline-primary btn-sm rounded-pill px-4">Chính sách &amp; điều khoản</a>
