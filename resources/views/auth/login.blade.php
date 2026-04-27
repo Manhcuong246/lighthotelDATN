@@ -20,13 +20,13 @@
                             </div>
                         @endif
                         <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="you@example.com" required>
+                            <label class="form-label" for="login-email">Email</label>
+                            <input id="login-email" type="email" autocomplete="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="you@example.com" required>
                             @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Mật khẩu</label>
-                            <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="••••••••" required>
+                            <label class="form-label" for="login-password">Mật khẩu</label>
+                            <input id="login-password" type="password" autocomplete="current-password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="••••••••" required>
                             @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-3 small">
