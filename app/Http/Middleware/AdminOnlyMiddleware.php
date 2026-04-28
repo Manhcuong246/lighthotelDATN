@@ -11,8 +11,15 @@ class AdminOnlyMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::check() || !Auth::user()->isAdmin()) {
-            abort(403, 'Chỉ quản trị viên mới được thực hiện thao tác này.');
+        if (!Auth::check()) {
+            abort(403, 'Vui lòng đăng nhập để tiếp tục.');
+        }
+
+        $user = Auth::user();
+
+        // Cho phép cả admin và staff truy cập
+        if (!$user->isAdmin() && !$user->isStaff()) {
+            abort(403, 'Chỉ quản trị viên và nhân viên mới được thực hiện thao tác này.');
         }
 
         return $next($request);
