@@ -190,6 +190,7 @@
                                                 <th class="text-end">SL</th>
                                                 <th class="text-end">Đơn giá</th>
                                                 <th class="text-end pe-3">Thành tiền</th>
+                                                <th class="text-center">Xóa</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -200,6 +201,15 @@
                                                     <td class="text-end">{{ $bs->quantity }}</td>
                                                     <td class="text-end text-muted">{{ number_format((float) $bs->price, 0, ',', '.') }} ₫</td>
                                                     <td class="text-end pe-3 fw-semibold">{{ number_format($line, 0, ',', '.') }} ₫</td>
+                                                    <td class="text-center">
+                                                        <form action="{{ route('admin.booking-services.delete', $bs->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa dịch vụ này?');">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
