@@ -7,7 +7,7 @@
     <div class="page-header">
         <h1 class="text-dark fw-bold mb-0">Đơn đặt phòng &amp; thanh toán</h1>
         <div class="d-flex flex-wrap gap-2">
-            @if(auth()->user()->isAdmin())
+            @if(auth()->user()->isAdmin() || auth()->user()->isStaff())
             <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-primary">
                 <i class="bi bi-layers me-1"></i> Tạo đơn nhiều phòng
             </a>
