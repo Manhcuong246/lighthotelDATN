@@ -744,6 +744,7 @@ class BookingAdminController extends Controller
         }
 
         $old = $booking->status;
+        $booking->status = 'checked_in';
         $booking->actual_check_in = Carbon::now();
         $booking->save();
 
