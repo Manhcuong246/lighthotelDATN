@@ -66,6 +66,30 @@
             </div>
         </div>
 
+        <!-- Ngườii đại diện đặt phòng -->
+        <div class="card shadow-sm border-0 rounded-3 mb-3">
+            <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
+                <h5 class="mb-0 fw-bold">🪪 Ngườii đại diện đặt phòng</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-sm-6">
+                        <label for="representative_name" class="form-label small fw-bold text-muted mb-1">Họ tên ngườii đại diện *</label>
+                        <input type="text" class="form-control form-control-sm rounded-2 @error('representative_name') is-invalid @enderror"
+                               id="representative_name" name="representative_name" value="{{ old('representative_name') }}" required placeholder="Nguyễn Văn A" />
+                        @error('representative_name')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="representative_cccd" class="form-label small fw-bold text-muted mb-1">Số CCCD *</label>
+                        <input type="text" class="form-control form-control-sm rounded-2 @error('representative_cccd') is-invalid @enderror"
+                               id="representative_cccd" name="representative_cccd" value="{{ old('representative_cccd') }}" required placeholder="12 số CCCD" maxlength="12" pattern="[0-9]{12}"
+                               oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12)" />
+                        @error('representative_cccd')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Thông tin đặt phòng -->
         <div class="card shadow-sm border-0 rounded-3 mb-3">
             <div class="card-header bg-gradient text-dark border-0 rounded-top-3">
@@ -832,5 +856,121 @@ BOOTSTRAP VALIDATION
     }, false);
 
 })();
+
+/* =========================
+REPRESENTATIVE GUEST OVERRIDE
+========================= */
+
+// Override renderGuestForm to lock guest 0 as representative
+const originalRenderGuestForm = renderGuestForm;
+renderGuestForm = function() {
+    const adults = parseInt(adultsInput.value) || 1;
+    const children611 = parseInt(document.getElementById('children_6_11').value) || 0;
+    const children05 = parseInt(document.getElementById('children_0_5').value) || 0;
+    const totalGuests = adults + children611 + children05;
+
+    const roomKey = getRoomKey();
+    let html = '';
+
+    if (!guestData[roomKey]) {
+        guestData[roomKey] = {};
+    }
+
+    const rep = {
+        name: document.getElementById('representative_name')?.value?.trim() || '',
+        cccd: document.getElementById('representative_cccd')?.value?.trim() || ''
+    };
+
+    for (let i = 0; i < totalGuests; i++) {
+        const guestIndex = i + 1;
+        const isAdult = i < adults;
+        const guestType = isAdult ? 'adult' : (i < adults + children611 ? 'child_6_11' : 'child_0_5');
+        const isRepresentative = i === 0;
+
+        const savedName = guestData[roomKey]?.[i]?.name || '';
+        const savedCccd = guestData[roomKey]?.[i]?.cccd || '';
+
+        if (isRepresentative) {
+            const repName = rep.name || savedName;
+            const repCccd = rep.cccd || savedCccd;
+
+            if (!guestData[roomKey][0]) {
+                guestData[roomKey][0] = {};
+            }
+            guestData[roomKey][0].name = repName;
+            guestData[roomKey][0].cccd = repCccd;
+
+            html += `
+                <div class="row g-3 mb-3" data-guest-index="${i}">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            Khách ${guestIndex} (Ngườii lớn) *
+                            <span class="badge bg-primary ms-1">Ngườii đại diện</span>
+                        </label>
+                        <input type="text"
+                               class="form-control guest-input bg-light"
+                               data-room="${roomKey}"
+                               data-index="${i}"
+                               data-field="name"
+                               placeholder="Nhập họ tên"
+                               value="${repName}"
+                               readonly required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            CCCD Khách ${guestIndex} *
+                        </label>
+                        <input type="text"
+                               class="form-control guest-input bg-light"
+                               data-room="${roomKey}"
+                               data-index="${i}"
+                               data-field="cccd"
+                               placeholder="Nhập số CCCD"
+                               value="${repCccd}"
+                               readonly required>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="row g-3 mb-3" data-guest-index="${i}">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            Khách ${guestIndex} (${isAdult ? 'Ngườii lớn' : (guestType === 'child_6_11' ? 'Trẻ 6-11' : 'Trẻ 0-5')}) ${isAdult ? '*' : ''}
+                        </label>
+                        <input type="text"
+                               class="form-control guest-input"
+                               data-room="${roomKey}"
+                               data-index="${i}"
+                               data-field="name"
+                               placeholder="Nhập họ tên"
+                               value="${savedName}"
+                               ${isAdult ? 'required' : ''}>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            CCCD Khách ${guestIndex} ${isAdult ? '*' : '(không bắt buộc)'}
+                        </label>
+                        <input type="text"
+                               class="form-control guest-input"
+                               data-room="${roomKey}"
+                               data-index="${i}"
+                               data-field="cccd"
+                               placeholder="Nhập số CCCD"
+                               value="${savedCccd}"
+                               ${isAdult ? 'required' : ''}>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    document.getElementById('guestDetailsContainer').innerHTML = html;
+    attachGuestInputListeners();
+};
+
+// Sync representative inputs to guest form
+document.getElementById('representative_name')?.addEventListener('input', updateGuestForm);
+document.getElementById('representative_cccd')?.addEventListener('input', updateGuestForm);
 </script>
 @endsection
