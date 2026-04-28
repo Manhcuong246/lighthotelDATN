@@ -238,6 +238,88 @@
                         </div>
                     </div>
 
+                    @php
+                        $roomTotal = $booking->bookingRooms->sum('subtotal');
+                        $serviceTotal = $booking->bookingServices->sum(function ($bs) {
+                            return (float) $bs->price * (int) $bs->quantity;
+                        });
+                        $discountAmount = $booking->discount_amount ?? 0;
+                        $invoiceSubtotal = max(0, $roomTotal + $serviceTotal - $discountAmount);
+                        $depositAmount = $booking->payments->sum('amount');
+                        $amountDue = max(0, $invoiceSubtotal - $depositAmount);
+                    @endphp
+
+                    <div class="row mt-4">
+                        <div class="col-lg-6 mb-3">
+                            <div class="card rounded-3 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title mb-3">Thông tin phòng</h5>
+                                    @if($booking->bookingRooms->isNotEmpty())
+                                        <div class="table-responsive">
+                                            <table class="table table-sm mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="ps-3">Phòng</th>
+                                                        <th>Loại</th>
+                                                        <th class="text-center">Đêm</th>
+                                                        <th class="text-end">Giá/đêm</th>
+                                                        <th class="text-end pe-3">Thành tiền</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($booking->bookingRooms as $br)
+                                                        <tr>
+                                                            <td class="ps-3">{{ $br->room?->name ?? '—' }}</td>
+                                                            <td>{{ $br->room?->roomType?->name ?? '—' }}</td>
+                                                            <td class="text-center">{{ $br->nights ?? $booking->nights }}</td>
+                                                            <td class="text-end">{{ number_format($br->price_per_night, 0, ',', '.') }} ₫</td>
+                                                            <td class="text-end pe-3">{{ number_format($br->subtotal, 0, ',', '.') }} ₫</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @elseif($booking->room)
+                                        <div class="mb-2"><strong>Phòng:</strong> {{ $booking->room->name }}</div>
+                                        <div class="mb-2"><strong>Loại phòng:</strong> {{ $booking->room->roomType->name ?? '—' }}</div>
+                                        <div class="mb-2"><strong>Số đêm:</strong> {{ $booking->nights }}</div>
+                                        <div class="mb-2"><strong>Giá phòng:</strong> {{ number_format($booking->total_price, 0, ',', '.') }} ₫</div>
+                                    @else
+                                        <p class="mb-0 text-muted">Không có thông tin phòng chi tiết.</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-3">
+                            <div class="card rounded-3 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title mb-3">Chi tiết hóa đơn</h5>
+                                    <dl class="row mb-0">
+                                        <dt class="col-7 text-muted">Tiền phòng</dt>
+                                        <dd class="col-5 text-end">{{ number_format($roomTotal, 0, ',', '.') }} ₫</dd>
+
+                                        <dt class="col-7 text-muted">Dịch vụ</dt>
+                                        <dd class="col-5 text-end">{{ number_format($serviceTotal, 0, ',', '.') }} ₫</dd>
+
+                                        @if($discountAmount > 0)
+                                            <dt class="col-7 text-muted">Giảm giá</dt>
+                                            <dd class="col-5 text-end text-danger">- {{ number_format($discountAmount, 0, ',', '.') }} ₫</dd>
+                                        @endif
+
+                                        <dt class="col-7 fw-semibold">Tổng trước cọc</dt>
+                                        <dd class="col-5 text-end fw-semibold">{{ number_format($invoiceSubtotal, 0, ',', '.') }} ₫</dd>
+
+                                        <dt class="col-7 text-muted">Đã cọc</dt>
+                                        <dd class="col-5 text-end text-success">{{ number_format($depositAmount, 0, ',', '.') }} ₫</dd>
+
+                                        <dt class="col-7 fw-semibold">Còn nợ</dt>
+                                        <dd class="col-5 text-end fw-bold">{{ number_format($amountDue, 0, ',', '.') }} ₫</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="text-center mt-4">
                         <a href="{{ route('admin.bookings.index') }}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left me-2"></i>
