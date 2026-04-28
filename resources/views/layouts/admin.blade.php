@@ -354,6 +354,15 @@
         Báo cáo hư hỏng
     </a>
 </li>
+<li class="nav-item">
+    <a class="nav-link 
+        {{ request()->routeIs('staff.room-changes.*') ? 'active' : '' }}"
+        href="{{ route('staff.room-changes.index') }}">
+        
+        <i class="bi bi-arrow-left-right"></i>
+        Đổi phòng
+    </a>
+</li>
 @endif
             @if(auth()->user()->isAdmin())
 <li class="nav-item">
