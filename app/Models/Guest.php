@@ -29,6 +29,7 @@ class Guest extends Model
         'cccd',
         'type',         // adult, child
         'checkin_status', // enum: 'pending', 'checked_in'
+        'is_representative',
     ];
 
     protected $casts = [
