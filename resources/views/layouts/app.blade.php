@@ -1663,9 +1663,11 @@
                         <li><a class="dropdown-item" href="{{ route('account.profile') }}">
                             <i class="bi bi-person me-2"></i>Thông tin cá nhân
                         </a></li>
+                        @if(!auth()->user()->canAccessAdmin())
                         <li><a class="dropdown-item" href="{{ route('account.bookings') }}">
                             <i class="bi bi-clock-history me-2"></i>Lịch sử đặt phòng
                         </a></li>
+                        @endif
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                             <i class="bi bi-box-arrow-right me-2"></i>Đăng xuất
