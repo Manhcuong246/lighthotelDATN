@@ -174,6 +174,60 @@
                         </div>
                     </div>
 
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="bi bi-bag-plus me-2"></i>
+                                Dịch vụ kèm đặt phòng
+                            </h5>
+
+                            @if($booking->bookingServices->isNotEmpty())
+                                <div class="table-responsive rounded-2 border bg-white mb-3">
+                                    <table class="table table-sm mb-0 align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-3">Tên dịch vụ</th>
+                                                <th class="text-end">SL</th>
+                                                <th class="text-end">Đơn giá</th>
+                                                <th class="text-end pe-3">Thành tiền</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($booking->bookingServices as $bs)
+                                                @php $line = (float) $bs->price * (int) $bs->quantity; @endphp
+                                                <tr>
+                                                    <td class="ps-3">{{ $bs->service?->name ?? 'Dịch vụ #' . $bs->service_id }}</td>
+                                                    <td class="text-end">{{ $bs->quantity }}</td>
+                                                    <td class="text-end text-muted">{{ number_format((float) $bs->price, 0, ',', '.') }} ₫</td>
+                                                    <td class="text-end pe-3 fw-semibold">{{ number_format($line, 0, ',', '.') }} ₫</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="alert alert-secondary">
+                                    Chưa có dịch vụ được gán cho đơn này.
+                                </div>
+                            @endif
+
+                            @if($booking->status !== 'cancelled' && ! $booking->actual_check_out)
+                                <form method="POST" action="{{ route('admin.bookings.storeBookingServices', $booking->id) }}">
+                                    @csrf
+                                    @if($services->isNotEmpty())
+                                        <p class="small text-muted mb-2">Chọn dịch vụ từ danh mục để gán vào đơn sau khi check-in.</p>
+                                        @include('admin.bookings.partials.booking-catalog-service-lines', ['services' => $services])
+                                        <button type="submit" class="btn btn-primary btn-sm mt-3">
+                                            <i class="bi bi-save me-1"></i> Lưu dịch vụ kèm
+                                        </button>
+                                    @else
+                                        <div class="alert alert-warning">Chưa có dịch vụ trong danh mục. Vui lòng thêm dịch vụ trước khi gán.</div>
+                                    @endif
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="text-center mt-4">
                         <a href="{{ route('admin.bookings.index') }}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left me-2"></i>
