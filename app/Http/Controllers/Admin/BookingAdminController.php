@@ -2820,6 +2820,59 @@ class BookingAdminController extends Controller
     }
 
     /**
+     * Xóa dịch vụ đã gán cho booking
+     */
+    public function deleteBookingService(BookingServiceRow $bookingService)
+    {
+        try {
+            $booking = Booking::find($bookingService->booking_id);
+
+            /** @var \App\Models\User|null $user */
+            $user = Auth::user();
+            if (!$booking || !$user) {
+                return back()->with('error', 'Không có quyền xóa dịch vụ.');
+            }
+
+            $roles = $user->roles();
+            if (!$roles->whereIn('name', ['admin', 'staff'])->exists()) {
+                return back()->with('error', 'Không có quyền xóa dịch vụ.');
+            }
+
+            if ($booking->status === 'cancelled' || !is_null($booking->actual_check_out)) {
+                return back()->with('error', 'Không thể xóa dịch vụ của đơn đã hủy hoặc đã checkout.');
+            }
+
+            DB::beginTransaction();
+
+            $lineTotal = (float) $bookingService->price * (int) $bookingService->quantity;
+            $bookingService->delete();
+
+            $booking->total_price = max(0.0, (float) $booking->total_price - $lineTotal);
+            $booking->save();
+
+            $payment = $booking->payments()->orderByDesc('id')->first();
+            if ($payment && $payment->status === 'pending') {
+                $payment->amount = max(0.0, (float) $payment->amount - $lineTotal);
+                $payment->save();
+            }
+
+            $invoiceNote = $this->syncInvoiceExtrasIfExists($booking);
+
+            DB::commit();
+
+            return back()->with('success', 'Đã xóa dịch vụ.' . $invoiceNote);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('deleteBookingService failed', [
+                'booking_service_id' => $bookingService->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Có lỗi khi xóa dịch vụ: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Thay đổi phòng cho khách hàng
      *
      * @param \Illuminate\Http\Request $request
