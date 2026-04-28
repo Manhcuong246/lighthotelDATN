@@ -151,7 +151,10 @@ class BookingController extends Controller
     public function checkIn(Booking $booking)
     {
         abort_unless($booking->isCheckinAllowed(), 403);
-        $booking->update(['actual_check_in' => now()]);
+        $booking->update([
+            'status' => 'checked_in',
+            'actual_check_in' => now(),
+        ]);
         return back()->with('success', 'Check-in thành công');
     }
 
