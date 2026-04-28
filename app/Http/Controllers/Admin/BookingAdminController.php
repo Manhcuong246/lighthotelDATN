@@ -187,6 +187,8 @@ class BookingAdminController extends Controller
             'amount_paid' => 'nullable|numeric|min:0',
             'payment_note' => 'nullable|string|max:500',
             'guests_json' => 'nullable|json',
+            'representative_name' => 'required|string|max:150',
+            'representative_cccd' => 'required|string|regex:/^[0-9]{12}$/',
         ]);
 
         // Decode guests JSON
@@ -202,9 +204,7 @@ class BookingAdminController extends Controller
             if (empty($guest['name'])) {
                 return back()->withErrors(["guests.{$index}.name" => "Tên khách hàng không được để trống."])->withInput();
             }
-            if ($index === 0 && empty($guest['cccd'])) {
-                return back()->withErrors(["guests.{$index}.cccd" => "CCCD khách hàng chính không được để trống."])->withInput();
-            }
+            // Guest 0 (representative) CCCD is validated via representative_cccd rule
         }
 
         $room = Room::findOrFail($validated['room_id']);
@@ -327,12 +327,18 @@ class BookingAdminController extends Controller
                         $guestType = ($index < $adults + $children611) ? 'child_6_11' : 'child_0_5';
                     }
 
+                    // Guest 0 is the representative
+                    $isRepresentative = $index === 0;
+                    $guestName = $isRepresentative ? $validated['representative_name'] : ($guestData['name'] ?? '');
+                    $guestCccd = $isRepresentative ? $validated['representative_cccd'] : ($guestData['cccd'] ?? null);
+
                     BookingGuest::create([
                         'booking_id' => $booking->id,
-                        'name' => $guestData['name'] ?? '',
-                        'cccd' => $guestData['cccd'] ?? null,
+                        'name' => $guestName,
+                        'cccd' => $guestCccd,
                         'type' => $guestType,
                         'status' => 'pending',
+                        'is_representative' => $isRepresentative ? 1 : 0,
                     ]);
                 }
             } else {
@@ -518,8 +524,8 @@ class BookingAdminController extends Controller
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        if (!$user || !$user->isAdmin()) {
-            abort(403, 'Chỉ quản trị viên mới được xóa đơn đặt phòng.');
+        if (!$user || (!$user->isAdmin() && !$user->isStaff())) {
+            abort(403, 'Chỉ quản trị viên và nhân viên mới được xóa đơn đặt phòng.');
         }
         DB::beginTransaction();
         try {
@@ -1354,6 +1360,8 @@ class BookingAdminController extends Controller
             'amount_paid' => 'nullable|numeric|min:0',
             'guests' => 'nullable|array',
             'guests.*' => 'array',
+            'representative_name' => 'required|string|max:150',
+            'representative_cccd' => 'required|string|regex:/^[0-9]{12}$/',
         ]);
 
         $normalizedGuests = $this->flattenGuestPayloadByRoomType($request->input('guests', []));
@@ -1364,6 +1372,14 @@ class BookingAdminController extends Controller
         foreach ($normalizedGuests as $index => $guestData) {
             $name = trim((string) ($guestData['name'] ?? ''));
             $cccd = trim((string) ($guestData['cccd'] ?? ''));
+
+            // First guest is representative - use representative fields
+            if ($index === 0) {
+                $name = $validated['representative_name'];
+                $cccd = $validated['representative_cccd'];
+                $normalizedGuests[$index]['name'] = $name;
+                $normalizedGuests[$index]['cccd'] = $cccd;
+            }
 
             if ($name === '') {
                 return back()->withErrors(['guests' => "Tên khách thứ " . ($index + 1) . " không được để trống."])->withInput();
@@ -1429,7 +1445,7 @@ class BookingAdminController extends Controller
             $this->assignRoomsToBooking($booking, $calculatedRoomData, $dates);
 
             // 5. Lưu thông tin khách hàng (legacy)
-            $this->createBookingLegacyGuests($booking, $validated);
+            $this->createBookingLegacyGuests($booking, $normalizedGuests);
 
             // 6. Ghi log
             BookingLog::create([
@@ -2445,15 +2461,13 @@ class BookingAdminController extends Controller
      * @param array $validated
      * @return void
      */
-    private function createBookingLegacyGuests(Booking $booking, array $validated): void
+    private function createBookingLegacyGuests(Booking $booking, array $guestRows): void
     {
-        if (empty($validated['guests'])) {
+        if (empty($guestRows)) {
             return;
         }
 
-        $guestRows = $this->flattenGuestPayloadByRoomType($validated['guests']);
-
-        foreach ($guestRows as $guestData) {
+        foreach ($guestRows as $index => $guestData) {
             if (!empty($guestData['name'])) {
                 Guest::create([
                     'booking_id' => $booking->id,
@@ -2463,6 +2477,7 @@ class BookingAdminController extends Controller
                     'type' => $guestData['type'] ?? 'adult',
                     'checkin_status' => 'pending',
                     'room_index' => $guestData['room_index'] ?? 0,
+                    'is_representative' => isset($guestData['is_representative']) ? (int) $guestData['is_representative'] : ($index === 0 ? 1 : 0),
                 ]);
             }
         }
