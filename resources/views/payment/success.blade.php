@@ -44,7 +44,9 @@
                         <a href="{{ $signedBookingViewUrl }}" class="btn btn-primary">Xem chi tiết đơn (không cần đăng nhập)</a>
                     @endif
                     @auth
+                    @if(!auth()->user()->canAccessAdmin())
                     <a href="{{ route('account.bookings') }}" class="btn {{ !empty($signedBookingViewUrl) ? 'btn-outline-primary' : 'btn-primary' }}">Đơn của tôi (tài khoản)</a>
+                    @endif
                     @else
                     <a href="{{ route('login') }}" class="btn btn-outline-secondary">Đăng nhập / đăng ký</a>
                     @endauth
