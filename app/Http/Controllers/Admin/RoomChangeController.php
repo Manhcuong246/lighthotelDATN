@@ -406,7 +406,7 @@ class RoomChangeController extends Controller
         }
     }
 
-    private function calculateRemainingNights($booking)
+    protected function calculateRemainingNights($booking)
     {
         $now = Carbon::now()->startOfDay();
         $checkOut = Carbon::parse($booking->check_out)->startOfDay();
