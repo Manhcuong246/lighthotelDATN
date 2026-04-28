@@ -243,6 +243,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 use App\Http\Controllers\Staff\StaffController;
 use App\Http\Controllers\Staff\ActivityLogController;
 use App\Http\Controllers\Staff\DamageReportController;
+use App\Http\Controllers\Staff\RoomChangeController;
 
 Route::middleware(['auth', 'staff'])
     ->prefix('staff')
@@ -259,6 +260,17 @@ Route::middleware(['auth', 'staff'])
 
         // ⚠️ Damage Reports (FULL CRUD)
         Route::resource('damage-reports', DamageReportController::class);
+
+        // 🔄 Room Changes
+        Route::prefix('room-changes')->name('room-changes.')->group(function () {
+            Route::get('/', [RoomChangeController::class, 'index'])->name('index');
+            Route::get('/create/{booking?}', [RoomChangeController::class, 'create'])->name('create');
+            Route::get('/search-booking', [RoomChangeController::class, 'searchBooking'])->name('search-booking');
+            Route::get('/available-rooms', [RoomChangeController::class, 'getAvailableRooms'])->name('available-rooms');
+            Route::post('/store', [RoomChangeController::class, 'store'])->name('store');
+            Route::get('/{id}', [RoomChangeController::class, 'show'])->name('show');
+            Route::post('/{id}/revert', [RoomChangeController::class, 'revert'])->name('revert');
+        });
 
     });
 
