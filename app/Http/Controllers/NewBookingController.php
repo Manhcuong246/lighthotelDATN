@@ -162,7 +162,7 @@ class NewBookingController extends Controller
 
             // Cập nhật trạng thái booking và khách đơn lẻ
             $booking->update([
-                'status' => 'confirmed',
+                'status' => 'checked_in',
                 'actual_check_in' => Carbon::now(),
             ]);
 
@@ -177,7 +177,7 @@ class NewBookingController extends Controller
         DB::beginTransaction();
         try {
             $booking->update([
-                'status' => 'confirmed',
+                'status' => 'checked_in',
                 'actual_check_in' => Carbon::now(),
             ]);
 
@@ -216,9 +216,10 @@ class NewBookingController extends Controller
      */
     public function show(Booking $booking)
     {
-        $booking->load(['guests', 'room.roomType', 'user']);
+        $booking->load(['guests', 'room.roomType', 'user', 'bookingServices.service']);
+        $services = \App\Models\Service::query()->orderBy('name')->get();
 
-        return view('bookings.admin-show', compact('booking'));
+        return view('bookings.admin-show', compact('booking', 'services'));
     }
 
     /**
