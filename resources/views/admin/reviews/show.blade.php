@@ -74,7 +74,7 @@
                             </small>
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-sm btn-admin-icon" title="Lưu phản hồi"><i class="bi bi-check2-lg"></i></button>
+                        <button type="submit" class="btn btn-primary btn-sm" title="Lưu phản hồi"><i class="bi bi-check2-lg"></i> Lưu phản hồi</button>
                     </form>
 
                     <div class="row">
