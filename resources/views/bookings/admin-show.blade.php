@@ -149,6 +149,38 @@
                     </div>
 
 
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card rounded-3 shadow-sm">
+                                <div class="card-header bg-light border-0 rounded-top-3 py-2">
+                                    <h6 class="mb-0 fw-bold">📝 Lịch sử thay đổi</h6>
+                                </div>
+                                <div class="card-body py-3">
+                                    @if($booking->logs->isNotEmpty())
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @foreach($booking->logs as $log)
+                                                <div class="border rounded-2 px-3 py-2 bg-white shadow-sm">
+                                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                                        <span class="badge bg-light text-dark small">{{ ucfirst($log->old_status) }}</span>
+                                                        <span class="text-muted small">→</span>
+                                                        <span class="badge bg-primary small">{{ ucfirst($log->new_status) }}</span>
+                                                    </div>
+                                                    <div class="small text-muted">{{ $log->changed_at?->format('d/m H:i') ?? '—' }}</div>
+                                                    <div class="small text-muted">Người thực hiện: {{ $log->user?->full_name ?? 'Hệ thống' }}</div>
+                                                    @if($log->notes)
+                                                        <div class="small text-muted mt-1">{{ $log->notes }}</div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="text-muted mb-0">Chưa có lịch sử thay đổi.</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-12">
                             <h5 class="mb-3">
