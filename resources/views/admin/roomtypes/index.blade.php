@@ -105,14 +105,7 @@
                                     <a href="{{ route('admin.roomtypes.edit', $type->id) }}"
                                        class="btn btn-sm btn-outline-warning btn-admin-icon"
                                        title="Sửa"><i class="bi bi-pencil-square"></i></a>
-                                    <form action="{{ route('admin.roomtypes.destroy', $type->id) }}"
-                                          method="POST"
-                                          class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc muốn xóa loại phòng này?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger btn-admin-icon" title="Xóa"><i class="bi bi-trash"></i></button>
-                                    </form>
+
                                 </div>
                             </td>
 
