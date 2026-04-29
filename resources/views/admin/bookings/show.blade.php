@@ -383,6 +383,10 @@
                                         <small class="text-muted">Trả:</small>
                                         <strong>{{ $booking->actual_check_out->format('d/m H:i') }}</strong>
                                     </div>
+                                    <div class="col-auto">
+                                        <small class="text-muted">Người check-out:</small>
+                                        <strong>{{ optional($booking->logs->where('new_status', 'completed')->first()->user)->full_name ?? 'Hệ thống' }}</strong>
+                                    </div>
                                     @endif
                                 </div>
                             </div>

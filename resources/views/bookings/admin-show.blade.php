@@ -193,6 +193,9 @@
                                     <i class="bi bi-check-circle me-2"></i>
                                     Đã check-out lúc {{ $booking->actual_check_out->format('d/m/Y H:i') }}
                                 </div>
+                                <p class="mb-0 small text-muted">
+                                    Người check-out: {{ optional($booking->logs->where('new_status', 'completed')->first()->user)->full_name ?? 'Hệ thống' }}
+                                </p>
                             @else
                                 <form method="POST" action="{{ route('admin.bookings.checkout', $booking->id) }}">
                                     @csrf
