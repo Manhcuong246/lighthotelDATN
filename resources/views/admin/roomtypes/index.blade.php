@@ -14,7 +14,7 @@
                 <a href="{{ route('admin.roomtypes.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
                 @endif
             </form>
-            <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Thêm loại phòng"><i class="bi bi-plus-lg"></i></a>
+            <a href="{{ route('admin.roomtypes.create') }}" class="btn btn-primary btn-sm" title="Thêm loại phòng"><i class="bi bi-plus-lg"></i> Thêm loại phòng</a>
         </div>
     </div>
 

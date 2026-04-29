@@ -109,7 +109,7 @@
                     <p class="mb-0">
                         <strong>Phòng:</strong><br>
                         {{ $review->room->name }}
-                        <a href="{{ route('rooms.show', $review->room) }}" class="btn btn-outline-primary btn-sm btn-admin-icon d-block mt-2" title="Xem phòng public"><i class="bi bi-box-arrow-up-right"></i></a>
+                        <a href="{{ route('rooms.show', $review->room) }}" class="btn btn-outline-primary d-block mt-2 text-nowrap" title="Xem phòng public"><i class="bi bi-box-arrow-up-right"></i> Xem phòng public</a>
                     </p>
                     @endif
                 </div>
