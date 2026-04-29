@@ -232,10 +232,26 @@ class NewBookingController extends Controller
             return back()->withErrors('Đơn hàng này chưa được check-in.');
         }
 
+        $oldStatus = $booking->status;
+        $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+        $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
+        $roomText = $rooms ? " phòng {$rooms}" : '';
+
         $booking->update([
             'status' => 'completed',
             'actual_check_out' => now(),
         ]);
+
+        if ($oldStatus !== 'completed') {
+            BookingLog::create([
+                'booking_id' => $booking->id,
+                'user_id' => auth()->id(),
+                'old_status' => $oldStatus,
+                'new_status' => 'completed',
+                'notes' => "{$staffName} check-out{$roomText}.",
+                'changed_at' => now(),
+            ]);
+        }
 
         return back()->with('success', 'Check-out thành công.');
     }
