@@ -7,7 +7,7 @@
     <div class="page-header">
         <h1 class="text-dark fw-bold">Quản lý phòng</h1>
         @if(auth()->user()->canAccessAdmin())
-        <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary btn-sm btn-admin-icon" title="Thêm phòng"><i class="bi bi-plus-lg"></i></a>
+        <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary btn-sm" title="Thêm phòng"><i class="bi bi-plus-lg"></i> Thêm phòng</a>
         @endif
     </div>
 
