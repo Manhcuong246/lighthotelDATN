@@ -196,6 +196,24 @@
                                 <p class="mb-0 small text-muted">
                                     Người check-out: {{ optional(optional($booking->logs->where('new_status', 'completed')->first())->user)->full_name ?? 'Hệ thống' }}
                                 </p>
+
+                                <div class="mt-3 d-flex flex-wrap gap-2">
+                                    @if($booking->invoice)
+                                        <a href="{{ route('admin.invoices.show', $booking->invoice) }}" class="btn btn-outline-primary btn-sm rounded-2">
+                                            <i class="bi bi-receipt-cutoff me-1"></i>
+                                            Xem hóa đơn chi tiết
+                                        </a>
+                                        <a href="{{ route('admin.invoices.print', $booking->invoice) }}" class="btn btn-outline-secondary btn-sm rounded-2" target="_blank" rel="noopener">
+                                            <i class="bi bi-printer me-1"></i>
+                                            In hóa đơn
+                                        </a>
+                                    @elseif($booking->isPaidAndCheckedOutForInvoice())
+                                        <a href="{{ route('admin.invoices.create', $booking) }}" class="btn btn-outline-primary btn-sm rounded-2">
+                                            <i class="bi bi-receipt me-1"></i>
+                                            Tạo hóa đơn chi tiết
+                                        </a>
+                                    @endif
+                                </div>
                             @else
                                 <form method="POST" action="{{ route('admin.bookings.checkout', $booking->id) }}">
                                     @csrf
