@@ -253,6 +253,18 @@ class NewBookingController extends Controller
             ]);
         }
 
+        if ($booking->invoice) {
+            return redirect()
+                ->route('admin.invoices.show', $booking->invoice)
+                ->with('success', 'Check-out thành công. Xem hóa đơn chi tiết bên dưới.');
+        }
+
+        if ($booking->isPaidAndCheckedOutForInvoice()) {
+            return redirect()
+                ->route('admin.invoices.create', $booking)
+                ->with('success', 'Check-out thành công. Tạo hóa đơn chi tiết ngay bây giờ.');
+        }
+
         return back()->with('success', 'Check-out thành công.');
     }
 
@@ -261,7 +273,7 @@ class NewBookingController extends Controller
      */
     public function show(Booking $booking)
     {
-        $booking->load(['guests', 'room.roomType', 'user', 'bookingServices.service', 'logs.user']);
+        $booking->load(['guests', 'room.roomType', 'user', 'bookingServices.service', 'logs.user', 'invoice']);
         $services = \App\Models\Service::query()->orderBy('name')->get();
 
         return view('bookings.admin-show', compact('booking', 'services'));
