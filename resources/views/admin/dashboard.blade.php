@@ -19,11 +19,6 @@
             <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm btn-admin-icon rounded-2" title="Xuất báo cáo">
                 <i class="bi bi-download"></i>
             </a>
-            @if(auth()->user()->isAdmin())
-                <a href="{{ route('admin.bookings.create') }}" class="btn btn-primary btn-sm btn-admin-icon rounded-2" title="Thêm đơn">
-                    <i class="bi bi-plus-lg"></i>
-                </a>
-            @endif
         </div>
     </div>
 

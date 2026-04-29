@@ -94,7 +94,6 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('/rooms/{room}', [RoomAdminController::class, 'destroy'])->name('rooms.destroy');
 
     Route::get('/bookings', [BookingAdminController::class, 'index'])->name('bookings.index');
-    Route::get('/bookings/create', [BookingAdminController::class, 'create'])->name('bookings.create');
     Route::get('/bookings/create-multi', [BookingAdminController::class, 'createMulti'])->name('bookings.create-multi');
     Route::post('/bookings', [BookingAdminController::class, 'store'])->name('bookings.store');
     Route::post('/bookings/store-multi', [BookingAdminController::class, 'storeMulti'])->name('bookings.store-multi');
