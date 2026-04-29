@@ -164,7 +164,7 @@
                        class="btn btn-outline-secondary btn-admin-icon"
                        title="Hủy"><i class="bi bi-x-lg"></i></a>
 
-                    <button type="submit" class="btn btn-success btn-admin-icon" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
+                    <button type="submit" class="btn btn-success" title="Cập nhật"><i class="bi bi-check2-lg"></i> Cập nhật</button>
 
                 </div>
 
