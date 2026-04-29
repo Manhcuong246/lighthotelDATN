@@ -143,7 +143,7 @@
                         </div>
                         @endif
 
-                        <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                        <button type="submit" class="btn btn-primary" title="Lưu"><i class="bi bi-check2-lg"></i> Lưu</button>
                     </form>
                 </div>
             </div>
@@ -181,7 +181,7 @@
                             @enderror
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                        <button type="submit" class="btn btn-primary" title="Lưu"><i class="bi bi-check2-lg"></i> Lưu</button>
                     </form>
                 </div>
             </div>
