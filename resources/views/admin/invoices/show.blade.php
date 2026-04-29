@@ -94,14 +94,14 @@
                     <p class="small text-muted mb-3">Tổng tiền xem ở <strong>cuối bảng bên trái</strong>.</p>
                     <p class="small mb-3">
                         <span class="text-muted">Còn phải thu:</span><br>
-                        <span class="fs-5 fw-bold">{{ number_format((float) $invoice->remaining_amount, 0, ',', '.') }} ₫</span>
+                        <span class="fs-5 fw-bold">{{ number_format((float) $invoice->remaining_amount, 2, ',', '.') }} ₫</span>
                     </p>
 
                     @if((float) $invoice->remaining_amount > 0.009)
                         <form action="{{ route('admin.invoices.markAsPaid', $invoice) }}" method="POST" class="mt-3 border-top pt-3">
                             @csrf
                             <label class="form-label small fw-bold">Ghi nhận thanh toán (VNĐ)</label>
-                            <input type="number" name="amount" class="form-control form-control-sm mb-2" min="0.01" max="{{ $invoice->remaining_amount }}" step="1000" value="{{ old('amount', $invoice->remaining_amount) }}" required>
+                            <input type="number" name="amount" class="form-control form-control-sm mb-2" min="0.01" max="{{ number_format((float) $invoice->remaining_amount, 2, '.', '') }}" step="0.01" value="{{ old('amount', number_format((float) $invoice->remaining_amount, 2, '.', '')) }}" required>
                             <button type="submit" class="btn btn-success btn-sm w-100 rounded-2">Cập nhật đã thu</button>
                         </form>
                     @endif
