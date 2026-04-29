@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class BookingLog extends Model
 {
@@ -12,6 +13,7 @@ class BookingLog extends Model
 
     protected $fillable = [
         'booking_id',
+        'user_id',
         'old_status',
         'new_status',
         'notes',
@@ -25,6 +27,11 @@ class BookingLog extends Model
     public function booking()
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }
 
