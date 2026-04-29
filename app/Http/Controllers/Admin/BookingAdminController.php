@@ -140,21 +140,7 @@ class BookingAdminController extends Controller
         return view('admin.bookings.invoice', BookingInvoiceViewData::make($booking));
     }
 
-    /**
-     * Show the form for creating a new booking.
-     *
-     * @return \Illuminate\View\View
-     */
-    public function create(): \Illuminate\View\View
-    {
-        $rooms = Room::where('status', 'available')
-            ->with('roomType')
-            ->orderBy('room_number')
-            ->get();
-        $hotelInfo = HotelInfo::first();
-        return view('admin.bookings.create', compact('rooms', 'hotelInfo'));
-    }
-
+    
     /**
      * Store a newly created booking in storage.
      *
