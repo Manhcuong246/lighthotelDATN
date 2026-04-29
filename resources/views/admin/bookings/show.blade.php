@@ -499,11 +499,17 @@
                         @if($booking->logs && $booking->logs->count())
                             <div class="d-flex flex-wrap gap-3">
                                 @foreach($booking->logs as $log)
-                                    <div class="d-flex align-items-center gap-2 bg-light px-3 py-2 rounded-2">
-                                        <span class="badge bg-light text-dark small">{{ ucfirst($log->old_status) }}</span>
-                                        <span class="text-muted small">→</span>
-                                        <span class="badge bg-primary small">{{ ucfirst($log->new_status) }}</span>
-                                        <small class="text-muted">{{ $log->changed_at?->format('d/m H:i') ?? '—' }}</small>
+                                    <div class="d-flex flex-column gap-1 bg-light px-3 py-2 rounded-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-light text-dark small">{{ ucfirst($log->old_status) }}</span>
+                                            <span class="text-muted small">→</span>
+                                            <span class="badge bg-primary small">{{ ucfirst($log->new_status) }}</span>
+                                            <small class="text-muted">{{ $log->changed_at?->format('d/m H:i') ?? '—' }}</small>
+                                        </div>
+                                        <div class="small text-muted">Người thực hiện: {{ $log->user?->full_name ?? 'Hệ thống' }}</div>
+                                        @if($log->notes)
+                                            <div class="small text-muted">{{ $log->notes }}</div>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>
