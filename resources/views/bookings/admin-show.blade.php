@@ -293,9 +293,7 @@
 
                     @php
                         $roomTotal = $booking->bookingRooms->sum('subtotal');
-                        $serviceTotal = $booking->bookingServices->sum(function ($bs) {
-                            return (float) $bs->price * (int) $bs->quantity;
-                        });
+                        $serviceTotal = $booking->bookingServices->reduce(fn($carry, $bs) => $carry + ((float) $bs->price * (int) $bs->quantity), 0.0);
                         $discountAmount = $booking->discount_amount ?? 0;
                         $invoiceSubtotal = max(0, $roomTotal + $serviceTotal - $discountAmount);
                         $depositAmount = $booking->payments->sum('amount');
