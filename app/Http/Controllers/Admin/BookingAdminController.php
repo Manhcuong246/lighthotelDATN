@@ -2461,7 +2461,7 @@ class BookingAdminController extends Controller
      * Tạo thông tin khách hàng (legacy)
      *
      * @param \App\Models\Booking $booking
-     * @param array $validated
+     * @param array $guestRows
      * @return void
      */
     private function createBookingLegacyGuests(Booking $booking, array $guestRows): void
@@ -3173,10 +3173,10 @@ class BookingAdminController extends Controller
      * @param int $bookingId
      * @param int $oldRoomId
      * @param int $newRoomId
-     * @param \Carbon\CarbonPeriod $period
+     * @param CarbonPeriod $period
      * @return void
      */
-    private function updateRoomBookedDates(int $bookingId, int $oldRoomId, int $newRoomId, \Carbon\CarbonPeriod $period): void
+    private function updateRoomBookedDates(int $bookingId, int $oldRoomId, int $newRoomId, CarbonPeriod $period): void
     {
         RoomBookedDate::where('booking_id', $bookingId)
             ->where('room_id', $oldRoomId)
@@ -3270,7 +3270,7 @@ class BookingAdminController extends Controller
                 (int) $request->old_room_id,
                 (int) $request->new_room_id,
                 $request->reason,
-                auth()->id()
+                Auth::id()
             );
 
             $message = 'Đổi phòng thành công!';
