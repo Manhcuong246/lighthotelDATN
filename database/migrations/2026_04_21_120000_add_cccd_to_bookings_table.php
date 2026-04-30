@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('bookings', function (Blueprint $table) {
-            $table->string('cccd', 12)->nullable()->after('discount_amount');
-        });
+        if (!Schema::hasColumn('bookings', 'cccd')) {
+            Schema::table('bookings', function (Blueprint $table) {
+                $table->string('cccd', 12)->nullable()->after('discount_amount');
+            });
+        }
     }
 
     /**
