@@ -21,13 +21,13 @@
                 @if(isset($booking))
                 <div class="bg-light rounded p-4 mb-4 text-start">
                     <p class="mb-2 border-bottom pb-2"><strong>Mã đơn:</strong> <span class="text-primary">#{{ $booking->id }}</span></p>
-                    
+
                     <div class="mb-3">
                         <strong>Các phòng đã đặt:</strong>
                         <ul class="list-unstyled mt-2 mb-0">
                             @foreach($booking->rooms as $room)
                                 <li class="d-flex justify-content-between align-items-center mb-1 bg-white p-2 rounded shadow-sm">
-                                    <span><i class="bi bi-door-closed me-2"></i>{{ $room->name }}</span>
+                                    <span><i class="bi bi-door-closed me-2"></i>{{ $room->roomType?->name ?? $room->name }}</span>
                                     <span class="text-muted small">{{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫</span>
                                 </li>
                             @endforeach
