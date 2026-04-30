@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Thanh toán đơn #{{ $booking->id }}</title>
-    {{-- 
+    {{--
         VNPay Payment Instruction Email Template
         - Displays detailed booking information
         - Shows VNPay payment link with timeout info
@@ -42,27 +42,38 @@
                                             <p style="margin:0 0 16px; font-size:16px; font-weight:700; color:#1a2b4a; border-bottom:2px solid #3b82f6; padding-bottom:8px;">
                                                 📋 Chi tiết đặt phòng
                                             </p>
-                                            
+
                                             @php
-                                                $room = $booking->rooms->first() ?? null;
-                                                $roomType = $room?->roomType;
+                                                $rooms = $booking->rooms ?? collect();
+                                                $bookingRooms = $booking->bookingRooms ?? collect();
                                                 $checkIn = \Carbon\Carbon::parse($booking->check_in);
                                                 $checkOut = \Carbon\Carbon::parse($booking->check_out);
                                             @endphp
-                                            
+
+                                            {{-- Hiển thị danh sách tất cả phòng --}}
+                                            @if($rooms->count() > 0 || $bookingRooms->count() > 0)
+                                                @php
+                                                    $displayRooms = $rooms->count() > 0 ? $rooms : $bookingRooms->map(function($br) { return $br->room; })->filter();
+                                                @endphp
+                                                @foreach($displayRooms as $index => $room)
+                                                    @php
+                                                        $roomType = $room?->roomType;
+                                                        $roomNumber = $room?->room_number ?? ($index + 1);
+                                                    @endphp
+                                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:12px; @if($index > 0) border-top:1px solid #e2e8f0; padding-top:12px; @endif">
+                                                        <tr>
+                                                            <td colspan="2" style="padding:8px 0; font-size:14px; font-weight:700; color:#1a2b4a;">
+                                                                🏨 Phòng {{ $index + 1 }}: {{ $roomType?->name ?? 'Loại phòng' }}
+                                                                @if($roomNumber)
+                                                                    <span style="font-size:12px; color:#64748b; font-weight:400;">(Số {{ $roomNumber }})</span>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                @endforeach
+                                            @endif
+
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                                                <tr>
-                                                    <td style="padding:8px 0; font-size:14px; color:#64748b; width:40%;">🏨 Phòng:</td>
-                                                    <td style="padding:8px 0; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        @if($roomType)
-                                                            {{ $roomType->name ?? 'Loại phòng' }}
-                                                        @elseif($booking->room)
-                                                            Phòng {{ $booking->room->room_number ?? 'N/A' }}
-                                                        @else
-                                                            Đang cập nhật
-                                                        @endif
-                                                    </td>
-                                                </tr>
                                                 <tr style="background:#f1f5f9;">
                                                     <td style="padding:10px 8px; font-size:14px; color:#64748b;">📅 Nhận phòng:</td>
                                                     <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
