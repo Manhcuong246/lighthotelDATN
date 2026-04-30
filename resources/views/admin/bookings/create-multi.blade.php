@@ -92,25 +92,6 @@
             </div>
         </div>
 
-        <!-- Ngườii đại diện đặt phòng -->
-        <div class="card shadow-sm border-0 rounded-3 mb-4">
-            <div class="card-header bg-white border-0 rounded-top-3">
-                <h2 class="h6 mb-0 fw-bold">Ngườii đại diện đặt phòng</h2>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Họ tên ngườii đại diện *</label>
-                        <input type="text" name="representative_name" id="representative_name" class="form-control" required placeholder="Nguyễn Văn A" oninput="syncRepresentativeToFirstGuest()">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold">Số CCCD *</label>
-                        <input type="text" name="representative_cccd" id="representative_cccd" class="form-control" required placeholder="12 số CCCD" maxlength="12" pattern="[0-9]{12}" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12); syncRepresentativeToFirstGuest();">
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Thông tin chi tiết khách hàng -->
         <div id="guestFormsContainer" style="display: none;"></div>
 
@@ -262,15 +243,17 @@ function sanitizeRoomTypeKey(name) {
 }
 
 function setGuestValue(roomTypeKey, index, field, value) {
+    console.log('setGuestValue called:', { roomTypeKey, index, field, value });
     if (!guestData[roomTypeKey]) {
         guestData[roomTypeKey] = [];
     }
 
     if (!guestData[roomTypeKey][index]) {
-        guestData[roomTypeKey][index] = [];
+        guestData[roomTypeKey][index] = {};
     }
 
     guestData[roomTypeKey][index][field] = value;
+    console.log('guestData updated:', guestData);
 }
 
 // Set min checkout date when checkin changes
@@ -441,6 +424,8 @@ function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, c
 
         generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, childCapacity);
 
+        const isFirstTimeSelect = !selectedRooms[roomTypeId];
+
         if (!selectedRooms[roomTypeId]) {
             selectedRooms[roomTypeId] = {
                 room_type_id: roomTypeId,
@@ -458,6 +443,7 @@ function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, c
         selectedRooms[roomTypeId].adult_capacity = adultCapacity;
         selectedRooms[roomTypeId].child_capacity = childCapacity;
 
+        let hasNewRoom = isFirstTimeSelect;
         for (let i = 0; i < quantity; i++) {
             if (!selectedRooms[roomTypeId].rooms[i]) {
                 selectedRooms[roomTypeId].rooms[i] = {
@@ -468,10 +454,16 @@ function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, c
                     extra_adult_fee: 0,
                     child_fee: 0
                 };
+                hasNewRoom = true;
             }
         }
         // Trim excess rooms if quantity decreased
         selectedRooms[roomTypeId].rooms = selectedRooms[roomTypeId].rooms.slice(0, quantity);
+
+        // Gọi generateGuestDetailsForm nếu có phòng mới
+        if (hasNewRoom) {
+            generateGuestDetailsForm();
+        }
 
     } else {
         card.classList.remove('selected');
@@ -480,15 +472,19 @@ function updateRoomCardState(roomTypeId, quantity, price, name, adultCapacity, c
         roomFormsContainer.innerHTML = '';
         subtotalDiv.style.display = 'none';
         delete selectedRooms[roomTypeId];
+
+        // Xóa form khách của phòng này
+        const rowsContainer = document.querySelector('#guestFormsContainer .guest-rows');
+        if (rowsContainer) {
+            const roomForms = rowsContainer.querySelectorAll(`[data-room-id^="${sanitizeRoomTypeKey(name)}_"]`);
+            roomForms.forEach(form => form.remove());
+        }
     }
 
     // Update minus button state
     minusBtn.disabled = quantity <= 0;
 
     calculateTotal();
-
-    // Generate guest details form
-    generateGuestDetailsForm();
 }
 
 // Generate individual room forms
@@ -564,8 +560,8 @@ function updateRoomGuestData(roomTypeId, roomIndex) {
     // Recalculate total
     calculateTotal();
 
-    // Update guest details form
-    generateGuestDetailsForm();
+    // Không gọi generateGuestDetailsForm ở đây để tránh mất dữ liệu đã nhập
+    // generateGuestDetailsForm chỉ được gọi khi thêm/xóa phòng
 }
 
 // Calculate price details with surcharge for extra guests
@@ -854,6 +850,7 @@ function prepareFormData() {
 
     // Remove old dynamic inputs
     form.querySelectorAll('.dynamic-room-input').forEach(el => el.remove());
+    form.querySelectorAll('.dynamic-guest-input').forEach(el => el.remove());
 
     // Add new room inputs
     Object.values(selectedRooms).forEach((roomType, typeIndex) => {
@@ -874,6 +871,51 @@ function prepareFormData() {
             addInput('children_0_5', parseInt(roomData.children_0_5) || 0);
             addInput('children_6_11', parseInt(roomData.children_6_11) || 0);
             addInput('price_per_night', parseFloat(roomData.price_per_night) || roomType.base_price);
+        });
+    });
+
+    // Add guest inputs - LẤY TRỰC TIẾP TỪ INPUT FIELDS TRONG DOM
+    Object.values(selectedRooms).forEach((roomType, typeIndex) => {
+        const roomTypeKey = roomType.room_type_key || sanitizeRoomTypeKey(roomType.name);
+
+        roomType.rooms.forEach((roomData, roomIndex) => {
+            const roomId = `${roomTypeKey}_${roomIndex}`;
+            const roomDiv = document.querySelector(`[data-room-id="${roomId}"]`);
+
+            const addGuestInput = (field, value) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `guests[${roomTypeKey}][${roomIndex}][${field}]`;
+                input.value = value;
+                input.className = 'dynamic-guest-input';
+                form.appendChild(input);
+            };
+
+            // Get values directly from visible input fields
+            let nameValue = '';
+            let cccdValue = '';
+
+            if (roomDiv) {
+                const nameInput = roomDiv.querySelector('.guest-name-input');
+                const cccdInput = roomDiv.querySelector('.guest-cccd-input');
+                nameValue = nameInput?.value?.trim() || '';
+                cccdValue = cccdInput?.value?.trim() || '';
+            }
+
+            // Fallback to guestData if DOM not ready
+            if (!nameValue && guestData[roomTypeKey]?.[roomIndex]?.name) {
+                nameValue = guestData[roomTypeKey][roomIndex].name;
+            }
+            if (!cccdValue && guestData[roomTypeKey]?.[roomIndex]?.cccd) {
+                cccdValue = guestData[roomTypeKey][roomIndex].cccd;
+            }
+
+            // Representative guest
+            addGuestInput('room_index', roomIndex);
+            addGuestInput('type', 'adult');
+            addGuestInput('is_representative', typeIndex === 0 && roomIndex === 0 ? 1 : 0);
+            addGuestInput('name', nameValue);
+            addGuestInput('cccd', cccdValue);
         });
     });
 
@@ -932,9 +974,6 @@ function generateGuestDetailsForm() {
     if (!rowsContainer) return;
 
     let totalGuests = 0;
-    let html = '';
-    let globalGuestIndex = 0;
-    const rep = getRepresentativeValues();
 
     selectedRoomTypes.forEach((roomType, typeIndex) => {
         const roomTypeKey = roomType.room_type_key || sanitizeRoomTypeKey(roomType.name);
@@ -944,121 +983,201 @@ function generateGuestDetailsForm() {
             guestData[roomTypeKey] = [];
         }
 
-        // Loop through each specific room (not grouped by type)
+        // Loop through each specific room
         roomType.rooms.forEach((roomData, roomIndex) => {
-            const roomGuestCount = (parseInt(roomData.adults, 10) || 0) + (parseInt(roomData.children_0_5, 10) || 0) + (parseInt(roomData.children_6_11, 10) || 0);
+            const adultsCount = parseInt(roomData.adults, 10) || 0;
+            const children0_5Count = parseInt(roomData.children_0_5, 10) || 0;
+            const children6_11Count = parseInt(roomData.children_6_11, 10) || 0;
+            const roomGuestCount = adultsCount + children0_5Count + children6_11Count;
             totalGuests += roomGuestCount;
 
-            html += `
-                <div class="mb-4 border rounded p-3 bg-light">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h5 class="mb-0 text-primary fw-bold">${roomTypeLabel} - Phòng ${roomIndex + 1}</h5>
-                        <span class="small text-muted">${roomGuestCount} khách</span>
-                    </div>
-                    <div class="row g-3">
-            `;
+            const roomId = `${roomTypeKey}_${roomIndex}`;
 
-            // Only render the representative guest (first guest) for each room
-            const i = 0;
-            const guestIdx = globalGuestIndex++;
-            const savedName = guestData[roomTypeKey][guestIdx]?.name ?? '';
-            const savedCccd = guestData[roomTypeKey][guestIdx]?.cccd ?? '';
-            const isGlobalRep = typeIndex === 0 && roomIndex === 0;
+            // Check if this room already exists in DOM
+            let roomDiv = rowsContainer.querySelector(`[data-room-id="${roomId}"]`);
 
-            if (isGlobalRep) {
-                const repName = rep.name || savedName;
-                const repCccd = rep.cccd || savedCccd;
+            if (!roomDiv) {
+                // Tạo form cho tất cả khách trong phòng
+                const isFirstRoom = typeIndex === 0 && roomIndex === 0;
+                let guestInputsHtml = '';
+                let globalGuestIdx = 0;
 
-                if (!guestData[roomTypeKey][guestIdx]) {
-                    guestData[roomTypeKey][guestIdx] = {};
+                // Đảm bảo guestData cho roomTypeKey được khởi tạo
+                if (!guestData[roomTypeKey]) {
+                    guestData[roomTypeKey] = {};
                 }
-                guestData[roomTypeKey][guestIdx].name = repName;
-                guestData[roomTypeKey][guestIdx].cccd = repCccd;
 
-                html += `
-                    <div class="col-12 guest-row">
-                        <div class="row g-3 mb-1">
+                // Người lớn
+                for (let i = 0; i < adultsCount; i++) {
+                    const guestIdx = globalGuestIdx++;
+                    const isRep = isFirstRoom && i === 0; // Người đầu tiên của phòng đầu tiên là đại diện
+                    const labelText = isRep ? 'Người đại diện' : `Người lớn ${i + 1}`;
+                    const cccdRequired = isRep ? 'required' : '';
+                    const cccdLabel = isRep ? 'CCCD (bắt buộc)' : 'CCCD (không bắt buộc)';
+
+                    if (!guestData[roomTypeKey][guestIdx]) {
+                        guestData[roomTypeKey][guestIdx] = {};
+                    }
+                    const savedName = guestData[roomTypeKey][guestIdx]?.name ?? '';
+                    const savedCccd = guestData[roomTypeKey][guestIdx]?.cccd ?? '';
+
+                    guestInputsHtml += `
+                        <div class="row g-3 mb-3 border-bottom pb-3">
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">
-                                    Ngườii đại diện
-                                    <span class="badge bg-primary ms-1">Phòng ${roomIndex + 1}</span>
+                                    ${labelText}
+                                    <span class="badge bg-${isRep ? 'primary' : 'secondary'} ms-1">Phòng ${roomIndex + 1}</span>
                                 </label>
                                 <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][room_index]" value="${roomIndex}">
                                 <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][type]" value="adult">
-                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][is_representative]" value="1">
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][is_representative]" value="${isRep ? 1 : 0}">
                                 <input type="text"
                                        name="guests[${roomTypeKey}][${guestIdx}][name]"
-                                       class="form-control bg-light"
+                                       class="form-control guest-name-input"
+                                       data-room-type="${roomTypeKey}"
+                                       data-guest-idx="${guestIdx}"
                                        placeholder="Nhập họ tên"
-                                       value="${repName}"
-                                       readonly required
-                                       oninput="setGuestValue('${roomTypeKey}', ${guestIdx}, 'name', this.value)">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">CCCD Ngườii đại diện</label>
-                                <input type="text"
-                                       name="guests[${roomTypeKey}][${guestIdx}][cccd]"
-                                       class="form-control bg-light"
-                                       placeholder="Nhập số CCCD (12 số)"
-                                       value="${repCccd}"
-                                       pattern="\\d{12}"
-                                       minlength="12"
-                                       maxlength="12"
-                                       readonly required
-                                       oninput="setGuestValue('${roomTypeKey}', ${guestIdx}, 'cccd', this.value)">
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="col-12 guest-row">
-                        <div class="row g-3 mb-1">
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">
-                                    Ngườii đại diện
-                                    <span class="badge bg-primary ms-1">Phòng ${roomIndex + 1}</span>
-                                </label>
-                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][room_index]" value="${roomIndex}">
-                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][type]" value="adult">
-                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][is_representative]" value="1">
-                                <input type="text"
-                                       name="guests[${roomTypeKey}][${guestIdx}][name]"
-                                       class="form-control"
-                                       placeholder="Nhập họ tên ngườii đại diện"
                                        value="${savedName}"
-                                       required
-                                       oninput="setGuestValue('${roomTypeKey}', ${guestIdx}, 'name', this.value)">
+                                       required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold">CCCD Ngườii đại diện</label>
+                                <label class="form-label small fw-bold">${cccdLabel}</label>
                                 <input type="text"
                                        name="guests[${roomTypeKey}][${guestIdx}][cccd]"
-                                       class="form-control"
+                                       class="form-control guest-cccd-input"
+                                       data-room-type="${roomTypeKey}"
+                                       data-guest-idx="${guestIdx}"
                                        placeholder="Nhập số CCCD (12 số)"
                                        value="${savedCccd}"
                                        pattern="\\d{12}"
                                        minlength="12"
                                        maxlength="12"
-                                       required
-                                       oninput="setGuestValue('${roomTypeKey}', ${guestIdx}, 'cccd', this.value)">
+                                       ${cccdRequired}>
                             </div>
                         </div>
-                    </div>
-                `;
-            }
+                    `;
+                }
 
-            html += '</div></div>';
+                // Trẻ em 0-5 tuổi (không cần CCCD)
+                for (let i = 0; i < children0_5Count; i++) {
+                    const guestIdx = globalGuestIdx++;
+
+                    if (!guestData[roomTypeKey][guestIdx]) {
+                        guestData[roomTypeKey][guestIdx] = {};
+                    }
+                    const savedName = guestData[roomTypeKey][guestIdx]?.name ?? '';
+
+                    guestInputsHtml += `
+                        <div class="row g-3 mb-3 border-bottom pb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">
+                                    Trẻ em 0-5 tuổi ${i + 1}
+                                    <span class="badge bg-info ms-1">Phòng ${roomIndex + 1}</span>
+                                </label>
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][room_index]" value="${roomIndex}">
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][type]" value="child_0_5">
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][is_representative]" value="0">
+                                <input type="text"
+                                       name="guests[${roomTypeKey}][${guestIdx}][name]"
+                                       class="form-control guest-name-input"
+                                       data-room-type="${roomTypeKey}"
+                                       data-guest-idx="${guestIdx}"
+                                       placeholder="Nhập họ tên trẻ"
+                                       value="${savedName}"
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">CCCD (không bắt buộc)</label>
+                                <input type="text"
+                                       name="guests[${roomTypeKey}][${guestIdx}][cccd]"
+                                       class="form-control guest-cccd-input"
+                                       data-room-type="${roomTypeKey}"
+                                       data-guest-idx="${guestIdx}"
+                                       placeholder="Nhập số CCCD nếu có"
+                                       pattern="\\d{12}"
+                                       minlength="12"
+                                       maxlength="12">
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Trẻ em 6-11 tuổi (không cần CCCD)
+                for (let i = 0; i < children6_11Count; i++) {
+                    const guestIdx = globalGuestIdx++;
+
+                    if (!guestData[roomTypeKey][guestIdx]) {
+                        guestData[roomTypeKey][guestIdx] = {};
+                    }
+                    const savedName = guestData[roomTypeKey][guestIdx]?.name ?? '';
+
+                    guestInputsHtml += `
+                        <div class="row g-3 mb-3 ${i < children6_11Count - 1 ? 'border-bottom pb-3' : ''}">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">
+                                    Trẻ em 6-11 tuổi ${i + 1}
+                                    <span class="badge bg-warning text-dark ms-1">Phòng ${roomIndex + 1}</span>
+                                </label>
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][room_index]" value="${roomIndex}">
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][type]" value="child_6_11">
+                                <input type="hidden" name="guests[${roomTypeKey}][${guestIdx}][is_representative]" value="0">
+                                <input type="text"
+                                       name="guests[${roomTypeKey}][${guestIdx}][name]"
+                                       class="form-control guest-name-input"
+                                       data-room-type="${roomTypeKey}"
+                                       data-guest-idx="${guestIdx}"
+                                       placeholder="Nhập họ tên trẻ"
+                                       value="${savedName}"
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">CCCD (không bắt buộc)</label>
+                                <input type="text"
+                                       name="guests[${roomTypeKey}][${guestIdx}][cccd]"
+                                       class="form-control guest-cccd-input"
+                                       data-room-type="${roomTypeKey}"
+                                       data-guest-idx="${guestIdx}"
+                                       placeholder="Nhập số CCCD nếu có"
+                                       pattern="\\d{12}"
+                                       minlength="12"
+                                       maxlength="12">
+                            </div>
+                        </div>
+                    `;
+                }
+
+                roomDiv = document.createElement('div');
+                roomDiv.className = 'mb-4 border rounded p-3 bg-light';
+                roomDiv.dataset.roomId = roomId;
+                roomDiv.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0 text-primary fw-bold">${roomTypeLabel} - Phòng ${roomIndex + 1}</h5>
+                        <span class="small text-muted">${roomGuestCount} khách (${adultsCount} người lớn, ${children0_5Count + children6_11Count} trẻ)</span>
+                    </div>
+                    ${guestInputsHtml}
+                `;
+                rowsContainer.appendChild(roomDiv);
+
+                // Add event listeners for all inputs
+                roomDiv.querySelectorAll('.guest-name-input').forEach(input => {
+                    input.addEventListener('input', function() {
+                        setGuestValue(this.dataset.roomType, parseInt(this.dataset.guestIdx), 'name', this.value);
+                    });
+                });
+                roomDiv.querySelectorAll('.guest-cccd-input').forEach(input => {
+                    input.addEventListener('input', function() {
+                        setGuestValue(this.dataset.roomType, parseInt(this.dataset.guestIdx), 'cccd', this.value);
+                    });
+                });
+            }
         });
     });
 
     const hint = container.querySelector('.guest-count-hint');
     if (hint) {
         const roomCount = selectedRoomTypes.reduce((sum, rt) => sum + (rt.rooms?.length || 0), 0);
-        hint.textContent = `Vui lòng nhập thông tin ngườii đại diện cho ${roomCount} phòng đã chọn.`;
+        hint.textContent = `Vui lòng nhập thông tin người đại diện cho ${roomCount} phòng đã chọn.`;
     }
-
-    rowsContainer.innerHTML = html;
 }
 
 // Simple function to select a room and fill form data
