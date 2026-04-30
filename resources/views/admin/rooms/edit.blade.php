@@ -193,20 +193,54 @@ document.addEventListener('DOMContentLoaded', function() {
             if (numberOnly) {
                 // Format với 3 chữ số (001, 002, ...)
                 let formattedNumber = numberOnly.padStart(3, '0');
-                this.value = 'Phòng ' + formattedNumber;
+                
+                // Lấy tên loại phòng làm prefix, nếu không có thì dùng "Phòng"
+                let prefix = 'Phòng';
+                if (roomTypeSelect.value) {
+                    const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+                    prefix = selectedOption.dataset.name || 'Phòng';
+                }
+                
+                this.value = prefix + ' ' + formattedNumber;
             }
         }
     });
     
-    // Xóa "Phòng" khi focus để dễ chỉnh sửa
+    // Xóa prefix khi focus để dễ chỉnh sửa
     nameInput.addEventListener('focus', function() {
         let value = this.value;
-        if (value.startsWith('Phòng ')) {
-            this.value = value.replace('Phòng ', '').trim();
+        // Lấy prefix hiện tại (tên loại phòng hoặc "Phòng")
+        let currentPrefix = 'Phòng';
+        if (roomTypeSelect.value) {
+            const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+            currentPrefix = selectedOption.dataset.name || 'Phòng';
+        }
+        
+        if (value.startsWith(currentPrefix + ' ')) {
+            this.value = value.replace(currentPrefix + ' ', '').trim();
         }
     });
     
-    roomTypeSelect.addEventListener('change', applyCatalogueFromType);
+    roomTypeSelect.addEventListener('change', function() {
+        applyCatalogueFromType();
+        
+        // Cập nhật lại tên phòng nếu đã có số phòng
+        let currentNameValue = nameInput.value.trim();
+        if (currentNameValue) {
+            // Lấy số từ tên hiện tại
+            let numberOnly = currentNameValue.replace(/[^0-9]/g, '');
+            if (numberOnly) {
+                // Format lại với prefix mới
+                let formattedNumber = numberOnly.padStart(3, '0');
+                let prefix = 'Phòng';
+                if (roomTypeSelect.value) {
+                    const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+                    prefix = selectedOption.dataset.name || 'Phòng';
+                }
+                nameInput.value = prefix + ' ' + formattedNumber;
+            }
+        }
+    });
     applyCatalogueFromType();
 });
 </script>
