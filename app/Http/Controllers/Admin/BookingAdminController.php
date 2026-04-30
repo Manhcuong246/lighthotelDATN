@@ -48,7 +48,7 @@ class BookingAdminController extends Controller
 
     /**
      * Display a listing of all bookings with filtering and pagination.
-     * 
+     *
      * @param Request $request
      * @return \Illuminate\View\View
      */
@@ -188,7 +188,7 @@ class BookingAdminController extends Controller
         $room = Room::findOrFail($validated['room_id']);
         $checkIn = new \Carbon\Carbon($validated['check_in']);
         $checkOut = new \Carbon\Carbon($validated['check_out']);
-        
+
         $adults = $validated['adults'];
         $children611 = $validated['children_6_11'] ?? 0;
         $children05 = $validated['children_0_5'] ?? 0;
@@ -2597,7 +2597,45 @@ class BookingAdminController extends Controller
             return response()->json(['error' => 'Lỗi: ' . $e->getMessage()], 500);
         }
     }
-}
+
+    /**
+     * Thay đổi phòng cho khách hàng
+     */
+    public function changeRoom(Request $request, Booking $booking)
+    {
+        $validated = $request->validate([
+            'old_room_id' => 'required|exists:rooms,id',
+            'new_room_id' => 'required|exists:rooms,id|different:old_room_id',
+            'reason'      => 'nullable|string|max:500',
+        ]);
+
+        return DB::transaction(function () use ($validated, $booking) {
+            $newRoom = Room::findOrFail($validated['new_room_id']);
+            $oldRoomId = $validated['old_room_id'];
+
+            // 1. Kiểm tra phòng mới có trống trong khoảng thời gian đó không
+            $checkIn = $booking->check_in;
+            $checkOut = $booking->check_out;
+            $isOccupied = RoomBookedDate::where('room_id', $newRoom->id)
+                ->where('booking_id', '!=', $booking->id)
+                ->whereBetween('booked_date', [$checkIn, \Carbon\Carbon::parse($checkOut)->subDay()->toDateString()])
+                ->exists();
+            if ($isOccupied) {
+                return back()->with('error', 'Phòng mới đã có người đặt trong thời gian này!');
+            }
+
+            // 2. Cập nhật bảng booking_rooms
+            $bookingRoom = \App\Models\BookingRoom::where('booking_id', $booking->id)
+                ->where('room_id', $oldRoomId)
+                ->first();
+
+            if (!$bookingRoom) {
+                return back()->with('error', 'Không tìm thấy thông tin phòng cũ trong đơn đặt phòng này.');
+            }
+
+            $bookingRoom->update([
+                'room_id' => $newRoom->id,
+            ]);
 
             // 3. Xử lý bảng room_booked_dates
             RoomBookedDate::where('booking_id', $booking->id)
@@ -2605,6 +2643,7 @@ class BookingAdminController extends Controller
                 ->delete();
 
             $days = [];
+            $period = \Carbon\CarbonPeriod::create($checkIn, \Carbon\Carbon::parse($checkOut)->subDay());
             foreach ($period as $date) {
                 $days[] = [
                     'room_id' => $newRoom->id,
@@ -2620,7 +2659,7 @@ class BookingAdminController extends Controller
             // Nếu thay đổi cho một phòng hôm nay
             $today = now()->toDateString();
             if ($today >= $booking->check_in && $today < $booking->check_out) {
-                Room::where('id', $oldRoomId)->update(['status' => 'maintenance']); 
+                Room::where('id', $oldRoomId)->update(['status' => 'maintenance']);
                 $newRoom->update(['status' => 'occupied']);
             }
 
@@ -2631,7 +2670,7 @@ class BookingAdminController extends Controller
                 return $bs->quantity * $bs->price;
             });
             $surchargesTotal = $booking->surcharges()->sum('amount');
-            
+
             $booking->update([
                 'total_price' => $newTotalPrice + $servicesTotal + $surchargesTotal
             ]);
@@ -2645,7 +2684,7 @@ class BookingAdminController extends Controller
                 'changed_by' => auth()->id(),
                 'changed_at' => now(),
             ]);
-            
+
             // Cập nhật lại thanh toán nếu thiếu tiền hoặc thừa tiền
             $payment = Payment::where('booking_id', $booking->id)->orderByDesc('id')->first();
             if ($payment && in_array($payment->status, ['paid', 'partial'])) {
