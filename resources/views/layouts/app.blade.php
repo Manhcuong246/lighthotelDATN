@@ -170,6 +170,9 @@
             border: 2px solid rgba(255,255,255,0.5);
         }
         .dropdown-user .dropdown-toggle::after { margin-left: 0.4rem; }
+        .dropdown-menu {
+            z-index: 1060;
+        }
         main {
             flex: 1 0 auto;
             min-width: 0;
@@ -1730,10 +1733,10 @@
     {{-- Floating Admin Edit Button --}}
     @if(auth()->check() && auth()->user()->isAdmin())
         <div class="admin-quick-edit" style="position: fixed; bottom: 30px; left: 30px; z-index: 10000;">
-            <button type="button" 
-               class="btn btn-warning rounded-circle shadow-lg d-flex align-items-center justify-content-center pulse-animation" 
+            <button type="button"
+               class="btn btn-warning rounded-circle shadow-lg d-flex align-items-center justify-content-center pulse-animation"
                style="width: 60px; height: 60px; border: 3px solid #fff;"
-               data-bs-toggle="modal" 
+               data-bs-toggle="modal"
                data-bs-target="#quickEditModal"
                title="Chỉnh sửa trực tiếp">
                 <i class="bi bi-pencil-fill" style="font-size: 1.6rem; color: #1e293b;"></i>
@@ -1752,7 +1755,7 @@
                         @php
                             $isPolicyPage = request()->routeIs('pages.policy');
                         @endphp
-                        
+
                         @if($isPolicyPage)
                             <ul class="nav nav-pills mb-4 gap-2" id="quickEditTabs">
                                 <li class="nav-item">
@@ -1810,7 +1813,7 @@
                                         $policyCancellation = \App\Models\SiteContent::where('type', 'policy_cancellation')->first();
                                         $policyCookies = \App\Models\SiteContent::where('type', 'policy_cookies')->first();
                                     @endphp
-                                    
+
                                     <div class="accordion" id="accordionPolicy">
                                         <!-- Privacy -->
                                         <div class="accordion-item">
