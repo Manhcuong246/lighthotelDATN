@@ -133,9 +133,32 @@
                                 <td>
                                     @if($booking->rooms->count() > 1)
                                         <div class="fw-semibold text-primary">{{ $booking->rooms->count() }} phòng</div>
-                                        <small class="text-muted">{{ $booking->rooms->pluck('name')->implode(', ') }}</small>
+                                        @php
+                                            // Đếm số lượng từng loại phòng
+                                            $roomTypeCounts = $booking->rooms->map(function($r) {
+                                                $name = $r->roomType?->name ?? $r->name;
+                                                if (str_contains($name, ' ')) {
+                                                    $parts = explode(' ', $name);
+                                                    $name = end($parts);
+                                                }
+                                                return $name;
+                                            })->countBy();
+
+                                            // Tạo chuỗi hiển thị "2 Deluxe, 1 Standard"
+                                            $roomNamesWithCount = $roomTypeCounts->map(function($count, $name) {
+                                                return $count . ' ' . $name;
+                                            })->values()->implode(', ');
+                                        @endphp
+                                        <small class="text-muted">{{ $roomNamesWithCount }}</small>
                                     @else
-                                        <span class="badge bg-primary">{{ $booking->rooms->first()->name ?? '—' }}</span>
+                                        @php
+                                            $name = $booking->rooms->first()?->roomType?->name ?? $booking->rooms->first()?->name ?? '—';
+                                            if (str_contains($name, ' ')) {
+                                                $parts = explode(' ', $name);
+                                                $name = end($parts);
+                                            }
+                                        @endphp
+                                        <span class="badge bg-primary">{{ $name }}</span>
                                     @endif
                                 </td>
                                 <td>{{ $booking->check_in?->format('d/m/Y') ?? '—' }}</td>
@@ -162,13 +185,18 @@
                                             @break
                                     @endswitch
                                 </td>
-                                <td class="text-center" title="Tổng khách (NL + trẻ 6–11 + trẻ 0–5)">
+                                <td class="text-center" title="Tổng khách">
                                     @php
-                                        $effOcc = $booking->bookingRooms->sum(fn($br) => $br->adults + $br->children_6_11);
-                                        $infants = $booking->bookingRooms->sum(fn($br) => $br->children_0_5);
+                                        // SL chính = số phòng
+                                        $roomCount = $booking->bookingRooms->count();
+                                        // Khách phát sinh = tổng guest (legacy) - guests() là quan hệ, gọi get() để lấy collection
+                                        $legacyGuests = $booking->guests()->get();
+                                        $extraGuestCount = $legacyGuests->count();
                                     @endphp
-                                    <span class="badge bg-secondary">{{ $effOcc }}</span>
-                                    @if($infants > 0)<small class="text-muted d-block" style="font-size:.65rem">+{{ $infants }} trẻ nhỏ</small>@endif
+                                    <span class="badge bg-secondary">{{ $roomCount }} người lớn</span>
+                                    @if($extraGuestCount > $roomCount)
+                                        <br><small class="text-muted">+{{ $extraGuestCount - $roomCount }} khách thêm</small>
+                                    @endif
                                 </td>
                                 <td class="text-end">
                                     <strong class="text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</strong>
