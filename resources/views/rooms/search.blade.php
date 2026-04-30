@@ -628,7 +628,7 @@
                                                 <i class="bi bi-person-fill fs-6" style="opacity: 0.6;"></i>
                                             @endfor
                                             <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top"
-                                               title="TC {{ (int) ($type->standard_capacity ?? 3) }} · Tối đa {{ (int) ($type->capacity ?? 6) }} (tính cả trẻ 0–5). Trẻ 0–5 miễn phụ thu. Vượt TC → phụ thu NL/trẻ 6–11."></i>
+                                               title="TC {{ (int) ($type->standard_capacity ?? $type->capacity) }} · Tối đa {{ (int) ($type->capacity ?? 6) }} (tính cả trẻ 0–5). Trẻ 0–5 miễn phụ thu. Vượt TC → phụ thu NL/trẻ 6–11."></i>
                                         </div>
                                     </td>
                                     <td>
@@ -643,7 +643,7 @@
                                                 data-type-name="{{ $type->name }}"
                                                 data-price="{{ $type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->catalogueBasePrice() : 0 }}"
                                                 data-max-guests="{{ (int) ($type->capacity ?? ($type->available_rooms->isNotEmpty() ? $type->available_rooms->first()->catalogueMaxGuests() : 6)) }}"
-                                                data-standard-guests="{{ (int) ($type->standard_capacity ?? 3) }}"
+                                                data-standard-guests="{{ (int) ($type->standard_capacity ?? $type->capacity) }}"
                                                 data-adult-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::adultSurchargeRate($type) }}"
                                                 data-child-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::childSurchargeRate($type) }}"
                                                 data-room-ids="{{ json_encode($type->available_rooms->pluck('id')->toArray()) }}">
@@ -880,8 +880,8 @@ const __BP = @json(config('booking.pricing'));
  * Phụ phí = % giá phòng/đêm cho NL / trẻ 6–11 vượt slot
  */
 function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, stdCap, maxCap) {
-    const _stdCap = Number(stdCap ?? __BP.standard_capacity) || 2;
-    const _maxCap = Number(maxCap ?? __BP.max_capacity) || 3;
+    const _stdCap = Number(stdCap) || 2;
+    const _maxCap = Number(maxCap) || 3;
     const maxC05Free = 2; // Chỉ 2 trẻ 0-5 được miễn phí
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);

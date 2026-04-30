@@ -60,14 +60,16 @@
                                required>
                     </div>
 
-                    <!-- Tiêu chuẩn (không phụ phí) — khóa sửa -->
+                    <!-- Tiêu chuẩn (không phụ phí) -->
                     <div class="col-md-3 mb-3">
                         <label class="form-label fw-semibold">Tiêu chuẩn (không phụ phí)</label>
                         <input type="number"
-                               class="form-control bg-light"
+                               name="standard_capacity"
+                               class="form-control"
                                value="{{ old('standard_capacity', $roomType->standard_capacity ?? 3) }}"
-                               disabled>
-                        <small class="text-muted">Chỉ thiết lập khi tạo mới loại phòng, không thể chỉnh sau.</small>
+                               min="1"
+                               required>
+                        <small class="text-muted">Số khách tiêu chuẩn không tính phụ phí.</small>
                     </div>
 
                     <!-- Số giường -->
@@ -175,4 +177,38 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const capacityInput = document.querySelector('input[name="capacity"]');
+    const standardCapacityInput = document.querySelector('input[name="standard_capacity"]');
+    
+    // Tự động đồng bộ capacity = standard_capacity + 2
+    function syncCapacity() {
+        const standardValue = parseInt(standardCapacityInput.value) || 0;
+        capacityInput.value = standardValue + 2;
+    }
+    
+    function syncStandardCapacity() {
+        const capacityValue = parseInt(capacityInput.value) || 0;
+        standardCapacityInput.value = Math.max(0, capacityValue - 2);
+    }
+    
+    // Khi capacity thay đổi, tự động cập nhật standard_capacity
+    capacityInput.addEventListener('input', syncStandardCapacity);
+    capacityInput.addEventListener('change', syncStandardCapacity);
+    
+    // Khi standard_capacity thay đổi, tự động cập nhật capacity
+    standardCapacityInput.addEventListener('input', syncCapacity);
+    standardCapacityInput.addEventListener('change', syncCapacity);
+    
+    // Khởi tạo giá trị ban đầu
+    syncCapacity();
+    
+    // Thông báo cho người dùng
+    standardCapacityInput.addEventListener('focus', function() {
+        this.select();
+    });
+});
+</script>
 @endsection

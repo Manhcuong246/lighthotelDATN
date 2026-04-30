@@ -171,4 +171,38 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const capacityInput = document.querySelector('input[name="capacity"]');
+    const standardCapacityInput = document.querySelector('input[name="standard_capacity"]');
+    
+    // Tự động đồng bộ capacity = standard_capacity + 2
+    function syncCapacity() {
+        const standardValue = parseInt(standardCapacityInput.value) || 0;
+        capacityInput.value = standardValue + 2;
+    }
+    
+    function syncStandardCapacity() {
+        const capacityValue = parseInt(capacityInput.value) || 0;
+        standardCapacityInput.value = Math.max(0, capacityValue - 2);
+    }
+    
+    // Khi capacity thay đổi, tự động cập nhật standard_capacity
+    capacityInput.addEventListener('input', syncStandardCapacity);
+    capacityInput.addEventListener('change', syncStandardCapacity);
+    
+    // Khi standard_capacity thay đổi, tự động cập nhật capacity
+    standardCapacityInput.addEventListener('input', syncCapacity);
+    standardCapacityInput.addEventListener('change', syncCapacity);
+    
+    // Khởi tạo giá trị ban đầu
+    syncCapacity();
+    
+    // Thông báo cho người dùng
+    standardCapacityInput.addEventListener('focus', function() {
+        this.select();
+    });
+});
+</script>
 @endsection
