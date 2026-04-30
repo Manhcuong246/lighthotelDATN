@@ -7,6 +7,7 @@ use App\Mail\PaymentInstructionMail;
 use App\Models\Booking;
 use App\Models\BookingGuest;
 use App\Models\BookingLog;
+use App\Models\BookingRoom;
 use App\Models\Coupon;
 use App\Models\Guest;
 use App\Models\HotelInfo;
@@ -27,8 +28,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
@@ -115,6 +116,7 @@ class BookingAdminController extends Controller
             'surcharges.service',
             'bookingRooms.room.roomType',
             'bookingGuests.bookingRoom.room',
+            'guests',
             'payments',
         ]);
         $latestPayment = $booking->payments->first();
@@ -878,7 +880,7 @@ class BookingAdminController extends Controller
             $roomGuestCount = ($roomIndex === 0) ? $allGuests->count() : 0;
 
             for ($i = 0; $i < $roomGuestCount && $guestIndex < $allGuests->count(); $i++) {
-                $guest = $allGuests[$guestIndex++];
+                $guest = $allGuests->get($guestIndex++);
                 $roomGuests[] = $this->formatGuestData($guest);
             }
 
@@ -1115,6 +1117,61 @@ class BookingAdminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Thêm khách mới vào booking đã có (không cần check-in lại)
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeGuests(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'guests' => 'required|array|min:1',
+            'guests.*.name' => 'required|string|max:150',
+            'guests.*.cccd' => 'nullable|string|max:20',
+            'guests.*.type' => 'required|in:adult,child_0_5,child_6_11',
+            'guests.*.room_id' => 'nullable|exists:rooms,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['guests'] as $guestData) {
+                // Lưu vào bảng guests (legacy)
+                Guest::create([
+                    'booking_id' => $booking->id,
+                    'name' => $guestData['name'],
+                    'cccd' => $guestData['cccd'] ?? null,
+                    'type' => $guestData['type'],
+                    'room_id' => $guestData['room_id'] ?? null,
+                    'checkin_status' => $booking->status === 'checked_in' ? 'checked_in' : 'pending',
+                    'is_representative' => 0, // Không phải người đại diện
+                ]);
+
+                // Lưu vào bảng booking_guests (mới)
+                $bookingRoom = $booking->bookingRooms->firstWhere('room_id', $guestData['room_id']);
+                BookingGuest::create([
+                    'booking_id' => $booking->id,
+                    'booking_room_id' => $bookingRoom?->id,
+                    'name' => $guestData['name'],
+                    'cccd' => $guestData['cccd'] ?? null,
+                    'type' => $guestData['type'] === 'adult' ? 'adult' : 'child',
+                    'status' => $booking->status === 'checked_in' ? 'checked_in' : 'pending',
+                    'checkin_status' => $booking->status === 'checked_in' ? 'checked_in' : 'pending',
+                    'is_representative' => 0,
+                ]);
+            }
+
+            DB::commit();
+            Cache::forget("guest_info_{$booking->id}");
+
+            return back()->with('success', 'Đã thêm ' . count($validated['guests']) . ' khách thành công!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
 
@@ -1359,32 +1416,51 @@ class BookingAdminController extends Controller
             'payment_status' => 'nullable|in:pending,paid',
             'amount_paid' => 'nullable|numeric|min:0',
             'guests' => 'nullable|array',
-            'guests.*' => 'array',
             'representative_name' => 'required|string|max:150',
             'representative_cccd' => 'required|string|regex:/^[0-9]{12}$/',
+        ], [
+            'representative_cccd.regex' => 'CCCD người đại diện phải gồm đúng 12 chữ số.',
+        ]);
+
+        Log::info('Validated guests data', [
+            'validated_guests' => $validated['guests'] ?? 'not set',
+            'request_guests' => $request->input('guests'),
         ]);
 
         $normalizedGuests = $this->flattenGuestPayloadByRoomType($request->input('guests', []));
-        if (count($normalizedGuests) === 0) {
-            return back()->withErrors(['guests' => 'Vui lòng nhập thông tin khách.'])->withInput();
+
+        Log::info('Normalized guests', [
+            'count' => count($normalizedGuests),
+            'guests' => $normalizedGuests,
+        ]);
+
+        // Lấy thông tin người đại diện từ input riêng
+        $repName = trim((string) ($request->input('representative_name') ?? ''));
+        $repCccd = trim((string) ($request->input('representative_cccd') ?? ''));
+
+        // Validate đại diện
+        if ($repName === '') {
+            return back()->withErrors(['guests' => 'Tên người đại diện không được để trống.'])->withInput();
+        }
+        if (! preg_match('/^[0-9]{12}$/', $repCccd)) {
+            return back()->withErrors(['guests' => 'CCCD người đại diện phải gồm đúng 12 chữ số.'])->withInput();
         }
 
+        // Validate remaining guests (không phải đại diện)
         foreach ($normalizedGuests as $index => $guestData) {
             $name = trim((string) ($guestData['name'] ?? ''));
             $cccd = trim((string) ($guestData['cccd'] ?? ''));
-
-            // First guest is representative - use representative fields
-            if ($index === 0) {
-                $name = $validated['representative_name'];
-                $cccd = $validated['representative_cccd'];
-                $normalizedGuests[$index]['name'] = $name;
-                $normalizedGuests[$index]['cccd'] = $cccd;
-            }
+            $isRep = !empty($guestData['is_representative']);
 
             if ($name === '') {
                 return back()->withErrors(['guests' => "Tên khách thứ " . ($index + 1) . " không được để trống."])->withInput();
             }
-            if (! preg_match('/^[0-9]{12}$/', $cccd)) {
+            // Chỉ bắt buộc CCCD cho người đại diện, khách khác optional
+            if ($isRep && !preg_match('/^[0-9]{12}$/', $cccd)) {
+                return back()->withErrors(['guests' => "CCCD người đại diện phải gồm đúng 12 chữ số."])->withInput();
+            }
+            // Nếu có nhập CCCD thì phải đúng 12 số (cho tất cả)
+            if ($cccd !== '' && !preg_match('/^[0-9]{12}$/', $cccd)) {
                 return back()->withErrors(['guests' => "CCCD của khách \"{$name}\" phải gồm đúng 12 chữ số."])->withInput();
             }
         }
@@ -1414,15 +1490,6 @@ class BookingAdminController extends Controller
             // 3. Tạo đơn Booking
             $paymentMethodInitial = $validated['payment_method'];
 
-            // Lấy CCCD của người đại diện từ khách đầu tiên
-            $representativeCccd = null;
-            if (!empty($validated['guests'])) {
-                $guestRows = $this->flattenGuestPayloadByRoomType($validated['guests']);
-                if (!empty($guestRows) && !empty($guestRows[0]['cccd'])) {
-                    $representativeCccd = $guestRows[0]['cccd'];
-                }
-            }
-
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'room_id' => null,
@@ -1438,14 +1505,32 @@ class BookingAdminController extends Controller
                 'payment_status' => $paymentMethodInitial === 'vnpay' ? 'pending' : 'paid',
                 'payment_method' => $validated['payment_method'],
                 'placed_via' => Booking::PLACED_VIA_ADMIN,
-                'cccd' => $representativeCccd,
+                'representative_name' => $repName,
+                'cccd' => $repCccd,
             ]);
 
             // 4. Gán phòng cụ thể và lưu ngày đã đặt
             $this->assignRoomsToBooking($booking, $calculatedRoomData, $dates);
 
-            // 5. Lưu thông tin khách hàng (legacy)
-            $this->createBookingLegacyGuests($booking, $normalizedGuests);
+            // 5. Lưu thông tin khách hàng (legacy) - Thêm đại diện đầu tiên
+            $representativeGuest = [
+                'name' => $repName,
+                'cccd' => $repCccd,
+                'is_representative' => 1,
+            ];
+            $allGuests = array_merge([$representativeGuest], $normalizedGuests);
+            $this->createBookingLegacyGuests($booking, $allGuests);
+
+            // 5.1 Đồng bộ lại booking_guests nếu thiếu
+            $this->syncBookingGuests($booking);
+
+            // Log số guests đã lưu
+            $savedGuestCount = $booking->bookingGuests()->count();
+            Log::info('Guests saved to booking', [
+                'booking_id' => $booking->id,
+                'expected_count' => count($normalizedGuests),
+                'saved_count' => $savedGuestCount,
+            ]);
 
             // 6. Ghi log
             BookingLog::create([
@@ -2458,7 +2543,7 @@ class BookingAdminController extends Controller
      * Tạo thông tin khách hàng (legacy)
      *
      * @param \App\Models\Booking $booking
-     * @param array $validated
+     * @param array $guestRows
      * @return void
      */
     private function createBookingLegacyGuests(Booking $booking, array $guestRows): void
@@ -2469,6 +2554,7 @@ class BookingAdminController extends Controller
 
         foreach ($guestRows as $index => $guestData) {
             if (!empty($guestData['name'])) {
+                // Lưu vào bảng guests (legacy)
                 Guest::create([
                     'booking_id' => $booking->id,
                     'room_type' => $guestData['room_type'] ?? null,
@@ -2479,10 +2565,73 @@ class BookingAdminController extends Controller
                     'room_index' => $guestData['room_index'] ?? 0,
                     'is_representative' => isset($guestData['is_representative']) ? (int) $guestData['is_representative'] : ($index === 0 ? 1 : 0),
                 ]);
+
+                // Lưu vào bảng booking_guests (mới)
+                try {
+                    $bookingRooms = $booking->bookingRooms()->get();
+                    $roomIndex = $guestData['room_index'] ?? 0;
+                    $bookingRoom = $bookingRooms->skip($roomIndex)->first() ?? $bookingRooms->first();
+
+                    BookingGuest::create([
+                        'booking_id' => $booking->id,
+                        'booking_room_id' => $bookingRoom?->id,
+                        'name' => $guestData['name'],
+                        'cccd' => $guestData['cccd'] ?? null,
+                        'type' => $guestData['type'] ?? 'adult',
+                        'status' => 'pending',
+                        'checkin_status' => 'pending',
+                        'is_representative' => isset($guestData['is_representative']) ? (int) $guestData['is_representative'] : ($index === 0 ? 1 : 0),
+                    ]);
+                    Log::info("Created BookingGuest", ['name' => $guestData['name'], 'room_index' => $roomIndex, 'booking_room_id' => $bookingRoom?->id]);
+                } catch (\Exception $e) {
+                    Log::error("Failed to create BookingGuest", ['name' => $guestData['name'], 'error' => $e->getMessage()]);
+                }
             }
         }
 
         Cache::forget("guest_info_{$booking->id}");
+    }
+
+    /**
+     * Đồng bộ dữ liệu từ bảng guests sang booking_guests nếu thiếu
+     *
+     * @param Booking $booking
+     * @return void
+     */
+    private function syncBookingGuests(Booking $booking): void
+    {
+        $legacyGuests = $booking->guests()->get();
+        $bookingGuests = $booking->bookingGuests()->get();
+
+        // Nếu booking_guests ít hơn guests -> đồng bộ thêm
+        if ($bookingGuests->count() < $legacyGuests->count()) {
+            $existingNames = $bookingGuests->pluck('name')->toArray();
+
+            foreach ($legacyGuests as $legacyGuest) {
+                // Nếu chưa có trong booking_guests thì thêm vào
+                if (!in_array($legacyGuest->name, $existingNames)) {
+                    try {
+                        $bookingRooms = $booking->bookingRooms()->get();
+                        $roomIndex = $legacyGuest->room_index ?? 0;
+                        $bookingRoom = $bookingRooms->skip($roomIndex)->first() ?? $bookingRooms->first();
+
+                        BookingGuest::create([
+                            'booking_id' => $booking->id,
+                            'booking_room_id' => $bookingRoom?->id,
+                            'name' => $legacyGuest->name,
+                            'cccd' => $legacyGuest->cccd,
+                            'type' => $legacyGuest->type ?? 'adult',
+                            'status' => $legacyGuest->checkin_status ?? 'pending',
+                            'checkin_status' => $legacyGuest->checkin_status ?? 'pending',
+                            'is_representative' => $legacyGuest->is_representative ?? 0,
+                        ]);
+                        Log::info("Synced guest to booking_guests", ['name' => $legacyGuest->name, 'booking_id' => $booking->id]);
+                    } catch (\Exception $e) {
+                        Log::error("Failed to sync guest", ['name' => $legacyGuest->name, 'error' => $e->getMessage()]);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -2495,34 +2644,37 @@ class BookingAdminController extends Controller
     {
         $rows = [];
 
-        foreach ($guests as $roomKey => $roomGuests) {
-            if (!is_array($roomGuests)) {
+        foreach ($guests as $roomKey => $roomData) {
+            if (!is_array($roomData)) {
                 continue;
             }
 
-            if (isset($roomGuests['name']) || isset($roomGuests['cccd']) || isset($roomGuests['room_index'])) {
-                $rows[] = [
-                    'room_type' => null,
-                    'room_index' => isset($roomGuests['room_index']) ? (int) $roomGuests['room_index'] : 0,
-                    'name' => trim((string) ($roomGuests['name'] ?? '')),
-                    'cccd' => trim((string) ($roomGuests['cccd'] ?? '')),
-                    'type' => $roomGuests['type'] ?? 'adult',
-                ];
-                continue;
-            }
-
-            foreach ($roomGuests as $guestData) {
-                if (!is_array($guestData)) {
+            // Structure mới: guests[roomType][roomIndex][guestIdx][field]
+            foreach ($roomData as $roomIndex => $roomGuests) {
+                if (!is_array($roomGuests)) {
                     continue;
                 }
 
-                $rows[] = [
-                    'room_type' => trim((string) $roomKey),
-                    'room_index' => isset($guestData['room_index']) ? (int) $guestData['room_index'] : 0,
-                    'name' => trim((string) ($guestData['name'] ?? '')),
-                    'cccd' => trim((string) ($guestData['cccd'] ?? '')),
-                    'type' => $guestData['type'] ?? 'adult',
-                ];
+                foreach ($roomGuests as $guestIdx => $guestData) {
+                    if (!is_array($guestData)) {
+                        continue;
+                    }
+
+                    // Bỏ qua nếu không có tên (tránh lưu dữ liệu rỗng)
+                    $name = trim((string) ($guestData['name'] ?? ''));
+                    if ($name === '') {
+                        continue;
+                    }
+
+                    $rows[] = [
+                        'room_type' => trim((string) $roomKey),
+                        'room_index' => (int) $roomIndex,
+                        'name' => $name,
+                        'cccd' => trim((string) ($guestData['cccd'] ?? '')),
+                        'type' => $guestData['type'] ?? 'adult',
+                        'is_representative' => !empty($guestData['is_representative']) ? 1 : 0,
+                    ];
+                }
             }
         }
 
@@ -2574,10 +2726,14 @@ class BookingAdminController extends Controller
             // Load booking với phòng và khách
             $booking->load(['user', 'bookingRooms.room.roomType', 'rooms.roomType', 'bookingGuests.bookingRoom.room', 'guests']);
 
-            // Nếu chưa có khách nào, tự động thêm người đại diện từ user
+            // Nếu chưa có khách nào, tự động thêm người đại diện từ representative info
+            $guestCreated = false;
             if ($booking->bookingGuests->isEmpty()) {
-                $nameValue = $booking->user?->full_name ?? $booking->user?->name ?? 'Khách hàng';
-                $cccdValue = $booking->user?->cccd ?? $booking->cccd ?? null;
+                // Lấy CCCD từ: 1) booking->cccd, 2) bảng guests
+                $firstGuest = $booking->guests()->first();
+                $nameValue = $booking->representative_name ?? $booking->user?->full_name ?? $booking->user?->name ?? 'Khách hàng';
+                $cccdValue = $booking->cccd ?? $firstGuest?->cccd ?? null;
+                $firstRoom = $booking->bookingRooms->first();
 
                 BookingGuest::create([
                     'booking_id' => $booking->id,
@@ -2587,25 +2743,87 @@ class BookingAdminController extends Controller
                     'status' => 'pending',
                     'is_representative' => 1,
                     'checkin_status' => 'pending',
+                    'booking_room_id' => $firstRoom?->id,
                 ]);
 
                 // Reload lại booking để lấy khách mới tạo
-                $booking->load('bookingGuests.bookingRoom.room');
+                $booking->refresh();
+                $booking->load(['bookingGuests.bookingRoom.room', 'user', 'bookingRooms.room.roomType']);
+                $guestCreated = true;
             }
 
-            // Lấy danh sách khách
-            $guests = $booking->bookingGuests->map(function ($guest) {
-                return [
-                    'id' => $guest->id,
-                    'name' => $guest->name,
-                    'cccd' => $guest->cccd,
-                    'type' => $guest->type,
-                    'status' => $guest->status,
-                    'booking_room_id' => $guest->booking_room_id,
-                    'is_representative' => $guest->is_representative,
-                    'room_name' => $guest->bookingRoom?->room?->roomType?->name . ' ' . $guest->bookingRoom?->room?->room_number,
+            // Lấy danh sách khách - nếu chưa có thì tạo từ người đại diện
+            $guests = [];
+
+            // Lấy thông tin người đại diện từ legacy guests (ưu tiên)
+            $legacyRepGuest = $booking->guests()->where('is_representative', 1)->first();
+            $legacyRepName = $legacyRepGuest?->name;
+            $legacyRepCccd = $legacyRepGuest?->cccd;
+
+            if ($booking->bookingGuests->isEmpty()) {
+                // Chưa có khách -> tạo khách từ thông tin người đại diện
+                $firstRoom = $booking->bookingRooms->first();
+                $roomTypeId = $firstRoom?->room?->room_type_id ?? $firstRoom?->room_id ?? null;
+                $roomTypeName = $firstRoom?->room?->roomType?->name ?? 'Phòng';
+
+                $guests[] = [
+                    'id' => null,
+                    'name' => $legacyRepName ?? $booking->representative_name ?? $booking->user?->full_name ?? $booking->user?->name ?? '',
+                    'cccd' => $legacyRepCccd ?? $booking->cccd ?? '',
+                    'type' => 'adult',
+                    'status' => 'pending',
+                    'room_type_id' => $roomTypeId,
+                    'room_type_name' => $roomTypeName,
+                    'is_representative' => true,
+                    'room_id' => null,
                 ];
-            });
+            } else {
+                // Đã có khách -> map từ bookingGuests
+                // Tìm CCCD từ legacy guests nếu booking_guests chưa có
+                $legacyGuests = $booking->guests()->get();
+                $legacyGuestsByName = $legacyGuests->keyBy('name');
+
+                $guests = $booking->bookingGuests->map(function ($guest) use ($legacyGuestsByName, $legacyRepName, $legacyRepCccd) {
+                    $bookingRoom = $guest->bookingRoom;
+                    // Logic giống view: room_type_id -> room_id -> booking_room.id
+                    $roomTypeId = $bookingRoom?->room?->room_type_id ?? $bookingRoom?->room_id ?? $bookingRoom?->id ?? null;
+                    $roomTypeName = $bookingRoom?->room?->roomType?->name ?? 'Phòng';
+                    $roomId = $bookingRoom?->room_id ?? null;
+
+                    // Nếu là người đại diện, lấy tên và CCCD từ legacy guests
+                    $guestName = $guest->name;
+                    $guestCccd = $guest->cccd;
+
+                    if ($guest->is_representative) {
+                        $guestName = $legacyRepName ?? $guest->name;
+                        $guestCccd = $legacyRepCccd ?? $guest->cccd;
+                    }
+
+                    // Lấy CCCD từ booking_guests hoặc fallback sang legacy guests (cho khách không phải đại diện)
+                    if (empty($guestCccd) && $legacyGuestsByName->has($guest->name)) {
+                        $guestCccd = $legacyGuestsByName[$guest->name]->cccd;
+                    }
+
+                    Log::info('Guest data for modal', [
+                        'guest_name' => $guestName,
+                        'room_type_id' => $roomTypeId,
+                        'room_id' => $roomId,
+                        'booking_room_id' => $guest->booking_room_id,
+                    ]);
+
+                    return [
+                        'id' => $guest->id,
+                        'name' => $guestName,
+                        'cccd' => $guestCccd,
+                        'type' => $guest->type,
+                        'status' => $guest->status,
+                        'room_type_id' => $roomTypeId,
+                        'room_type_name' => $roomTypeName,
+                        'is_representative' => $guest->is_representative,
+                        'room_id' => $roomId,
+                    ];
+                })->toArray();
+            }
 
             // Parse dates nếu là string
             $checkIn = $booking->check_in;
@@ -2617,23 +2835,38 @@ class BookingAdminController extends Controller
                 $checkOut = \Carbon\Carbon::parse($checkOut);
             }
 
-            return response()->json([
+            // Debug: Kiểm tra CCCD từ nhiều nguồn
+            $firstGuestCccd = $booking->guests()->first()?->cccd;
+            $legacyRepGuest = $booking->guests()->where('is_representative', 1)->first();
+            Log::debug('CCCD Debug for booking ' . $booking->id, [
+                'booking_cccd' => $booking->cccd,
+                'guests_first_cccd' => $firstGuestCccd,
+                'booking_guests_first_cccd' => $booking->bookingGuests->first()?->cccd,
+                'legacy_rep_name' => $legacyRepGuest?->name,
+            ]);
+
+            $responseData = [
                 'success' => true,
                 'booking' => [
                     'id' => $booking->id,
                     'user' => $booking->user?->only(['id', 'full_name', 'email', 'phone']),
                     'check_in' => $checkIn?->format('d/m/Y'),
                     'check_out' => $checkOut?->format('d/m/Y'),
+                    'representative_name' => $legacyRepGuest?->name ?? $booking->representative_name ?? $booking->user?->full_name ?? '',
+                    'representative_cccd' => $booking->cccd ?? $firstGuestCccd ?? '',
                 ],
                 'guests' => $guests,
                 'booking_rooms' => $booking->bookingRooms->map(function ($br) {
                     return [
                         'id' => $br->id,
+                        'room_type_id' => $br->room?->room_type_id ?? $br->room_id ?? null,
+                        'room_type_name' => $br->room?->roomType?->name ?? 'Phòng',
                         'room_id' => $br->room_id,
-                        'room_name' => $br->room?->roomType?->name . ' ' . $br->room?->room_number,
                     ];
                 }),
-            ]);
+            ];
+
+            return response()->json($responseData);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -2643,7 +2876,8 @@ class BookingAdminController extends Controller
     }
 
     /**
-     * Xử lý check-in với gán phòng cho từng khách
+     * Xử lý check-in với gán phòng cho từng booking_room
+     * Mỗi booking_room chọn phòng riêng theo đúng loại phòng
      */
     public function checkInWithAssignment(Request $request, Booking $booking)
     {
@@ -2652,101 +2886,163 @@ class BookingAdminController extends Controller
                 return back()->with('error', 'Không thể thực hiện check-in cho đơn này.');
             }
 
-            // Validate dữ liệu
-            $validated = $request->validate([
-                'guests' => 'required|array',
-                'guests.*.name' => 'required|string|max:150',
-                'guests.*.cccd' => 'required|string|regex:/^[0-9]{12}$/',
-                'guests.*.type' => 'required|in:adult,child,child_6_11,child_0_5',
-                'guests.*.booking_room_id' => 'required|exists:booking_rooms,id',
-            ], [
-                'guests.required' => 'Vui lòng thêm ít nhất 1 khách',
-                'guests.*.name.required' => 'Vui lòng nhập tên khách',
-                'guests.*.cccd.required' => 'Vui lòng nhập CCCD',
-                'guests.*.cccd.regex' => 'CCCD phải có đúng 12 số',
-                'guests.*.type.required' => 'Vui lòng chọn loại khách',
-                'guests.*.booking_room_id.required' => 'Vui lòng chọn phòng cho tất cả khách',
-                'guests.*.booking_room_id.exists' => 'Phòng không tồn tại',
-            ]);
+            // ============================================
+            // LẤY VÀ XỬ LÝ DANH SÁCH KHÁCH VÀ PHÒNG
+            // ============================================
 
-            // Kiểm tra tất cả booking_room_id thuộc về booking này
-            $bookingRoomIds = $booking->bookingRooms->pluck('id')->toArray();
-            foreach ($validated['guests'] as $guestData) {
-                if (!in_array($guestData['booking_room_id'], $bookingRoomIds)) {
-                    return back()->withErrors(['Phòng được chọn không thuộc đơn đặt này'])->withInput();
+            $requestGuests = $request->input('guests', []);
+
+            $validGuests = [];
+            $guestsByRoom = []; // Phân bổ khách theo phòng
+            $roomDetails = [];  // Lưu thông tin phòng đã chọn
+
+            foreach ($requestGuests as $guest) {
+                if (!empty($guest['name'])) {
+                    $roomId = $guest['room_id'] ?? null;
+
+                    // Kiểm tra phòng
+                    if (!$roomId) {
+                        return back()->with('error', "Khách {$guest['name']} chưa chọn phòng")->withInput();
+                    }
+
+                    $room = Room::with('roomType')->find($roomId);
+                    if (!$room) {
+                        return back()->with('error', "Phòng không tồn tại");
+                    }
+
+                    $validGuests[] = $guest;
+                    $roomDetails[$roomId] = $room;
+
+                    // Phân nhóm khách theo phòng
+                    if (!isset($guestsByRoom[$roomId])) {
+                        $guestsByRoom[$roomId] = ['adults' => 0, 'children' => 0];
+                    }
+                    if (($guest['type'] ?? 'adult') === 'adult') {
+                        $guestsByRoom[$roomId]['adults']++;
+                    } else {
+                        $guestsByRoom[$roomId]['children']++;
+                    }
                 }
             }
 
+            // Nếu không có guest nào → tạo từ người đại diện
+            if (empty($validGuests)) {
+                return back()->with('error', 'Vui lòng thêm ít nhất 1 khách')->withInput();
+            }
+
+            // ============================================
+            // KIỂM TRA CAPACITY CHO TỪNG PHÒNG
+            // ============================================
+
+            foreach ($guestsByRoom as $roomId => $counts) {
+                $room = $roomDetails[$roomId];
+                $maxAdults = $room->roomType?->max_adults ?? 2;
+                $maxChildren = $room->roomType?->max_children ?? 1;
+
+                if ($counts['adults'] > $maxAdults) {
+                    return back()->with('error', "Phòng {$room->room_number} chỉ chứa tối đa {$maxAdults} người lớn, bạn đang có {$counts['adults']}")->withInput();
+                }
+                if ($counts['children'] > $maxChildren) {
+                    return back()->with('error', "Phòng {$room->room_number} chỉ chứa tối đa {$maxChildren} trẻ em, bạn đang có {$counts['children']}")->withInput();
+                }
+            }
+
+            // ============================================
+            // LƯU DỮ LIỆU
+            // ============================================
+
             DB::beginTransaction();
-
             try {
-                // Lấy danh sách khách hiện tại
-                $existingGuestIds = $booking->bookingGuests->pluck('id')->toArray();
-                $processedGuestIds = [];
+                // Cập nhật room_id cho booking_rooms (lấy phòng đầu tiên hoặc tất cả)
+                $selectedRoomIds = array_keys($guestsByRoom);
+                $bookingRooms = $booking->bookingRooms;
 
-                // Xử lý từng khách
-                foreach ($validated['guests'] as $index => $guestData) {
-                    // Kiểm tra xem có phải khách đã tồn tại (có ID trong request)
+                foreach ($bookingRooms as $index => $bookingRoom) {
+                    // Gán phòng theo thứ tự hoặc phòng đầu tiên
+                    $roomId = $selectedRoomIds[$index] ?? $selectedRoomIds[0] ?? null;
+                    if ($roomId) {
+                        $bookingRoom->room_id = $roomId;
+                        $bookingRoom->save();
+                    }
+                }
+
+                // Reload bookingRooms sau khi cập nhật room_id
+                $bookingRooms = $booking->bookingRooms()->get();
+
+                // Xử lý khách
+                $existingGuestIds = $booking->guests()->pluck('id')->toArray();
+                $processedGuestIds = [];
+                $processedBookingGuestIds = [];
+
+                foreach ($validGuests as $index => $guestData) {
+                    $roomId = $guestData['room_id'];
+                    // Tìm booking_room_id từ room_id đã cập nhật
+                    $bookingRoom = $bookingRooms->firstWhere('room_id', $roomId);
+                    $bookingRoomId = $bookingRoom?->id ?? $bookingRooms->first()?->id;
+
+                    // 1. Lưu vào bảng guests (legacy)
                     if (isset($guestData['id']) && in_array($guestData['id'], $existingGuestIds)) {
-                        // Update khách hiện có
-                        $guest = BookingGuest::find($guestData['id']);
+                        $guest = Guest::find($guestData['id']);
                         if ($guest && $guest->booking_id == $booking->id) {
                             $guest->update([
                                 'name' => $guestData['name'],
-                                'cccd' => $guestData['cccd'],
-                                'type' => $guestData['type'],
-                                'booking_room_id' => $guestData['booking_room_id'],
-                                'status' => 'checked_in',
+                                'cccd' => $guestData['cccd'] ?? null,
+                                'type' => $guestData['type'] ?? 'adult',
+                                'room_id' => $roomId,
+                                'checkin_status' => 'checked_in',
                             ]);
                             $processedGuestIds[] = $guest->id;
                         }
                     } else {
-                        // Tạo khách mới
-                        $guest = BookingGuest::create([
+                        $guest = Guest::create([
                             'booking_id' => $booking->id,
-                            'booking_room_id' => $guestData['booking_room_id'],
+                            'room_id' => $roomId,
                             'name' => $guestData['name'],
-                            'cccd' => $guestData['cccd'],
-                            'type' => $guestData['type'],
-                            'status' => 'checked_in',
+                            'cccd' => $guestData['cccd'] ?? null,
+                            'type' => $guestData['type'] ?? 'adult',
+                            'checkin_status' => 'checked_in',
+                            'is_representative' => $index === 0 ? 1 : 0,
                         ]);
                         $processedGuestIds[] = $guest->id;
                     }
-                }
 
-                // Đảm bảo người đại diện được update (nếu có trong danh sách form)
-                $representativeGuestId = $booking->bookingGuests()->where('is_representative', 1)->value('id');
-                if ($representativeGuestId && !in_array($representativeGuestId, $processedGuestIds)) {
-                    // Nếu người đại diện không được xử lý trong form, tìm và update nó
-                    $representative = BookingGuest::find($representativeGuestId);
-                    if ($representative) {
-                        // Tìm phòng cho người đại diện từ form (dùng phòng đầu tiên nếu chưa có)
-                        $representativeRoomId = null;
-                        foreach ($validated['guests'] as $guestData) {
-                            if (!empty($guestData['booking_room_id'])) {
-                                $representativeRoomId = $guestData['booking_room_id'];
-                                break;
-                            }
+                    // 2. Lưu vào bảng booking_guests (mới)
+                    try {
+                        $bgGuest = BookingGuest::where('booking_id', $booking->id)
+                            ->where('name', $guestData['name'])
+                            ->first();
+
+                        if ($bgGuest) {
+                            $bgGuest->update([
+                                'cccd' => $guestData['cccd'] ?? null,
+                                'type' => $guestData['type'] ?? 'adult',
+                                'status' => 'checked_in',
+                                'checkin_status' => 'checked_in',
+                                'booking_room_id' => $bookingRoomId,
+                            ]);
+                            $processedBookingGuestIds[] = $bgGuest->id;
+                        } else {
+                            $newBgGuest = BookingGuest::create([
+                                'booking_id' => $booking->id,
+                                'booking_room_id' => $bookingRoomId,
+                                'name' => $guestData['name'],
+                                'cccd' => $guestData['cccd'] ?? null,
+                                'type' => $guestData['type'] ?? 'adult',
+                                'status' => 'checked_in',
+                                'checkin_status' => 'checked_in',
+                                'is_representative' => $index === 0 ? 1 : 0,
+                            ]);
+                            $processedBookingGuestIds[] = $newBgGuest->id;
                         }
-
-                        $representative->update([
-                            'booking_room_id' => $representativeRoomId,
-                            'status' => 'checked_in',
-                        ]);
-                        $processedGuestIds[] = $representativeGuestId;
+                    } catch (\Exception $e) {
+                        Log::error('Failed to save booking_guest', ['error' => $e->getMessage(), 'guest' => $guestData['name']]);
                     }
                 }
 
-                // Xóa khách không còn trong danh sách (nếu có), nhưng không xóa người đại diện
+                // Xóa khách không còn trong danh sách
                 $guestsToDelete = array_diff($existingGuestIds, $processedGuestIds);
                 if (!empty($guestsToDelete)) {
-                    // Loại bỏ người đại diện khỏi danh sách xóa
-                    $guestsToDelete = array_filter($guestsToDelete, function($id) use ($representativeGuestId) {
-                        return $id != $representativeGuestId;
-                    });
-                    if (!empty($guestsToDelete)) {
-                        BookingGuest::whereIn('id', $guestsToDelete)->delete();
-                    }
+                    Guest::whereIn('id', $guestsToDelete)->delete();
                 }
 
                 // Cập nhật trạng thái booking
@@ -2754,9 +3050,6 @@ class BookingAdminController extends Controller
                 $booking->status = 'checked_in';
                 $booking->actual_check_in = Carbon::now();
                 $booking->save();
-
-                // Reload booking để đảm bảo dữ liệu mới nhất
-                $booking->refresh();
 
                 // Log
                 BookingLog::create([
@@ -2766,20 +3059,43 @@ class BookingAdminController extends Controller
                     'changed_at' => now(),
                 ]);
 
-                // Xóa cache
                 Cache::forget("guest_info_{$booking->id}");
-
                 DB::commit();
 
-                return back()->with('success', 'Check-in thành công! Đã gán phòng cho ' . count($processedGuestIds) . ' khách.');
+                $roomNumbers = collect($roomDetails)->pluck('room_number')->implode(', ');
+                $totalAdults = collect($guestsByRoom)->sum('adults');
+                $totalChildren = collect($guestsByRoom)->sum('children');
+                return back()->with('success', "Check-in thành công! {$totalAdults} người lớn, {$totalChildren} trẻ em - Phòng: {$roomNumbers}");
 
             } catch (\Exception $e) {
                 DB::rollBack();
-                throw $e;
+                return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
             }
 
         } catch (\Exception $e) {
-            return back()->withErrors(['Có lỗi xảy ra: ' . $e->getMessage()])->withInput();
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Cập nhật thông tin người đại diện
+     */
+    public function updateRepresentative(Request $request, Booking $booking)
+    {
+        try {
+            $validated = $request->validate([
+                'representative_name' => 'required|string|max:150',
+                'cccd' => 'nullable|string|max:20',
+            ]);
+
+            $booking->update([
+                'representative_name' => $validated['representative_name'],
+                'cccd' => $validated['cccd'] ?? null,
+            ]);
+
+            return back()->with('success', 'Đã cập nhật thông tin người đại diện');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
 
@@ -2855,7 +3171,7 @@ class BookingAdminController extends Controller
         }
 
         // 2. Cập nhật bảng booking_rooms
-        $bookingRoom = \App\Models\BookingRoom::where('booking_id', $booking->id)
+        $bookingRoom = BookingRoom::where('booking_id', $booking->id)
             ->where('room_id', $oldRoomId)
             ->first();
 
@@ -2928,7 +3244,7 @@ class BookingAdminController extends Controller
      * @param \Carbon\Carbon $checkOut
      * @return array{avg_price_per_night: float, subtotal_new_room: float}
      */
-    private function calculateNewRoomPrice(Room $newRoom, \App\Models\BookingRoom $bookingRoom, \Carbon\Carbon $checkIn, \Carbon\Carbon $checkOut): array
+    private function calculateNewRoomPrice(Room $newRoom, BookingRoom $bookingRoom, Carbon $checkIn, Carbon $checkOut): array
     {
         $bookingRoomPrices = [];
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
@@ -2974,7 +3290,7 @@ class BookingAdminController extends Controller
      * @param \Carbon\CarbonPeriod $period
      * @return void
      */
-    private function updateRoomBookedDates(int $bookingId, int $oldRoomId, int $newRoomId, \Carbon\CarbonPeriod $period): void
+    private function updateRoomBookedDates(int $bookingId, int $oldRoomId, int $newRoomId, CarbonPeriod $period): void
     {
         RoomBookedDate::where('booking_id', $bookingId)
             ->where('room_id', $oldRoomId)
@@ -3068,7 +3384,7 @@ class BookingAdminController extends Controller
                 (int) $request->old_room_id,
                 (int) $request->new_room_id,
                 $request->reason,
-                auth()->id()
+                Auth::id()
             );
 
             $message = 'Đổi phòng thành công!';
@@ -3119,5 +3435,75 @@ class BookingAdminController extends Controller
             'success' => true,
             'data' => $history,
         ]);
+    }
+
+    /**
+     * API: Lấy danh sách phòng trống theo loại phòng (room_type_id)
+     * Phục vụ cho modal check-in
+     *
+     * @param \App\Models\Booking $booking
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailableRoomsByType(Booking $booking): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $checkIn = $booking->check_in;
+            $checkOut = $booking->check_out;
+
+            // Load bookingRooms với room để lấy room_type_id
+            $bookingRooms = $booking->bookingRooms()->with('room.roomType')->get();
+
+            // Lấy các room_type_id từ room relationship
+            $roomTypeIds = $bookingRooms
+                ->map(function ($br) {
+                    return $br->room?->room_type_id ?? $br->room_id;
+                })
+                ->filter()
+                ->unique()
+                ->toArray();
+
+            $roomsByType = [];
+
+            foreach ($roomTypeIds as $roomTypeId) {
+                // Query lấy phòng trống theo room_type_id
+                // Lấy tất cả phòng thuộc loại, sau đó lọc bỏ phòng đang bị booking active chiếm
+                $availableRooms = Room::where('room_type_id', $roomTypeId)
+                    ->whereNotIn('id', function ($query) use ($checkIn, $checkOut, $booking) {
+                        $query->select('booking_rooms.room_id')
+                            ->from('booking_rooms')
+                            ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
+                            ->where('booking_rooms.room_id', '!=', null)
+                            ->where(function ($q) use ($checkIn, $checkOut) {
+                                $q->where('bookings.check_in', '<', $checkOut)
+                                  ->where('bookings.check_out', '>', $checkIn);
+                            })
+                            ->whereIn('bookings.status', ['confirmed', 'checked_in'])
+                            // Không lọc phòng của booking hiện tại (cho phép chọn lại phòng đã gán)
+                            ->where('bookings.id', '!=', $booking->id);
+                    })
+                    ->get();
+
+                $roomsByType[$roomTypeId] = $availableRooms->map(function ($room) {
+                    return [
+                        'id' => $room->id,
+                        'room_number' => $room->room_number ?? $room->name ?? '#' . $room->id,
+                        'room_type' => $room->roomType?->name ?? 'Phòng',
+                    ];
+                })->toArray();
+            }
+
+            return response()->json([
+                'success' => true,
+                'rooms_by_type' => $roomsByType,
+                'booking_id' => $booking->id,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting available rooms by type', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Có lỗi xảy ra khi lấy danh sách phòng trống'
+            ], 500);
+        }
     }
 }
