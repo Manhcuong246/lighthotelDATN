@@ -5,7 +5,7 @@
 @section('content')
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Mã giảm giá</h1>
-        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary shadow-sm btn-admin-icon" title="Thêm mã mới"><i class="bi bi-plus-lg"></i></a>
+        <a href="{{ route('admin.coupons.create') }}" class="btn btn-primary shadow-sm" title="Thêm mã mới"><i class="bi bi-plus-lg"></i> Thêm mã mới</a>
     </div>
 
     <div class="card card-admin">

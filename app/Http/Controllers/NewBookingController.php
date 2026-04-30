@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingLog;
 use App\Models\Guest;
 use App\Models\Room;
 use Illuminate\Http\Request;
@@ -148,6 +149,12 @@ class NewBookingController extends Controller
      */
     public function checkIn(Request $request, Booking $booking)
     {
+        $oldStatus = $booking->status;
+        $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+        $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
+        $roomText = $rooms ? " phòng {$rooms}" : '';
+        $logNotes = "{$staffName} check-in{$roomText}.";
+
         // Nếu có guest_id và cccd_input (từ form đơn lẻ)
         if ($request->has('guest_id')) {
             $request->validate([
@@ -166,13 +173,24 @@ class NewBookingController extends Controller
 
             // Cập nhật trạng thái booking và khách đơn lẻ
             $booking->update([
-                'status' => 'confirmed',
+                'status' => 'checked_in',
                 'actual_check_in' => Carbon::now(),
             ]);
 
             $guest->update([
                 'checkin_status' => 'checked_in',
             ]);
+
+            if ($oldStatus !== 'checked_in') {
+                BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'user_id' => auth()->id(),
+                    'old_status' => $oldStatus,
+                    'new_status' => 'checked_in',
+                    'notes' => $logNotes,
+                    'changed_at' => now(),
+                ]);
+            }
 
             return back()->with('success', "Check-in thành công cho khách {$guest->name}");
         }
@@ -181,7 +199,7 @@ class NewBookingController extends Controller
         DB::beginTransaction();
         try {
             $booking->update([
-                'status' => 'confirmed',
+                'status' => 'checked_in',
                 'actual_check_in' => Carbon::now(),
             ]);
 
@@ -189,6 +207,17 @@ class NewBookingController extends Controller
             $booking->guests()->update([
                 'checkin_status' => 'checked_in',
             ]);
+
+            if ($oldStatus !== 'checked_in') {
+                BookingLog::create([
+                    'booking_id' => $booking->id,
+                    'user_id' => auth()->id(),
+                    'old_status' => $oldStatus,
+                    'new_status' => 'checked_in',
+                    'notes' => $logNotes,
+                    'changed_at' => now(),
+                ]);
+            }
 
             DB::commit();
             return back()->with('success', "Đã check-in thành công cho toàn bộ khách trong đơn #{$booking->id}.");
@@ -207,10 +236,38 @@ class NewBookingController extends Controller
             return back()->withErrors('Đơn hàng này chưa được check-in.');
         }
 
+        $oldStatus = $booking->status;
+        $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+        $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
+        $roomText = $rooms ? " phòng {$rooms}" : '';
+
         $booking->update([
             'status' => 'completed',
             'actual_check_out' => now(),
         ]);
+
+        if ($oldStatus !== 'completed') {
+            BookingLog::create([
+                'booking_id' => $booking->id,
+                'user_id' => auth()->id(),
+                'old_status' => $oldStatus,
+                'new_status' => 'completed',
+                'notes' => "{$staffName} check-out{$roomText}.",
+                'changed_at' => now(),
+            ]);
+        }
+
+        if ($booking->invoice) {
+            return redirect()
+                ->route('admin.invoices.show', $booking->invoice)
+                ->with('success', 'Check-out thành công. Xem hóa đơn chi tiết bên dưới.');
+        }
+
+        if ($booking->isPaidAndCheckedOutForInvoice()) {
+            return redirect()
+                ->route('admin.invoices.create', $booking)
+                ->with('success', 'Check-out thành công. Tạo hóa đơn chi tiết ngay bây giờ.');
+        }
 
         return back()->with('success', 'Check-out thành công.');
     }
@@ -220,9 +277,10 @@ class NewBookingController extends Controller
      */
     public function show(Booking $booking)
     {
-        $booking->load(['guests', 'room.roomType', 'user']);
+        $booking->load(['guests', 'room.roomType', 'user', 'bookingServices.service', 'logs.user', 'invoice']);
+        $services = \App\Models\Service::query()->orderBy('name')->get();
 
-        return view('bookings.admin-show', compact('booking'));
+        return view('bookings.admin-show', compact('booking', 'services'));
     }
 
     /**

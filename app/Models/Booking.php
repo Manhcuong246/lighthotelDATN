@@ -321,7 +321,7 @@ class Booking extends Model
      */
     public function isCheckoutAllowed(): bool
     {
-        return $this->status === 'confirmed'
+        return in_array($this->status, ['confirmed', 'checked_in'], true)
             && !is_null($this->actual_check_in)
             && is_null($this->actual_check_out)
             && Carbon::today()->gte($this->check_out);

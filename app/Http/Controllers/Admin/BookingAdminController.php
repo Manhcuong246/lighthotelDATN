@@ -111,7 +111,7 @@ class BookingAdminController extends Controller
             'user',
             'room',
             'payment',
-            'logs',
+            'logs.user',
             'bookingServices.service',
             'surcharges.service',
             'bookingRooms.room.roomType',
@@ -142,20 +142,6 @@ class BookingAdminController extends Controller
         return view('admin.bookings.invoice', BookingInvoiceViewData::make($booking));
     }
 
-    /**
-     * Show the form for creating a new booking.
-     *
-     * @return \Illuminate\View\View
-     */
-    public function create(): \Illuminate\View\View
-    {
-        $rooms = Room::where('status', 'available')
-            ->with('roomType')
-            ->orderBy('room_number')
-            ->get();
-        $hotelInfo = HotelInfo::first();
-        return view('admin.bookings.create', compact('rooms', 'hotelInfo'));
-    }
 
     /**
      * Store a newly created booking in storage.
@@ -746,6 +732,7 @@ class BookingAdminController extends Controller
         }
 
         $old = $booking->status;
+        $booking->status = 'checked_in';
         $booking->actual_check_in = Carbon::now();
         $booking->save();
 
@@ -755,10 +742,16 @@ class BookingAdminController extends Controller
         // Xóa cache để cập nhật giao diện ngay lập tức
         Cache::forget("guest_info_{$booking->id}");
 
+        $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+        $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
+        $roomText = $rooms ? " phòng {$rooms}" : '';
+
         BookingLog::create([
             'booking_id' => $booking->id,
+            'user_id' => auth()->id(),
             'old_status' => $old,
             'new_status' => 'checked_in',
+            'notes' => "{$staffName} check-in{$roomText}.",
             'changed_at' => now(),
         ]);
 
@@ -783,10 +776,16 @@ class BookingAdminController extends Controller
         $booking->status = 'completed';
         $booking->save();
 
+        $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+        $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
+        $roomText = $rooms ? " phòng {$rooms}" : '';
+
         BookingLog::create([
             'booking_id' => $booking->id,
+            'user_id' => auth()->id(),
             'old_status' => $old,
             'new_status' => 'completed',
+            'notes' => "{$staffName} check-out{$roomText}.",
             'changed_at' => Carbon::now(),
         ]);
 
@@ -3051,11 +3050,16 @@ class BookingAdminController extends Controller
                 $booking->actual_check_in = Carbon::now();
                 $booking->save();
 
-                // Log
+                $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+                $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
+                $roomText = $rooms ? " phòng {$rooms}" : '';
+
                 BookingLog::create([
                     'booking_id' => $booking->id,
+                    'user_id' => auth()->id(),
                     'old_status' => $old,
                     'new_status' => 'checked_in',
+                    'notes' => "{$staffName} check-in{$roomText}.",
                     'changed_at' => now(),
                 ]);
 
@@ -3131,6 +3135,59 @@ class BookingAdminController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['error' => 'Lỗi: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Xóa dịch vụ đã gán cho booking
+     */
+    public function deleteBookingService(BookingServiceRow $bookingService)
+    {
+        try {
+            $booking = Booking::find($bookingService->booking_id);
+
+            /** @var \App\Models\User|null $user */
+            $user = Auth::user();
+            if (!$booking || !$user) {
+                return back()->with('error', 'Không có quyền xóa dịch vụ.');
+            }
+
+            $roles = $user->roles();
+            if (!$roles->whereIn('name', ['admin', 'staff'])->exists()) {
+                return back()->with('error', 'Không có quyền xóa dịch vụ.');
+            }
+
+            if ($booking->status === 'cancelled' || !is_null($booking->actual_check_out)) {
+                return back()->with('error', 'Không thể xóa dịch vụ của đơn đã hủy hoặc đã checkout.');
+            }
+
+            DB::beginTransaction();
+
+            $lineTotal = (float) $bookingService->price * (int) $bookingService->quantity;
+            $bookingService->delete();
+
+            $booking->total_price = max(0.0, (float) $booking->total_price - $lineTotal);
+            $booking->save();
+
+            $payment = $booking->payments()->orderByDesc('id')->first();
+            if ($payment && $payment->status === 'pending') {
+                $payment->amount = max(0.0, (float) $payment->amount - $lineTotal);
+                $payment->save();
+            }
+
+            $invoiceNote = $this->syncInvoiceExtrasIfExists($booking);
+
+            DB::commit();
+
+            return back()->with('success', 'Đã xóa dịch vụ.' . $invoiceNote);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('deleteBookingService failed', [
+                'booking_service_id' => $bookingService->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Có lỗi khi xóa dịch vụ: ' . $e->getMessage());
         }
     }
 

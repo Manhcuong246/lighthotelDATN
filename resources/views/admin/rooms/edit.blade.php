@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-dark">Cập nhật phòng: {{ $room->name }}</h1>
         <div class="d-flex gap-2">
-            <button type="submit" form="room-edit-form" class="btn btn-primary btn-admin-icon d-none d-md-inline-block" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
+            <button type="submit" form="room-edit-form" class="btn btn-primary d-none d-md-inline-block" title="Cập nhật"><i class="bi bi-check2-lg"></i> Cập nhật</button>
             <a href="{{ route('admin.rooms.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
         </div>
     </div>
@@ -127,7 +127,7 @@
                         <option value="maintenance" {{ old('status', $room->status) === 'maintenance' ? 'selected' : '' }}>Bảo trì</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary btn-admin-icon" title="Cập nhật"><i class="bi bi-check2-lg"></i></button>
+                <button type="submit" class="btn btn-primary" title="Cập nhật"><i class="bi bi-check2-lg"></i> Cập nhật</button>
                 <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
             </form>
         </div>

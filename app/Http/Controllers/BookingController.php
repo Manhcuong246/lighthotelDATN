@@ -10,6 +10,7 @@ use App\Models\RefundLog;
 use App\Models\Room;
 use App\Models\RoomPrice;
 use App\Models\User;
+use App\Models\BookingLog;
 use App\Models\Service;
 use App\Models\BookingService as BookingServiceModel;
 use App\Services\VnPayService;
@@ -151,17 +152,36 @@ class BookingController extends Controller
     public function checkIn(Booking $booking)
     {
         abort_unless($booking->isCheckinAllowed(), 403);
-        $booking->update(['actual_check_in' => now()]);
+        $booking->update([
+            'status' => 'checked_in',
+            'actual_check_in' => now(),
+        ]);
         return back()->with('success', 'Check-in thành công');
     }
 
     public function checkOut(Booking $booking)
     {
         abort_unless($booking->isCheckoutAllowed(), 403);
+
+        $oldStatus = $booking->status;
+        $staffName = auth()->user()?->full_name ?? 'Hệ thống';
+
         $booking->update([
             'actual_check_out' => now(),
             'status' => 'completed',
         ]);
+
+        if ($oldStatus !== 'completed') {
+            BookingLog::create([
+                'booking_id' => $booking->id,
+                'user_id' => auth()->id(),
+                'old_status' => $oldStatus,
+                'new_status' => 'completed',
+                'notes' => "{$staffName} check-out.",
+                'changed_at' => now(),
+            ]);
+        }
+
         return back()->with('success', 'Check-out thành công');
     }
 

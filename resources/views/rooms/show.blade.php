@@ -167,6 +167,12 @@
                                         <h6 class="fw-bold mb-2">{{ $review->title }}</h6>
                                     @endif
                                     <p class="text-muted mb-0">{{ $review->comment }}</p>
+                                    @if($review->reply)
+                                        <div class="mt-3 p-3 rounded-3 bg-white border-start border-4 border-secondary">
+                                            <div class="fw-bold text-secondary mb-1 small text-uppercase">Phản hồi từ khách sạn:</div>
+                                            <p class="mb-0 text-dark">{{ $review->reply }}</p>
+                                        </div>
+                                    @endif
                                 </div>
                             @empty
                                 <div class="text-center py-4">

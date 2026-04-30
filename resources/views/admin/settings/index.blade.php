@@ -143,48 +143,12 @@
                         </div>
                         @endif
 
-                        <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                        <button type="submit" class="btn btn-primary" title="Lưu"><i class="bi bi-check2-lg"></i> Lưu</button>
                     </form>
                 </div>
             </div>
 
-            <!-- Site Content Settings -->
-            <div class="card card-admin shadow mb-4">
-                <div class="card-header-admin py-3">
-                    <h5 class="mb-0">Nội dung trang web</h5>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('admin.settings.update.site.content') }}" method="POST">
-                        @csrf
-                        @method('PUT')
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Tiêu đề trang chủ</label>
-                            <input type="text" 
-                                   class="form-control @error('home_title') is-invalid @enderror" 
-                                   name="home_title" 
-                                   value="{{ old('home_title') }}"
-                                   placeholder="Tiêu đề trang chủ">
-                            @error('home_title')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Mô tả trang chủ</label>
-                            <textarea class="form-control @error('home_description') is-invalid @enderror" 
-                                      name="home_description" 
-                                      rows="4"
-                                      placeholder="Mô tả trang chủ">{{ old('home_description') }}</textarea>
-                            @error('home_description')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
-                    </form>
-                </div>
-            </div>
         </div>
     </div>
 </div>

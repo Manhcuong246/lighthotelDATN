@@ -337,6 +337,104 @@
                     </div>
 
                     @php
+                        $roomTotal = $booking->bookingRooms->sum('subtotal');
+                        $serviceTotal = $booking->bookingServices->sum(fn($bs) => (float) $bs->price * (int) $bs->quantity);
+                        $discountAmount = $booking->discount_amount ?? 0;
+                        $invoiceSubtotal = max(0, $roomTotal + $serviceTotal - $discountAmount);
+                        $paidAmount = $booking->payments->sum('amount');
+                        $depositAmount = in_array($booking->payment_status, ['partial', 'paid'], true) ? $paidAmount : 0;
+                        $amountDue = max(0, $invoiceSubtotal - $depositAmount);
+                    @endphp
+
+                    <div class="row mt-4 pt-4 border-top">
+                        <div class="col-12">
+                            <h5 class="mb-3">Chi tiết hóa đơn</h5>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card border rounded-3 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="small fw-bold text-uppercase text-muted mb-3">Thông tin phòng</h6>
+                                    @if($booking->bookingRooms->isNotEmpty())
+                                        <div class="list-group list-group-flush">
+                                            @foreach($booking->bookingRooms as $br)
+                                                <div class="list-group-item px-0 py-2 border-0">
+                                                    <div class="fw-semibold">{{ $br->room?->name ?? 'Phòng không xác định' }}</div>
+                                                    <div class="small text-muted">{{ $br->room?->roomType?->name ?? 'Loại phòng không xác định' }}</div>
+                                                    <div class="small text-muted">{{ $br->nights ?? $booking->nights }} đêm · {{ number_format($br->price_per_night, 0, ',', '.') }} ₫/đêm</div>
+                                                    <div class="small">Thành tiền: <strong>{{ number_format($br->subtotal, 0, ',', '.') }} ₫</strong></div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="mb-0 small text-muted">Không có dữ liệu phòng.</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card border rounded-3 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="small fw-bold text-uppercase text-muted mb-3">Tóm tắt hóa đơn</h6>
+                                    <dl class="row mb-0">
+                                        <dt class="col-7 text-muted">Tiền phòng</dt>
+                                        <dd class="col-5 text-end">{{ number_format($roomTotal, 0, ',', '.') }} ₫</dd>
+
+                                        <dt class="col-7 text-muted">Dịch vụ</dt>
+                                        <dd class="col-5 text-end">{{ number_format($serviceTotal, 0, ',', '.') }} ₫</dd>
+
+                                        @if($discountAmount > 0)
+                                            <dt class="col-7 text-muted">Giảm giá</dt>
+                                            <dd class="col-5 text-end text-danger">- {{ number_format($discountAmount, 0, ',', '.') }} ₫</dd>
+                                        @endif
+
+                                        <dt class="col-7 fw-semibold">Tổng trước cọc</dt>
+                                        <dd class="col-5 text-end fw-semibold">{{ number_format($invoiceSubtotal, 0, ',', '.') }} ₫</dd>
+
+                                        <dt class="col-7 text-muted">Đã cọc / thanh toán</dt>
+                                        <dd class="col-5 text-end text-success">{{ number_format($depositAmount, 0, ',', '.') }} ₫</dd>
+
+                                        <dt class="col-7 fw-semibold">Còn nợ</dt>
+                                        <dd class="col-5 text-end fw-bold">{{ number_format($amountDue, 0, ',', '.') }} ₫</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <div class="card border rounded-3 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="small fw-bold text-uppercase text-muted mb-3">Chi tiết dịch vụ</h6>
+                                    @if($booking->bookingServices->isNotEmpty())
+                                        <div class="table-responsive rounded-2 border bg-white">
+                                            <table class="table table-sm mb-0 align-middle">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="ps-3">Dịch vụ</th>
+                                                        <th class="text-end">SL</th>
+                                                        <th class="text-end">Đơn giá</th>
+                                                        <th class="text-end pe-3">Thành tiền</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($booking->bookingServices as $bs)
+                                                        @php $lineTotal = (float) $bs->price * (int) $bs->quantity; @endphp
+                                                        <tr>
+                                                            <td class="ps-3">{{ $bs->service?->name ?? 'Dịch vụ #' . $bs->service_id }}</td>
+                                                            <td class="text-end">{{ $bs->quantity }}</td>
+                                                            <td class="text-end text-muted">{{ number_format((float) $bs->price, 0, ',', '.') }} ₫</td>
+                                                            <td class="text-end pe-3">{{ number_format($lineTotal, 0, ',', '.') }} ₫</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @else
+                                        <p class="mb-0 small text-muted">Chưa có dịch vụ được gán.</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @php
                         $hotelInfo = \App\Models\HotelInfo::first();
                         $payment = $booking->payment;
                     @endphp
@@ -385,6 +483,10 @@
                                     <div class="col-auto">
                                         <small class="text-muted">Trả:</small>
                                         <strong>{{ $booking->actual_check_out->format('d/m H:i') }}</strong>
+                                    </div>
+                                    <div class="col-auto">
+                                        <small class="text-muted">Người check-out:</small>
+                                        <strong>{{ optional($booking->logs->where('new_status', 'completed')->first()->user)->full_name ?? 'Hệ thống' }}</strong>
                                     </div>
                                     @endif
                                 </div>
@@ -502,11 +604,17 @@
                         @if($booking->logs && $booking->logs->count())
                             <div class="d-flex flex-wrap gap-3">
                                 @foreach($booking->logs as $log)
-                                    <div class="d-flex align-items-center gap-2 bg-light px-3 py-2 rounded-2">
-                                        <span class="badge bg-light text-dark small">{{ ucfirst($log->old_status) }}</span>
-                                        <span class="text-muted small">→</span>
-                                        <span class="badge bg-primary small">{{ ucfirst($log->new_status) }}</span>
-                                        <small class="text-muted">{{ $log->changed_at?->format('d/m H:i') ?? '—' }}</small>
+                                    <div class="d-flex flex-column gap-1 bg-light px-3 py-2 rounded-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-light text-dark small">{{ ucfirst($log->old_status) }}</span>
+                                            <span class="text-muted small">→</span>
+                                            <span class="badge bg-primary small">{{ ucfirst($log->new_status) }}</span>
+                                            <small class="text-muted">{{ $log->changed_at?->format('d/m H:i') ?? '—' }}</small>
+                                        </div>
+                                        <div class="small text-muted">Người thực hiện: {{ $log->user?->full_name ?? 'Hệ thống' }}</div>
+                                        @if($log->notes)
+                                            <div class="small text-muted">{{ $log->notes }}</div>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>

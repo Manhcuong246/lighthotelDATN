@@ -47,7 +47,7 @@
 
                     <div class="col-12 mt-5 text-end admin-action-row justify-content-end">
                         <a href="{{ route('admin.coupons.index') }}" class="btn btn-outline-secondary btn-admin-icon" title="Hủy"><i class="bi bi-x-lg"></i></a>
-                        <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                        <button type="submit" class="btn btn-primary" title="Lưu"><i class="bi bi-check2-lg"></i> Lưu</button>
                     </div>
                 </div>
             </form>

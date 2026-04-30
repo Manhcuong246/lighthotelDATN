@@ -92,7 +92,7 @@
                         <option value="maintenance" {{ old('status') === 'maintenance' ? 'selected' : '' }}>Bảo trì</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary btn-admin-icon" title="Lưu"><i class="bi bi-check2-lg"></i></button>
+                <button type="submit" class="btn btn-primary" title="Lưu"><i class="bi bi-check2-lg"></i> Lưu</button>
                 <a href="{{ route('admin.rooms.index') }}" class="btn btn-secondary btn-admin-icon" title="Hủy"><i class="bi bi-x-lg"></i></a>
             </form>
         </div>
