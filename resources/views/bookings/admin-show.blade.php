@@ -148,9 +148,16 @@
                                             // Lấy tên người đại diện (ưu tiên: bookingGuests > representative_name > user)
                                             $repName = $repGuest?->name ?? $booking->representative_name ?? $booking->user?->full_name ?? '—';
 
-                                            // Lấy CCCD (ưu tiên: bookingGuests > booking > user)
-                                            $repCccd = $repGuest?->cccd ?? $booking->cccd;
-
+                                            // Lấy CCCD (ưu tiên: bookingGuests > legacy guests > booking > user)
+                                            $repCccd = $repGuest?->cccd;
+                                            if (!$repCccd) {
+                                                // Thử lấy từ legacy guests
+                                                $legacyRep = $booking->guests()->where('is_representative', 1)->first();
+                                                $repCccd = $legacyRep?->cccd;
+                                            }
+                                            if (!$repCccd) {
+                                                $repCccd = $booking->cccd;
+                                            }
                                             if (!$repCccd && $booking->user_id) {
                                                 $user = \App\Models\User::find($booking->user_id);
                                                 $repCccd = $user?->cccd ?? $user?->identity_card ?? $user?->cmnd ?? null;
