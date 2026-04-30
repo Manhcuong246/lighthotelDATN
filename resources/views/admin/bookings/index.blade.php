@@ -187,16 +187,12 @@
                                 </td>
                                 <td class="text-center" title="Tổng khách">
                                     @php
-                                        // SL chính = số phòng
-                                        $roomCount = $booking->bookingRooms->count();
-                                        // Khách phát sinh = tổng guest (legacy) - guests() là quan hệ, gọi get() để lấy collection
-                                        $legacyGuests = $booking->guests()->get();
-                                        $extraGuestCount = $legacyGuests->count();
+                                        // SL chính = tổng adults từ booking_rooms
+                                        $adultCount = $booking->bookingRooms->sum('adults');
+                                        // Nếu chưa có booking_rooms, fallback về booking.adults
+                                        $adultCount = $adultCount > 0 ? $adultCount : ($booking->adults ?? 0);
                                     @endphp
-                                    <span class="badge bg-secondary">{{ $roomCount }} người lớn</span>
-                                    @if($extraGuestCount > $roomCount)
-                                        <br><small class="text-muted">+{{ $extraGuestCount - $roomCount }} khách thêm</small>
-                                    @endif
+                                    <span class="badge bg-secondary">{{ $adultCount }} người lớn</span>
                                 </td>
                                 <td class="text-end">
                                     <strong class="text-success">{{ number_format($booking->total_price ?? 0, 0, ',', '.') }} ₫</strong>
