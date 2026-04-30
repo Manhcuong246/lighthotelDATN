@@ -178,11 +178,39 @@
                         <div class="booking-room">
                             <i class="bi bi-door-open"></i>
                             @if($b->rooms->count() > 1)
-                                {{ $b->rooms->count() }} phòng ({{ $b->rooms->pluck('name')->implode(', ') }})
+                                @php
+                                    $processedTypes = $b->rooms->map(function($r) {
+                                        $name = $r->roomType?->name ?? $r->name;
+                                        if (str_contains($name, ' ')) {
+                                            $parts = explode(' ', $name);
+                                            $name = end($parts);
+                                        }
+                                        return $name;
+                                    });
+                                    $typeCounts = $processedTypes->countBy();
+                                    $typeNames = $typeCounts->map(function($count, $name) {
+                                        return $count . ' ' . $name;
+                                    })->values();
+                                @endphp
+                                {{ $b->rooms->count() }} phòng ({{ $typeNames->implode(', ') }})
                             @elseif($b->rooms->count() == 1)
-                                {{ $b->rooms->first()->name }}
+                                @php
+                                    $name = $b->rooms->first()->roomType?->name ?? $b->rooms->first()->name;
+                                    if (str_contains($name, ' ')) {
+                                        $parts = explode(' ', $name);
+                                        $name = end($parts);
+                                    }
+                                @endphp
+                                {{ $name }}
                             @else
-                                {{ $b->room->name ?? '—' }}
+                                @php
+                                    $name = $b->room?->roomType?->name ?? $b->room?->name ?? '—';
+                                    if (str_contains($name, ' ')) {
+                                        $parts = explode(' ', $name);
+                                        $name = end($parts);
+                                    }
+                                @endphp
+                                {{ $name }}
                             @endif
                         </div>
                         <div class="booking-details">
@@ -195,7 +223,18 @@
                             @endif
                             @if($b->rooms->count() > 1)
                                 @php
-                                    $typeLabels = $b->rooms->map(fn ($r) => $r->roomType->name ?? $r->type)->filter()->unique()->values();
+                                    $processedLabels = $b->rooms->map(function($r) {
+                                        $name = $r->roomType?->name ?? $r->type ?? '';
+                                        if (str_contains($name, ' ')) {
+                                            $parts = explode(' ', $name);
+                                            $name = end($parts);
+                                        }
+                                        return $name;
+                                    })->filter();
+                                    $labelCounts = $processedLabels->countBy();
+                                    $typeLabels = $labelCounts->map(function($count, $name) {
+                                        return $count . ' ' . $name;
+                                    })->values();
                                 @endphp
                                 @if($typeLabels->isNotEmpty())
                                 <span class="d-block mt-1 small text-secondary">
