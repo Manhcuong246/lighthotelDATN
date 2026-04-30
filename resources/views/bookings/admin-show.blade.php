@@ -128,8 +128,16 @@
                                                             <td>{{ $guest->cccd }}</td>
                                                             <td>{{ $guest->bookingRoom?->room?->roomType?->name }} {{ $guest->bookingRoom?->room?->room_number }}</td>
                                                             <td>
-                                                                <span class="badge bg-{{ $guest->status === 'checked_in' ? 'success' : 'warning' }}">
-                                                                    {{ $guest->status === 'checked_in' ? 'Đã check-in' : 'Chờ check-in' }}
+                                                                @php
+                                                                    $guestStatus = $guest->status ?? $guest->checkin_status ?? 'pending';
+                                                                    $statusBadge = match($guestStatus) {
+                                                                        'checked_out' => ['success', 'Đã check-out'],
+                                                                        'checked_in' => ['success', 'Đã check-in'],
+                                                                        default => ['warning', 'Chờ check-in'],
+                                                                    };
+                                                                @endphp
+                                                                <span class="badge bg-{{ $statusBadge[0] }}">
+                                                                    {{ $statusBadge[1] }}
                                                                 </span>
                                                             </td>
                                                         </tr>

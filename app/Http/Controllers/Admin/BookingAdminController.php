@@ -776,6 +776,10 @@ class BookingAdminController extends Controller
         $booking->status = 'completed';
         $booking->save();
 
+        // Cập nhật trạng thái tất cả khách thành checked_out
+        $booking->guests()->update(['checkin_status' => 'checked_out']);
+        $booking->bookingGuests()->update(['status' => 'checked_out', 'checkin_status' => 'checked_out']);
+
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
         $staffName = $user?->full_name ?? 'Lễ tân';
