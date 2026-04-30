@@ -32,8 +32,11 @@ final class RoomOccupancyPricing
         return (int) config('booking.pricing.standard_capacity', 3);
     }
 
-    public static function maxCapacity(): int
+    public static function maxCapacity(?RoomType $roomType = null): int
     {
+        if ($roomType && !is_null($roomType->capacity)) {
+            return (int) $roomType->capacity;
+        }
         return (int) config('booking.pricing.max_capacity', 6);
     }
 
@@ -72,14 +75,25 @@ final class RoomOccupancyPricing
             throw new \InvalidArgumentException('Cần ít nhất 1 người lớn trong phòng.');
         }
 
-        // Không giới hạn cứng số khách - chỉ tính phụ thu khi vượt tiêu chuẩn
+        // Giới hạn người lớn + trẻ 6-11 không vượt quá capacity (trẻ 0-5 miễn phí không chiếm slot)
+        $billableGuests = $adults + $children611;
+        $maxCapacity = $roomType ? $roomType->capacity : self::maxCapacity();
+        
+        if ($billableGuests > $maxCapacity) {
+            throw new \InvalidArgumentException("Số người lớn và trẻ 6-11 ({$billableGuests}) vượt quá sức chứa tối đa của phòng ({$maxCapacity}).");
+        }
+        
+        // Giới hạn trẻ 0-5 tối đa 2 người
+        if ($children05 > 2) {
+            throw new \InvalidArgumentException("Trẻ em 0-5 tuổi tối đa 2 người mỗi phòng.");
+        }
     }
 
     /**
      * Tính breakdown giá cho 1 phòng / 1 đêm.
      *
-     * Trẻ 0–5 chiếm slot tiêu chuẩn trước (miễn phí). Slot còn lại dành
-     * cho NL + trẻ 6–11; ai vượt slot thì chịu phụ phí.
+     * Trẻ 0–5 miễn phí, không chiếm slot tiêu chuẩn. Chỉ người lớn và trẻ 6–11
+     * chiếm slot và tính phụ phí khi vượt tiêu chuẩn.
      */
     public static function breakdown(
         float $basePrice,
@@ -91,20 +105,13 @@ final class RoomOccupancyPricing
         self::validate($adults, $children611, $children05, $roomType);
 
         $std = self::standardCapacity($roomType);
-        $max = self::maxCapacity();
-        $total = $adults + $children611 + $children05;
+        $max = self::maxCapacity($roomType);
+        $billableGuests = $adults + $children611; // Trẻ 0-5 không chiếm slot
 
-        // 2 trẻ 0-5 đầu miễn phí, từ trẻ thứ 3 tính phụ phí
-        $c05Free = min($children05, 2);
-        $c05Pay = max(0, $children05 - 2);
-
-        // Không trừ trẻ 0-5 miễn phí khỏi slot
-        $billableSlots = $std;
-        $extraAdults = max(0, $adults - $billableSlots);
-        $remainingSlots = max(0, $billableSlots - $adults);
-        // Trẻ phải trả phí = trẻ 6-11 + trẻ 0-5 thứ 3+
-        $totalPayChildren = $children611 + $c05Pay;
-        $extraOlderChildren = max(0, $totalPayChildren - $remainingSlots);
+        // Trẻ 0-5 miễn phí hoàn toàn, không tính vào slot
+        $extraAdults = max(0, $adults - $std);
+        $remainingSlots = max(0, $std - $adults);
+        $extraOlderChildren = max(0, $children611 - $remainingSlots);
 
         $aRate = self::adultSurchargeRate($roomType);
         $cRate = self::childSurchargeRate($roomType);
@@ -115,10 +122,10 @@ final class RoomOccupancyPricing
         $pricePerNight = round($basePrice + $surchargePerNight, 2);
 
         return [
-            'total_occupancy' => $total,
-            'effective_occupancy' => $total,
+            'total_occupancy' => $adults + $children611 + $children05,
+            'billable_occupancy' => $billableGuests,
             'standard_capacity' => $std,
-            'is_surcharge' => $total > $std,
+            'is_surcharge' => $billableGuests > $std,
             'extra_adults' => $extraAdults,
             'extra_older_children' => $extraOlderChildren,
             'adult_surcharge_rate' => $aRate,

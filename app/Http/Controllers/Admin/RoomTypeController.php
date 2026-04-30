@@ -39,7 +39,7 @@ class RoomTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:room_types,name',
             'capacity' => 'required|integer|min:1',
-            'standard_capacity' => 'required|integer|min:1|lte:capacity',
+            'standard_capacity' => 'required|integer|min:1',
             'beds' => 'required|integer|min:1',
             'baths' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
@@ -49,6 +49,9 @@ class RoomTypeController extends Controller
             'service_ids' => 'nullable|array',
             'service_ids.*' => 'integer|exists:services,id',
         ]);
+
+        // Tự động tính capacity = standard_capacity + 2 (giới hạn phụ thu 2 người)
+        $validated['capacity'] = $validated['standard_capacity'] + 2;
 
         if ($request->hasFile('image')) {
             RoomImageStorage::ensureDirectories();
@@ -91,6 +94,7 @@ class RoomTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|max:255|unique:room_types,name,' . $roomType->id,
             'capacity' => 'required|integer|min:1',
+            'standard_capacity' => 'required|integer|min:1',
             'beds' => 'required|integer|min:1',
             'baths' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
@@ -100,6 +104,9 @@ class RoomTypeController extends Controller
             'service_ids' => 'nullable|array',
             'service_ids.*' => 'integer|exists:services,id',
         ]);
+
+        // Tự động tính capacity = standard_capacity + 2 (giới hạn phụ thu 2 người)
+        $validated['capacity'] = $validated['standard_capacity'] + 2;
 
         if ($request->hasFile('image')) {
             if ($roomType->image) {
@@ -113,9 +120,6 @@ class RoomTypeController extends Controller
 
         $serviceIds = array_values(array_unique(array_map('intval', $validated['service_ids'] ?? [])));
         unset($validated['service_ids']);
-
-        // standard_capacity: chỉ set lúc tạo, không cho sửa sau khi đã tạo
-        unset($validated['standard_capacity']);
 
         $roomType->update($validated);
 

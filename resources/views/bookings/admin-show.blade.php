@@ -12,7 +12,7 @@
                         <i class="bi bi-file-text me-2"></i>
                         Chi tiết đặt phòng #{{ $booking->id }}
                     </h4>
-                    <div class="d-flex align-items-center gap-2">
+                    <div>
                         @if($booking->actual_check_out)
                             <span class="badge bg-success">Đã check-out</span>
                         @elseif($booking->actual_check_in)
@@ -21,12 +21,6 @@
                             <span class="badge bg-warning text-dark">Chờ thanh toán</span>
                         @else
                             <span class="badge bg-primary">Chờ check-in</span>
-                        @endif
-
-                        @if($booking->isAdminCheckinAllowed())
-                            <button type="button" class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#checkinModal{{ $booking->id }}">
-                                <i class="bi bi-box-arrow-in-right me-1"></i>Check-in
-                            </button>
                         @endif
                     </div>
                 </div>
@@ -58,36 +52,10 @@
                                 <tr>
                                     <td><strong>Phòng:</strong></td>
                                     <td>
-                                        @php
-                                            $firstBR = $booking->bookingRooms->first();
-                                            $roomNum = $firstBR?->room?->room_number ?? 'NULL';
-                                            $roomName = $firstBR?->room?->name ?? 'NULL';
-                                        @endphp
                                         @if($booking->bookingRooms->count() > 0)
-                                            @php
-                                                $processedTypes = $booking->bookingRooms->map(function($br) {
-                                                    $typeName = $br->room->roomType?->name ?? '';
-                                                    if (str_contains($typeName, ' ')) {
-                                                        $parts = explode(' ', $typeName);
-                                                        $typeName = end($parts);
-                                                    }
-                                                    return $typeName;
-                                                });
-                                                $typeCounts = $processedTypes->countBy();
-                                                $roomList = $typeCounts->map(function($count, $name) {
-                                                    return $count . ' ' . $name;
-                                                })->values()->implode(', ');
-                                            @endphp
-                                            {{ $roomList }}
+                                            {{ $booking->bookingRooms->map(function($br) { return $br->room->name ?? 'N/A'; })->implode(', ') }}
                                         @else
-                                            @php
-                                                $typeName = $booking->room->roomType?->name ?? '';
-                                                if (str_contains($typeName, ' ')) {
-                                                    $parts = explode(' ', $typeName);
-                                                    $typeName = end($parts);
-                                                }
-                                            @endphp
-                                            {{ $typeName }}
+                                            {{ $booking->room->name ?? 'N/A' }}
                                         @endif
                                     </td>
                                 </tr>
@@ -122,178 +90,61 @@
                             </table>
                         </div>
 
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <h5 class="mb-3">
                                 <i class="bi bi-people-fill me-2"></i>
                                 Thông tin khách hàng
                             </h5>
 
-                            <div class="table-responsive" style="max-width: 100%; overflow-x: auto;">
-                                <table class="table table-hover table-sm mb-0 align-middle w-100">
-                                    <thead class="table-light small">
-                                        <tr>
-                                            <th class="ps-3">Tên khách hàng</th>
-                                            <th>CCCD</th>
-                                            <th>Phòng</th>
-                                            <th>Loại khách</th>
-                                            <th>Trạng thái</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {{-- Người đại diện --}}
-                                        @php
-                                            // Lấy từ bookingGuests mới (ưu tiên cao nhất)
-                                            $repGuest = $booking->bookingGuests()->where('is_representative', 1)->first();
+                            @php
+                                $booking->refresh();
+                                $groupedGuests = $booking->guests()->get()->groupBy(function($guest) {
+                                    return $guest->room_type ?: 'room_' . ($guest->room_index + 1);
+                                });
+                            @endphp
 
-                                            // Lấy tên người đại diện (ưu tiên: bookingGuests > representative_name > user)
-                                            $repName = $repGuest?->name ?? $booking->representative_name ?? $booking->user?->full_name ?? '—';
-
-                                            // Lấy CCCD (ưu tiên: bookingGuests > legacy guests > booking > user)
-                                            $repCccd = $repGuest?->cccd;
-                                            if (!$repCccd) {
-                                                // Thử lấy từ legacy guests
-                                                $legacyRep = $booking->guests()->where('is_representative', 1)->first();
-                                                $repCccd = $legacyRep?->cccd;
-                                            }
-                                            if (!$repCccd) {
-                                                $repCccd = $booking->cccd;
-                                            }
-                                            if (!$repCccd && $booking->user_id) {
-                                                $user = \App\Models\User::find($booking->user_id);
-                                                $repCccd = $user?->cccd ?? $user?->identity_card ?? $user?->cmnd ?? null;
-                                            }
-
-                                            // Force load bookingRooms với room để tra cứu nhanh
-                                            $bookingRoomsLoaded = $booking->bookingRooms()->with('room.roomType')->get();
-                                            $bookingRoomsMap = $bookingRoomsLoaded->keyBy('id');
-                                        @endphp
-                                        <tr>
-                                            <td class="ps-3">
-                                                <div class="d-flex align-items-center" style="white-space: nowrap; gap: 8px;">
-                                                    <span>{{ $repName }}</span>
-                                                    <span class="badge bg-primary">Người đại diện</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                @if($repCccd)
-                                                    {{ $repCccd }}
-                                                @else
-                                                    <span class="text-danger fw-bold">Chưa có CCCD!</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                        @php
-                                                            // Lấy phòng từ repGuest dùng bookingRoomsMap
-                                                            $repRoom = null;
-                                                            $repBookingRoomId = $repGuest?->booking_room_id;
-
-                                                            if ($repBookingRoomId && isset($bookingRoomsMap[$repBookingRoomId])) {
-                                                                $repRoom = $bookingRoomsMap[$repBookingRoomId]->room;
-                                                            } elseif ($repGuest?->bookingRoom) {
-                                                                $repRoom = $repGuest->bookingRoom->room;
-                                                            } else {
-                                                                $repRoom = $booking->bookingRooms->first()?->room;
-                                                            }
-
-                                                            $fullTypeName = $repRoom?->roomType?->name ?? '';
-                                                            $typeName = $fullTypeName;
-                                                            // Lấy từ cuối nếu có dấu cách (VD: "Coastal Garden Standard" -> "Standard")
-                                                            if (str_contains($typeName, ' ')) {
-                                                                $parts = explode(' ', $typeName);
-                                                                $typeName = end($parts);
-                                                            }
-                                                            $roomNum = $repRoom?->room_number ?? '';
-                                                        @endphp
-                                                        <span style="white-space: nowrap">{{ $typeName }}&nbsp;{{ $roomNum }}</span>
-                                                    </td>
-                                            <td>
-                                                <span class="badge bg-info">Người lớn</span>
-                                            </td>
-                                            <td>
-                                                @php
-                                                    $isCheckedOut = $booking->actual_check_out !== null;
-                                                    $isCheckedIn = $booking->actual_check_in || $booking->bookingGuests?->contains('status', 'checked_in');
-                                                @endphp
-                                                @if($isCheckedOut)
-                                                    <span class="badge bg-secondary">Đã check-out</span>
-                                                @elseif($isCheckedIn)
-                                                    <span class="badge bg-success">Đã check-in</span>
-                                                @else
-                                                    <span class="badge bg-warning">Chờ check-in</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-
-                                        {{-- Danh sách khách (không bao gồm người đại diện) --}}
-                                        @php
-                                            // Lấy danh sách khách không phải người đại diện
-                                            $bookingGuestsList = $booking->bookingGuests()
-                                                ->with(['bookingRoom' => function($q) {
-                                                    $q->with('room.roomType');
-                                                }])
-                                                ->get();
-                                            // $bookingRoomsMap đã được tạo ở trên
-                                        @endphp
-                                        @if($bookingGuestsList->count() > 0)
-                                            @php
-                                                // Lọc bỏ người đại diện
-                                                $nonRepGuests = $bookingGuestsList->where('is_representative', 0);
-                                            @endphp
-                                            @foreach($nonRepGuests as $guest)
-                                                <tr>
-                                                    <td class="ps-3">{{ $guest->name }}</td>
-                                                    <td>{{ $guest->cccd ?? '-' }}</td>
-                                                    <td>
-                                                        @php
-                                                            // Lấy phòng từ booking_room_id của khách
-                                                            $guestBookingRoomId = $guest->booking_room_id;
-                                                            $guestRoom = null;
-
-                                                            // DEBUG: Hiển thị booking_room_id
-                                                            // echo "<small class='text-muted'>(br_id: " . ($guestBookingRoomId ?? 'null') . ")</small> ";
-
-                                                            if ($guestBookingRoomId && isset($bookingRoomsMap[$guestBookingRoomId])) {
-                                                                $guestRoom = $bookingRoomsMap[$guestBookingRoomId]->room;
-                                                            } elseif ($guest->bookingRoom) {
-                                                                $guestRoom = $guest->bookingRoom->room;
-                                                            }
-
-                                                            $fullTypeName = $guestRoom?->roomType?->name ?? '';
-                                                            $roomTypeName = $fullTypeName;
-                                                            if (str_contains($fullTypeName, ' ')) {
-                                                                $parts = explode(' ', $fullTypeName);
-                                                                $roomTypeName = end($parts);
-                                                            }
-                                                            $roomNumber = $guestRoom?->room_number ?? '';
-                                                            echo $roomTypeName . '&nbsp;' . $roomNumber;
-                                                        @endphp
-                                                    </td>
-                                                    <td>
-                                                        @if(($guest->type ?? 'adult') === 'adult')
-                                                            <span class="badge bg-info">Người lớn</span>
-                                                        @else
-                                                            <span class="badge bg-warning text-dark">Trẻ em</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $guestCheckedOut = $booking->actual_check_out !== null;
-                                                            $guestCheckedIn = ($guest->status ?? $guest->checkin_status) === 'checked_in' || $booking->actual_check_in;
-                                                        @endphp
-                                                        @if($guestCheckedOut)
-                                                            <span class="badge bg-secondary">Đã check-out</span>
-                                                        @elseif($guestCheckedIn)
-                                                            <span class="badge bg-success">Đã check-in</span>
-                                                        @else
-                                                            <span class="badge bg-warning">Chờ check-in</span>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        @endif
-                                    </tbody>
-                                </table>
-                            </div>
+                            @if($booking->bookingGuests->count() > 0)
+                                @foreach($booking->bookingGuests as $guest)
+                                    <div class="card mb-3 border-light shadow-sm">
+                                        <div class="card-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover table-sm mb-0">
+                                                    <thead class="table-light small">
+                                                        <tr>
+                                                            <th class="ps-3">Tên khách hàng</th>
+                                                            <th>CCCD</th>
+                                                            <th>Phòng</th>
+                                                            <th>Trạng thái</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td class="ps-3">
+                                                                {{ $guest->name }}
+                                                                @if($guest->is_representative)
+                                                                    <span class="badge bg-primary ms-2">Người đại diện</span>
+                                                                @endif
+                                                            </td>
+                                                            <td>{{ $guest->cccd }}</td>
+                                                            <td>{{ $guest->bookingRoom?->room?->roomType?->name }} {{ $guest->bookingRoom?->room?->room_number }}</td>
+                                                            <td>
+                                                                <span class="badge bg-{{ $guest->status === 'checked_in' ? 'success' : 'warning' }}">
+                                                                    {{ $guest->status === 'checked_in' ? 'Đã check-in' : 'Chờ check-in' }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    Chưa có thông tin khách hàng
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -533,31 +384,4 @@
         </div>
     </div>
 </div>
-
-@if($booking->isAdminCheckinAllowed())
-    @include('admin.bookings._checkin_modal', ['booking' => $booking])
-@endif
-
-<style>
-.table-responsive {
-    max-width: 100%;
-    overflow-x: auto;
-}
-.table-responsive table {
-    width: 100% !important;
-}
-.table-responsive th {
-    white-space: nowrap;
-}
-</style>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    setTimeout(function() {
-        const el = document.querySelector('.table-responsive');
-        if (el) el.scrollLeft = 0;
-    }, 100);
-});
-</script>
-
 @endsection

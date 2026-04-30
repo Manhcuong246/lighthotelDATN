@@ -97,19 +97,15 @@ class NewBookingController extends Controller
             $totalPrice = $this->calculateTotalPrice($roomCount);
 
             // Tạo booking
-            $roomCount = (int) $request->rooms;
             $booking = Booking::create([
                 'user_id' => Auth::id(),
-                'room_id' => 1,
+                'room_id' => 1, // Tạm thời, sẽ cập nhật sau
                 'check_in' => $request->check_in,
                 'check_out' => $request->check_out,
                 'status' => 'pending',
                 'total_price' => $totalPrice,
                 'payment_method' => $request->payment_method,
                 'payment_status' => 'pending',
-                'adults' => $roomCount, // Mặc định 1 người lớn/phòng
-                'children' => 0,
-                'guests' => $roomCount,
             ]);
 
             // Lưu thông tin 1 người đại diện duy nhất
