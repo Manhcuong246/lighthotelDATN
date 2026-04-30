@@ -742,13 +742,15 @@ class BookingAdminController extends Controller
         // Xóa cache để cập nhật giao diện ngay lập tức
         Cache::forget("guest_info_{$booking->id}");
 
-        $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+        $staffName = $user?->full_name ?? 'Lễ tân';
         $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
         $roomText = $rooms ? " phòng {$rooms}" : '';
 
         BookingLog::create([
             'booking_id' => $booking->id,
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'old_status' => $old,
             'new_status' => 'checked_in',
             'notes' => "{$staffName} check-in{$roomText}.",
@@ -776,13 +778,15 @@ class BookingAdminController extends Controller
         $booking->status = 'completed';
         $booking->save();
 
-        $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+        $staffName = $user?->full_name ?? 'Lễ tân';
         $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
         $roomText = $rooms ? " phòng {$rooms}" : '';
 
         BookingLog::create([
             'booking_id' => $booking->id,
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'old_status' => $old,
             'new_status' => 'completed',
             'notes' => "{$staffName} check-out{$roomText}.",
@@ -3050,13 +3054,15 @@ class BookingAdminController extends Controller
                 $booking->actual_check_in = Carbon::now();
                 $booking->save();
 
-                $staffName = auth()->user()?->full_name ?? 'Lễ tân';
+                /** @var \App\Models\User|null $user */
+                $user = Auth::user();
+                $staffName = $user?->full_name ?? 'Lễ tân';
                 $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
                 $roomText = $rooms ? " phòng {$rooms}" : '';
 
                 BookingLog::create([
                     'booking_id' => $booking->id,
-                    'user_id' => auth()->id(),
+                    'user_id' => Auth::id(),
                     'old_status' => $old,
                     'new_status' => 'checked_in',
                     'notes' => "{$staffName} check-in{$roomText}.",
