@@ -113,7 +113,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/bookings/{booking}/available-rooms', [BookingAdminController::class, 'getAvailableRoomsForAssignment'])->name('bookings.available-rooms');
     Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
     Route::get('/bookings/{booking}/checkin-data', [BookingAdminController::class, 'getCheckInData'])->name('bookings.checkin-data');
+    Route::get('/bookings/{booking}/available-rooms-by-type', [BookingAdminController::class, 'getAvailableRoomsByType'])->name('bookings.available-rooms-by-type');
     Route::post('/bookings/{booking}/checkin-with-assignment', [BookingAdminController::class, 'checkInWithAssignment'])->name('admin.bookings.checkin-with-assignment');
+    Route::post('/bookings/{booking}/store-guests', [BookingAdminController::class, 'storeGuests'])->name('admin.bookings.store-guests');
+    Route::post('/bookings/{booking}/update-representative', [BookingAdminController::class, 'updateRepresentative'])->name('admin.bookings.update-representative');
     Route::delete('/booking-guests/{bookingGuest}', [BookingAdminController::class, 'deleteBookingGuest'])->name('admin.booking-guests.delete');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');
     Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
