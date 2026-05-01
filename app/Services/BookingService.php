@@ -3,14 +3,13 @@
 namespace App\Services;
 
 use App\Models\Booking;
-use Illuminate\Support\Facades\Log;
 use App\Models\Payment;
 use App\Models\Room;
+use App\Models\RoomType;
 use App\Models\RoomBookedDate;
 use App\Models\User;
 use App\Models\Coupon;
 use App\Models\BookingRoom;
-use App\Models\BookingGuest;
 use App\Support\RoomOccupancyPricing;
 use App\Exceptions\BookingException;
 use Illuminate\Support\Facades\DB;
@@ -41,52 +40,63 @@ class BookingService
             throw new BookingException('Bạn chỉ có thể đặt phòng tối đa 30 đêm.');
         }
 
-        if (count($data['room_ids']) !== count(array_unique($data['room_ids']))) {
-            throw new BookingException('Trong một đơn không được chọn trùng cùng một phòng.');
-        }
+        // Nhiều phòng cùng loại trong một đơn là hợp lệ.
 
-        // 1. Lấy danh sách phòng và kiểm tra tính hợp lệ
-        $rooms = [];
-        foreach ($data['room_ids'] as $id) {
-            $room = Room::with('roomType')->find($id);
-            if (!$room) {
-                throw new BookingException("Phòng ID {$id} không tồn tại.");
+        $roomTypes = [];
+        $pricingRooms = [];
+        foreach ($data['room_type_ids'] as $index => $typeId) {
+            $roomType = RoomType::find($typeId);
+            if (! $roomType) {
+                throw new BookingException("Loại phòng ID {$typeId} không tồn tại.");
             }
-            $rooms[] = $room;
+            $roomTypes[$index] = $roomType;
+            $pricingRoom = Room::query()
+                ->where('room_type_id', $roomType->id)
+                ->orderBy('id')
+                ->first();
+            if (! $pricingRoom) {
+                throw new BookingException('Loại phòng "'.$roomType->name.'" chưa có phòng mẫu để báo giá.');
+            }
+            $pricingRooms[$index] = $pricingRoom;
         }
 
-        // 2. Tạo danh sách ngày cần block
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
-        $dates = collect($period)->map(fn($date) => $date->toDateString());
+        $dates = collect($period)->map(fn ($date) => $date->toDateString());
 
-        // 3. Kiểm tra conflict (phòng đã có người đặt)
-        $uniqueRoomIds = array_unique($data['room_ids']);
-        foreach ($uniqueRoomIds as $rid) {
-            $conflict = RoomBookedDate::query()
-                ->where('room_id', $rid)
-                ->whereIn('booked_date', $dates)
-                ->exists();
-            if ($conflict) {
-                $roomName = Room::with('roomType')->find($rid)?->displayLabel() ?? 'Phòng';
-                throw new BookingException("Phòng \"{$roomName}\" đã có người đặt trong khoảng thời gian này.");
+        $neededByType = [];
+        foreach ($data['room_type_ids'] as $typeId) {
+            $tid = (int) $typeId;
+            $neededByType[$tid] = ($neededByType[$tid] ?? 0) + 1;
+        }
+
+        foreach ($neededByType as $typeId => $needQty) {
+            $physical = $this->countPhysicalFreeRoomsOfType($typeId, $dates);
+            $unassigned = BookingRoom::unassignedCountForRoomTypeBetween(
+                $typeId,
+                $checkIn->toDateString(),
+                $checkOut->toDateString()
+            );
+            if ($physical - $unassigned < $needQty) {
+                $name = RoomType::find($typeId)?->name ?? 'Loại phòng';
+                throw new BookingException("Không đủ phòng trống cho \"{$name}\" trong khoảng thời gian này (đã trừ các đơn chưa gán số phòng).");
             }
         }
 
-        // 4. Tính toán tổng tiền
         $totalPrice = 0;
         $roomPriceDetails = [];
 
-        foreach ($rooms as $index => $room) {
+        foreach ($pricingRooms as $index => $room) {
             $guestAdults = (int) ($data['adults'][$index] ?? 1);
-            $guest05     = (int) ($data['children_0_5'][$index] ?? 0);
-            $guest611    = (int) ($data['children_6_11'][$index] ?? 0);
+            $guest05 = (int) ($data['children_0_5'][$index] ?? 0);
+            $guest611 = (int) ($data['children_6_11'][$index] ?? 0);
+            $roomType = $roomTypes[$index];
 
             try {
                 $priceData = $this->calculateRoomPrice($room, $nights, $guestAdults, $guest05, $guest611);
 
                 $totalPrice += $priceData['subtotal'];
                 $roomPriceDetails[] = array_merge($priceData, [
-                    'room_id'       => $room->id,
+                    'room_type_id'  => (int) $roomType->id,
                     'nights'        => $nights,
                     'adults'        => $guestAdults,
                     'children_0_5'  => $guest05,
@@ -118,7 +128,7 @@ class BookingService
         }
 
         // 6. Thực hiện giao dịch DB
-        return DB::transaction(function () use ($data, $checkIn, $checkOut, $totalPrice, $discountAmount, $couponCode, $roomPriceDetails, $dates) {
+        return DB::transaction(function () use ($data, $checkIn, $checkOut, $totalPrice, $discountAmount, $couponCode, $roomPriceDetails) {
             // Một đơn luôn gắn user_id (đăng nhập hoặc user tạm theo email — chưa gắn role guest, xem User::isProvisionalGuestAccount).
             if (Auth::check()) {
                 $userId = (int) Auth::id();
@@ -158,7 +168,8 @@ class BookingService
             foreach ($roomPriceDetails as $detail) {
                 BookingRoom::create([
                     'booking_id'      => $booking->id,
-                    'room_id'         => $detail['room_id'],
+                    'room_type_id'    => $detail['room_type_id'],
+                    'room_id'         => null,
                     'adults'          => $detail['adults'],
                     'children_0_5'    => $detail['children_0_5'],
                     'children_6_11'   => $detail['children_6_11'],
@@ -166,14 +177,6 @@ class BookingService
                     'nights'          => $detail['nights'],
                     'subtotal'        => $detail['subtotal'],
                 ]);
-
-                foreach ($dates as $d) {
-                    RoomBookedDate::create([
-                        'room_id'    => $detail['room_id'],
-                        'booked_date'=> $d,
-                        'booking_id' => $booking->id,
-                    ]);
-                }
             }
 
             // Tạo Payment
@@ -191,6 +194,31 @@ class BookingService
             // Trả về booking để controller xử lý tiếp (vnpay)
             return $booking;
         });
+    }
+
+    /**
+     * Phòng vật lý đang available và không có RoomBookedDate trong các đêm đó.
+     *
+     * @param  \Illuminate\Support\Collection<int, string>  $dates
+     */
+    private function countPhysicalFreeRoomsOfType(int $roomTypeId, $dates): int
+    {
+        $busyRoomIds = RoomBookedDate::query()
+            ->whereIn('booked_date', $dates->all())
+            ->distinct()
+            ->pluck('room_id')
+            ->filter()
+            ->values()
+            ->all();
+
+        $q = Room::query()
+            ->where('room_type_id', $roomTypeId)
+            ->where('status', 'available');
+        if ($busyRoomIds !== []) {
+            $q->whereNotIn('id', $busyRoomIds);
+        }
+
+        return (int) $q->count();
     }
 
     /**

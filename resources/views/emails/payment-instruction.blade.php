@@ -4,271 +4,256 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Thanh toán đơn #{{ $booking->id }}</title>
-    {{-- 
-        VNPay Payment Instruction Email Template
-        - Displays detailed booking information
-        - Shows VNPay payment link with timeout info
-        - Includes room, dates, guests, and pricing
-    --}}
+    <title>@if(!empty($vnpayPayUrl))Thanh toán VNPay@elseChuyển khoản thanh toán@endif — đơn #{{ $booking->id }}</title>
 </head>
-<body style="margin:0; padding:0; background-color:#eef1f6; -webkit-text-size-adjust:100%;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef1f6;">
-        <tr>
-            <td align="center" style="padding:24px 12px 40px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(26,43,74,0.08);">
-                    {{-- Header --}}
-                    <tr>
-                        <td bgcolor="#1a2b4a" style="background:linear-gradient(135deg,#1a2b4a 0%,#2d4a7c 100%); background-color:#1a2b4a; padding:28px 28px 24px; text-align:center;">
-                            <p style="margin:0 0 6px; font-family:Georgia,'Times New Roman',serif; font-size:22px; font-weight:600; color:#ffffff; letter-spacing:0.5px;">Light Hotel</p>
-                            <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:rgba(255,255,255,0.85);">Đà Nẵng</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:28px 28px 8px; font-family:Arial,Helvetica,sans-serif;">
-                            <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#334155;">
-                                Xin chào <strong style="color:#1a2b4a;">{{ $booking->user->full_name ?? 'Quý khách' }}</strong>,
-                            </p>
+@php
+    $checkIn = \Carbon\Carbon::parse($booking->check_in);
+    $checkOut = \Carbon\Carbon::parse($booking->check_out);
+    $bookingRoomItems = $booking->bookingRooms;
+    if ($bookingRoomItems->isEmpty() && $booking->rooms->isNotEmpty()) {
+        $bookingRoomItems = $booking->rooms->map(function ($room) {
+            return (object) [
+                'room' => $room,
+                'adults' => $room->pivot->adults ?? null,
+                'children_0_5' => $room->pivot->children_0_5 ?? 0,
+                'children_6_11' => $room->pivot->children_6_11 ?? 0,
+                'subtotal' => $room->pivot->subtotal ?? null,
+                'price_per_night' => $room->pivot->price_per_night ?? null,
+            ];
+        });
+    }
+    $childrenCount = (int) $bookingRoomItems->sum('children_0_5') + (int) $bookingRoomItems->sum('children_6_11');
+    $adultsSum = (int) ($bookingRoomItems->sum('adults') ?: ($booking->adults ?? 1));
+    $hotelName = $hotelInfo?->name ?? 'Light Hotel';
+    $heroUrl = !empty($heroImageUrl) ? $heroImageUrl : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&auto=format&fit=crop&q=80';
+    $bankLabel = $hotelInfo?->bank_name ?? (($hotelInfo?->bank_id) ? strtoupper((string) $hotelInfo->bank_id) : '—');
+    $preheader = !empty($vnpayPayUrl)
+        ? 'Đơn #'.$booking->id.' — '.number_format($booking->total_price, 0, ',', '.').' ₫ — Thanh toán VNPay an toàn'
+        : 'Đơn #'.$booking->id.' — '.number_format($booking->total_price, 0, ',', '.').' ₫ — Thông tin chuyển khoản';
+@endphp
+<body style="margin:0;padding:0;background-color:#e8ecf2;-webkit-text-size-adjust:100%;">
+{{-- Preheader (nhiều client hiển thị dòng xem trước) --}}
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
+    {{ $preheader }}
+</div>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#e8ecf2;">
+    <tr>
+        <td align="center" style="padding:32px 16px 48px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,0.12);">
 
+                {{-- Hero --}}
+                <tr>
+                    <td style="padding:0;line-height:0;font-size:0;">
+                        <img src="{{ $heroUrl }}" width="600" alt="{{ $hotelName }}" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0c4a6e 100%);padding:24px 28px 22px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                                <td valign="middle" style="width:1%;padding-right:14px;">
+                                    @if(!empty($logoUrl))
+                                        <img src="{{ $logoUrl }}" alt="" width="48" height="48" style="display:block;border-radius:10px;background:#fff;padding:4px;width:48px;height:48px;object-fit:contain;">
+                                    @else
+                                        <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.15);text-align:center;line-height:48px;font-size:22px;">✦</div>
+                                    @endif
+                                </td>
+                                <td valign="middle" style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                                    <p style="margin:0;font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">{{ $hotelName }}</p>
+                                    <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.82);">
+                                        @if(!empty($hotelInfo?->address))
+                                            {{ $hotelInfo->address }}
+                                        @else
+                                            Đặt phòng · Trải nghiệm lưu trú
+                                        @endif
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:32px 28px 8px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                        <p style="margin:0 0 8px;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;">Thanh toán đặt phòng</p>
+                        <p style="margin:0 0 20px;font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.03em;line-height:1.25;">
                             @if(!empty($vnpayPayUrl))
-                                <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#475569;">
-                                    Đơn <strong style="color:#1a2b4a;">#{{ $booking->id }}</strong> đang chờ thanh toán qua <strong>VNPay</strong>.
-                                </p>
-
-                                {{-- Chi tiết đặt phòng --}}
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f8fafc; border-radius:12px; border:2px solid #e2e8f0; margin-bottom:20px;">
-                                    <tr>
-                                        <td style="padding:20px; font-family:Arial,Helvetica,sans-serif;">
-                                            <p style="margin:0 0 16px; font-size:16px; font-weight:700; color:#1a2b4a; border-bottom:2px solid #3b82f6; padding-bottom:8px;">
-                                                📋 Chi tiết đặt phòng
-                                            </p>
-                                            
-                                            @php
-                                                $checkIn = \Carbon\Carbon::parse($booking->check_in);
-                                                $checkOut = \Carbon\Carbon::parse($booking->check_out);
-                                                $bookingRoomItems = $booking->bookingRooms;
-                                                if ($bookingRoomItems->isEmpty() && $booking->rooms->isNotEmpty()) {
-                                                    $bookingRoomItems = $booking->rooms->map(function ($room) {
-                                                        return (object) [
-                                                            'room' => $room,
-                                                            'adults' => $room->pivot->adults ?? null,
-                                                            'children_0_5' => $room->pivot->children_0_5 ?? 0,
-                                                            'children_6_11' => $room->pivot->children_6_11 ?? 0,
-                                                            'subtotal' => $room->pivot->subtotal ?? null,
-                                                            'price_per_night' => $room->pivot->price_per_night ?? null,
-                                                        ];
-                                                    });
-                                                }
-                                            @endphp
-                                            
-                                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                                                <tr>
-                                                    <td style="padding:8px 0; font-size:14px; color:#64748b; width:40%;">🏨 Phòng:</td>
-                                                    <td style="padding:8px 0; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        @if($bookingRoomItems->isNotEmpty())
-                                                            {{ $bookingRoomItems->count() }} phòng
-                                                        @elseif($booking->room)
-                                                            Phòng {{ $booking->room->name ?? $booking->room->room_number ?? 'N/A' }}
-                                                        @else
-                                                            Đang cập nhật
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                                <tr style="background:#f1f5f9;">
-                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">📅 Nhận phòng:</td>
-                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        {{ $checkIn->format('d/m/Y') }}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">📅 Trả phòng:</td>
-                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        {{ $checkOut->format('d/m/Y') }}
-                                                    </td>
-                                                </tr>
-                                                <tr style="background:#f1f5f9;">
-                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">🌙 Số đêm:</td>
-                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        {{ $nights }} đêm
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td style="padding:10px 8px; font-size:14px; color:#64748b;">👥 Số khách:</td>
-                                                    <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        {{ $bookingRoomItems->sum('adults') ?: ($booking->adults ?? 1) }} người lớn
-                                                        @php
-                                                            $childrenCount = (int) $bookingRoomItems->sum('children_0_5') + (int) $bookingRoomItems->sum('children_6_11');
-                                                        @endphp
-                                                        @if($childrenCount > 0)
-                                                            + {{ $childrenCount }} trẻ em
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            </table>
-
-                                            @if($bookingRoomItems->isNotEmpty())
-                                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:14px; border:1px solid #dbeafe; border-radius:10px; overflow:hidden;">
-                                                    <tr style="background:#eff6ff;">
-                                                        <td style="padding:9px 10px; font-size:12px; color:#1e3a8a; font-weight:700;">Chi tiết từng phòng</td>
-                                                    </tr>
-                                                    @foreach($bookingRoomItems as $index => $item)
-                                                        @php
-                                                            $detailRoom = $item->room ?? null;
-                                                            $detailRoomName = $detailRoom?->name ?? ('Phòng #'.($detailRoom?->id ?? 'N/A'));
-                                                            $detailRoomType = $detailRoom?->roomType?->name;
-                                                            $detailAdults = (int) ($item->adults ?? 0);
-                                                            $detailChildren = (int) ($item->children_0_5 ?? 0) + (int) ($item->children_6_11 ?? 0);
-                                                        @endphp
-                                                        <tr style="{{ $index % 2 === 0 ? 'background:#ffffff;' : 'background:#f8fafc;' }}">
-                                                            <td style="padding:10px; font-size:13px; color:#1e293b;">
-                                                                <strong>{{ $detailRoomName }}</strong>
-                                                                @if($detailRoomType) · {{ $detailRoomType }} @endif
-                                                                <br>
-                                                                <span style="color:#64748b;">{{ max(1, $detailAdults) }} người lớn{{ $detailChildren > 0 ? ' + '.$detailChildren.' trẻ em' : '' }}</span>
-                                                                @if(!is_null($item->subtotal))
-                                                                    <br>
-                                                                    <span style="color:#0f766e; font-weight:600;">Tạm tính: {{ number_format((float) $item->subtotal, 0, ',', '.') }} đ</span>
-                                                                @elseif(!is_null($item->price_per_night))
-                                                                    <br>
-                                                                    <span style="color:#0f766e; font-weight:600;">Giá/đêm: {{ number_format((float) $item->price_per_night, 0, ',', '.') }} đ</span>
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </table>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                </table>
-
-                                {{-- Gợi ý thời hạn — không hiển thị URL --}}
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f0f7ff; border-radius:12px; border:1px solid #bfdbfe;">
-                                    <tr>
-                                        <td style="padding:16px 18px; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:1.55; color:#1e40af;">
-                                            Phiên thanh toán (~<strong>{{ $vnpayTxnMinutes }} phút</strong>) tính từ khi bạn bấm nút bên dưới — không phải từ lúc email được gửi. Link mở trang thanh toán có hiệu lực khoảng <strong>{{ $payLinkDays }} ngày</strong>; mỗi lần bấm sẽ tạo phiên VNPay mới.
-                                        </td>
-                                    </tr>
-                                </table>
-
-                                {{-- Tổng tiền mini --}}
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:20px;">
-                                    <tr>
-                                        <td style="padding:14px 16px; background:#fafbfc; border-radius:10px; border:1px solid #e2e8f0; font-family:Arial,Helvetica,sans-serif;">
-                                            <span style="font-size:13px; color:#64748b;">Số tiền thanh toán</span><br>
-                                            <span style="font-size:22px; font-weight:700; color:#1a2b4a; letter-spacing:-0.5px;">{{ number_format($booking->total_price, 0, ',', '.') }}&nbsp;₫</span>
-                                        </td>
-                                    </tr>
-                                </table>
-
-                                {{-- CTA: nút chính + “ảnh” banner (table cell giả ảnh, link bọc cả khối) --}}
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:26px;">
-                                    <tr>
-                                        <td align="center" style="padding:0 0 8px;">
-                                            <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; text-decoration:none;">
-                                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(220,38,38,0.35);">
-                                                    <tr>
-                                                        <td align="center" bgcolor="#dc2626" style="background:linear-gradient(180deg,#ef4444 0%,#dc2626 55%,#b91c1c 100%); background-color:#dc2626; padding:18px 40px; font-family:Arial,Helvetica,sans-serif;">
-                                                            <span style="display:block; font-size:12px; color:rgba(255,255,255,0.92); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:6px;">Thanh toán an toàn</span>
-                                                            <span style="display:block; font-size:18px; font-weight:700; color:#ffffff;">💳 Thanh toán qua VNPay</span>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td align="center" style="padding:8px 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#94a3b8;">
-                                            Bấm vào khối đỏ phía trên để mở trang thanh toán.
-                                        </td>
-                                    </tr>
-                                </table>
-
+                                Hoàn tất thanh toán đơn <span style="color:#0369a1;">#{{ $booking->id }}</span>
                             @else
-                                <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:#475569;">
-                                    Vui lòng chuyển khoản theo thông tin sau cho đơn <strong style="color:#1a2b4a;">#{{ $booking->id }}</strong>:
-                                </p>
-
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
-                                    <tr style="background:#f8fafc;">
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; width:42%; border-bottom:1px solid #e2e8f0;">Ngân hàng</td>
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:14px; color:#1e293b; border-bottom:1px solid #e2e8f0;">{{ $hotelInfo->bank_name ?? '—' }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; border-bottom:1px solid #e2e8f0;">Số tài khoản</td>
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:15px; font-weight:600; color:#1a2b4a; letter-spacing:0.5px; border-bottom:1px solid #e2e8f0;">{{ $hotelInfo->bank_account ?? '—' }}</td>
-                                    </tr>
-                                    <tr style="background:#f8fafc;">
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; border-bottom:1px solid #e2e8f0;">Chủ tài khoản</td>
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:14px; color:#1e293b; border-bottom:1px solid #e2e8f0;">{{ $hotelInfo->bank_account_name ?? '—' }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; border-bottom:1px solid #e2e8f0;">Số tiền</td>
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:17px; font-weight:700; color:#059669; border-bottom:1px solid #e2e8f0;">{{ number_format($booking->total_price, 0, ',', '.') }} đ</td>
-                                    </tr>
-                                    <tr style="background:#fffbeb;">
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#92400e;">Nội dung CK</td>
-                                        <td style="padding:12px 16px; font-family:Arial,Helvetica,sans-serif; font-size:15px; font-weight:700; color:#b45309;">BOOKING_{{ $booking->id }}</td>
-                                    </tr>
-                                </table>
-
-                                @if(!empty($qrCodeUrl))
-                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:22px;">
-                                        <tr>
-                                            <td align="center" style="padding:20px; background:#ffffff; border:1px dashed #cbd5e1; border-radius:12px;">
-                                                <p style="margin:0 0 12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b;">Quét mã để chuyển khoản nhanh</p>
-                                                <img src="{{ $qrCodeUrl }}" alt="Mã QR chuyển khoản" width="240" height="auto" style="display:block; margin:0 auto; max-width:240px; height:auto; border-radius:8px;">
-                                            </td>
-                                        </tr>
-                                    </table>
-                                @endif
+                                Hướng dẫn chuyển khoản · Đơn <span style="color:#0369a1;">#{{ $booking->id }}</span>
                             @endif
+                        </p>
+                        <p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:#475569;">
+                            Kính gửi <strong style="color:#0f172a;">{{ $booking->user->full_name ?? 'Quý khách' }}</strong>, cảm ơn Quý khách đã lựa chọn {{ $hotelName }}. Dưới đây là thông tin đặt phòng và cách thanh toán.
+                        </p>
 
-                            @if(!empty($signedBookingViewUrl))
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:22px;">
-                                    <tr>
-                                        <td align="center" style="padding:0;">
-                                            <a href="{{ $signedBookingViewUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block; background:#1a2b4a; color:#ffffff; font-family:Arial,Helvetica,sans-serif; font-size:14px; font-weight:600; text-decoration:none; padding:12px 24px; border-radius:10px;">Xem chi tiết đơn đặt phòng</a>
+                        {{-- Số tiền nổi bật --}}
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:16px;border:1px solid #bae6fd;margin-bottom:24px;">
+                            <tr>
+                                <td style="padding:20px 22px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                                    <p style="margin:0 0 4px;font-size:12px;color:#0369a1;text-transform:uppercase;letter-spacing:0.08em;">Số tiền cần thanh toán</p>
+                                    <p style="margin:0;font-size:28px;font-weight:800;color:#0c4a6e;letter-spacing:-0.03em;">{{ number_format($booking->total_price, 0, ',', '.') }}&nbsp;₫</p>
+                                    <p style="margin:8px 0 0;font-size:13px;color:#475569;">{{ $nights }} đêm · Nhận {{ $checkIn->format('d/m/Y') }} → Trả {{ $checkOut->format('d/m/Y') }}</p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        {{-- Chi tiết đặt --}}
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:24px;">
+                            <tr>
+                                <td colspan="2" style="padding:14px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.06em;">Chi tiết đặt phòng</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:12px 18px;font-size:14px;color:#64748b;width:42%;border-bottom:1px solid #f1f5f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Phòng</td>
+                                <td style="padding:12px 18px;font-size:14px;font-weight:600;color:#0f172a;border-bottom:1px solid #f1f5f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                                    @if($bookingRoomItems->isNotEmpty())
+                                        {{ $bookingRoomItems->count() }} phòng đã chọn
+                                    @elseif($booking->room)
+                                        {{ $booking->room->displayLabel() }}
+                                    @else
+                                        Đang cập nhật
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:12px 18px;font-size:14px;color:#64748b;border-bottom:1px solid #f1f5f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Khách</td>
+                                <td style="padding:12px 18px;font-size:14px;font-weight:600;color:#0f172a;border-bottom:1px solid #f1f5f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                                    {{ $adultsSum }} người lớn @if($childrenCount > 0)+ {{ $childrenCount }} trẻ em @endif
+                                </td>
+                            </tr>
+                            @if($bookingRoomItems->isNotEmpty())
+                                @foreach($bookingRoomItems as $index => $item)
+                                    @php
+                                        $detailRoom = $item->room ?? null;
+                                        $detailLine = $detailRoom
+                                            ? $detailRoom->displayLabel()
+                                            : (($item->roomType?->name ?? 'Phòng').' — số phòng do lễ tân bố trí');
+                                        $detailType = $detailRoom?->roomType?->name ?? $item->roomType?->name;
+                                        $detailAdults = (int) ($item->adults ?? 0);
+                                        $detailChildren = (int) ($item->children_0_5 ?? 0) + (int) ($item->children_6_11 ?? 0);
+                                    @endphp
+                                    <tr style="background:{{ $index % 2 === 0 ? '#ffffff' : '#fafbfc' }};">
+                                        <td colspan="2" style="padding:14px 18px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #f1f5f9;">
+                                            <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#0f172a;">
+                                            {{ $detailLine }}
+                                            @if($detailType)
+                                                <span style="font-weight:500;color:#64748b;"> · {{ $detailType }}</span>
+                                            @endif
+                                        </p>
+                                        <p style="margin:0;font-size:13px;color:#64748b;">
+                                            {{ max(1, $detailAdults) }} người lớn
+                                            @if($detailChildren > 0)
+                                                · {{ $detailChildren }} trẻ
+                                            @endif
+                                            @if(!is_null($item->subtotal))
+                                                <span style="color:#0f766e;font-weight:600;"> · {{ number_format((float) $item->subtotal, 0, ',', '.') }} ₫</span>
+                                            @endif
+                                        </p>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td align="center" style="padding:10px 8px 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#94a3b8; line-height:1.4;">
-                                            Không cần đăng nhập — link có hiệu lực giới hạn thời gian.
-                                        </td>
-                                    </tr>
-                                </table>
+                                @endforeach
                             @endif
+                        </table>
 
-                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                        @if(!empty($vnpayPayUrl))
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eff6ff;border-radius:14px;border:1px solid #bfdbfe;margin-bottom:24px;">
                                 <tr>
-                                    <td style="padding:12px 14px; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.6; color:#475569;">
-                                        Sau khi thanh toán thành công, bạn có thể đăng nhập để xem <strong>Lịch sử đặt phòng</strong> tại:
-                                        <a href="{{ route('account.bookings') }}" style="color:#1d4ed8; text-decoration:underline;">{{ route('account.bookings') }}</a>
+                                    <td style="padding:16px 18px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#1e40af;">
+                                        <strong>Thanh toán VNPay:</strong> phiên giao dịch (~<strong>{{ $vnpayTxnMinutes }} phút</strong>) bắt đầu khi Quý khách bấm nút bên dưới. Link mở trang thanh toán còn hiệu lực khoảng <strong>{{ $payLinkDays }} ngày</strong>; mỗi lần bấm sẽ tạo phiên thanh toán mới.
                                     </td>
                                 </tr>
                             </table>
 
-                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px; padding-top:20px; border-top:1px solid #e2e8f0;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
                                 <tr>
-                                    <td style="font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#64748b; line-height:1.6;">
-                                        <strong style="color:#334155;">Tóm tắt:</strong>
-                                        Tổng thanh toán <strong style="color:#1a2b4a;">{{ number_format($booking->total_price, 0, ',', '.') }} đ</strong>
-                                        · {{ $nights }} đêm
+                                    <td align="center" style="padding:8px 0 20px;">
+                                        <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(180deg,#059669 0%,#047857 100%);color:#ffffff;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;padding:16px 36px;border-radius:12px;box-shadow:0 4px 14px rgba(5,150,105,0.35);">
+                                            Thanh toán ngay qua VNPay
+                                        </a>
                                     </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#94a3b8;padding-bottom:8px;">Nút mở trang thanh toán được bảo vệ — vui lòng không chia sẻ link.</td>
+                                </tr>
+                            </table>
+                        @else
+                            <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#475569;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Quý khách vui lòng chuyển khoản đúng <strong>nội dung</strong> bên dưới để đơn được xử lý tự động.</p>
+
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;">
+                                <tr style="background:#f8fafc;">
+                                    <td style="padding:14px 16px;font-size:13px;color:#64748b;width:40%;border-bottom:1px solid #e2e8f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Ngân hàng</td>
+                                    <td style="padding:14px 16px;font-size:14px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{{ $bankLabel }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:14px 16px;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Số tài khoản</td>
+                                    <td style="padding:14px 16px;font-size:17px;font-weight:700;color:#0f172a;letter-spacing:0.04em;border-bottom:1px solid #e2e8f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{{ $hotelInfo?->bank_account ?? '—' }}</td>
+                                </tr>
+                                <tr style="background:#f8fafc;">
+                                    <td style="padding:14px 16px;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Chủ TK</td>
+                                    <td style="padding:14px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">{{ $hotelInfo?->bank_account_name ?? '—' }}</td>
+                                </tr>
+                                <tr style="background:#fffbeb;">
+                                    <td style="padding:14px 16px;font-size:13px;color:#92400e;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Nội dung CK</td>
+                                    <td style="padding:14px 16px;font-size:16px;font-weight:800;color:#b45309;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">BOOKING_{{ $booking->id }}</td>
                                 </tr>
                             </table>
 
-                            <p style="margin:20px 0 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:1.6; color:#94a3b8;">
-                                Trân trọng,<br>
-                                <span style="color:#64748b;">Light Hotel Đà Nẵng</span>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-                <p style="margin:16px 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#94a3b8; text-align:center; max-width:560px;">
-                    Email tự động — vui lòng không trả lời trực tiếp.
-                </p>
-            </td>
-        </tr>
-    </table>
+                            @if(!empty($qrCodeUrl))
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+                                    <tr>
+                                        <td align="center" style="padding:20px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:16px;">
+                                            <p style="margin:0 0 12px;font-size:13px;color:#64748b;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Quét mã VietQR để chuyển khoản nhanh</p>
+                                            <img src="{{ $qrCodeUrl }}" alt="QR chuyển khoản" width="220" style="display:block;margin:0 auto;max-width:220px;height:auto;border-radius:12px;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+                                        </td>
+                                    </tr>
+                                </table>
+                            @endif
+                        @endif
+
+                        @if(!empty($signedBookingViewUrl))
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+                                <tr>
+                                    <td align="center" style="padding:12px 0;">
+                                        <a href="{{ $signedBookingViewUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;border:2px solid #0f172a;color:#0f172a;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:12px;">
+                                            Xem chi tiết đơn &amp; lưu link
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;color:#94a3b8;line-height:1.45;padding:0 12px;">Link xem đơn có thời hạn, không cần đăng nhập.</td>
+                                </tr>
+                            </table>
+                        @endif
+
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;border-radius:12px;margin-bottom:24px;">
+                            <tr>
+                                <td style="padding:16px 18px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#475569;">
+                                    Sau khi thanh toán, Quý khách có thể đăng nhập và xem <strong>Lịch sử đặt phòng</strong>:
+                                    <a href="{{ route('account.bookings') }}" style="color:#0369a1;font-weight:600;">{{ route('account.bookings') }}</a>
+                                </td>
+                            </tr>
+                        </table>
+
+                        {{-- Liên hệ --}}
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e2e8f0;padding-top:20px;">
+                            <tr>
+                                <td style="padding:8px 0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#64748b;line-height:1.7;">
+                                    @if(!empty($hotelInfo?->phone))<strong>Hotline:</strong> {{ $hotelInfo->phone }}<br>@endif
+                                    @if(!empty($hotelInfo?->email))<strong>Email:</strong> <a href="mailto:{{ $hotelInfo->email }}" style="color:#0369a1;">{{ $hotelInfo->email }}</a><br>@endif
+                                    Trân trọng,<br>
+                                    <span style="color:#0f172a;font-weight:600;">{{ $hotelName }}</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            <p style="margin:20px auto 0;max-width:600px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;color:#94a3b8;text-align:center;line-height:1.5;">
+                Email tự động từ hệ thống đặt phòng. Nếu Quý khách không thực hiện giao dịch, vui lòng bỏ qua hoặc liên hệ khách sạn.<br>
+                © {{ date('Y') }} {{ $hotelName }}
+            </p>
+        </td>
+    </tr>
+</table>
 </body>
 </html>

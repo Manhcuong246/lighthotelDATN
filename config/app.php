@@ -123,4 +123,11 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Ảnh banner email hướng dẫn thanh toán (URL tuyệt đối). Để trống = dùng ảnh mặc định trong Mailable.
+    |--------------------------------------------------------------------------
+    */
+    'payment_mail_hero_url' => env('PAYMENT_MAIL_HERO_URL'),
+
 ];

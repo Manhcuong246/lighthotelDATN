@@ -7,6 +7,7 @@ use App\Models\HotelInfo;
 use App\Models\Service;
 use App\Models\RoomBookedDate;
 use App\Models\RoomType;
+use App\Models\BookingRoom;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -180,13 +181,20 @@ class RoomController extends Controller
 
         $availableRooms = $availableRoomsQuery->get();
 
-        // 4) Chỉ lấy loại phòng có đủ số phòng rảnh (roomsNeeded)
         $typeCounts = $availableRooms->groupBy('room_type_id')->map->count();
-        $availableRoomTypeIds = $typeCounts
-            ->filter(fn ($count) => $count >= $roomsNeeded)
-            ->keys()
-            ->filter()
-            ->values();
+        $availableRoomTypeIds = collect();
+        foreach ($typeCounts as $typeId => $physical) {
+            if ($typeId === null || $typeId === '') {
+                continue;
+            }
+            $tid = (int) $typeId;
+            $unassigned = BookingRoom::unassignedCountForRoomTypeBetween($tid, $checkIn, $checkOut);
+            $bookable = max(0, (int) $physical - $unassigned);
+            if ($bookable >= $roomsNeeded) {
+                $availableRoomTypeIds->push($tid);
+            }
+        }
+        $availableRoomTypeIds = $availableRoomTypeIds->filter()->values();
 
         // 5) Query RoomType theo danh sách rảnh + filter khác (giá/sắp xếp)
         $roomTypesQuery = RoomType::query()->whereIn('id', $availableRoomTypeIds);
@@ -222,8 +230,12 @@ class RoomController extends Controller
         $roomTypes = $roomTypesQuery->with('services')->paginate(10)->withQueryString();
 
         // 7) Với mỗi loại phòng, gắn danh sách phòng vật lý đang rảnh của nó vào
-        $roomTypes->each(function($type) use ($availableRooms) {
-            $type->setRelation('available_rooms', $availableRooms->where('room_type_id', $type->id)->values());
+        $roomTypes->each(function ($type) use ($availableRooms, $checkIn, $checkOut) {
+            $rows = $availableRooms->where('room_type_id', $type->id)->values();
+            $type->setRelation('available_rooms', $rows);
+            $physical = $rows->count();
+            $unassigned = BookingRoom::unassignedCountForRoomTypeBetween((int) $type->id, $checkIn, $checkOut);
+            $type->setAttribute('bookable_slot_count', max(0, $physical - $unassigned));
         });
 
         $hotel = HotelInfo::first();

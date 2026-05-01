@@ -106,7 +106,7 @@ class BookingController extends Controller
     private function sendCustomerVnPayInstructionMail(Booking $booking): void
     {
         try {
-            $booking->loadMissing(['user', 'room.roomType', 'rooms.roomType', 'bookingRooms.room.roomType']);
+            $booking->loadMissing(['user', 'room.roomType', 'rooms.roomType', 'bookingRooms.room.roomType', 'bookingRooms.roomType']);
             $nights = max(1, (int) $booking->check_in->diffInDays($booking->check_out));
             $payEntryDays = max(1, (int) config('vnpay.pay_entry_signed_ttl_days', 14));
             $vnpayPayUrl = URL::signedRoute(

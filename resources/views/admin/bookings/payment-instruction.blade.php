@@ -38,7 +38,34 @@
                     <i class="bi bi-credit-card-2-front fs-4 me-3"></i>
                     <div>
                         <h6 class="alert-heading mb-1">VNPay — chờ khách thanh toán online</h6>
-                        <p class="mb-0 small">Đơn <strong>chờ xác nhận</strong> đến khi khách thanh toán xong trên VNPay. Phiên thanh toán trên cổng (~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút) được tính từ lúc khách <strong>bấm link trong email</strong>, không phải từ lúc gửi mail.</p>
+                        <p class="mb-0 small">Đơn <strong>chờ xác nhận</strong> đến khi khách thanh toán xong trên VNPay. Phiên thanh toán trên cổng (~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút) được tính từ lúc khách <strong>mở link thanh toán</strong> (quét QR hoặc bấm nút), không phải từ lúc gửi mail.</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- QR mở trang VNPay — khách quét bằng điện thoại --}}
+            <div class="card shadow-lg border-0 mb-4 border-info" style="border-width: 2px !important;">
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-qr-code-scan me-2"></i>Quét mã thanh toán VNPay</h5>
+                </div>
+                <div class="card-body p-4 text-center">
+                    <p class="text-muted mb-3">Khách mở camera và quét mã — điện thoại sẽ mở trang thanh toán an toàn (link có chữ ký). Hoặc sao chép link gửi Zalo cho khách.</p>
+                    <div class="d-inline-block p-3 bg-white border rounded-3 shadow-sm">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&amp;format=png&amp;margin=8&amp;data={{ rawurlencode($vnpayPayUrl) }}"
+                             alt="QR thanh toán VNPay"
+                             width="280"
+                             height="280"
+                             class="img-fluid d-block mx-auto"
+                             style="max-width: 280px;">
+                    </div>
+                    <p class="small text-muted mt-3 mb-2">Số tiền: <strong class="text-danger">{{ number_format($booking->total_price) }}đ</strong></p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2 mt-2">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="copyToClipboard(@json($vnpayPayUrl))">
+                            <i class="bi bi-link-45deg me-1"></i>Sao chép link thanh toán
+                        </button>
+                        <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Mở trang thanh toán
+                        </a>
                     </div>
                 </div>
             </div>
@@ -64,7 +91,7 @@
                             <table class="table table-borderless">
                                 <tr>
                                     <td width="120" class="text-muted">Ngân hàng:</td>
-                                    <td class="fw-bold">{{ $hotelInfo->bank_name ?? 'Vietcombank' }}</td>
+                                    <td class="fw-bold">{{ $hotelInfo->bank_name ?? ($hotelInfo->bank_id ? strtoupper($hotelInfo->bank_id) : '—') }}</td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Số tài khoản:</td>
@@ -102,13 +129,15 @@
 
                     <hr>
 
-                    <!-- QR Code (if available) -->
+                    @php
+                        $vietQrBankBin = $hotelInfo->bank_id ?? '970436';
+                    @endphp
                     @if($hotelInfo && $hotelInfo->bank_account)
                     <div class="text-center">
-                        <p class="text-muted mb-2">Quét mã QR để chuyển khoản nhanh:</p>
+                        <p class="text-muted mb-2">Quét mã VietQR để chuyển khoản nhanh:</p>
                         <div class="d-inline-block p-3 bg-white border rounded">
-                            <img src="https://api.vietqr.io/image/{{ $hotelInfo->bank_name ?? '970436' }}-{{ $hotelInfo->bank_account ?? '1234567890' }}-compact2.png?amount={{ $booking->total_price }}&addInfo=BOOKING_{{ $booking->id }}&accountName={{ urlencode($hotelInfo->bank_account_name ?? 'KHÁCH SẠN LIGHTHOTEL') }}"
-                                 alt="QR Code" style="max-width: 250px;" class="img-fluid">
+                            <img src="https://img.vietqr.io/image/{{ $vietQrBankBin }}-{{ $hotelInfo->bank_account }}-compact2.png?amount={{ (int) $booking->total_price }}&addInfo=BOOKING_{{ $booking->id }}&accountName={{ rawurlencode($hotelInfo->bank_account_name ?? '') }}"
+                                 alt="Mã QR chuyển khoản" style="max-width: 280px;" class="img-fluid">
                         </div>
                     </div>
                     @endif

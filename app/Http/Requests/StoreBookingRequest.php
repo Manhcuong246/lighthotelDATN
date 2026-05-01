@@ -48,20 +48,8 @@ class StoreBookingRequest extends FormRequest
         }
 
         return [
-            'room_ids'       => [
-                'required',
-                'array',
-                'min:1',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (! is_array($value)) {
-                        return;
-                    }
-                    if (count($value) !== count(array_unique($value))) {
-                        $fail('Trong một đơn không được chọn trùng cùng một phòng.');
-                    }
-                },
-            ],
-            'room_ids.*'     => 'required|integer|exists:rooms,id',
+            'room_type_ids'  => ['required', 'array', 'min:1'],
+            'room_type_ids.*' => 'required|integer|exists:room_types,id',
             'full_name'      => 'required|string|max:150|min:2',
             'email'          => $emailRules,
             'phone'          => 'required|string|min:10|max:20|regex:/^[0-9\+\-\s]+$/',
@@ -91,8 +79,8 @@ class StoreBookingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'room_ids.required'      => 'Vui lòng chọn ít nhất 1 phòng.',
-            'room_ids.*.exists'      => 'Phòng không tồn tại.',
+            'room_type_ids.required' => 'Vui lòng chọn ít nhất 1 loại phòng.',
+            'room_type_ids.*.exists' => 'Loại phòng không tồn tại.',
             'full_name.required'     => 'Vui lòng nhập họ tên.',
             'full_name.min'          => 'Họ tên phải có ít nhất 2 ký tự.',
             'email.required'         => 'Vui lòng nhập email.',

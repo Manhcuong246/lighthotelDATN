@@ -53,7 +53,8 @@ class AccountController extends Controller
         $booking->load([
             'room.roomType',
             'rooms.roomType',
-            'bookingRooms',
+            'bookingRooms.room.roomType',
+            'bookingRooms.roomType',
             'payment',
             'bookingServices.service',
             'surcharges.service',

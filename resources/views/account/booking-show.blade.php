@@ -34,6 +34,70 @@
             <div class="col-md-6">
                 <h6 class="text-muted text-uppercase small fw-semibold mb-2">Phòng đã đặt</h6>
                 <ul class="list-unstyled mb-0">
+                    @if($booking->bookingRooms->isNotEmpty())
+                        @foreach($booking->bookingRooms as $br)
+                            @php $room = $br->room; @endphp
+                            <li class="mb-3">
+                                <p class="mb-1 fw-semibold">
+                                    <i class="bi bi-door-open text-primary me-2"></i>
+                                    @if($room)
+                                        <a href="{{ route('rooms.show', $room) }}" class="link-dark text-decoration-underline">{{ $room->name }}</a>
+                                    @else
+                                        <span class="text-dark">{{ $br->guestFacingLine() }}</span>
+                                    @endif
+                                </p>
+                                <div class="ms-4">
+                                    <small class="text-muted d-block">
+                                        @if($br->roomType)
+                                            <a href="{{ route('home', ['room_type' => $br->roomType->id]) }}" class="text-decoration-none">{{ $br->roomType->name }}</a>
+                                        @else
+                                            —
+                                        @endif
+                                        — {{ number_format($br->price_per_night, 0, ',', '.') }} ₫/đêm
+                                    </small>
+                                    <div class="small mt-1">
+                                        @if($room)
+                                            <a href="{{ route('rooms.show', $room) }}" class="text-primary text-decoration-none">Chi tiết phòng</a>
+                                            @if($br->roomType)
+                                                <span class="text-muted">·</span>
+                                            @endif
+                                        @endif
+                                        @if($br->roomType)
+                                            <a href="{{ route('home', ['room_type' => $br->roomType->id]) }}" class="text-primary text-decoration-none">Loại phòng</a>
+                                        @endif
+                                    </div>
+                                    @unless($room)
+                                        <small class="text-muted d-block mt-1">Số phòng cụ thể sẽ do lễ tân bố trí và thông báo khi nhận phòng.</small>
+                                    @endunless
+                                    <small class="text-info d-block mt-1">
+                                        <i class="bi bi-people me-1"></i>
+                                        {{ $br->adults }} Người lớn,
+                                        @if($br->children_6_11 > 0){{ $br->children_6_11 }} Trẻ 6–11t @endif
+                                        @if($br->children_0_5 > 0){{ $br->children_0_5 }} Trẻ 0–5t @endif
+                                        @if($br->children_6_11 + $br->children_0_5 === 0) 0 Trẻ em @endif
+                                    </small>
+                                    @auth
+                                        @if($room)
+                                            @php
+                                                $uidBr = (int) auth()->id();
+                                                $ridBr = (int) $room->id;
+                                                $canSubmitReviewRoom = \App\Models\Booking::userCanSubmitRoomReview($uidBr, $ridBr);
+                                                $reviewedRoom = \App\Models\Review::userHasReviewedRoom($uidBr, $ridBr);
+                                            @endphp
+                                            @if($canSubmitReviewRoom)
+                                                <a href="{{ route('rooms.show', $room) }}#write-review" class="btn btn-sm btn-success mt-2 rounded-pill">
+                                                    <i class="bi bi-star me-1"></i>
+                                                    Viết đánh giá (loại: {{ $room->roomType->name ?? $room->type ?? 'phòng này' }})
+                                                </a>
+                                            @elseif($reviewedRoom)
+                                                <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã đánh giá phòng này (mỗi tài khoản một lần / phòng).</span>
+                                            @endif
+                                        @endif
+                                    @endauth
+                                </div>
+                            </li>
+                        @endforeach
+                    @else
                     @forelse($booking->rooms as $room)
                     <li class="mb-3">
                         <p class="mb-1 fw-semibold">
@@ -134,6 +198,7 @@
                             <li class="text-muted">Không có thông tin phòng cho đơn này.</li>
                         @endif
                     @endforelse
+                    @endif
                 </ul>
             </div>
             <div class="col-md-6">

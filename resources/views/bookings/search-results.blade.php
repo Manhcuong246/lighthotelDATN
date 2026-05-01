@@ -36,7 +36,7 @@
                                         @foreach($availableRooms as $room)
                                             <tr>
                                                 <td>
-                                                    <input type="checkbox" name="room_ids[]" value="{{ $room->id }}"
+                                                    <input type="checkbox" name="room_type_ids[]" value="{{ $room->room_type_id }}"
                                                            class="form-check-input room-checkbox" data-room-id="{{ $room->id }}">
                                                 </td>
                                                 <td>{{ $room->name }}</td>

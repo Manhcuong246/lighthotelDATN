@@ -125,7 +125,12 @@
     <div class="room-booking-body">
         <form method="POST" action="{{ route('bookings.store') }}" id="bookingForm">
             @csrf
-            <input type="hidden" name="room_ids[]" value="{{ $room->id }}">
+            @if($room->room_type_id)
+                <input type="hidden" name="room_type_ids[]" value="{{ $room->room_type_id }}">
+                <input type="hidden" name="adults[0]" value="1">
+                <input type="hidden" name="children_0_5[0]" value="0">
+                <input type="hidden" name="children_6_11[0]" value="0">
+            @endif
             <input type="hidden" name="payment_method" value="vnpay">
 
             @php
@@ -151,11 +156,25 @@
                            {{ $isLoggedIn ? 'readonly' : '' }} required>
                 </div>
                 <div class="mb-0">
-                    <label class="form-label">Số điện thoại</label>
+                    <label class="form-label">Số điện thoại *</label>
                     <input type="text" name="phone" class="form-control"
                            value="{{ old('phone', $isLoggedIn ? ($user->phone ?? '') : '') }}"
                            placeholder="Số điện thoại"
+                           minlength="10"
+                           required
                            {{ $isLoggedIn ? 'readonly' : '' }}>
+                </div>
+            </div>
+
+            <div class="room-booking-group">
+                <div class="room-booking-group-title">Người đại diện &amp; CCCD</div>
+                <div class="mb-3">
+                    <label class="form-label">Họ tên người đại diện (theo CCCD) *</label>
+                    <input type="text" name="name" class="form-control" value="{{ old('name') }}" required minlength="2" maxlength="150" placeholder="Giống họ tên liên hệ hoặc người nhận phòng">
+                </div>
+                <div class="mb-0">
+                    <label class="form-label">CCCD (12 số) *</label>
+                    <input type="text" name="cccd" class="form-control" value="{{ old('cccd') }}" required maxlength="12" pattern="[0-9]{12}" placeholder="12 chữ số">
                 </div>
             </div>
 
@@ -197,6 +216,9 @@
             <button type="submit" class="btn btn-primary btn-book" id="submitBtn" disabled>
                 Xác nhận đặt phòng
             </button>
+            @unless($room->room_type_id)
+                <p class="small text-danger mt-2 mb-0">Phòng này chưa gắn loại phòng — vui lòng đặt qua trang tìm phòng hoặc liên hệ khách sạn.</p>
+            @endunless
         </form>
     </div>
 </div>
@@ -211,6 +233,7 @@
         const submitBtn    = document.getElementById('submitBtn');
         const basePrice    = Number('{{ $room->catalogueBasePrice() }}');
         const bookedDates  = @json($bookedDates ?? []);
+        const hasRoomType  = @json((bool) $room->room_type_id);
 
         const fpCheckIn = flatpickr(checkInEl, {
             minDate: 'today',
@@ -266,6 +289,10 @@
                 const diffTime = Math.abs(new Date(co) - new Date(ci));
                 const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 if (nights > 0) {
+                    if (!hasRoomType) {
+                        submitBtn.disabled = true;
+                        return;
+                    }
                     const total = basePrice * nights;
                     nightsCount.textContent = nights;
                     totalPriceEl.textContent = new Intl.NumberFormat('vi-VN').format(total) + ' ₫';

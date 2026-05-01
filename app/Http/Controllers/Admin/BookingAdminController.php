@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
+use Illuminate\View\ViewException;
 use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
@@ -1284,7 +1285,7 @@ class BookingAdminController extends Controller
                 $booking->load('user');
                 $hotelInfo = HotelInfo::first();
                 $payUrl = $this->signedVnPayEntryUrl($booking);
-                $mailOk = $this->sendPaymentInstructionMail(
+                $mailResult = $this->sendPaymentInstructionMail(
                     $booking,
                     $hotelInfo,
                     count($dates),
@@ -1295,13 +1296,13 @@ class BookingAdminController extends Controller
 
                 $redirect = redirect()->route('admin.bookings.payment-instruction', $booking)
                     ->with('success', 'Đã tạo đơn.');
-                if ($mailOk) {
+                if ($mailResult['ok']) {
                     return $redirect->with('info', 'Đã gửi email chứa link thanh toán VNPay tới khách.');
                 }
 
                 return $redirect->with(
                     'warning',
-                    $this->paymentInstructionMailFailureMessage().' — link VNPay vẫn có trên trang này để sao chép cho khách.'
+                    $this->paymentInstructionMailFailureMessage($mailResult['error']).' — link VNPay vẫn có trên trang này để sao chép cho khách.'
                 );
             }
 
@@ -1325,6 +1326,9 @@ class BookingAdminController extends Controller
         );
     }
 
+    /**
+     * @return array{ok: bool, error: ?\Throwable}
+     */
     protected function sendPaymentInstructionMail(
         Booking $booking,
         ?HotelInfo $hotelInfo,
@@ -1332,7 +1336,7 @@ class BookingAdminController extends Controller
         ?string $qrCodeUrl,
         ?string $vnpayPayUrl,
         string $toEmail
-    ): bool {
+    ): array {
         try {
             Mail::to($toEmail)->send(new PaymentInstructionMail(
                 $booking,
@@ -1344,11 +1348,15 @@ class BookingAdminController extends Controller
         } catch (\Throwable $e) {
             Log::error('Payment instruction email failed: '.$e->getMessage(), ['exception' => $e]);
 
-            return false;
+            return ['ok' => false, 'error' => $e];
         }
 
         // log / array: Mail "thành công" nhưng không có SMTP — khách không nhận được hộp thư thật.
-        return ! in_array(config('mail.default'), ['log', 'array'], true);
+        if (in_array(config('mail.default'), ['log', 'array'], true)) {
+            return ['ok' => false, 'error' => null];
+        }
+
+        return ['ok' => true, 'error' => null];
     }
 
     /** Gửi email thanh toán VNPay cho khách khi admin tạo đơn. */
@@ -1368,7 +1376,7 @@ class BookingAdminController extends Controller
             $nights = $checkIn->diffInDays($checkOut);
 
             $hotelInfo = HotelInfo::first();
-            $emailSent = $this->sendPaymentInstructionMail(
+            $mailResult = $this->sendPaymentInstructionMail(
                 $booking,
                 $hotelInfo,
                 $nights,
@@ -1376,6 +1384,7 @@ class BookingAdminController extends Controller
                 $vnpayPayUrl,
                 $booking->user->email
             );
+            $emailSent = $mailResult['ok'];
 
             if ($emailSent) {
                 Log::info('VNPay payment email sent successfully', [
@@ -1397,8 +1406,13 @@ class BookingAdminController extends Controller
         }
     }
 
-    protected function paymentInstructionMailFailureMessage(): string
+    protected function paymentInstructionMailFailureMessage(?\Throwable $error = null): string
     {
+        $prev = $error?->getPrevious();
+        if ($error instanceof ViewException || $prev instanceof \ParseError) {
+            return 'Lỗi hiển thị email (template Blade). Chi tiết trong storage/logs/laravel.log — kiểm tra resources/views/emails/payment-instruction.blade.php.';
+        }
+
         if (in_array(config('mail.default'), ['log', 'array'], true)) {
             return 'Chưa gửi email thật: MAIL_MAILER đang là '.config('mail.default').' (chỉ ghi log). Đặt MAIL_MAILER=smtp, smtp.gmail.com, App Password trong .env rồi chạy php artisan config:clear';
         }
@@ -2119,6 +2133,7 @@ class BookingAdminController extends Controller
 
             foreach ($availableRooms as $room) {
                 $booking->bookingRooms()->create([
+                    'room_type_id' => $roomTypeId,
                     'room_id' => $room->id,
                     'price_per_night' => $calculated['actualPricePerNight'],
                     'nights' => count($dates),

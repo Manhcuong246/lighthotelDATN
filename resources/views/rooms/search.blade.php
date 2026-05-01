@@ -646,9 +646,9 @@
                                                 data-standard-guests="{{ (int) ($type->standard_capacity ?? $type->capacity) }}"
                                                 data-adult-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::adultSurchargeRate($type) }}"
                                                 data-child-surcharge-rate="{{ \App\Support\RoomOccupancyPricing::childSurchargeRate($type) }}"
-                                                data-room-ids="{{ json_encode($type->available_rooms->pluck('id')->toArray()) }}">
+                                                data-bookable-slots="{{ (int) ($type->bookable_slot_count ?? $type->available_rooms->count()) }}">
                                             <option value="0">0 Phòng</option>
-                                            @for($i = 1; $i <= min($type->available_rooms->count(), 5); $i++)
+                                            @for($i = 1; $i <= min((int) ($type->bookable_slot_count ?? $type->available_rooms->count()), 5); $i++)
                                                 <option value="{{ $i }}">{{ $i }} Phòng</option>
                                             @endfor
                                         </select>
@@ -1033,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const basePrice = parseFloat(select.getAttribute('data-price'));
             const adultSurchargeRate = parseFloat(select.getAttribute('data-adult-surcharge-rate')) || null;
             const childSurchargeRate = parseFloat(select.getAttribute('data-child-surcharge-rate')) || null;
-            const roomIds = JSON.parse(select.getAttribute('data-room-ids'));
+            const bookableSlots = parseInt(select.getAttribute('data-bookable-slots') || '0', 10);
 
             const guestRow = document.getElementById(`guestRow${typeId}`);
             const guestContainer = document.getElementById(`guestSelectors${typeId}`);
@@ -1088,8 +1088,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const child611ArrNew = guestContainer.querySelectorAll('.child-611-count');
 
                 for (let i = 0; i < qty; i++) {
-                    const roomIdForSlot = roomIds[i];
-                    if (roomIdForSlot == null || roomIdForSlot === '') {
+                    if (i >= bookableSlots) {
                         continue;
                     }
 
@@ -1126,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
 
                     hiddenInputs += `
-                        <input type="hidden" name="room_ids[]" value="${roomIdForSlot}">
+                        <input type="hidden" name="room_type_ids[]" value="${typeId}">
                         <input type="hidden" name="adults[]" value="${adults}">
                         <input type="hidden" name="children_0_5[]" value="${c05}">
                         <input type="hidden" name="children_6_11[]" value="${c611}">

@@ -27,6 +27,7 @@ class PaymentInstructionMail extends Mailable
             'room.roomType',
             'rooms.roomType',
             'bookingRooms.room.roomType',
+            'bookingRooms.roomType',
         ]);
     }
 
@@ -41,6 +42,11 @@ class PaymentInstructionMail extends Mailable
 
     public function content(): Content
     {
+        $logoPublicName = 'Thiết kế chưa có tên.png';
+        $logoUrl = is_file(public_path($logoPublicName))
+            ? asset($logoPublicName)
+            : null;
+
         return new Content(
             view: 'emails.payment-instruction',
             with: [
@@ -52,6 +58,10 @@ class PaymentInstructionMail extends Mailable
                 'signedBookingViewUrl' => $this->booking->signedPublicShowUrl(),
                 'vnpayTxnMinutes' => (int) config('vnpay.transaction_expire_minutes', 15),
                 'payLinkDays' => (int) config('vnpay.pay_entry_signed_ttl_days', 14),
+                'logoUrl' => $logoUrl,
+                /** Ảnh banner email — URL tuyệt đối; có thể ghi đè bằng config app.payment_mail_hero_url */
+                'heroImageUrl' => (string) (config('app.payment_mail_hero_url')
+                    ?: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&auto=format&fit=crop&q=80'),
             ],
         );
     }
