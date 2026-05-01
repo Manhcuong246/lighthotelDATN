@@ -273,7 +273,17 @@ class NewBookingController extends Controller
      */
     public function show(Booking $booking)
     {
-        $booking->load(['guests', 'room.roomType', 'user', 'bookingServices.service', 'logs.user', 'invoice']);
+        $booking->load([
+            'guests',
+            'room.roomType',
+            'bookingRooms.room.roomType',
+            'user',
+            'bookingServices.service',
+            'surcharges',
+            'payments',
+            'logs.user',
+            'invoice',
+        ]);
         $services = \App\Models\Service::query()->orderBy('name')->get();
 
         return view('bookings.admin-show', compact('booking', 'services'));

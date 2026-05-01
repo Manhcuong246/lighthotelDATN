@@ -299,11 +299,67 @@
                         </div>
                     </div>
 
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="bi bi-exclamation-diamond me-2"></i>
+                                Phí phát sinh ngoại lệ
+                            </h5>
+
+                            @if($booking->surcharges && $booking->surcharges->isNotEmpty())
+                                <div class="table-responsive rounded-2 border border-danger bg-white mb-3">
+                                    <table class="table table-sm mb-0 align-middle">
+                                        <thead class="table-danger">
+                                            <tr>
+                                                <th class="ps-3">Nội dung</th>
+                                                <th class="text-end">Ngày giờ lập</th>
+                                                <th class="text-end pe-3">Số tiền</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($booking->surcharges as $surcharge)
+                                                <tr>
+                                                    <td class="ps-3">
+                                                        <div class="fw-semibold">{{ $surcharge->reason }}</div>
+                                                    </td>
+                                                    <td class="text-end text-muted">
+                                                        {{ optional($surcharge->created_at)->format('d/m/Y H:i') ?? '—' }}
+                                                    </td>
+                                                    <td class="text-end pe-3 fw-semibold text-danger">
+                                                        + {{ number_format((float) $surcharge->amount, 0, ',', '.') }} ₫
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="alert alert-secondary">
+                                    Chưa có phí phát sinh tự nhập cho đơn này.
+                                </div>
+                            @endif
+
+                            @if($booking->status !== 'cancelled' && ! $booking->actual_check_out)
+                                <form method="POST" action="{{ route('admin.bookings.storeSurcharge', $booking->id) }}" class="border rounded-3 p-3 bg-light">
+                                    @csrf
+                                    <p class="small text-muted mb-2">
+                                        Dùng cho trường hợp ngoại lệ (ví dụ: hỏng bàn ghế, vỡ thiết bị, bồi thường phát sinh...).
+                                    </p>
+                                    @include('admin.bookings.partials.surcharge-form-fields', ['suffix' => 'admin-show'])
+                                    <button type="submit" class="btn btn-danger btn-sm mt-3">
+                                        <i class="bi bi-save me-1"></i> Lưu phí phát sinh
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+
                     @php
                         $roomTotal = $booking->bookingRooms->sum('subtotal');
                         $serviceTotal = $booking->bookingServices->reduce(fn($carry, $bs) => $carry + ((float) $bs->price * (int) $bs->quantity), 0.0);
+                        $surchargeTotal = $booking->surcharges->sum(fn($s) => (float) $s->amount);
                         $discountAmount = $booking->discount_amount ?? 0;
-                        $invoiceSubtotal = max(0, $roomTotal + $serviceTotal - $discountAmount);
+                        $invoiceSubtotal = max(0, $roomTotal + $serviceTotal + $surchargeTotal - $discountAmount);
                         $depositAmount = $booking->payments->sum('amount');
                         $amountDue = max(0, $invoiceSubtotal - $depositAmount);
                     @endphp
@@ -359,6 +415,9 @@
 
                                         <dt class="col-7 text-muted">Dịch vụ</dt>
                                         <dd class="col-5 text-end">{{ number_format($serviceTotal, 0, ',', '.') }} ₫</dd>
+
+                                        <dt class="col-7 text-muted">Phí phát sinh</dt>
+                                        <dd class="col-5 text-end text-danger">+ {{ number_format($surchargeTotal, 0, ',', '.') }} ₫</dd>
 
                                         @if($discountAmount > 0)
                                             <dt class="col-7 text-muted">Giảm giá</dt>
