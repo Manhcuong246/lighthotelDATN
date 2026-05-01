@@ -886,9 +886,9 @@ function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, st
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
 
-    // 2 trẻ 0-5 đầu miễn phí (không tính vào slot), từ trẻ thứ 3 tính phụ phí
-    const c05Free = Math.min(c05, maxC05Free);     // 2 trẻ miễn phí
-    const c05Pay = Math.max(0, c05 - maxC05Free);  // Trẻ 0-5 thứ 3+ trả phí
+    // Tối đa 2 trẻ 0–5 / phòng (đồng bộ backend); không còn nhánh phụ phí cho trẻ 0–5 khi UI giới hạn 2
+    const c05Free = Math.min(c05, maxC05Free);
+    const c05Pay = Math.max(0, c05 - maxC05Free);
 
     // Tổng người tính slot = người lớn + trẻ 6-11 + trẻ 0-5 phải trả phí
     const billablePeople = adults + c611 + c05Pay;
@@ -1060,9 +1060,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                                    name="adults[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="1" min="1" max="6">
                                         </div>
                                         <div class="col-4">
-                                            <label style="font-size: 0.65rem; color: #718096;" title="Trẻ dưới 6 tuổi: miễn phí">Trẻ 0–5t</label>
-                                            <input type="number" class="form-control form-control-sm guest-count child-05-count"
-                                                   name="children_0_5[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="0" min="0" max="3">
+                                            <label style="font-size: 0.65rem; color: #718096;" title="Tối đa 2 em / phòng (miễn phụ thu)">Trẻ 0–5t</label>
+                                            <select class="form-select form-select-sm guest-count child-05-count"
+                                                   name="children_0_5[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}">
+                                                <option value="0">0</option>
+                                                <option value="1">1</option>
+                                                <option value="2">2</option>
+                                            </select>
                                         </div>
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;" title="50% giá phòng">Trẻ 6–11t</label>

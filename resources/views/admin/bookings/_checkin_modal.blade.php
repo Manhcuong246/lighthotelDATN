@@ -128,9 +128,16 @@
                                     @foreach($booking->bookingRooms as $bookingRoom)
                                         @php $room = $bookingRoom->room; @endphp
                                         @if($room)
-                                            <option value="{{ $bookingRoom->id }}">
-                                                {{ $room->roomType?->name ?? 'Phòng' }} {{ $room->room_number ?? $room->name }}
-                                            </option>
+                                            @php
+                                                $rn = trim((string) ($room->room_number ?? ''));
+                                                $rt = trim((string) ($room->roomType?->name ?? ''));
+                                                $roomOptLabel = $rn !== ''
+                                                    ? ($rt !== '' ? "Phòng {$rn} — {$rt}" : "Phòng {$rn}")
+                                                    : (trim((string) ($room->name ?? '')) !== ''
+                                                        ? (trim((string) ($room->name ?? '')) . ($rt !== '' ? " — {$rt}" : ''))
+                                                        : ($rt !== '' ? $rt : 'Phòng'));
+                                            @endphp
+                                            <option value="{{ $bookingRoom->id }}">{{ $roomOptLabel }}</option>
                                         @endif
                                     @endforeach
                                 </select>

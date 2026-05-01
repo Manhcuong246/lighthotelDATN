@@ -77,13 +77,13 @@
                                                 <tr style="background:#f1f5f9;">
                                                     <td style="padding:10px 8px; font-size:14px; color:#64748b;">📅 Nhận phòng:</td>
                                                     <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        {{ $checkIn->format('H:i') }} - {{ $checkIn->format('d/m/Y') }}
+                                                        {{ $checkIn->format('d/m/Y') }}
                                                     </td>
                                                 </tr>
                                                 <tr>
                                                     <td style="padding:10px 8px; font-size:14px; color:#64748b;">📅 Trả phòng:</td>
                                                     <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        {{ $checkOut->format('H:i') }} - {{ $checkOut->format('d/m/Y') }}
+                                                        {{ $checkOut->format('d/m/Y') }}
                                                     </td>
                                                 </tr>
                                                 <tr style="background:#f1f5f9;">

@@ -15,8 +15,8 @@ use App\Models\RoomType;
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  Tiêu chuẩn (Standard Capacity) = 3 (TẤT CẢ khách)            ║
  * ║  Tối đa     (Max Capacity)      = 6 (TẤT CẢ khách)            ║
- * ║  Tối đa trẻ 0–5 mỗi phòng      = 3                            ║
- * ║  ≤ 3: không phụ phí  │  > 3: phụ phí  │  > 6: từ chối          ║
+ * ║  Tối đa trẻ 0–5 mỗi phòng      = 2                            ║
+ * ║  Trẻ 0–5 miễn phụ phí; > 2 trẻ 0–5 từ chối                     ║
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  Trẻ 0–5 chiếm chỗ tiêu chuẩn trước (free), chỗ còn lại cho  ║
  * ║  NL + trẻ 6–11. Ai vượt chỗ thì tính phụ phí (% giá phòng).  ║

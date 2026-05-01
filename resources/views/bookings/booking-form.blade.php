@@ -93,9 +93,12 @@
                                                        value="{{ old("adults.{$index}", 1) }}" min="1" max="10">
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label small">Trẻ em (0-5 tuổi)</label>
-                                                <input type="number" name="children_0_5[{{ $index }}]" class="form-control form-control-sm"
-                                                       value="{{ old("children_0_5.{$index}", 0) }}" min="0" max="5">
+                                                <label class="form-label small">Trẻ em (0–5 tuổi, tối đa 2)</label>
+                                                <select name="children_0_5[{{ $index }}]" class="form-select form-select-sm">
+                                                    @foreach ([0, 1, 2] as $n)
+                                                        <option value="{{ $n }}" @selected((int) old("children_0_5.{$index}", 0) === $n)>{{ $n }}</option>
+                                                    @endforeach
+                                                </select>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label small">Trẻ em (6-11 tuổi)</label>

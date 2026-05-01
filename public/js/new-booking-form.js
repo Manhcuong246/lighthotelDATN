@@ -68,7 +68,7 @@ class NewBookingFormManager {
     updateGuestCountForRoom(roomIndex) {
         // Lấy số lượng người lớn từ form
         const adultsInput = document.querySelector(`input[name="adults[${roomIndex}]"]`);
-        const children05Input = document.querySelector(`input[name="children_0_5[${roomIndex}]"]`);
+        const children05Input = document.querySelector(`[name="children_0_5[${roomIndex}]"]`);
         const children611Input = document.querySelector(`input[name="children_6_11[${roomIndex}]"]`);
 
         if (adultsInput) {

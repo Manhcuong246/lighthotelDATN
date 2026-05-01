@@ -234,7 +234,7 @@ const __BP = @json(config('booking.pricing'));
 function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, stdCap, maxCap) {
     const _stdCap = Number(stdCap ?? __BP.standard_capacity) || 3;
     const _maxCap = Number(maxCap ?? __BP.max_capacity) || 6;
-    const maxC05 = Number(__BP.max_children_05) || 3;
+    const maxC05 = Number(__BP.max_children_05) || 2;
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
     const total = adults + c611 + c05;
@@ -493,7 +493,7 @@ function generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, chi
                 <div class="card-body p-2">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <h6 class="fw-bold mb-0 text-primary">Phòng ${roomIndex + 1}</h6>
-                        <span class="text-muted small">TC: 3 (tính cả trẻ 0–5); trẻ 0–5 miễn phụ thu · Tối đa 6 · Tối đa 3 trẻ 0–5</span>
+                        <span class="text-muted small">TC: 3 (tính cả trẻ 0–5); trẻ 0–5 miễn phụ thu · Tối đa 6 · Tối đa 2 trẻ 0–5</span>
                     </div>
                     <div class="row g-2">
                         <div class="col-md-4">
@@ -507,12 +507,15 @@ function generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, chi
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small mb-1" style="font-size: 0.75rem;">Trẻ 0–5 tuổi</label>
-                            <input type="number" class="form-control form-control-sm room-children-0-5"
+                            <select class="form-select form-select-sm room-children-0-5"
                                    id="children05_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
                                    data-room-index="${roomIndex}"
-                                   min="0" max="3" value="0"
                                    style="font-size: 0.85rem;" onchange="updateRoomGuestData('${roomTypeId}', ${roomIndex})">
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small mb-1" style="font-size: 0.75rem;" title="50% giá phòng/đêm mỗi em">Trẻ 6–11 tuổi</label>

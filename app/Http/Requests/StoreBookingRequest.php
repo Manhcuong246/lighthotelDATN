@@ -72,6 +72,7 @@ class StoreBookingRequest extends FormRequest
             'coupon_code'    => 'nullable|string|max:50',
             'adults'         => 'required|array',
             'children_0_5'   => 'required|array',
+            'children_0_5.*' => 'integer|min:0|max:2',
             'children_6_11'  => 'required|array',
             'name'           => 'required|string|max:150|min:2',
             'cccd'           => 'required|string|regex:/^[0-9]{12}$/',
