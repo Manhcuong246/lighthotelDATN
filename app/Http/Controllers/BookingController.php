@@ -12,7 +12,9 @@ use App\Models\RoomPrice;
 use App\Models\User;
 use App\Models\BookingLog;
 use App\Models\Service;
+use App\Models\HotelInfo;
 use App\Models\BookingService as BookingServiceModel;
+use App\Mail\PaymentInstructionMail;
 use App\Services\VnPayService;
 use App\Services\BookingService;
 use App\Http\Requests\StoreBookingRequest;
@@ -22,6 +24,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Carbon\CarbonPeriod;
 
 class BookingController extends Controller
@@ -91,6 +95,33 @@ class BookingController extends Controller
                 'vn',
                 $bankCode
             );
+
+            // Gửi mail chứa link vào cổng thanh toán VNPay + chi tiết phòng đã đặt.
+            try {
+                $booking->loadMissing(['user', 'room.roomType', 'rooms.roomType', 'bookingRooms.room.roomType']);
+                $nights = max(1, (int) $booking->check_in->diffInDays($booking->check_out));
+                $hotelInfo = HotelInfo::first();
+                $payEntryDays = max(1, (int) config('vnpay.pay_entry_signed_ttl_days', 14));
+                $vnpayPayUrl = URL::signedRoute(
+                    'payment.vnpay.pay',
+                    ['booking' => $booking->id],
+                    now()->addDays($payEntryDays)
+                );
+
+                Mail::to($booking->user->email)->send(new PaymentInstructionMail(
+                    $booking,
+                    $hotelInfo,
+                    $nights,
+                    null,
+                    $vnpayPayUrl
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send VNPay payment email for customer booking', [
+                    'booking_id' => $booking->id,
+                    'user_email' => $booking->user->email ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             return $vnPayService->redirectAwayNoCache($paymentUrl);
 

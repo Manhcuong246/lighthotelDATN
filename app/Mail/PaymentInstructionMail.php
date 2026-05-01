@@ -21,7 +21,14 @@ class PaymentInstructionMail extends Mailable
         public ?string $qrCodeUrl = null,
         /** Link có chữ ký: /payment/vnpay/pay/{booking} — khi khách bấm mới tạo phiên VNPay (15 phút). */
         public ?string $vnpayPayUrl = null,
-    ) {}
+    ) {
+        $this->booking->loadMissing([
+            'user',
+            'room.roomType',
+            'rooms.roomType',
+            'bookingRooms.room.roomType',
+        ]);
+    }
 
     public function envelope(): Envelope
     {

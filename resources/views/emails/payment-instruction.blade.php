@@ -44,20 +44,31 @@
                                             </p>
                                             
                                             @php
-                                                $room = $booking->rooms->first() ?? null;
-                                                $roomType = $room?->roomType;
                                                 $checkIn = \Carbon\Carbon::parse($booking->check_in);
                                                 $checkOut = \Carbon\Carbon::parse($booking->check_out);
+                                                $bookingRoomItems = $booking->bookingRooms;
+                                                if ($bookingRoomItems->isEmpty() && $booking->rooms->isNotEmpty()) {
+                                                    $bookingRoomItems = $booking->rooms->map(function ($room) {
+                                                        return (object) [
+                                                            'room' => $room,
+                                                            'adults' => $room->pivot->adults ?? null,
+                                                            'children_0_5' => $room->pivot->children_0_5 ?? 0,
+                                                            'children_6_11' => $room->pivot->children_6_11 ?? 0,
+                                                            'subtotal' => $room->pivot->subtotal ?? null,
+                                                            'price_per_night' => $room->pivot->price_per_night ?? null,
+                                                        ];
+                                                    });
+                                                }
                                             @endphp
                                             
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                                                 <tr>
                                                     <td style="padding:8px 0; font-size:14px; color:#64748b; width:40%;">🏨 Phòng:</td>
                                                     <td style="padding:8px 0; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        @if($roomType)
-                                                            {{ $roomType->name ?? 'Loại phòng' }}
+                                                        @if($bookingRoomItems->isNotEmpty())
+                                                            {{ $bookingRoomItems->count() }} phòng
                                                         @elseif($booking->room)
-                                                            Phòng {{ $booking->room->room_number ?? 'N/A' }}
+                                                            Phòng {{ $booking->room->name ?? $booking->room->room_number ?? 'N/A' }}
                                                         @else
                                                             Đang cập nhật
                                                         @endif
@@ -84,13 +95,48 @@
                                                 <tr>
                                                     <td style="padding:10px 8px; font-size:14px; color:#64748b;">👥 Số khách:</td>
                                                     <td style="padding:10px 8px; font-size:14px; font-weight:600; color:#1e293b;">
-                                                        {{ $booking->adults ?? 1 }} người lớn
-                                                        @if($booking->children > 0)
-                                                            + {{ $booking->children }} trẻ em
+                                                        {{ $bookingRoomItems->sum('adults') ?: ($booking->adults ?? 1) }} người lớn
+                                                        @php
+                                                            $childrenCount = (int) $bookingRoomItems->sum('children_0_5') + (int) $bookingRoomItems->sum('children_6_11');
+                                                        @endphp
+                                                        @if($childrenCount > 0)
+                                                            + {{ $childrenCount }} trẻ em
                                                         @endif
                                                     </td>
                                                 </tr>
                                             </table>
+
+                                            @if($bookingRoomItems->isNotEmpty())
+                                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:14px; border:1px solid #dbeafe; border-radius:10px; overflow:hidden;">
+                                                    <tr style="background:#eff6ff;">
+                                                        <td style="padding:9px 10px; font-size:12px; color:#1e3a8a; font-weight:700;">Chi tiết từng phòng</td>
+                                                    </tr>
+                                                    @foreach($bookingRoomItems as $index => $item)
+                                                        @php
+                                                            $detailRoom = $item->room ?? null;
+                                                            $detailRoomName = $detailRoom?->name ?? ('Phòng #'.($detailRoom?->id ?? 'N/A'));
+                                                            $detailRoomType = $detailRoom?->roomType?->name;
+                                                            $detailAdults = (int) ($item->adults ?? 0);
+                                                            $detailChildren = (int) ($item->children_0_5 ?? 0) + (int) ($item->children_6_11 ?? 0);
+                                                        @endphp
+                                                        <tr style="{{ $index % 2 === 0 ? 'background:#ffffff;' : 'background:#f8fafc;' }}">
+                                                            <td style="padding:10px; font-size:13px; color:#1e293b;">
+                                                                <strong>{{ $detailRoomName }}</strong>
+                                                                @if($detailRoomType) · {{ $detailRoomType }} @endif
+                                                                <br>
+                                                                <span style="color:#64748b;">{{ max(1, $detailAdults) }} người lớn{{ $detailChildren > 0 ? ' + '.$detailChildren.' trẻ em' : '' }}</span>
+                                                                @if(!is_null($item->subtotal))
+                                                                    <br>
+                                                                    <span style="color:#0f766e; font-weight:600;">Tạm tính: {{ number_format((float) $item->subtotal, 0, ',', '.') }} đ</span>
+                                                                @elseif(!is_null($item->price_per_night))
+                                                                    <br>
+                                                                    <span style="color:#0f766e; font-weight:600;">Giá/đêm: {{ number_format((float) $item->price_per_night, 0, ',', '.') }} đ</span>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </table>
+                                            @endif
                                         </td>
                                     </tr>
                                 </table>
@@ -191,6 +237,15 @@
                                     </tr>
                                 </table>
                             @endif
+
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                                <tr>
+                                    <td style="padding:12px 14px; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.6; color:#475569;">
+                                        Sau khi thanh toán thành công, bạn có thể đăng nhập để xem <strong>Lịch sử đặt phòng</strong> tại:
+                                        <a href="{{ route('account.bookings') }}" style="color:#1d4ed8; text-decoration:underline;">{{ route('account.bookings') }}</a>
+                                    </td>
+                                </tr>
+                            </table>
 
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px; padding-top:20px; border-top:1px solid #e2e8f0;">
                                 <tr>
