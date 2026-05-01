@@ -122,24 +122,11 @@
                                     <option value="child">Trẻ em</option>
                                 </select>
                             </td>
-                            <td>
-                                <select name="guests[INDEX][booking_room_id]" class="form-select form-select-sm guest-room-input" required>
+                            <td class="guest-room-cell">
+                                <div class="guest-slot-wrap mb-1"></div>
+                                <input type="hidden" name="guests[INDEX][booking_room_id]" class="guest-booking-room-id-input" value="">
+                                <select name="guests[INDEX][room_id]" class="form-select form-select-sm guest-room-input" required>
                                     <option value="">-- Chọn phòng --</option>
-                                    @foreach($booking->bookingRooms as $bookingRoom)
-                                        @php $room = $bookingRoom->room; @endphp
-                                        @if($room)
-                                            @php
-                                                $rn = trim((string) ($room->room_number ?? ''));
-                                                $rt = trim((string) ($room->roomType?->name ?? ''));
-                                                $roomOptLabel = $rn !== ''
-                                                    ? ($rt !== '' ? "Phòng {$rn} — {$rt}" : "Phòng {$rn}")
-                                                    : (trim((string) ($room->name ?? '')) !== ''
-                                                        ? (trim((string) ($room->name ?? '')) . ($rt !== '' ? " — {$rt}" : ''))
-                                                        : ($rt !== '' ? $rt : 'Phòng'));
-                                            @endphp
-                                            <option value="{{ $bookingRoom->id }}">{{ $roomOptLabel }}</option>
-                                        @endif
-                                    @endforeach
                                 </select>
                             </td>
                             <td class="text-center">
@@ -164,6 +151,105 @@
 </div>
 
 <script>
+window.__checkInMeta = window.__checkInMeta || {};
+
+function checkInEscapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
+}
+
+function getCheckInBookingRoomsMeta(bookingId) {
+    const m = window.__checkInMeta[bookingId];
+    return (m && m.booking_rooms) ? m.booking_rooms : [];
+}
+
+function fillGuestRoomSelect(roomSelect, bookingRoomId, selectedRoomId, bookingId) {
+    const meta = getCheckInBookingRoomsMeta(bookingId);
+    const br = meta.find(x => String(x.id) === String(bookingRoomId));
+    roomSelect.innerHTML = '<option value="">-- Chọn phòng --</option>';
+    if (!br || !Array.isArray(br.room_options)) {
+        return;
+    }
+    br.room_options.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.room_id;
+        o.textContent = opt.label || ('#' + opt.room_id);
+        if (selectedRoomId != null && String(opt.room_id) === String(selectedRoomId)) {
+            o.selected = true;
+        }
+        roomSelect.appendChild(o);
+    });
+}
+
+function setupGuestRoomControls(row, bookingId, guestData) {
+    const meta = getCheckInBookingRoomsMeta(bookingId);
+    const slotWrap = row.querySelector('.guest-slot-wrap');
+    const hiddenBrid = row.querySelector('.guest-booking-room-id-input');
+    const roomSel = row.querySelector('.guest-room-input');
+    if (!slotWrap || !hiddenBrid || !roomSel) {
+        return;
+    }
+
+    slotWrap.innerHTML = '';
+
+    const frozen = guestData && guestData.status === 'checked_in';
+
+    if (!meta.length) {
+        hiddenBrid.value = '';
+        roomSel.innerHTML = '<option value="">-- Chưa có dòng đặt --</option>';
+        return;
+    }
+
+    if (meta.length === 1) {
+        hiddenBrid.value = meta[0].id;
+        fillGuestRoomSelect(roomSel, meta[0].id, guestData ? guestData.room_id : null, bookingId);
+        if (frozen) {
+            roomSel.disabled = true;
+        }
+        return;
+    }
+
+    const sel = document.createElement('select');
+    sel.className = 'form-select form-select-sm guest-slot-input mb-1';
+    if (!frozen) {
+        sel.required = true;
+    }
+    sel.innerHTML = '<option value="">-- Chọn dòng đặt --</option>' +
+        meta.map(br => {
+            const label = (br.slot_label || 'Phòng') + (br.room_name ? ' — ' + br.room_name : '');
+            return '<option value="' + br.id + '">' + checkInEscapeHtml(label) + '</option>';
+        }).join('');
+
+    const brid = guestData && guestData.booking_room_id ? String(guestData.booking_room_id) : '';
+
+    sel.addEventListener('change', function() {
+        hiddenBrid.value = sel.value;
+        fillGuestRoomSelect(roomSel, sel.value, null, bookingId);
+    });
+
+    slotWrap.appendChild(sel);
+
+    if (frozen) {
+        sel.disabled = true;
+        hiddenBrid.value = brid || '';
+        if (brid) {
+            sel.value = brid;
+        }
+        fillGuestRoomSelect(roomSel, brid || meta[0].id, guestData.room_id, bookingId);
+        roomSel.disabled = true;
+        return;
+    }
+
+    hiddenBrid.value = brid;
+    if (brid) {
+        sel.value = brid;
+        fillGuestRoomSelect(roomSel, brid, guestData.room_id, bookingId);
+    } else {
+        fillGuestRoomSelect(roomSel, '', null, bookingId);
+    }
+}
+
 // Hàm giới hạn nhập CCCD chỉ 12 số
 function limitCCCDInput(e) {
     const input = e.target;
@@ -193,9 +279,18 @@ function loadGuestsForBooking(bookingId) {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Đang tải...</td></tr>';
 
     fetch(`/admin/bookings/${bookingId}/checkin-data`)
-        .then(response => response.json())
+        .then(response => response.json().catch(() => ({ error: 'Phản hồi không hợp lệ (' + response.status + ')' })))
         .then(data => {
             tbody.innerHTML = '';
+
+            window.__checkInMeta[bookingId] = {
+                booking_rooms: data.booking_rooms || [],
+            };
+
+            if (data.error) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">' + checkInEscapeHtml(data.error) + '</td></tr>';
+                return;
+            }
 
             if (data.guests && data.guests.length > 0) {
                 data.guests.forEach((guest, index) => {
@@ -216,6 +311,12 @@ function loadGuestsForBooking(bookingId) {
 function addNewGuest(bookingId) {
     const tbody = document.getElementById('guestTableBody' + bookingId);
     const rowCount = tbody.querySelectorAll('.guest-row').length;
+
+    const meta = getCheckInBookingRoomsMeta(bookingId);
+    if (!meta.length) {
+        alert('Chưa tải được danh sách phòng. Đóng modal và mở lại Check-in.');
+        return;
+    }
 
     // Xóa dòng "Chưa có khách" nếu có
     const noGuestsRow = tbody.querySelector('.no-guests');
@@ -243,7 +344,8 @@ function addGuestRow(bookingId, guestData, stt) {
     row.querySelector('.guest-name-input').name = `guests[${index}][name]`;
     row.querySelector('.guest-cccd-input').name = `guests[${index}][cccd]`;
     row.querySelector('.guest-type-input').name = `guests[${index}][type]`;
-    row.querySelector('.guest-room-input').name = `guests[${index}][booking_room_id]`;
+    row.querySelector('.guest-booking-room-id-input').name = `guests[${index}][booking_room_id]`;
+    row.querySelector('.guest-room-input').name = `guests[${index}][room_id]`;
     row.querySelector('.guest-id-input').name = `guests[${index}][id]`;
     
     // Áp dụng giới hạn cho input CCCD
@@ -286,24 +388,19 @@ function addGuestRow(bookingId, guestData, stt) {
             row.querySelector('.guest-cccd-input').readOnly = true;
         }
 
-        // Chọn phòng nếu đã gán
-        if (guestData.booking_room_id) {
-            row.querySelector('.guest-room-input').value = guestData.booking_room_id;
-        }
-
         // Disable input cho khách đã check-in (nếu cần)
         if (guestData.status === 'checked_in') {
             row.classList.add('table-success');
             row.querySelector('.guest-name-input').readOnly = true;
             row.querySelector('.guest-cccd-input').readOnly = true;
             row.querySelector('.guest-type-input').disabled = true;
-            row.querySelector('.guest-room-input').disabled = true;
             row.querySelector('.btn-danger').disabled = true;
             row.querySelector('.btn-danger').classList.replace('btn-danger', 'btn-secondary');
         }
     }
 
     tbody.appendChild(row);
+    setupGuestRoomControls(row, bookingId, guestData || null);
     renumberGuests(bookingId);
 }
 
@@ -372,6 +469,10 @@ document.getElementById('checkinForm{{ $booking->id }}').addEventListener('submi
         const name = row.querySelector('.guest-name-input').value.trim();
         const cccd = row.querySelector('.guest-cccd-input').value.trim();
         const room = row.querySelector('.guest-room-input').value;
+        const bookingRoomHidden = row.querySelector('.guest-booking-room-id-input');
+        const slotSelect = row.querySelector('.guest-slot-input');
+        const meta = getCheckInBookingRoomsMeta(bookingId);
+        const brid = bookingRoomHidden ? bookingRoomHidden.value.trim() : '';
 
         if (!name) {
             errors.push(`Khách ${index + 1}: Thiếu họ tên`);
@@ -390,8 +491,17 @@ document.getElementById('checkinForm{{ $booking->id }}').addEventListener('submi
             row.querySelector('.guest-cccd-input').classList.remove('is-invalid');
         }
 
+        if (meta.length > 1 && !brid) {
+            errors.push(`Khách ${index + 1}: Chưa chọn dòng đặt (slot phòng)`);
+            if (slotSelect) {
+                slotSelect.classList.add('is-invalid');
+            }
+        } else if (slotSelect) {
+            slotSelect.classList.remove('is-invalid');
+        }
+
         if (!room) {
-            errors.push(`Khách ${index + 1}: Chưa chọn phòng`);
+            errors.push(`Khách ${index + 1}: Chưa chọn phòng cụ thể`);
             row.querySelector('.guest-room-input').classList.add('is-invalid');
         } else {
             row.querySelector('.guest-room-input').classList.remove('is-invalid');
@@ -407,8 +517,11 @@ document.getElementById('checkinForm{{ $booking->id }}').addEventListener('submi
         errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
         errorDiv.classList.remove('d-none');
         return false;
-    } else {
-        errorDiv.classList.add('d-none');
     }
+
+    errorDiv.classList.add('d-none');
+    tbody.querySelectorAll('.guest-row select[disabled], .guest-row input[disabled]').forEach(function(el) {
+        el.disabled = false;
+    });
 });
 </script>

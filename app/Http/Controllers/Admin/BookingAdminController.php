@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\PaymentInstructionMail;
 use App\Models\Booking;
+use App\Models\BookingRoom;
 use App\Models\BookingGuest;
 use App\Models\BookingLog;
 use App\Models\Coupon;
@@ -2601,10 +2602,102 @@ class BookingAdminController extends Controller
         $fallback = trim((string) ($room->name ?? ''));
 
         if ($fallback !== '') {
+            if ($type !== '' && strcasecmp($fallback, $type) === 0) {
+                return $type;
+            }
+            if ($type !== '' && stripos($fallback, $type) !== false) {
+                return $fallback;
+            }
+
             return $type !== '' ? "{$fallback} — {$type}" : $fallback;
         }
 
         return $type !== '' ? $type : 'Phòng';
+    }
+
+    /**
+     * Phòng vật lý cùng loại có thể chọn khi check-in (trừ đơn khác còn hiệu lực trong kỳ).
+     *
+     * @return array<int, array{room_id: int, label: string}>
+     */
+    private function roomsSelectableForCheckIn(Booking $booking, BookingRoom $br): array
+    {
+        $baseRoom = $br->room;
+        if (! $baseRoom || ! $baseRoom->room_type_id) {
+            return [];
+        }
+
+        $checkIn = Carbon::parse($booking->check_in)->toDateString();
+        $checkOut = Carbon::parse($booking->check_out)->toDateString();
+        $period = CarbonPeriod::create($checkIn, Carbon::parse($checkOut)->subDay());
+        $dates = collect($period)->map(fn ($d) => $d->toDateString())->all();
+
+        $blockedRoomIds = RoomBookedDate::query()
+            ->whereIn('booked_date', $dates)
+            ->where(function ($q) use ($booking) {
+                $q->whereNull('booking_id')
+                    ->orWhere('booking_id', '!=', $booking->id);
+            })
+            ->where(function ($q) {
+                $q->whereNull('booking_id')
+                    ->orWhereHas('booking', static function ($bq) {
+                        $bq->whereNotIn('status', ['cancelled']);
+                    });
+            })
+            ->pluck('room_id')
+            ->unique()
+            ->all();
+
+        $currentId = (int) $br->room_id;
+
+        // Không gò vào available/cleaning: nhiều site để status = booked dù lịch chi tiết nằm ở room_booked_dates.
+        // Check-in dựa vào blockedRoomIds (đơn khác / ngày đã giữ). Luôn loại phòng bảo trì, trừ phòng đang gán cho slot này.
+        $candidates = Room::query()
+            ->with('roomType')
+            ->where('room_type_id', $baseRoom->room_type_id)
+            ->where(function ($q) use ($blockedRoomIds, $currentId) {
+                $q->whereNotIn('id', $blockedRoomIds)
+                    ->orWhere('id', $currentId);
+            })
+            ->where(function ($q) use ($currentId) {
+                $q->whereNotIn('status', ['maintenance'])
+                    ->orWhere('id', $currentId);
+            })
+            ->orderBy('room_number')
+            ->get();
+
+        $out = [];
+        foreach ($candidates as $r) {
+            $out[] = [
+                'room_id' => $r->id,
+                'label' => $this->checkInRoomDisplayLabel($r),
+            ];
+        }
+
+        return $out;
+    }
+
+    private function syncRoomBookedDatesForBooking(Booking $booking): void
+    {
+        $checkIn = Carbon::parse($booking->check_in)->toDateString();
+        $checkOut = Carbon::parse($booking->check_out)->toDateString();
+        $period = CarbonPeriod::create($checkIn, Carbon::parse($checkOut)->subDay());
+        $dates = collect($period)->map(fn ($d) => $d->toDateString())->all();
+
+        RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+        foreach ($booking->bookingRooms()->get() as $br) {
+            if (! $br->room_id) {
+                continue;
+            }
+            foreach ($dates as $d) {
+                RoomBookedDate::create([
+                    'room_id' => $br->room_id,
+                    'booked_date' => $d,
+                    'booking_id' => $booking->id,
+                ]);
+            }
+        }
     }
 
     /**
@@ -2680,6 +2773,7 @@ class BookingAdminController extends Controller
                     'type' => $guest->type,
                     'status' => $guest->status,
                     'booking_room_id' => $guest->booking_room_id,
+                    'room_id' => $guest->bookingRoom?->room_id,
                     'is_representative' => $guest->is_representative,
                     'room_name' => $this->checkInRoomDisplayLabel($guest->bookingRoom?->room),
                 ];
@@ -2704,11 +2798,14 @@ class BookingAdminController extends Controller
                     'check_out' => $checkOut?->format('d/m/Y'),
                 ],
                 'guests' => $guests,
-                'booking_rooms' => $booking->bookingRooms->map(function ($br) {
+                'booking_rooms' => $booking->bookingRooms->map(function ($br) use ($booking) {
                     return [
                         'id' => $br->id,
                         'room_id' => $br->room_id,
+                        'room_type_id' => $br->room?->room_type_id,
+                        'slot_label' => $br->room?->roomType?->name ?? 'Phòng đã đặt',
                         'room_name' => $this->checkInRoomDisplayLabel($br->room),
+                        'room_options' => $this->roomsSelectableForCheckIn($booking, $br),
                     ];
                 }),
             ]);
@@ -2762,9 +2859,30 @@ class BookingAdminController extends Controller
                 continue;
             }
 
-            $roomId = $guest['room_id'] ?? null;
-            if (!$roomId) {
-                return back()->with('error', "Khách {$guest['name']} chưa chọn phòng")->withInput();
+            $bookingRoomId = isset($guest['booking_room_id']) ? (int) $guest['booking_room_id'] : null;
+            $roomId = isset($guest['room_id']) ? (int) $guest['room_id'] : null;
+
+            if (! $roomId && $bookingRoomId) {
+                $brRow = BookingRoom::with('room')->where('booking_id', $booking->id)->where('id', $bookingRoomId)->first();
+                $roomId = $brRow?->room_id ? (int) $brRow->room_id : null;
+            }
+
+            if (! $roomId) {
+                return back()->with('error', "Khách {$guest['name']} chưa chọn phòng cụ thể")->withInput();
+            }
+
+            $brForPick = null;
+            if ($bookingRoomId) {
+                $brForPick = BookingRoom::where('booking_id', $booking->id)->where('id', $bookingRoomId)->first();
+            }
+            if (! $brForPick && $booking->bookingRooms()->count() === 1) {
+                $brForPick = $booking->bookingRooms()->first();
+            }
+            if ($brForPick) {
+                $allowed = collect($this->roomsSelectableForCheckIn($booking, $brForPick))->pluck('room_id')->map(fn ($id) => (int) $id)->all();
+                if (! in_array($roomId, $allowed, true)) {
+                    return back()->with('error', 'Phòng đã chọn không nằm trong danh sách được phép (không cùng loại hoặc không trống trong kỳ đặt).')->withInput();
+                }
             }
 
             $room = Room::with('roomType')->find($roomId);
@@ -2772,6 +2890,7 @@ class BookingAdminController extends Controller
                 return back()->with('error', "Phòng không tồn tại");
             }
 
+            $guest['room_id'] = $roomId;
             $validGuests[] = $guest;
             $roomDetails[$roomId] = $room;
 
@@ -2826,7 +2945,9 @@ class BookingAdminController extends Controller
     {
         DB::beginTransaction();
         try {
-            $bookingRooms = $this->assignRoomsToBookingRoomsForCheckin($booking, $guestsByRoom);
+            $this->assignRoomsFromGuestSelections($booking, $validGuests);
+            $this->syncRoomBookedDatesForBooking($booking);
+            $bookingRooms = $booking->bookingRooms()->with('room')->get();
             $this->saveGuestsForCheckin($booking, $validGuests, $bookingRooms);
             $result = $this->finalizeCheckInWithAssignment($booking, $guestsByRoom, $roomDetails);
             DB::commit();
@@ -2838,22 +2959,48 @@ class BookingAdminController extends Controller
     }
 
     /**
-     * Gán phòng cho booking rooms
+     * Gán room_id vào booking_rooms theo lựa chọn check-in (room_id + booking_room_id).
      */
-    private function assignRoomsToBookingRoomsForCheckin(Booking $booking, array $guestsByRoom)
+    private function assignRoomsFromGuestSelections(Booking $booking, array $validGuests): void
     {
-        $selectedRoomIds = array_keys($guestsByRoom);
-        $bookingRooms = $booking->bookingRooms;
+        $bookingRooms = $booking->bookingRooms()->orderBy('id')->get();
+        $map = [];
 
-        foreach ($bookingRooms as $index => $bookingRoom) {
-            $roomId = $selectedRoomIds[$index] ?? $selectedRoomIds[0] ?? null;
-            if ($roomId) {
-                $bookingRoom->room_id = $roomId;
-                $bookingRoom->save();
+        foreach ($validGuests as $g) {
+            $brid = isset($g['booking_room_id']) ? (int) $g['booking_room_id'] : null;
+            $rid = isset($g['room_id']) ? (int) $g['room_id'] : null;
+            if (! $rid) {
+                continue;
+            }
+            if ($brid) {
+                $map[$brid] = $rid;
+            } elseif ($bookingRooms->count() === 1) {
+                $map[$bookingRooms->first()->id] = $rid;
             }
         }
 
-        return $booking->bookingRooms()->get();
+        if ($map === []) {
+            $roomIds = [];
+            foreach ($validGuests as $g) {
+                $rid = isset($g['room_id']) ? (int) $g['room_id'] : null;
+                if ($rid && ! in_array($rid, $roomIds, true)) {
+                    $roomIds[] = $rid;
+                }
+            }
+            foreach ($bookingRooms->values() as $index => $br) {
+                $rid = $roomIds[$index] ?? $roomIds[0] ?? null;
+                if ($rid) {
+                    $map[$br->id] = $rid;
+                }
+            }
+        }
+
+        foreach ($bookingRooms as $br) {
+            if (isset($map[$br->id])) {
+                $br->room_id = $map[$br->id];
+                $br->save();
+            }
+        }
     }
 
     /**
@@ -2865,9 +3012,12 @@ class BookingAdminController extends Controller
         $processedGuestIds = [];
 
         foreach ($validGuests as $index => $guestData) {
-            $roomId = $guestData['room_id'];
-            $bookingRoom = $bookingRooms->firstWhere('room_id', $roomId);
-            $bookingRoomId = $bookingRoom?->id ?? $bookingRooms->first()?->id;
+            $roomId = (int) $guestData['room_id'];
+            $bookingRoomId = isset($guestData['booking_room_id']) ? (int) $guestData['booking_room_id'] : null;
+            if (! $bookingRoomId || ! $bookingRooms->firstWhere('id', $bookingRoomId)) {
+                $bookingRoom = $bookingRooms->firstWhere('room_id', $roomId);
+                $bookingRoomId = $bookingRoom?->id ?? $bookingRooms->first()?->id;
+            }
 
             // Lưu vào bảng guests (legacy)
             $guestId = $this->saveLegacyGuest($booking, $guestData, $roomId, $index, $existingGuestIds);
