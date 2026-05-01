@@ -4,16 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Guest;
-use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\RefundLog;
 use App\Models\Room;
-use App\Models\RoomPrice;
 use App\Models\User;
 use App\Models\BookingLog;
-use App\Models\Service;
 use App\Models\HotelInfo;
-use App\Models\BookingService as BookingServiceModel;
 use App\Mail\PaymentInstructionMail;
 use App\Services\VnPayService;
 use App\Services\BookingService;
@@ -96,32 +92,7 @@ class BookingController extends Controller
                 $bankCode
             );
 
-            // Gửi mail chứa link vào cổng thanh toán VNPay + chi tiết phòng đã đặt.
-            try {
-                $booking->loadMissing(['user', 'room.roomType', 'rooms.roomType', 'bookingRooms.room.roomType']);
-                $nights = max(1, (int) $booking->check_in->diffInDays($booking->check_out));
-                $hotelInfo = HotelInfo::first();
-                $payEntryDays = max(1, (int) config('vnpay.pay_entry_signed_ttl_days', 14));
-                $vnpayPayUrl = URL::signedRoute(
-                    'payment.vnpay.pay',
-                    ['booking' => $booking->id],
-                    now()->addDays($payEntryDays)
-                );
-
-                Mail::to($booking->user->email)->send(new PaymentInstructionMail(
-                    $booking,
-                    $hotelInfo,
-                    $nights,
-                    null,
-                    $vnpayPayUrl
-                ));
-            } catch (\Throwable $e) {
-                Log::warning('Failed to send VNPay payment email for customer booking', [
-                    'booking_id' => $booking->id,
-                    'user_email' => $booking->user->email ?? null,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $this->sendCustomerVnPayInstructionMail($booking);
 
             return $vnPayService->redirectAwayNoCache($paymentUrl);
 
@@ -129,6 +100,34 @@ class BookingController extends Controller
             return back()->withErrors($e->getMessage())->withInput();
         } catch (\Exception $e) {
             return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    private function sendCustomerVnPayInstructionMail(Booking $booking): void
+    {
+        try {
+            $booking->loadMissing(['user', 'room.roomType', 'rooms.roomType', 'bookingRooms.room.roomType']);
+            $nights = max(1, (int) $booking->check_in->diffInDays($booking->check_out));
+            $payEntryDays = max(1, (int) config('vnpay.pay_entry_signed_ttl_days', 14));
+            $vnpayPayUrl = URL::signedRoute(
+                'payment.vnpay.pay',
+                ['booking' => $booking->id],
+                now()->addDays($payEntryDays)
+            );
+
+            Mail::to($booking->user->email)->send(new PaymentInstructionMail(
+                $booking,
+                HotelInfo::first(),
+                $nights,
+                null,
+                $vnpayPayUrl
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send VNPay payment email for customer booking', [
+                'booking_id' => $booking->id,
+                'user_email' => $booking->user->email ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

@@ -1,7 +1,7 @@
 # --- Docker nhanh (khách sạn / Laravel) ---
-# 1) Sao chép:  copy .env.docker.example .env   (ghi đè .env cũ nếu bạn chỉ dùng Docker)
+# 1) Sao chép: cp .env.example .env rồi chỉnh khối "Docker Compose" trong .env (APP_URL, APP_PORT, DB_*…)
 # 2) Chạy:      docker compose up -d --build
-# 3) Mở web:    http://127.0.0.1:8080
+# 3) Mở web:    APP_URL / cổng APP_PORT (mặc định compose .env thường là http://127.0.0.1:8080)
 # PhpMyAdmin (tùy chọn): docker compose --profile tools up -d
 # Artisan trên host (MySQL trong Docker): DB_HOST=127.0.0.1 DB_USERNAME=app DB_PASSWORD=app_password php artisan ...
 #
