@@ -1371,30 +1371,24 @@ class BookingAdminController extends Controller
             'representative_cccd' => 'required|string|regex:/^[0-9]{12}$/',
         ]);
 
-        $normalizedGuests = $this->flattenGuestPayloadByRoomType($request->input('guests', []));
-        if (count($normalizedGuests) === 0) {
-            return back()->withErrors(['guests' => 'Vui lòng nhập thông tin khách.'])->withInput();
+        $repName = trim((string) $validated['representative_name']);
+        $repCccd = trim((string) $validated['representative_cccd']);
+        if ($repName === '') {
+            return back()->withErrors(['representative_name' => 'Vui lòng nhập họ tên người đại diện.'])->withInput();
+        }
+        if (! preg_match('/^[0-9]{12}$/', $repCccd)) {
+            return back()->withErrors(['representative_cccd' => 'CCCD người đại diện phải gồm đúng 12 chữ số.'])->withInput();
         }
 
-        foreach ($normalizedGuests as $index => $guestData) {
-            $name = trim((string) ($guestData['name'] ?? ''));
-            $cccd = trim((string) ($guestData['cccd'] ?? ''));
-
-            // First guest is representative - use representative fields
-            if ($index === 0) {
-                $name = $validated['representative_name'];
-                $cccd = $validated['representative_cccd'];
-                $normalizedGuests[$index]['name'] = $name;
-                $normalizedGuests[$index]['cccd'] = $cccd;
-            }
-
-            if ($name === '') {
-                return back()->withErrors(['guests' => "Tên khách thứ " . ($index + 1) . " không được để trống."])->withInput();
-            }
-            if (! preg_match('/^[0-9]{12}$/', $cccd)) {
-                return back()->withErrors(['guests' => "CCCD của khách \"{$name}\" phải gồm đúng 12 chữ số."])->withInput();
-            }
-        }
+        // Một đơn chỉ một người đại diện (không phụ thuộc số phòng).
+        $representativeGuestRows = [[
+            'room_type' => null,
+            'room_index' => 0,
+            'name' => $repName,
+            'cccd' => $repCccd,
+            'type' => 'adult',
+            'is_representative' => 1,
+        ]];
 
         $checkIn = Carbon::parse($validated['check_in']);
         $checkOut = Carbon::parse($validated['check_out']);
@@ -1421,15 +1415,6 @@ class BookingAdminController extends Controller
             // 3. Tạo đơn Booking
             $paymentMethodInitial = $validated['payment_method'];
 
-            // Lấy CCCD của người đại diện từ khách đầu tiên
-            $representativeCccd = null;
-            if (!empty($validated['guests'])) {
-                $guestRows = $this->flattenGuestPayloadByRoomType($validated['guests']);
-                if (!empty($guestRows) && !empty($guestRows[0]['cccd'])) {
-                    $representativeCccd = $guestRows[0]['cccd'];
-                }
-            }
-
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'room_id' => null,
@@ -1445,14 +1430,14 @@ class BookingAdminController extends Controller
                 'payment_status' => $paymentMethodInitial === 'vnpay' ? 'pending' : 'paid',
                 'payment_method' => $validated['payment_method'],
                 'placed_via' => Booking::PLACED_VIA_ADMIN,
-                'cccd' => $representativeCccd,
+                'cccd' => $repCccd,
             ]);
 
             // 4. Gán phòng cụ thể và lưu ngày đã đặt
             $this->assignRoomsToBooking($booking, $calculatedRoomData, $dates);
 
             // 5. Lưu thông tin khách hàng (legacy)
-            $this->createBookingLegacyGuests($booking, $normalizedGuests);
+            $this->createBookingLegacyGuests($booking, $representativeGuestRows);
 
             // 6. Ghi log
             BookingLog::create([
