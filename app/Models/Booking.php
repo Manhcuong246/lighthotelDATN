@@ -200,6 +200,44 @@ class Booking extends Model
     }
 
     /**
+     * Số NL / trẻ để hiển thị: ưu tiên đếm từ khách đã khai báo (booking_guests / guests legacy);
+     * nếu chưa có ai trong danh sách thì dùng cột đặt chỗ trên booking_rooms.
+     *
+     * @return array{adults: int, children_6_11: int, children_0_5: int}
+     */
+    public function occupancyDisplayCountsForBookingRoom(BookingRoom $br): array
+    {
+        $persons = $this->guestLineItemsForBookingRoom($br);
+
+        if ($persons->isEmpty()) {
+            return [
+                'adults' => (int) $br->adults,
+                'children_6_11' => (int) $br->children_6_11,
+                'children_0_5' => (int) $br->children_0_5,
+            ];
+        }
+
+        $adults = 0;
+        $children611 = 0;
+        $children05 = 0;
+
+        foreach ($persons as $p) {
+            $normalized = BookingGuest::normalizeTypeForStorage((string) ($p->type ?? 'adult'));
+            match ($normalized) {
+                'child_6_11' => $children611++,
+                'child_0_5' => $children05++,
+                default => $adults++,
+            };
+        }
+
+        return [
+            'adults' => $adults,
+            'children_6_11' => $children611,
+            'children_0_5' => $children05,
+        ];
+    }
+
+    /**
      * Get all guests for this booking (new system)
      */
     public function guests()

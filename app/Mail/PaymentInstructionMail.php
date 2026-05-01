@@ -21,6 +21,8 @@ class PaymentInstructionMail extends Mailable
         public ?string $qrCodeUrl = null,
         /** Link có chữ ký: /payment/vnpay/pay/{booking} — khi khách bấm mới tạo phiên VNPay (15 phút). */
         public ?string $vnpayPayUrl = null,
+        /** Admin ghi nhận tiền mặt đủ — email chỉ xác nhận đơn, không hướng dẫn CK/VNPay. */
+        public bool $cashPaidAtDesk = false,
     ) {
         $this->booking->loadMissing([
             'user',
@@ -35,16 +37,18 @@ class PaymentInstructionMail extends Mailable
     {
         $subject = $this->vnpayPayUrl
             ? '[Light Hotel] Link thanh toán VNPay — đơn #'.$this->booking->id
-            : '[Light Hotel] Thông tin chuyển khoản — đơn #'.$this->booking->id;
+            : ($this->cashPaidAtDesk
+                ? '[Light Hotel] Xác nhận đặt phòng — đơn #'.$this->booking->id
+                : '[Light Hotel] Thông tin chuyển khoản — đơn #'.$this->booking->id);
 
         return new Envelope(subject: $subject);
     }
 
     public function content(): Content
     {
-        $logoPublicName = 'Thiết kế chưa có tên.png';
-        $logoUrl = is_file(public_path($logoPublicName))
-            ? asset($logoPublicName)
+        $logoPublicPath = 'images/logo-light-hotel.svg';
+        $logoUrl = is_file(public_path($logoPublicPath))
+            ? asset($logoPublicPath)
             : null;
 
         return new Content(
@@ -55,7 +59,7 @@ class PaymentInstructionMail extends Mailable
                 'nights' => $this->nights,
                 'qrCodeUrl' => $this->qrCodeUrl,
                 'vnpayPayUrl' => $this->vnpayPayUrl,
-                'signedBookingViewUrl' => $this->booking->signedPublicShowUrl(),
+                'cashPaidAtDesk' => $this->cashPaidAtDesk,
                 'vnpayTxnMinutes' => (int) config('vnpay.transaction_expire_minutes', 15),
                 'payLinkDays' => (int) config('vnpay.pay_entry_signed_ttl_days', 14),
                 'logoUrl' => $logoUrl,

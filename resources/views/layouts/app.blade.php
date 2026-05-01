@@ -1611,7 +1611,7 @@
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('home') }}">
             <span class="logo-mark">
-                <img src="{{ asset('Thiết kế chưa có tên.png') }}" alt="Light Hotel logo">
+                <img src="{{ asset('images/logo-light-hotel.svg') }}" alt="Light Hotel" width="160" height="32">
             </span>
             <span>Light Hotel</span>
         </a>

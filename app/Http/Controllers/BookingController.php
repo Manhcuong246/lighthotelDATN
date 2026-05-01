@@ -10,7 +10,7 @@ use App\Models\Room;
 use App\Models\User;
 use App\Models\BookingLog;
 use App\Models\HotelInfo;
-use App\Mail\PaymentInstructionMail;
+use App\Services\PaymentInstructionDelivery;
 use App\Services\VnPayService;
 use App\Services\BookingService;
 use App\Http\Requests\StoreBookingRequest;
@@ -20,7 +20,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Carbon\CarbonPeriod;
 
@@ -115,13 +114,15 @@ class BookingController extends Controller
                 now()->addDays($payEntryDays)
             );
 
-            Mail::to($booking->user->email)->send(new PaymentInstructionMail(
+            PaymentInstructionDelivery::send(
                 $booking,
                 HotelInfo::first(),
                 $nights,
                 null,
-                $vnpayPayUrl
-            ));
+                $vnpayPayUrl,
+                $booking->user->email,
+                false
+            );
         } catch (\Throwable $e) {
             Log::warning('Failed to send VNPay payment email for customer booking', [
                 'booking_id' => $booking->id,

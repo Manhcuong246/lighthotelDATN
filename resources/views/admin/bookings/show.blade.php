@@ -2,6 +2,34 @@
 
 @section('title', 'Chi tiết đặt phòng')
 
+@push('styles')
+<style>
+    .booking-room-card {
+        border-radius: 0.5rem;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+        border-left: 3px solid var(--bs-primary);
+    }
+    .booking-guest-chip {
+        border-radius: 0.45rem;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 0.5rem 0.65rem;
+        font-size: 0.8125rem;
+    }
+    .booking-guest-chip:last-child { margin-bottom: 0 !important; }
+    .booking-rooms-thead th {
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #64748b;
+        font-weight: 600;
+        border-bottom-width: 2px;
+        white-space: nowrap;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid px-3 px-lg-4">
     <!-- Header -->
@@ -104,20 +132,21 @@
                     <!-- Room List Table -->
                     <div class="row mb-4">
                         <div class="col-12">
-                            <p class="text-uppercase small fw-bold text-muted mb-2">Phòng</p>
-                            <div class="table-responsive rounded-2 border shadow-sm">
-                                <table class="table table-hover mb-0 align-middle">
-                                    <thead class="table-light">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                <p class="text-uppercase small fw-bold text-muted mb-0">Phòng trong đơn</p>
+                                <span class="small text-muted">{{ $booking->bookingRooms->count() }} phòng</span>
+                            </div>
+                            <div class="table-responsive rounded-3 border shadow-sm bg-white">
+                                <table class="table table-hover mb-0 align-top booking-rooms-table">
+                                    <thead class="table-light booking-rooms-thead">
                                         <tr>
-                                            <th class="ps-3">Phòng gán</th>
-                                            <th>Loại phòng</th>
-                                            <th class="text-center">Người lớn <small class="fw-normal text-muted">(đặt)</small></th>
-                                            <th class="text-center" title="Trẻ 6–11 tuổi + Trẻ 0–5 tuổi (miễn phí)">Trẻ em <small class="fw-normal text-muted">(đặt)</small></th>
-                                            <th style="min-width:220px">Khách lưu trú <small class="fw-normal text-muted">(chi tiết)</small></th>
-                                            <th class="text-end">Giá/đêm</th>
-                                            <th class="text-end pe-3">Thành tiền</th>
+                                            <th class="ps-3" style="min-width: 160px;">Phòng</th>
+                                            <th class="text-center" style="width: 7rem;" title="Ưu tiên đếm từ danh sách khách; chưa khai báo tên thì theo số đặt trên đơn">Đặt chỗ</th>
+                                            <th style="min-width: 260px;">Khách lưu trú</th>
+                                            <th class="text-end" style="min-width: 6.5rem;">Giá / đêm</th>
+                                            <th class="text-end pe-3" style="min-width: 7rem;">Thành tiền</th>
                                             @if(auth()->user() && auth()->user()->role === 'admin' && $booking->status !== 'cancelled' && $booking->status !== 'completed')
-                                                <th class="text-center" style="width: 80px;">Thao tác</th>
+                                                <th class="text-center border-start bg-light" style="width: 4.5rem;">Đổi</th>
                                             @endif
                                         </tr>
                                     </thead>
@@ -125,53 +154,98 @@
                                         @foreach($booking->bookingRooms as $br)
                                         @php
                                             $persons = $booking->guestLineItemsForBookingRoom($br);
+                                            $occ = $booking->occupancyDisplayCountsForBookingRoom($br);
+                                            $rn = $br->room?->room_number;
+                                            $rtName = $br->room?->roomType?->name;
+                                            $childParts = [];
+                                            if ($occ['children_6_11'] > 0) {
+                                                $childParts[] = $occ['children_6_11'].' trẻ 6–11t';
+                                            }
+                                            if ($occ['children_0_5'] > 0) {
+                                                $childParts[] = $occ['children_0_5'].' trẻ 0–5t';
+                                            }
                                         @endphp
-                                        <tr>
-                                            <td class="ps-3 fw-bold">{{ $br->room?->displayLabel() ?? 'Chưa gán phòng' }}</td>
-                                            <td>{{ $br->room?->roomType?->name ?? '—' }}</td>
-                                            <td class="text-center">{{ $br->adults }}</td>
-                                            <td class="text-center">
-                                                @if($br->children_6_11 > 0)<span>{{ $br->children_6_11 }}<small class="text-muted ms-1">6–11t</small></span>@endif
-                                                @if($br->children_0_5 > 0)<span>{{ $br->children_6_11 > 0 ? ' + ' : '' }}{{ $br->children_0_5 }}<small class="text-muted ms-1">0–5t</small></span>@endif
-                                                @if($br->children_6_11 + $br->children_0_5 === 0) — @endif
+                                        <tr class="border-bottom">
+                                            <td class="ps-3 py-3">
+                                                <div class="booking-room-card px-3 py-2">
+                                                    @if($br->room)
+                                                        <div class="fw-bold fs-6 text-dark lh-sm">{{ $rn ?: '—' }}</div>
+                                                        @if($rtName)
+                                                            <span class="badge rounded-pill mt-1 bg-primary-subtle text-primary border border-primary-subtle fw-normal">{{ $rtName }}</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="text-warning fw-semibold"><i class="bi bi-exclamation-circle me-1"></i>Chưa gán phòng</span>
+                                                    @endif
+                                                </div>
                                             </td>
-                                            <td class="small align-top">
+                                            <td class="text-center py-3">
+                                                <div class="d-inline-flex flex-column align-items-center gap-1 small">
+                                                    <span class="rounded-pill bg-light border px-2 py-1 text-nowrap" title="Người lớn">
+                                                        <i class="bi bi-person-fill text-secondary"></i>
+                                                        <strong class="text-dark">{{ (int) $occ['adults'] }}</strong>
+                                                        <span class="text-muted">NL</span>
+                                                    </span>
+                                                    @if(count($childParts))
+                                                        <span class="rounded-pill bg-light border px-2 py-1 text-muted text-wrap text-start" style="max-width: 11rem;">
+                                                            <i class="bi bi-person-hearts"></i>
+                                                            {{ implode(' · ', $childParts) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted small">Không kèm trẻ</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="py-3">
                                                 @if($persons->isNotEmpty())
-                                                    <ul class="list-unstyled mb-0">
+                                                    <div class="d-flex flex-column gap-2">
                                                         @foreach($persons as $p)
                                                             @php
                                                                 $st = $p->status ?? $p->checkin_status ?? null;
                                                                 $rep = (bool) ($p->is_representative ?? false);
                                                             @endphp
-                                                            <li class="mb-2 pb-2 border-bottom border-light">
-                                                                <span class="fw-semibold">{{ $p->name }}</span>
-                                                                <span class="text-muted">· {{ \App\Models\BookingGuest::typeLabel($p->type ?? 'adult') }}</span>
+                                                            <div class="booking-guest-chip mb-0">
+                                                                <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                                                                    <div class="min-w-0 flex-grow-1">
+                                                                        <span class="fw-semibold text-dark d-block text-break">{{ $p->name }}</span>
+                                                                        <span class="text-muted" style="font-size: 0.75rem;">{{ \App\Models\BookingGuest::typeLabel($p->type ?? 'adult') }}</span>
+                                                                    </div>
+                                                                    <div class="d-flex flex-wrap gap-1 justify-content-end flex-shrink-0">
+                                                                        @if($rep)
+                                                                            <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary-subtle">Đại diện</span>
+                                                                        @endif
+                                                                        @if($st === 'checked_in')
+                                                                            <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success-subtle">Đã check-in</span>
+                                                                        @elseif($st === 'pending' || $st === null)
+                                                                            <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle">Chờ check-in</span>
+                                                                        @else
+                                                                            <span class="badge rounded-pill bg-light text-dark border">{{ $st }}</span>
+                                                                        @endif
+                                                                    </div>
+                                                                </div>
                                                                 @if($p->cccd)
-                                                                    <br><span class="text-muted">CCCD: {{ $p->cccd }}</span>
+                                                                    <div class="mt-2 pt-2 border-top border-light d-flex align-items-center gap-1 text-muted" style="font-size: 0.75rem;">
+                                                                        <i class="bi bi-person-vcard flex-shrink-0"></i>
+                                                                        <span class="font-monospace">{{ $p->cccd }}</span>
+                                                                    </div>
                                                                 @endif
-                                                                <span class="d-block mt-1">
-                                                                    @if($rep)
-                                                                        <span class="badge bg-primary">Đại diện đơn</span>
-                                                                    @endif
-                                                                    @if($st === 'checked_in')
-                                                                        <span class="badge bg-success">Đã check-in</span>
-                                                                    @elseif($st === 'pending' || $st === null)
-                                                                        <span class="badge bg-secondary">Chờ check-in</span>
-                                                                    @else
-                                                                        <span class="badge bg-light text-dark">{{ $st }}</span>
-                                                                    @endif
-                                                                </span>
-                                                            </li>
+                                                            </div>
                                                         @endforeach
-                                                    </ul>
+                                                    </div>
                                                 @else
-                                                    <span class="text-muted">Chưa khai báo danh sách tên — chỉ theo đặt chỗ (ở cột NL / Trẻ).</span>
+                                                    <div class="rounded-3 bg-light border border-dashed px-3 py-2 small text-muted mb-0">
+                                                        <i class="bi bi-info-circle me-1"></i>Chưa khai báo tên khách — chỉ có số lượng đặt chỗ ở cột bên trái.
+                                                    </div>
                                                 @endif
                                             </td>
-                                            <td class="text-end text-muted">{{ number_format($br->price_per_night, 0, ',', '.') }} ₫</td>
-                                            <td class="text-end pe-3 fw-bold text-secondary">{{ number_format($br->subtotal, 0, ',', '.') }} ₫</td>
+                                            <td class="text-end py-3 text-nowrap">
+                                                <span class="text-muted small d-block">× {{ (int) $br->nights }} đêm</span>
+                                                <span class="text-dark">{{ number_format($br->price_per_night, 0, ',', '.') }} ₫</span>
+                                            </td>
+                                            <td class="text-end pe-3 py-3 text-nowrap">
+                                                <span class="fw-bold text-success fs-6">{{ number_format($br->subtotal, 0, ',', '.') }} ₫</span>
+                                            </td>
                                             @if(auth()->user() && auth()->user()->role === 'admin' && $booking->status !== 'cancelled' && $booking->status !== 'completed')
-                                            <td class="text-center">
+                                            <td class="text-center align-middle border-start bg-light py-3">
                                                 @include('admin.bookings.partials.room-change-modal', ['booking' => $booking, 'bookingRoom' => $br])
                                             </td>
                                             @endif

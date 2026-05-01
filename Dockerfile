@@ -20,8 +20,14 @@ RUN apk add --no-cache \
   && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring zip intl gd opcache \
   && rm -rf /var/cache/apk/*
 
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
+
+# UTF-8 mặc định cho tiếng Việt (file nằm trong repo; không phụ thuộc COPY .)
+COPY docker/php/zz-charset.ini /usr/local/etc/php/conf.d/zz-charset.ini
 
 RUN php artisan package:discover --ansi
 

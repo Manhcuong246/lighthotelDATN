@@ -41,7 +41,7 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Số phòng</label>
-                        <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $room->name) }}"required placeholder="Nhập số (ví dụ: 1, 101...)">
+                        <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $room->name) }}" required placeholder="Nhập số (ví dụ: 1, 101...)">
                         <small class="text-muted">Tự động thêm "Phòng" và format số</small>
                     </div>
                 </div>

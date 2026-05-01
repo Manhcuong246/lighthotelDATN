@@ -6,7 +6,7 @@
                 <div class="col-lg-4">
                     <div class="footer-brand d-flex align-items-center gap-3 mb-4">
                         <span class="footer-logo">
-                            <img src="{{ asset('Thiết kế chưa có tên.png') }}" alt="Light Hotel logo">
+                            <img src="{{ asset('images/logo-light-hotel.svg') }}" alt="Light Hotel" width="140" height="28">
                         </span>
                         <span class="footer-brand-name">{{ $hotelInfo?->name ?? 'Light Hotel' }}</span>
                     </div>

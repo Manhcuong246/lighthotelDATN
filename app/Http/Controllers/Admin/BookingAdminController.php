@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Mail\PaymentInstructionMail;
+use App\Services\PaymentInstructionDelivery;
 use App\Models\Booking;
 use App\Models\BookingRoom;
 use App\Models\BookingGuest;
@@ -33,11 +33,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
-use Illuminate\View\ViewException;
 use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
@@ -1268,8 +1266,22 @@ class BookingAdminController extends Controller
                 ]);
 
                 DB::commit();
+
+                $booking->load('user');
+                $hotelInfo = HotelInfo::first();
+                PaymentInstructionDelivery::send(
+                    $booking,
+                    $hotelInfo,
+                    count($dates),
+                    null,
+                    null,
+                    $user->email,
+                    true
+                );
+
                 return redirect()->route('admin.bookings.show', $booking)
-                    ->with('success', 'Tạo đơn đặt phòng thành công! Đã ghi nhận thanh toán tiền mặt.');
+                    ->with('success', 'Tạo đơn đặt phòng thành công! Đã ghi nhận thanh toán tiền mặt.')
+                    ->with('info', 'Đã gửi thông tin đặt phòng qua email tới khách.');
             }
 
             if ($paymentMethodInitial === 'vnpay') {
@@ -1285,25 +1297,19 @@ class BookingAdminController extends Controller
                 $booking->load('user');
                 $hotelInfo = HotelInfo::first();
                 $payUrl = $this->signedVnPayEntryUrl($booking);
-                $mailResult = $this->sendPaymentInstructionMail(
+                PaymentInstructionDelivery::send(
                     $booking,
                     $hotelInfo,
                     count($dates),
                     null,
                     $payUrl,
-                    $user->email
+                    $user->email,
+                    false
                 );
 
-                $redirect = redirect()->route('admin.bookings.payment-instruction', $booking)
-                    ->with('success', 'Đã tạo đơn.');
-                if ($mailResult['ok']) {
-                    return $redirect->with('info', 'Đã gửi email chứa link thanh toán VNPay tới khách.');
-                }
-
-                return $redirect->with(
-                    'warning',
-                    $this->paymentInstructionMailFailureMessage($mailResult['error']).' — link VNPay vẫn có trên trang này để sao chép cho khách.'
-                );
+                return redirect()->route('admin.bookings.payment-instruction', $booking)
+                    ->with('success', 'Đã tạo đơn.')
+                    ->with('info', 'Đã gửi email chứa link thanh toán VNPay tới khách. Link vẫn hiển thị trên trang này để sao chép.');
             }
 
             DB::commit();
@@ -1326,39 +1332,6 @@ class BookingAdminController extends Controller
         );
     }
 
-    /**
-     * @return array{ok: bool, error: ?\Throwable}
-     */
-    protected function sendPaymentInstructionMail(
-        Booking $booking,
-        ?HotelInfo $hotelInfo,
-        int $nights,
-        ?string $qrCodeUrl,
-        ?string $vnpayPayUrl,
-        string $toEmail
-    ): array {
-        try {
-            Mail::to($toEmail)->send(new PaymentInstructionMail(
-                $booking,
-                $hotelInfo,
-                $nights,
-                $qrCodeUrl,
-                $vnpayPayUrl
-            ));
-        } catch (\Throwable $e) {
-            Log::error('Payment instruction email failed: '.$e->getMessage(), ['exception' => $e]);
-
-            return ['ok' => false, 'error' => $e];
-        }
-
-        // log / array: Mail "thành công" nhưng không có SMTP — khách không nhận được hộp thư thật.
-        if (in_array(config('mail.default'), ['log', 'array'], true)) {
-            return ['ok' => false, 'error' => null];
-        }
-
-        return ['ok' => true, 'error' => null];
-    }
-
     /** Gửi email thanh toán VNPay cho khách khi admin tạo đơn. */
     protected function sendVnPayPaymentEmail(
         Booking $booking,
@@ -1376,27 +1349,15 @@ class BookingAdminController extends Controller
             $nights = $checkIn->diffInDays($checkOut);
 
             $hotelInfo = HotelInfo::first();
-            $mailResult = $this->sendPaymentInstructionMail(
+            PaymentInstructionDelivery::send(
                 $booking,
                 $hotelInfo,
                 $nights,
                 null,
                 $vnpayPayUrl,
-                $booking->user->email
+                $booking->user->email,
+                false
             );
-            $emailSent = $mailResult['ok'];
-
-            if ($emailSent) {
-                Log::info('VNPay payment email sent successfully', [
-                    'booking_id' => $booking->id,
-                    'user_email' => $booking->user->email,
-                ]);
-            } else {
-                Log::warning('VNPay payment email failed to send', [
-                    'booking_id' => $booking->id,
-                    'user_email' => $booking->user->email,
-                ]);
-            }
         } catch (\Throwable $e) {
             Log::error('Error sending VNPay payment email', [
                 'booking_id' => $booking->id,
@@ -1404,20 +1365,6 @@ class BookingAdminController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
         }
-    }
-
-    protected function paymentInstructionMailFailureMessage(?\Throwable $error = null): string
-    {
-        $prev = $error?->getPrevious();
-        if ($error instanceof ViewException || $prev instanceof \ParseError) {
-            return 'Lỗi hiển thị email (template Blade). Chi tiết trong storage/logs/laravel.log — kiểm tra resources/views/emails/payment-instruction.blade.php.';
-        }
-
-        if (in_array(config('mail.default'), ['log', 'array'], true)) {
-            return 'Chưa gửi email thật: MAIL_MAILER đang là '.config('mail.default').' (chỉ ghi log). Đặt MAIL_MAILER=smtp, smtp.gmail.com, App Password trong .env rồi chạy php artisan config:clear';
-        }
-
-        return 'Không gửi được email (SMTP/Google chặn: kiểm tra App Password Gmail, bật 2FA). Chi tiết trong storage/logs/laravel.log';
     }
 
     public function paymentInstruction(Booking $booking)
@@ -2317,6 +2264,12 @@ class BookingAdminController extends Controller
             }
         }
 
+        foreach ($validGuests as $i => $g) {
+            if (BookingGuest::isAdultGuestType($g['type'] ?? 'adult')) {
+                return $i;
+            }
+        }
+
         return 0;
     }
 
@@ -2353,18 +2306,26 @@ class BookingAdminController extends Controller
     private function roomsSelectableForCheckIn(Booking $booking, BookingRoom $br): array
     {
         $baseRoom  = $br->room;
-        $currentId = (int) $br->room_id;
+        $currentId = (int) ($br->room_id ?? 0);
 
-        // Fallback: nếu không tìm được loại phòng, chỉ trả lại phòng hiện tại
-        if (! $baseRoom) {
-            return [];
-        }
-
-        if (! $baseRoom->room_type_id) {
+        // Phòng legacy không gắn room_type_id: chỉ một lựa chọn
+        if ($baseRoom && ! $baseRoom->room_type_id) {
             return [[
                 'room_id' => $baseRoom->id,
                 'label'   => $this->checkInRoomDisplayLabel($baseRoom),
             ]];
+        }
+
+        // Đặt theo loại — room_id có thể null; lấy loại từ phòng đã gán hoặc từ booking_room.room_type_id
+        $roomTypeId = null;
+        if ($baseRoom?->room_type_id) {
+            $roomTypeId = (int) $baseRoom->room_type_id;
+        } elseif ($br->room_type_id) {
+            $roomTypeId = (int) $br->room_type_id;
+        }
+
+        if (! $roomTypeId) {
+            return [];
         }
 
         $checkIn = Carbon::parse($booking->check_in)->toDateString();
@@ -2390,7 +2351,7 @@ class BookingAdminController extends Controller
 
         $candidates = Room::query()
             ->with('roomType')
-            ->where('room_type_id', $baseRoom->room_type_id)
+            ->where('room_type_id', $roomTypeId)
             ->where(function ($q) use ($blockedRoomIds, $currentId) {
                 $q->whereNotIn('id', $blockedRoomIds)
                     ->orWhere('id', $currentId);
@@ -2412,10 +2373,13 @@ class BookingAdminController extends Controller
 
         // Luôn đảm bảo phòng hiện tại có trong danh sách
         if ($currentId && ! collect($out)->contains('room_id', $currentId)) {
-            array_unshift($out, [
-                'room_id' => $currentId,
-                'label'   => $this->checkInRoomDisplayLabel($baseRoom),
-            ]);
+            $roomForLabel = $baseRoom ?? Room::with('roomType')->find($currentId);
+            if ($roomForLabel) {
+                array_unshift($out, [
+                    'room_id' => $currentId,
+                    'label'   => $this->checkInRoomDisplayLabel($roomForLabel),
+                ]);
+            }
         }
 
         return $out;
@@ -2455,6 +2419,7 @@ class BookingAdminController extends Controller
             $booking->load([
                 'user',
                 'bookingRooms.room.roomType',
+                'bookingRooms.roomType',
                 'rooms.roomType',
                 'bookingGuests.bookingRoom.room.roomType',
             ]);
@@ -2563,7 +2528,7 @@ class BookingAdminController extends Controller
                 ],
                 'guests' => $guests,
                 'booking_rooms' => $booking->bookingRooms->values()->map(function ($br, $idx) use ($booking) {
-                    $typeName = $br->room?->roomType?->name ?? 'Phòng đã đặt';
+                    $typeName = $br->room?->roomType?->name ?? $br->roomType?->name ?? 'Phòng đã đặt';
 
                     return [
                         'id'               => $br->id,
@@ -2697,6 +2662,20 @@ class BookingAdminController extends Controller
                 return back()->with('error', 'Thiếu phòng vật lý cho một dòng đặt. Vui lòng chọn phòng và thử lại.')->withInput();
             }
 
+            $typeNorm = BookingGuest::normalizeTypeForStorage((string) ($guest['type'] ?? 'adult'));
+            $cccdDigits = preg_replace('/\D/', '', (string) ($guest['cccd'] ?? ''));
+
+            if (BookingGuest::isAdultGuestType($typeNorm)) {
+                if (strlen($cccdDigits) !== 12) {
+                    return back()->with('error', 'Khách người lớn «'.$guest['name'].'»: CCCD bắt buộc và phải đúng 12 chữ số.')->withInput();
+                }
+            } elseif ($cccdDigits !== '' && strlen($cccdDigits) !== 12) {
+                return back()->with('error', 'Trẻ em «'.$guest['name'].'»: Nếu nhập CCCD phải đúng 12 chữ số hoặc để trống.')->withInput();
+            }
+
+            $guest['type'] = $typeNorm;
+            $guest['cccd'] = $cccdDigits === '' ? null : $cccdDigits;
+
             $guest['booking_room_id'] = $bookingRoomId;
             $guest['room_id']         = $physicalRoomId;
             $validGuests[]            = $guest;
@@ -2798,7 +2777,7 @@ class BookingAdminController extends Controller
             if ($guest && $guest->booking_id == $booking->id) {
                 $guest->update([
                     'name' => $guestData['name'],
-                    'cccd' => $guestData['cccd'] ?? null,
+                    'cccd' => (($c = trim((string) ($guestData['cccd'] ?? ''))) === '' ? null : $c),
                     'type' => BookingGuest::normalizeTypeForStorage((string) ($guestData['type'] ?? 'adult')),
                     'room_id' => $roomId,
                     'checkin_status' => 'checked_in',
@@ -2811,7 +2790,7 @@ class BookingAdminController extends Controller
                 'booking_id' => $booking->id,
                 'room_id' => $roomId,
                 'name' => $guestData['name'],
-                'cccd' => $guestData['cccd'] ?? null,
+                'cccd' => (($c = trim((string) ($guestData['cccd'] ?? ''))) === '' ? null : $c),
                 'type' => BookingGuest::normalizeTypeForStorage((string) ($guestData['type'] ?? 'adult')),
                 'checkin_status' => 'checked_in',
                 'is_representative' => $isRepresentative ? 1 : 0,
@@ -2837,9 +2816,10 @@ class BookingAdminController extends Controller
         }
 
         $type = BookingGuest::normalizeTypeForStorage((string) ($guestData['type'] ?? 'adult'));
+        $cccdStored = (($c = trim((string) ($guestData['cccd'] ?? ''))) === '' ? null : $c);
 
         $data = BookingGuest::filterAttributesForStorage([
-            'cccd' => $guestData['cccd'] ?? null,
+            'cccd' => $cccdStored,
             'type' => $type,
             'status' => 'checked_in',
             'checkin_status' => 'checked_in',

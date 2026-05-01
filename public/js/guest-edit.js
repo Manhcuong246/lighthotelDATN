@@ -128,12 +128,12 @@ function enterEditMode(modal, bookingId) {
                        class="form-control mb-2"
                        id="guestName${guest.id}"
                        value="${guest.name}"
-                       placeholder="Nhâp ho tên">
+                       placeholder="Nhập họ tên">
                 <input type="text"
                        class="form-control"
                        id="guestCccd${guest.id}"
                        value="${guest.cccd || ''}"
-                       placeholder="Nhâp sô CCCD">
+                       placeholder="Nhập số CCCD">
                 <input type="hidden" id="guestType${guest.id}" value="${guest.type}">
             </div>
         `;
@@ -198,7 +198,7 @@ function saveGuestChanges(modal, bookingId) {
     console.log('Prepared guests data:', guests);
 
     if (guests.some(g => !g.name)) {
-        alert('Vui lòng nhâp tên cho tât ca khách hàng!');
+        alert('Vui lòng nhập tên cho tất cả khách hàng!');
         return;
     }
 
@@ -230,7 +230,7 @@ function saveGuestChanges(modal, bookingId) {
     .then(data => {
         console.log('Response data:', data);
         if (data.error) {
-            alert('Lôi: ' + data.error);
+            alert('Lỗi: ' + data.error);
             return;
         }
 
@@ -243,7 +243,7 @@ function saveGuestChanges(modal, bookingId) {
         const guestListContainer = modal.querySelector('.guest-list-container');
 
         if (editBtn) {
-            editBtn.innerHTML = '<i class="bi bi-pencil me-1"></i>Sua thông tin';
+            editBtn.innerHTML = '<i class="bi bi-pencil me-1"></i>Sửa thông tin';
             editBtn.classList.remove('btn-success');
             editBtn.classList.add('btn-light');
         }
@@ -258,7 +258,7 @@ function saveGuestChanges(modal, bookingId) {
     })
     .catch(error => {
         console.error('Error saving guest info:', error);
-        alert('Có lôi xãy ra khi luu thông tin!');
+        alert('Có lỗi xảy ra khi lưu thông tin!');
     });
 }
 

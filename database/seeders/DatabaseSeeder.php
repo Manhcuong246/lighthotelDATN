@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             RoomTypeSeeder::class,
             HotelDataSeeder::class,
+            ExpandRoomsPerRoomTypeSeeder::class,
             BookingSeeder::class, // sample bookings for testing
         ]);
     }

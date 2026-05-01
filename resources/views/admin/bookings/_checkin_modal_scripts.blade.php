@@ -140,7 +140,7 @@
             + '<tr>'
             + '<th style="width:44px" class="text-center">STT</th>'
             + '<th>Họ tên <span class="text-danger">*</span></th>'
-            + '<th style="width:155px">CCCD <span class="text-danger">*</span></th>'
+            + '<th style="width:168px">CCCD<br><small class="fw-normal text-muted">Bắt buộc với NL · Tuỳ chọn trẻ</small></th>'
             + '<th style="width:168px">Loại khách <span class="text-danger">*</span></th>'
             + '<th style="width:52px"></th>'
             + '</tr></thead>'
@@ -188,6 +188,25 @@
         tbody.appendChild(buildGuestRow(bookingId, slotId, null, count + 1));
     };
 
+    function guestRowIsAdult(row) {
+        const sel = row.querySelector('.guest-type-input');
+        return !!(sel && sel.value === 'adult');
+    }
+
+    /** CCCD bắt buộc với người lớn; trẻ em được để trống. */
+    function syncGuestCccdRequirement(row) {
+        const cccdInput = row.querySelector('.guest-cccd-input');
+        const typeSel = row.querySelector('.guest-type-input');
+        if (!cccdInput || !typeSel || cccdInput.readOnly) return;
+        if (guestRowIsAdult(row)) {
+            cccdInput.setAttribute('required', 'required');
+            cccdInput.placeholder = '12 số (bắt buộc)';
+        } else {
+            cccdInput.removeAttribute('required');
+            cccdInput.placeholder = 'Tuỳ chọn';
+        }
+    }
+
     /* ── Tạo một hàng khách ────────────────────────────────────────── */
     function buildGuestRow(bookingId, slotId, guestData, stt) {
         const template = document.getElementById('guestRowTemplate' + bookingId);
@@ -219,6 +238,7 @@
         cccdInput.addEventListener('drop',   function (e) { e.preventDefault(); });
 
         removeBtn.addEventListener('click', function () { removeGuestRow(row, bookingId); });
+        typeInput.addEventListener('change', function () { syncGuestCccdRequirement(row); });
 
         if (guestData) {
             row.dataset.guestId         = guestData.id || '';
@@ -242,6 +262,8 @@
                 removeBtn.classList.replace('btn-danger', 'btn-secondary');
             }
         }
+
+        syncGuestCccdRequirement(row);
 
         return row;
     }
@@ -354,8 +376,10 @@
 
         allRows.forEach(function (row, idx) {
             const name = row.querySelector('.guest-name-input').value.trim();
-            const cccd = row.querySelector('.guest-cccd-input').value.trim();
+            const cccdRaw = row.querySelector('.guest-cccd-input').value.replace(/\D/g, '');
+            const cccdEl = row.querySelector('.guest-cccd-input');
             const label = 'Khách ' + (idx + 1);
+            const adult = guestRowIsAdult(row);
 
             if (!name) {
                 errors.push(label + ': Thiếu họ tên');
@@ -364,14 +388,21 @@
                 row.querySelector('.guest-name-input').classList.remove('is-invalid');
             }
 
-            if (!cccd) {
-                errors.push(label + ': Thiếu CCCD');
-                row.querySelector('.guest-cccd-input').classList.add('is-invalid');
-            } else if (!/^\d{12}$/.test(cccd)) {
-                errors.push(label + ': CCCD phải đúng 12 chữ số');
-                row.querySelector('.guest-cccd-input').classList.add('is-invalid');
+            if (adult) {
+                if (!cccdRaw) {
+                    errors.push(label + ': Người lớn cần CCCD (12 số)');
+                    cccdEl.classList.add('is-invalid');
+                } else if (!/^\d{12}$/.test(cccdRaw)) {
+                    errors.push(label + ': CCCD phải đúng 12 chữ số');
+                    cccdEl.classList.add('is-invalid');
+                } else {
+                    cccdEl.classList.remove('is-invalid');
+                }
+            } else if (cccdRaw && !/^\d{12}$/.test(cccdRaw)) {
+                errors.push(label + ': Trẻ em — nếu nhập CCCD phải đúng 12 số (hoặc để trống)');
+                cccdEl.classList.add('is-invalid');
             } else {
-                row.querySelector('.guest-cccd-input').classList.remove('is-invalid');
+                cccdEl.classList.remove('is-invalid');
             }
         });
 

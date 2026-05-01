@@ -191,7 +191,7 @@ function checkInGuest(guestId) {
             updateSummary();
             showSuccessMessage('Check-in thành công!');
         } else {
-            alert('Có lỗi xảy ra: ' + (data.error || 'Unknown error'));
+            alert('Có lỗi xảy ra: ' + (data.error || 'Không xác định'));
         }
     })
     .catch(error => {
@@ -222,7 +222,7 @@ function undoCheckIn(guestId) {
             updateSummary();
             showSuccessMessage('Hoàn tác check-in thành công!');
         } else {
-            alert('Có lỗi xảy ra: ' + (data.error || 'Unknown error'));
+            alert('Có lỗi xảy ra: ' + (data.error || 'Không xác định'));
         }
     })
     .catch(error => {

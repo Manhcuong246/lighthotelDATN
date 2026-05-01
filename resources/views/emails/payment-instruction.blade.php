@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>@if(!empty($vnpayPayUrl))Thanh toán VNPay@elseChuyển khoản thanh toán@endif — đơn #{{ $booking->id }}</title>
+    <title>@if(!empty($vnpayPayUrl))Thanh toán VNPay@elseif($cashPaidAtDesk ?? false)Xác nhận đặt phòng@elseChuyển khoản thanh toán@endif — đơn #{{ $booking->id }}</title>
 </head>
 @php
     $checkIn = \Carbon\Carbon::parse($booking->check_in);
@@ -29,7 +29,9 @@
     $bankLabel = $hotelInfo?->bank_name ?? (($hotelInfo?->bank_id) ? strtoupper((string) $hotelInfo->bank_id) : '—');
     $preheader = !empty($vnpayPayUrl)
         ? 'Đơn #'.$booking->id.' — '.number_format($booking->total_price, 0, ',', '.').' ₫ — Thanh toán VNPay an toàn'
-        : 'Đơn #'.$booking->id.' — '.number_format($booking->total_price, 0, ',', '.').' ₫ — Thông tin chuyển khoản';
+        : (($cashPaidAtDesk ?? false)
+            ? 'Đơn #'.$booking->id.' — Đã thanh toán tiền mặt tại khách sạn — '.number_format($booking->total_price, 0, ',', '.').' ₫'
+            : 'Đơn #'.$booking->id.' — '.number_format($booking->total_price, 0, ',', '.').' ₫ — Thông tin chuyển khoản');
 @endphp
 <body style="margin:0;padding:0;background-color:#e8ecf2;-webkit-text-size-adjust:100%;">
 {{-- Preheader (nhiều client hiển thị dòng xem trước) --}}
@@ -75,23 +77,38 @@
 
                 <tr>
                     <td style="padding:32px 28px 8px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-                        <p style="margin:0 0 8px;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;">Thanh toán đặt phòng</p>
+                        <p style="margin:0 0 8px;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;">
+                            @if($cashPaidAtDesk ?? false)
+                                Xác nhận đơn
+                            @else
+                                Thanh toán đặt phòng
+                            @endif
+                        </p>
                         <p style="margin:0 0 20px;font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.03em;line-height:1.25;">
                             @if(!empty($vnpayPayUrl))
                                 Hoàn tất thanh toán đơn <span style="color:#0369a1;">#{{ $booking->id }}</span>
+                            @elseif($cashPaidAtDesk ?? false)
+                                Đơn đặt phòng <span style="color:#0369a1;">#{{ $booking->id }}</span> · Đã thanh toán tiền mặt
                             @else
                                 Hướng dẫn chuyển khoản · Đơn <span style="color:#0369a1;">#{{ $booking->id }}</span>
                             @endif
                         </p>
                         <p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:#475569;">
-                            Kính gửi <strong style="color:#0f172a;">{{ $booking->user->full_name ?? 'Quý khách' }}</strong>, cảm ơn Quý khách đã lựa chọn {{ $hotelName }}. Dưới đây là thông tin đặt phòng và cách thanh toán.
+                            Kính gửi <strong style="color:#0f172a;">{{ $booking->user->full_name ?? 'Quý khách' }}</strong>, cảm ơn Quý khách đã lựa chọn {{ $hotelName }}.
+                            @if(!empty($vnpayPayUrl))
+                                Dưới đây là thông tin đặt phòng và link thanh toán VNPay.
+                            @elseif($cashPaidAtDesk ?? false)
+                                Khách sạn đã ghi nhận thanh toán <strong>tiền mặt</strong> cho đơn này. Dưới đây là tóm tắt đặt phòng để Quý khách lưu.
+                            @else
+                                Dưới đây là thông tin đặt phòng và cách thanh toán.
+                            @endif
                         </p>
 
                         {{-- Số tiền nổi bật --}}
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:16px;border:1px solid #bae6fd;margin-bottom:24px;">
                             <tr>
                                 <td style="padding:20px 22px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-                                    <p style="margin:0 0 4px;font-size:12px;color:#0369a1;text-transform:uppercase;letter-spacing:0.08em;">Số tiền cần thanh toán</p>
+                                    <p style="margin:0 0 4px;font-size:12px;color:#0369a1;text-transform:uppercase;letter-spacing:0.08em;">{{ ($cashPaidAtDesk ?? false) ? 'Tổng đã thanh toán' : 'Số tiền cần thanh toán' }}</p>
                                     <p style="margin:0;font-size:28px;font-weight:800;color:#0c4a6e;letter-spacing:-0.03em;">{{ number_format($booking->total_price, 0, ',', '.') }}&nbsp;₫</p>
                                     <p style="margin:8px 0 0;font-size:13px;color:#475569;">{{ $nights }} đêm · Nhận {{ $checkIn->format('d/m/Y') }} → Trả {{ $checkOut->format('d/m/Y') }}</p>
                                 </td>
@@ -176,7 +193,19 @@
                                     <td align="center" style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#94a3b8;padding-bottom:8px;">Nút mở trang thanh toán được bảo vệ — vui lòng không chia sẻ link.</td>
                                 </tr>
                             </table>
-                        @else
+                        @endif
+
+                        @if(empty($vnpayPayUrl) && ($cashPaidAtDesk ?? false))
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ecfdf5;border-radius:14px;border:1px solid #a7f3d0;margin-bottom:24px;">
+                                <tr>
+                                    <td style="padding:16px 18px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.65;color:#065f46;">
+                                        <strong>Đã thanh toán tiền mặt:</strong> khách sạn đã ghi nhận đủ số tiền cho đơn này. Không cần chuyển khoản hay thanh toán thêm qua email.
+                                    </td>
+                                </tr>
+                            </table>
+                        @endif
+
+                        @if(empty($vnpayPayUrl) && !($cashPaidAtDesk ?? false))
                             <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#475569;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Quý khách vui lòng chuyển khoản đúng <strong>nội dung</strong> bên dưới để đơn được xử lý tự động.</p>
 
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:20px;">
@@ -210,25 +239,14 @@
                             @endif
                         @endif
 
-                        @if(!empty($signedBookingViewUrl))
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
-                                <tr>
-                                    <td align="center" style="padding:12px 0;">
-                                        <a href="{{ $signedBookingViewUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;border:2px solid #0f172a;color:#0f172a;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:12px;">
-                                            Xem chi tiết đơn &amp; lưu link
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td align="center" style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;color:#94a3b8;line-height:1.45;padding:0 12px;">Link xem đơn có thời hạn, không cần đăng nhập.</td>
-                                </tr>
-                            </table>
-                        @endif
-
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;border-radius:12px;margin-bottom:24px;">
                             <tr>
                                 <td style="padding:16px 18px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#475569;">
-                                    Sau khi thanh toán, Quý khách có thể đăng nhập và xem <strong>Lịch sử đặt phòng</strong>:
+                                    @if($cashPaidAtDesk ?? false)
+                                        Quý khách có thể đăng nhập và xem <strong>Lịch sử đặt phòng</strong>:
+                                    @else
+                                        Sau khi thanh toán, Quý khách có thể đăng nhập và xem <strong>Lịch sử đặt phòng</strong>:
+                                    @endif
                                     <a href="{{ route('account.bookings') }}" style="color:#0369a1;font-weight:600;">{{ route('account.bookings') }}</a>
                                 </td>
                             </tr>

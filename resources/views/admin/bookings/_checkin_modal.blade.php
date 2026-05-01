@@ -62,7 +62,7 @@
                             </td>
                             <td>
                                 <input type="tel" class="form-control form-control-sm guest-cccd-input"
-                                       placeholder="12 số CCCD" maxlength="12" required>
+                                       placeholder="12 số CCCD" maxlength="12" autocomplete="off">
                             </td>
                             <td>
                                 <select class="form-select form-select-sm guest-type-input" title="Độ tuổi để tính phí theo đơn">

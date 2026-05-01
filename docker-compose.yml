@@ -2,7 +2,7 @@
 # 1) Sao chép: cp .env.example .env rồi chỉnh khối "Docker Compose" trong .env (APP_URL, APP_PORT, DB_*…)
 # 2) Chạy:      docker compose up -d --build
 # 3) Mở web:    APP_URL / cổng APP_PORT (mặc định compose .env thường là http://127.0.0.1:8080)
-# PhpMyAdmin (tùy chọn): docker compose --profile tools up -d
+# PhpMyAdmin:  http://127.0.0.1:${PMA_PORT:-8081} — đăng nhập user DB Laravel (vd. app / DB_PASSWORD) hoặc root / DB_ROOT_PASSWORD
 # Artisan trên host (MySQL trong Docker): DB_HOST=127.0.0.1 DB_USERNAME=app DB_PASSWORD=app_password php artisan ...
 #
 # Lỗi 1045 sau khi đổi DB_PASSWORD trong .env: user MySQL `app` đã tạo lần đầu không tự đổi mật khẩu.
@@ -76,7 +76,6 @@ services:
       - app
 
   phpmyadmin:
-    profiles: [tools]
     image: phpmyadmin:5-apache
     environment:
       PMA_HOST: mysql
