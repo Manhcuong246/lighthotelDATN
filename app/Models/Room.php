@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * @property int         $id
@@ -26,6 +28,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Room extends Model
 {
     use SoftDeletes;
+
+    /**
+     * Không đăng ký SoftDeletes scope khi bảng chưa có deleted_at (migration chưa chạy đồng bộ).
+     */
+    public static function bootSoftDeletes(): void
+    {
+        if (! Schema::hasColumn((new static)->getTable(), 'deleted_at')) {
+            return;
+        }
+
+        static::addGlobalScope(new SoftDeletingScope);
+    }
 
     protected $table = 'rooms';
 

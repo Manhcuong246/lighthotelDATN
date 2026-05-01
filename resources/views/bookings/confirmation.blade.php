@@ -57,7 +57,9 @@
                             Thông tin khách hàng
                         </h5>
                         
-                        @if($booking->guests->count() > 0)
+                        {{-- $booking->guests là cột số khách; danh sách khách lấy qua quan hệ guests() --}}
+                        @php $confirmationGuests = $booking->guests()->get(); @endphp
+                        @if($confirmationGuests->count() > 0)
                             <div class="table-responsive">
                                 <table class="table table-bordered">
                                     <thead class="table-light">
@@ -69,7 +71,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($booking->guests as $guest)
+                                        @foreach($confirmationGuests as $guest)
                                             <tr>
                                                 <td>{{ $guest->room_display_name }}</td>
                                                 <td>{{ $guest->name }}</td>

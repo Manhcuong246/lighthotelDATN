@@ -414,6 +414,9 @@
             @include('admin.bookings._checkin_modal', ['booking' => $booking])
         @endif
     @endforeach
+    @push('scripts')
+        @include('admin.bookings._checkin_modal_scripts')
+    @endpush
 @endif
 
 @endsection

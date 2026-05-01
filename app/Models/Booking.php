@@ -163,6 +163,43 @@ class Booking extends Model
     }
 
     /**
+     * Khách chi tiết cho một dòng booking_room: ưu tiên booking_guests theo slot,
+     * fallback guests (legacy) theo room_id. Khách chưa gán slot chỉ hiện ở dòng phòng đầu tiên.
+     *
+     * @return \Illuminate\Support\Collection<int, BookingGuest|Guest>
+     */
+    public function guestLineItemsForBookingRoom(BookingRoom $br): \Illuminate\Support\Collection
+    {
+        $this->loadMissing(['bookingGuests', 'guests', 'bookingRooms']);
+
+        $firstBrId = $this->bookingRooms->sortBy('id')->first()?->id;
+
+        $bySlot = $this->bookingGuests->filter(function ($g) use ($br, $firstBrId) {
+            if ((int) $g->booking_room_id === (int) $br->id) {
+                return true;
+            }
+            if ($g->booking_room_id === null && $firstBrId !== null && (int) $br->id === (int) $firstBrId) {
+                return true;
+            }
+
+            return false;
+        });
+
+        if ($bySlot->isNotEmpty()) {
+            return $bySlot->sortBy('id')->values();
+        }
+
+        if ($br->room_id) {
+            return $this->guests
+                ->where('room_id', (int) $br->room_id)
+                ->sortBy('id')
+                ->values();
+        }
+
+        return collect();
+    }
+
+    /**
      * Get all guests for this booking (new system)
      */
     public function guests()

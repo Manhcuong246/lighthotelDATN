@@ -24,10 +24,6 @@ use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
 use App\Http\Controllers\Admin\SiteContentAdminController;
 use App\Http\Controllers\DynamicPageController;
-use App\Http\Controllers\GuestCheckInController;
-use App\Http\Controllers\NewBookingController;
-
-
 
 // Serve storage files (fallback when symlink fails or PHP built-in server)
 Route::get('/storage/{path}', function (string $path) {
@@ -110,9 +106,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::put('/bookings/{booking}/guest-info', [BookingAdminController::class, 'updateGuestInfo'])->name('bookings.update-guest-info');
     Route::post('/bookings/{booking}/assign-room', [BookingAdminController::class, 'assignGuestToRoom'])->name('bookings.assign-room');
     Route::get('/bookings/{booking}/available-rooms', [BookingAdminController::class, 'getAvailableRoomsForAssignment'])->name('bookings.available-rooms');
-    Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkOut');
+    Route::post('/bookings/{booking}/checkout', [BookingAdminController::class, 'checkOut'])->name('bookings.checkout');
     Route::get('/bookings/{booking}/checkin-data', [BookingAdminController::class, 'getCheckInData'])->name('bookings.checkin-data');
     Route::post('/bookings/{booking}/checkin-with-assignment', [BookingAdminController::class, 'checkInWithAssignment'])->name('bookings.checkin-with-assignment');
+    Route::patch('/booking-guests/{guest}/toggle-status', [BookingAdminController::class, 'toggleGuestStatus'])->name('booking-guests.toggle-status');
     Route::delete('/booking-guests/{bookingGuest}', [BookingAdminController::class, 'deleteBookingGuest'])->name('booking-guests.delete');
     Route::delete('/booking-services/{bookingService}', [BookingAdminController::class, 'deleteBookingService'])->name('booking-services.delete');
     Route::post('/bookings/{booking}/surcharge', [BookingAdminController::class, 'storeSurcharge'])->name('bookings.storeSurcharge');

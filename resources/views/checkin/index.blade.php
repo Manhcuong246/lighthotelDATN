@@ -76,9 +76,13 @@
                                         <tr data-guest-id="{{ $guest->id }}">
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $guest->name }}</td>
+                                            @php
+                                                $gType = \App\Models\BookingGuest::normalizeTypeForStorage($guest->type ?? 'adult');
+                                                $gBadge = $gType === 'adult' ? 'primary' : ($gType === 'child_6_11' ? 'warning text-dark' : 'info');
+                                            @endphp
                                             <td>
-                                                <span class="badge bg-{{ $guest->type === 'adult' ? 'primary' : 'info' }}">
-                                                    {{ $guest->type === 'adult' ? 'Người lớn' : 'Trẻ em' }}
+                                                <span class="badge bg-{{ $gBadge }}">
+                                                    {{ \App\Models\BookingGuest::typeLabel($guest->type) }}
                                                 </span>
                                             </td>
                                             <td>{{ $guest->cccd ?: '-' }}</td>

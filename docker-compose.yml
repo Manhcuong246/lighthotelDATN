@@ -13,7 +13,12 @@ services:
   mysql:
     image: mysql:8.0
     # Không đặt container_name cố định — cho phép chạy song song nhiều bản copy (vd. DATN vs datn2)
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: >-
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --init-connect="SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+      --character-set-client-handshake=ON
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-hotel_booking}
       # NOTE: Official image rejects MYSQL_USER=root; use a dedicated app user for Docker.

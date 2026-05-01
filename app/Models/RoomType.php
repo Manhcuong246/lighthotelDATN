@@ -4,10 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Schema;
 
 class RoomType extends Model
 {
     use SoftDeletes;
+
+    /**
+     * Tránh query `deleted_at` khi cột chưa tồn tại trên DB.
+     */
+    public static function bootSoftDeletes(): void
+    {
+        if (! Schema::hasColumn((new static)->getTable(), 'deleted_at')) {
+            return;
+        }
+
+        static::addGlobalScope(new SoftDeletingScope);
+    }
 
     protected $fillable = [
         'name',

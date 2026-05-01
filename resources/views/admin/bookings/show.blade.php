@@ -109,10 +109,11 @@
                                 <table class="table table-hover mb-0 align-middle">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="ps-3">Tên phòng</th>
+                                            <th class="ps-3">Phòng gán</th>
                                             <th>Loại phòng</th>
-                                            <th class="text-center">Người lớn</th>
-                                            <th class="text-center" title="Trẻ 6–11 tuổi + Trẻ 0–5 tuổi (miễn phí)">Trẻ em</th>
+                                            <th class="text-center">Người lớn <small class="fw-normal text-muted">(đặt)</small></th>
+                                            <th class="text-center" title="Trẻ 6–11 tuổi + Trẻ 0–5 tuổi (miễn phí)">Trẻ em <small class="fw-normal text-muted">(đặt)</small></th>
+                                            <th style="min-width:220px">Khách lưu trú <small class="fw-normal text-muted">(chi tiết)</small></th>
                                             <th class="text-end">Giá/đêm</th>
                                             <th class="text-end pe-3">Thành tiền</th>
                                             @if(auth()->user() && auth()->user()->role === 'admin' && $booking->status !== 'cancelled' && $booking->status !== 'completed')
@@ -122,14 +123,50 @@
                                     </thead>
                                     <tbody>
                                         @foreach($booking->bookingRooms as $br)
+                                        @php
+                                            $persons = $booking->guestLineItemsForBookingRoom($br);
+                                        @endphp
                                         <tr>
-                                            <td class="ps-3 fw-bold">{{ $br->room->name ?? '—' }}</td>
-                                            <td>{{ $br->room->roomType->name ?? '—' }}</td>
+                                            <td class="ps-3 fw-bold">{{ $br->room?->displayLabel() ?? 'Chưa gán phòng' }}</td>
+                                            <td>{{ $br->room?->roomType?->name ?? '—' }}</td>
                                             <td class="text-center">{{ $br->adults }}</td>
                                             <td class="text-center">
                                                 @if($br->children_6_11 > 0)<span>{{ $br->children_6_11 }}<small class="text-muted ms-1">6–11t</small></span>@endif
                                                 @if($br->children_0_5 > 0)<span>{{ $br->children_6_11 > 0 ? ' + ' : '' }}{{ $br->children_0_5 }}<small class="text-muted ms-1">0–5t</small></span>@endif
                                                 @if($br->children_6_11 + $br->children_0_5 === 0) — @endif
+                                            </td>
+                                            <td class="small align-top">
+                                                @if($persons->isNotEmpty())
+                                                    <ul class="list-unstyled mb-0">
+                                                        @foreach($persons as $p)
+                                                            @php
+                                                                $st = $p->status ?? $p->checkin_status ?? null;
+                                                                $rep = (bool) ($p->is_representative ?? false);
+                                                            @endphp
+                                                            <li class="mb-2 pb-2 border-bottom border-light">
+                                                                <span class="fw-semibold">{{ $p->name }}</span>
+                                                                <span class="text-muted">· {{ \App\Models\BookingGuest::typeLabel($p->type ?? 'adult') }}</span>
+                                                                @if($p->cccd)
+                                                                    <br><span class="text-muted">CCCD: {{ $p->cccd }}</span>
+                                                                @endif
+                                                                <span class="d-block mt-1">
+                                                                    @if($rep)
+                                                                        <span class="badge bg-primary">Đại diện đơn</span>
+                                                                    @endif
+                                                                    @if($st === 'checked_in')
+                                                                        <span class="badge bg-success">Đã check-in</span>
+                                                                    @elseif($st === 'pending' || $st === null)
+                                                                        <span class="badge bg-secondary">Chờ check-in</span>
+                                                                    @else
+                                                                        <span class="badge bg-light text-dark">{{ $st }}</span>
+                                                                    @endif
+                                                                </span>
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <span class="text-muted">Chưa khai báo danh sách tên — chỉ theo đặt chỗ (ở cột NL / Trẻ).</span>
+                                                @endif
                                             </td>
                                             <td class="text-end text-muted">{{ number_format($br->price_per_night, 0, ',', '.') }} ₫</td>
                                             <td class="text-end pe-3 fw-bold text-secondary">{{ number_format($br->subtotal, 0, ',', '.') }} ₫</td>
@@ -256,11 +293,28 @@
                                     @if($booking->bookingRooms->isNotEmpty())
                                         <div class="list-group list-group-flush">
                                             @foreach($booking->bookingRooms as $br)
+                                                @php
+                                                    $roomPersons = $booking->guestLineItemsForBookingRoom($br);
+                                                @endphp
                                                 <div class="list-group-item px-0 py-2 border-0">
-                                                    <div class="fw-semibold">{{ $br->room?->name ?? 'Phòng không xác định' }}</div>
+                                                    <div class="fw-semibold">{{ $br->room?->displayLabel() ?? 'Chưa gán phòng' }}</div>
                                                     <div class="small text-muted">{{ $br->room?->roomType?->name ?? 'Loại phòng không xác định' }}</div>
                                                     <div class="small text-muted">{{ $br->nights ?? $booking->nights }} đêm · {{ number_format($br->price_per_night, 0, ',', '.') }} ₫/đêm</div>
                                                     <div class="small">Thành tiền: <strong>{{ number_format($br->subtotal, 0, ',', '.') }} ₫</strong></div>
+                                                    @if($roomPersons->isNotEmpty())
+                                                        <div class="small mt-2 pt-2 border-top">
+                                                            <strong class="text-muted">Khách:</strong>
+                                                            <ul class="mb-0 ps-3 mt-1">
+                                                                @foreach($roomPersons as $rp)
+                                                                    <li>
+                                                                        {{ $rp->name }}
+                                                                        — {{ \App\Models\BookingGuest::typeLabel($rp->type ?? 'adult') }}
+                                                                        @if($rp->cccd)<span class="text-muted">(CCCD {{ $rp->cccd }})</span>@endif
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             @endforeach
                                         </div>

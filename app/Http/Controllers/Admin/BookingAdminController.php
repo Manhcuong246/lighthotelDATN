@@ -25,6 +25,7 @@ use App\Support\BookingInvoiceViewData;
 use App\Support\InvoiceExtrasSynchronizer;
 use App\Support\RoomOccupancyPricing;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -40,21 +41,11 @@ use Carbon\CarbonPeriod;
 
 class BookingAdminController extends Controller
 {
-    /**
-     * Initialize controller with admin middleware.
-     * Ensures only authenticated admin users can access these routes.
-     */
     public function __construct()
     {
         $this->middleware('admin');
     }
 
-    /**
-     * Display a listing of all bookings with filtering and pagination.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\View\View
-     */
     public function index(Request $request): \Illuminate\View\View
     {
         $counts = [
@@ -99,12 +90,6 @@ class BookingAdminController extends Controller
         return view('admin.bookings.index', compact('bookings', 'counts'));
     }
 
-    /**
-     * Display the specified booking details.
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\View\View
-     */
     public function show(Booking $booking): \Illuminate\View\View
     {
         $booking->load([
@@ -116,6 +101,7 @@ class BookingAdminController extends Controller
             'surcharges.service',
             'bookingRooms.room.roomType',
             'bookingGuests.bookingRoom.room',
+            'guests',
             'payments',
         ]);
         $latestPayment = $booking->payments->first();
@@ -124,12 +110,7 @@ class BookingAdminController extends Controller
         return view('admin.bookings.show', compact('booking', 'latestPayment', 'services'));
     }
 
-    /**
-     * Biên lai / hóa đơn tóm tắt đơn — chỉ khi đã thanh toán và đã checkout (cùng quy tắc khách).
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
-     */
+    /** Biên lai / hóa đơn tóm tắt — chỉ khi đã thanh toán và đã checkout. */
     public function bookingInvoice(Booking $booking): \Illuminate\Http\RedirectResponse|\Illuminate\View\View
     {
         if (! BookingInvoiceViewData::customerCanView($booking)) {
@@ -142,22 +123,8 @@ class BookingAdminController extends Controller
     }
 
 
-    /**
-     * Store a newly created booking in storage.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
-        Log::info('store() called with request data', [
-            'all_data' => $request->all(),
-            'has_guests_json' => $request->has('guests_json'),
-            'guests_json_data' => $request->input('guests_json'),
-            'method' => $request->method(),
-            'ajax' => $request->ajax()
-        ]);
-
         $validated = $request->validate([
             'room_id' => 'required|exists:rooms,id',
             'full_name' => 'required|string|max:150',
@@ -178,20 +145,16 @@ class BookingAdminController extends Controller
             'representative_cccd' => 'required|string|regex:/^[0-9]{12}$/',
         ]);
 
-        // Decode guests JSON
         $guestsArray = json_decode($validated['guests_json'], true);
 
-        // Validate guests data
         if (!is_array($guestsArray) || empty($guestsArray)) {
             return back()->withErrors(['guests_json' => 'Vui lòng nhập thông tin khách hàng.'])->withInput();
         }
 
-        // Validate each guest
         foreach ($guestsArray as $index => $guest) {
             if (empty($guest['name'])) {
                 return back()->withErrors(["guests.{$index}.name" => "Tên khách hàng không được để trống."])->withInput();
             }
-            // Guest 0 (representative) CCCD is validated via representative_cccd rule
         }
 
         $room = Room::findOrFail($validated['room_id']);
@@ -203,7 +166,6 @@ class BookingAdminController extends Controller
         $children05 = $validated['children_0_5'] ?? 0;
         $totalGuests = $adults + $children611 + $children05;
 
-        // Check room availability
         $period = CarbonPeriod::create($checkIn, $checkOut->copy()->subDay());
         $dates = collect();
         foreach ($period as $date) {
@@ -218,7 +180,6 @@ class BookingAdminController extends Controller
             return back()->withErrors(['check_in' => 'Phòng đã được đặt trong khoảng thời gian này.'])->withInput();
         }
 
-        // Calculate total price with occupancy surcharge
         $totalPrice = $this->calculateTotalPriceWithSurcharge($room, $checkIn, $checkOut, $adults, $children611, $children05);
 
         DB::beginTransaction();
@@ -319,14 +280,14 @@ class BookingAdminController extends Controller
                     $guestName = $isRepresentative ? $validated['representative_name'] : ($guestData['name'] ?? '');
                     $guestCccd = $isRepresentative ? $validated['representative_cccd'] : ($guestData['cccd'] ?? null);
 
-                    BookingGuest::create([
+                    BookingGuest::create(BookingGuest::filterAttributesForStorage([
                         'booking_id' => $booking->id,
                         'name' => $guestName,
                         'cccd' => $guestCccd,
-                        'type' => $guestType,
+                        'type' => BookingGuest::normalizeTypeForStorage($guestType),
                         'status' => 'pending',
                         'is_representative' => $isRepresentative ? 1 : 0,
-                    ]);
+                    ]));
                 }
             } else {
                 Log::warning('No guest data found in request for booking ' . $booking->id);
@@ -408,24 +369,11 @@ class BookingAdminController extends Controller
         return $total;
     }
 
-    /**
-     * Redirect to booking show page (edit not supported directly).
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function edit(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         return redirect()->route('admin.bookings.show', $booking);
     }
 
-    /**
-     * Update the specified booking in storage.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function update(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
@@ -501,12 +449,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Remove the specified booking from storage.
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function destroy(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         /** @var \App\Models\User|null $user */
@@ -526,13 +468,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Update the booking status.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function updateStatus(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
@@ -585,13 +520,7 @@ class BookingAdminController extends Controller
         return back()->with('success', 'Cập nhật trạng thái thành công.');
     }
 
-    /**
-     * Chỉnh trạng thái đơn + thanh toán + đồng bộ bảng payments (nghiệp vụ: ví dụ gửi link VNPay nhưng khách trả tiền mặt).
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
+    /** Chỉnh trạng thái đơn + thanh toán + đồng bộ bảng payments. */
     public function updatePaymentSettings(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
@@ -718,12 +647,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Check in the booking.
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function checkIn(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         if (!$booking->isAdminCheckinAllowed()) {
@@ -759,12 +682,6 @@ class BookingAdminController extends Controller
         return back()->with('success', 'Khách đã được check-in.');
     }
 
-    /**
-     * Check out the booking.
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function checkOut(Booking $booking): \Illuminate\Http\RedirectResponse
     {
         if (!$booking->isAdminCheckoutAllowed()) {
@@ -799,13 +716,7 @@ class BookingAdminController extends Controller
         return back()->with('success', 'Khách hàng check-out thành công.');
     }
 
-    /**
-     * Lấy thông tin khách hàng cho modal check-in
-     * Group by booking_rooms
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\JsonResponse
-     */
+    /** Lấy thông tin khách hàng cho modal check-in, group by booking_rooms. */
     public function getGuestInfo(Booking $booking): \Illuminate\Http\JsonResponse
     {
         try {
@@ -827,12 +738,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Load booking data with relationships for guest info
-     *
-     * @param \App\Models\Booking $booking
-     * @return array{booking: \App\Models\Booking, bookingRooms: \Illuminate\Database\Eloquent\Collection, allGuests: \Illuminate\Database\Eloquent\Collection, rooms: \Illuminate\Database\Eloquent\Collection}
-     */
     private function loadBookingGuestData(Booking $booking): array
     {
         $booking->load([
@@ -850,12 +755,6 @@ class BookingAdminController extends Controller
         ];
     }
 
-    /**
-     * Build guests by room response based on booking type
-     *
-     * @param array{booking: \App\Models\Booking, bookingRooms: \Illuminate\Database\Eloquent\Collection, allGuests: \Illuminate\Database\Eloquent\Collection, rooms: \Illuminate\Database\Eloquent\Collection} $data
-     * @return array
-     */
     private function buildGuestsByRoomResponse(array $data): array
     {
         if ($data['bookingRooms']->isEmpty()) {
@@ -865,13 +764,6 @@ class BookingAdminController extends Controller
         return $this->buildAssignmentGuestResponse($data['bookingRooms'], $data['allGuests']);
     }
 
-    /**
-     * Build response for legacy bookings without booking_rooms
-     *
-     * @param \Illuminate\Database\Eloquent\Collection $rooms
-     * @param \Illuminate\Database\Eloquent\Collection $allGuests
-     * @return array
-     */
     private function buildLegacyGuestResponse($rooms, $allGuests): array
     {
         $guestsByRoom = [];
@@ -898,13 +790,6 @@ class BookingAdminController extends Controller
         return $guestsByRoom;
     }
 
-    /**
-     * Build response grouped by actual room assignment
-     *
-     * @param \Illuminate\Database\Eloquent\Collection $bookingRooms
-     * @param \Illuminate\Database\Eloquent\Collection $allGuests
-     * @return array
-     */
     private function buildAssignmentGuestResponse($bookingRooms, $allGuests): array
     {
         $guestsByRoom = [];
@@ -922,12 +807,6 @@ class BookingAdminController extends Controller
         return $guestsByRoom;
     }
 
-    /**
-     * Build room map from booking rooms
-     *
-     * @param \Illuminate\Database\Eloquent\Collection $bookingRooms
-     * @return array<int, array{room: \App\Models\Room, booking_room: \App\Models\BookingRoom}>
-     */
     private function buildRoomMap($bookingRooms): array
     {
         $roomMap = [];
@@ -940,12 +819,6 @@ class BookingAdminController extends Controller
         return $roomMap;
     }
 
-    /**
-     * Build unassigned room group
-     *
-     * @param \Illuminate\Database\Eloquent\Collection $guests
-     * @return array
-     */
     private function buildUnassignedRoomGroup($guests): array
     {
         return [
@@ -957,14 +830,6 @@ class BookingAdminController extends Controller
         ];
     }
 
-    /**
-     * Build assigned room group
-     *
-     * @param int $roomId
-     * @param \Illuminate\Database\Eloquent\Collection $guests
-     * @param array $roomMap
-     * @return array
-     */
     private function buildAssignedRoomGroup(int $roomId, $guests, array $roomMap): array
     {
         $roomInfo = $roomMap[$roomId] ?? null;
@@ -981,13 +846,6 @@ class BookingAdminController extends Controller
         ];
     }
 
-    /**
-     * Format single guest data
-     *
-     * @param \App\Models\Guest $guest
-     * @param bool|null $assigned
-     * @return array
-     */
     private function formatGuestData($guest, $assigned = null): array
     {
         $isAssigned = $assigned ?? !is_null($guest->room_id);
@@ -1003,15 +861,6 @@ class BookingAdminController extends Controller
         ];
     }
 
-    /**
-     * Format room group data
-     *
-     * @param \App\Models\Room|null $room
-     * @param string $roomDisplayName
-     * @param string $roomTypeName
-     * @param array $guests
-     * @return array
-     */
     private function formatRoomGroupData($room, string $roomDisplayName, string $roomTypeName, array $guests): array
     {
         return [
@@ -1023,9 +872,6 @@ class BookingAdminController extends Controller
         ];
     }
 
-    /**
-     * Create empty guest response
-     */
     private function createEmptyGuestResponse(Booking $booking): \Illuminate\Http\JsonResponse
     {
         return response()->json([
@@ -1041,9 +887,6 @@ class BookingAdminController extends Controller
         ]);
     }
 
-    /**
-     * Create guest info success response
-     */
     private function createGuestInfoResponse(Booking $booking, array $guestsByRoom): \Illuminate\Http\JsonResponse
     {
         return response()->json([
@@ -1058,9 +901,6 @@ class BookingAdminController extends Controller
         ]);
     }
 
-    /**
-     * Handle guest info error
-     */
     private function handleGuestInfoError(\Exception $e, Booking $booking): \Illuminate\Http\JsonResponse
     {
         Log::error('Error in getGuestInfo for booking ' . $booking->id, [
@@ -1081,13 +921,6 @@ class BookingAdminController extends Controller
         ], 500);
     }
 
-    /**
-     * Cập nhật thông tin khách hàng
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function updateGuestInfo(Request $request, Booking $booking): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
@@ -1126,13 +959,7 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Gán phòng cụ thể cho khách khi check-in
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\JsonResponse
-     */
+    /** Gán phòng cụ thể cho khách khi check-in. */
     public function assignGuestToRoom(Request $request, Booking $booking): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
@@ -1177,12 +1004,7 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Lấy danh sách phòng trống có thể gán cho khách
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\JsonResponse
-     */
+    /** Lấy danh sách phòng trống có thể gán cho khách. */
     public function getAvailableRoomsForAssignment(Booking $booking): \Illuminate\Http\JsonResponse
     {
         try {
@@ -1220,23 +1042,12 @@ class BookingAdminController extends Controller
 
     // ===================== MULTI-ROOM BOOKING =====================
 
-    /**
-     * Show the form for creating a multi-room booking.
-     *
-     * @return \Illuminate\View\View
-     */
     public function createMulti(): \Illuminate\View\View
     {
         $hotelInfo = HotelInfo::first();
         return view('admin.bookings.create-multi', compact('hotelInfo'));
     }
 
-    /**
-     * Check room availability for the given date range.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function checkAvailability(Request $request): \Illuminate\Http\JsonResponse
     {
         $checkIn = $request->query('check_in');
@@ -1304,12 +1115,6 @@ class BookingAdminController extends Controller
         ]);
     }
 
-    /**
-     * Validate coupon code.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function validateCoupon(Request $request): \Illuminate\Http\JsonResponse
     {
         $code = $request->query('code');
@@ -1331,22 +1136,8 @@ class BookingAdminController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created multi-room booking in storage.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function storeMulti(Request $request): \Illuminate\Http\RedirectResponse
     {
-        Log::info('storeMulti called with request data', [
-            'all_data' => $request->all(),
-            'has_guests' => $request->has('guests'),
-            'guests_data' => $request->input('guests'),
-            'method' => $request->method(),
-            'ajax' => $request->ajax()
-        ]);
-
         $validated = $request->validate([
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
@@ -1444,7 +1235,7 @@ class BookingAdminController extends Controller
             if (! BookingGuest::where('booking_id', $booking->id)->exists()) {
                 $brRows = $booking->bookingRooms()->get();
                 $singleBookingRoomId = $brRows->count() === 1 ? $brRows->first()->id : null;
-                BookingGuest::create([
+                BookingGuest::create(BookingGuest::filterAttributesForStorage([
                     'booking_id' => $booking->id,
                     'booking_room_id' => $singleBookingRoomId,
                     'name' => $repName,
@@ -1453,7 +1244,7 @@ class BookingAdminController extends Controller
                     'status' => 'pending',
                     'is_representative' => 1,
                     'checkin_status' => 'pending',
-                ]);
+                ]));
             }
 
             // 6. Ghi log
@@ -1523,12 +1314,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Generate signed URL for VNPay payment entry.
-     *
-     * @param \App\Models\Booking $booking
-     * @return string
-     */
     protected function signedVnPayEntryUrl(Booking $booking): string
     {
         $days = max(1, (int) config('vnpay.pay_entry_signed_ttl_days', 14));
@@ -1540,17 +1325,6 @@ class BookingAdminController extends Controller
         );
     }
 
-    /**
-     * Send payment instruction email to customer.
-     *
-     * @param \App\Models\Booking $booking
-     * @param \App\Models\HotelInfo|null $hotelInfo
-     * @param int $nights
-     * @param string|null $qrCodeUrl
-     * @param string|null $vnpayPayUrl
-     * @param string $toEmail
-     * @return bool
-     */
     protected function sendPaymentInstructionMail(
         Booking $booking,
         ?HotelInfo $hotelInfo,
@@ -1577,15 +1351,7 @@ class BookingAdminController extends Controller
         return ! in_array(config('mail.default'), ['log', 'array'], true);
     }
 
-    /**
-     * Gửi email thanh toán VNPay cho khách khi admin tạo đơn
-     *
-     * @param \App\Models\Booking $booking
-     * @param int $adults
-     * @param int $children611
-     * @param int $children05
-     * @return void
-     */
+    /** Gửi email thanh toán VNPay cho khách khi admin tạo đơn. */
     protected function sendVnPayPaymentEmail(
         Booking $booking,
         int $adults = 1,
@@ -1601,20 +1367,16 @@ class BookingAdminController extends Controller
             $checkOut = new \Carbon\Carbon($booking->check_out);
             $nights = $checkIn->diffInDays($checkOut);
 
-            // Lấy thông tin khách sạn
             $hotelInfo = HotelInfo::first();
-
-            // Gửi email
             $emailSent = $this->sendPaymentInstructionMail(
                 $booking,
                 $hotelInfo,
                 $nights,
-                null, // QR code URL (không cần cho VNPay)
+                null,
                 $vnpayPayUrl,
                 $booking->user->email
             );
 
-            // Log kết quả
             if ($emailSent) {
                 Log::info('VNPay payment email sent successfully', [
                     'booking_id' => $booking->id,
@@ -1635,11 +1397,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Get failure message for payment instruction mail
-     *
-     * @return string
-     */
     protected function paymentInstructionMailFailureMessage(): string
     {
         if (in_array(config('mail.default'), ['log', 'array'], true)) {
@@ -1649,50 +1406,9 @@ class BookingAdminController extends Controller
         return 'Không gửi được email (SMTP/Google chặn: kiểm tra App Password Gmail, bật 2FA). Chi tiết trong storage/logs/laravel.log';
     }
 
-    /**
-     * Generate VietQR code URL
-     *
-     * @param string $accountNumber
-     * @param string $bankName
-     * @param float $amount
-     * @param string $content
-     * @return string
-     */
-    protected function generateVietQRUrl(string $accountNumber, string $bankName, float $amount, string $content): string
-    {
-        // Map bank name to VietQR bank ID
-        $bankMap = [
-            'Vietcombank' => '970436',
-            'Vietinbank' => '970415',
-            'BIDV' => '970418',
-            'Agribank' => '970405',
-            'Techcombank' => '970407',
-            'ACB' => '970416',
-            'Sacombank' => '970403',
-            'VPBank' => '970432',
-            'MBBank' => '970422',
-            'TPBank' => '970423',
-        ];
-
-        $bankId = $bankMap[$bankName] ?? '970436'; // Default to Vietcombank
-
-        // Generate VietQR URL using VietQR API
-        $encodedContent = urlencode($content);
-        return "https://img.vietqr.io/image/{$bankId}-{$accountNumber}-compact2.png?amount={$amount}&addInfo={$encodedContent}";
-    }
-
-    /**
-     * Show payment instruction for bank transfer
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
-     */
     public function paymentInstruction(Booking $booking)
     {
-        // Load hotel info for bank details
         $hotelInfo = HotelInfo::first();
-
-        // Check if payment already exists
         $existingPayment = Payment::where('booking_id', $booking->id)
             ->where('status', 'paid')
             ->first();
@@ -1715,13 +1431,6 @@ class BookingAdminController extends Controller
         return view('admin.bookings.payment-instruction', compact('booking', 'hotelInfo', 'vnpayPayUrl'));
     }
 
-    /**
-     * Confirm bank transfer payment received
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function confirmPayment(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         // Validate - chỉ kiểm tra payment_method nếu có
@@ -1775,13 +1484,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Cancel booking with reason
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function cancel(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         // Validate
@@ -2305,12 +2007,7 @@ class BookingAdminController extends Controller
         ]];
     }
 
-    /**
-     * Sau khi đơn đã commit — nếu có hóa đơn thì cập nhật dịch vụ/phụ phí trên HĐ theo đơn.
-     *
-     * @param \App\Models\Booking $booking
-     * @return string
-     */
+    /** Sau khi đơn đã commit — nếu có hóa đơn thì cập nhật dịch vụ/phụ phí trên HĐ theo đơn. */
     private function syncInvoiceExtrasIfExists(Booking $booking): string
     {
         $booking->loadMissing('invoice');
@@ -2333,12 +2030,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Tìm hoặc tạo User dựa trên thông tin gửi lên
-     *
-     * @param array{email: string, full_name: string, phone?: string} $validated
-     * @return \App\Models\User
-     */
     private function findOrCreateGuestUser(array $validated): User
     {
         $guestEmail = Str::lower(trim((string) $validated['email']));
@@ -2360,13 +2051,6 @@ class BookingAdminController extends Controller
         return $user;
     }
 
-    /**
-     * Tính toán giá và dữ liệu phòng cho nhiều loại phòng
-     *
-     * @param array $roomsData
-     * @param array $dates
-     * @return array{subtotal: float, total_guests: int, calculatedRoomData: array}
-     */
     private function calculateMultiRoomData(array $roomsData, array $dates): array
     {
         $subtotal = 0;
@@ -2412,14 +2096,6 @@ class BookingAdminController extends Controller
         ];
     }
 
-    /**
-     * Gán phòng cụ thể và lưu ngày đã đặt
-     *
-     * @param \App\Models\Booking $booking
-     * @param array $calculatedRoomData
-     * @param array $dates
-     * @return void
-     */
     private function assignRoomsToBooking(Booking $booking, array $calculatedRoomData, array $dates): void
     {
         foreach ($calculatedRoomData as $key => $calculated) {
@@ -2463,13 +2139,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Tạo thông tin khách hàng (legacy)
-     *
-     * @param \App\Models\Booking $booking
-     * @param array $guestRows
-     * @return void
-     */
     private function createBookingLegacyGuests(Booking $booking, array $guestRows): void
     {
         if (empty($guestRows)) {
@@ -2494,12 +2163,6 @@ class BookingAdminController extends Controller
         Cache::forget("guest_info_{$booking->id}");
     }
 
-    /**
-     * Flatten guest payloads nested by room_type or flat by index.
-     *
-     * @param array $guests
-     * @return array<int, array<string, mixed>>
-     */
     private function flattenGuestPayloadByRoomType(array $guests): array
     {
         $rows = [];
@@ -2538,12 +2201,6 @@ class BookingAdminController extends Controller
         return $rows;
     }
 
-    /**
-     * Toggle trạng thái check-in của một khách hàng
-     *
-     * @param \App\Models\Guest $guest
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function toggleGuestStatus(Guest $guest): \Illuminate\Http\JsonResponse
     {
         try {
@@ -2566,6 +2223,12 @@ class BookingAdminController extends Controller
         }
     }
 
+    /** Khách bảng `guests` — không dùng $booking->guests (scalar cột số khách trên bookings). */
+    private function legacyGuestRecords(Booking $booking): \Illuminate\Database\Eloquent\Collection
+    {
+        return $booking->guests()->get();
+    }
+
     /**
      * CCCD người đại diện: ưu tiên theo đơn (bookings.cccd), sau user, cuối cùng bản ghi khách legacy.
      * Chuỗi rỗng không được coi là có giá trị (tránh lỗi ?? giữ '' và bỏ qua bookings.cccd).
@@ -2579,11 +2242,67 @@ class BookingAdminController extends Controller
             }
         }
 
-        $legacyRep = $booking->guests->firstWhere('is_representative', 1)
-            ?? $booking->guests->first();
+        $legacyGuests = $this->legacyGuestRecords($booking);
+        $legacyRep = $legacyGuests->firstWhere('is_representative', 1)
+            ?? $legacyGuests->first();
         $t = trim((string) ($legacyRep?->cccd ?? ''));
 
         return $t !== '' ? $t : null;
+    }
+
+    /** Chuẩn hóa CCCD để so khớp cờ người đại diện (chỉ chữ số). */
+    private function normalizeCccdForRepMatch(?string $cccd): string
+    {
+        return preg_replace('/\D/', '', (string) ($cccd ?? ''));
+    }
+
+    /**
+     * Một đơn chỉ một booking_guest là đại diện: khớp CCCD đơn/user nếu có, không thì ưu tiên bản ghi đang được đánh dấu, sau đó là khách đầu tiên.
+     */
+    private function normalizeBookingGuestRepresentativeFlags(Booking $booking): void
+    {
+        if (! Schema::hasColumn((new BookingGuest)->getTable(), 'is_representative')) {
+            return;
+        }
+
+        $booking->loadMissing('bookingGuests');
+        $guests = $booking->bookingGuests;
+        if ($guests->isEmpty()) {
+            return;
+        }
+
+        $target = $this->normalizeCccdForRepMatch($this->resolveRepresentativeCccdFromBooking($booking));
+
+        $winner = null;
+        if ($target !== '') {
+            $winner = $guests->first(fn ($g) => $this->normalizeCccdForRepMatch($g->cccd) === $target);
+        }
+        if (! $winner) {
+            $winner = $guests->firstWhere('is_representative', true) ?? $guests->first();
+        }
+
+        foreach ($guests as $g) {
+            $should = (int) $g->id === (int) $winner->id;
+            if ((bool) $g->is_representative !== $should) {
+                $g->is_representative = $should;
+                $g->save();
+            }
+        }
+    }
+
+    /** Vị trí (0-based) khách đại diện trong mảng submit check-in — cùng quy tắc với normalizeBookingGuestRepresentativeFlags. */
+    private function representativeGuestIndexForCheckIn(Booking $booking, array $validGuests): int
+    {
+        $target = $this->normalizeCccdForRepMatch($this->resolveRepresentativeCccdFromBooking($booking));
+        if ($target !== '') {
+            foreach ($validGuests as $i => $g) {
+                if ($this->normalizeCccdForRepMatch($g['cccd'] ?? '') === $target) {
+                    return $i;
+                }
+            }
+        }
+
+        return 0;
     }
 
     /** Nhãn hiển thị phòng cho check-in: số phòng trước, loại phòng sau. */
@@ -2615,16 +2334,22 @@ class BookingAdminController extends Controller
         return $type !== '' ? $type : 'Phòng';
     }
 
-    /**
-     * Phòng vật lý cùng loại có thể chọn khi check-in (trừ đơn khác còn hiệu lực trong kỳ).
-     *
-     * @return array<int, array{room_id: int, label: string}>
-     */
+    /** Phòng vật lý cùng loại có thể chọn khi check-in (trừ đơn khác còn hiệu lực trong kỳ). */
     private function roomsSelectableForCheckIn(Booking $booking, BookingRoom $br): array
     {
-        $baseRoom = $br->room;
-        if (! $baseRoom || ! $baseRoom->room_type_id) {
+        $baseRoom  = $br->room;
+        $currentId = (int) $br->room_id;
+
+        // Fallback: nếu không tìm được loại phòng, chỉ trả lại phòng hiện tại
+        if (! $baseRoom) {
             return [];
+        }
+
+        if (! $baseRoom->room_type_id) {
+            return [[
+                'room_id' => $baseRoom->id,
+                'label'   => $this->checkInRoomDisplayLabel($baseRoom),
+            ]];
         }
 
         $checkIn = Carbon::parse($booking->check_in)->toDateString();
@@ -2648,10 +2373,6 @@ class BookingAdminController extends Controller
             ->unique()
             ->all();
 
-        $currentId = (int) $br->room_id;
-
-        // Không gò vào available/cleaning: nhiều site để status = booked dù lịch chi tiết nằm ở room_booked_dates.
-        // Check-in dựa vào blockedRoomIds (đơn khác / ngày đã giữ). Luôn loại phòng bảo trì, trừ phòng đang gán cho slot này.
         $candidates = Room::query()
             ->with('roomType')
             ->where('room_type_id', $baseRoom->room_type_id)
@@ -2670,8 +2391,16 @@ class BookingAdminController extends Controller
         foreach ($candidates as $r) {
             $out[] = [
                 'room_id' => $r->id,
-                'label' => $this->checkInRoomDisplayLabel($r),
+                'label'   => $this->checkInRoomDisplayLabel($r),
             ];
+        }
+
+        // Luôn đảm bảo phòng hiện tại có trong danh sách
+        if ($currentId && ! collect($out)->contains('room_id', $currentId)) {
+            array_unshift($out, [
+                'room_id' => $currentId,
+                'label'   => $this->checkInRoomDisplayLabel($baseRoom),
+            ]);
         }
 
         return $out;
@@ -2700,13 +2429,7 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * API: Lấy dữ liệu check-in cho booking
-     * Trả về danh sách khách và phòng để gán
-     *
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\JsonResponse
-     */
+    /** API: Lấy danh sách khách và phòng để gán cho check-in modal. */
     public function getCheckInData(Booking $booking): \Illuminate\Http\JsonResponse
     {
         try {
@@ -2714,51 +2437,63 @@ class BookingAdminController extends Controller
                 return response()->json(['error' => 'Không thể thực hiện check-in cho đơn này.'], 403);
             }
 
-            // Load booking với phòng và khách
-            $booking->load(['user', 'bookingRooms.room.roomType', 'rooms.roomType', 'bookingGuests.bookingRoom.room.roomType', 'guests']);
+            $booking->load([
+                'user',
+                'bookingRooms.room.roomType',
+                'rooms.roomType',
+                'bookingGuests.bookingRoom.room.roomType',
+            ]);
 
-            $defaultBookingRoomId = $booking->bookingRooms->count() === 1
-                ? $booking->bookingRooms->first()->id
-                : null;
+            // Luôn dùng phòng đầu tiên làm mặc định cho người đại diện
+            // (dù 1 hay nhiều phòng — staff có thể đổi slot sau).
+            $firstBookingRoom = $booking->bookingRooms->first();
+            $defaultBookingRoomId = $firstBookingRoom?->id;
 
             $resolvedRepCccd = $this->resolveRepresentativeCccdFromBooking($booking);
 
             // Nếu chưa có khách nào, tự động thêm người đại diện từ đơn / user / khách legacy
             if ($booking->bookingGuests->isEmpty()) {
-                $legacyRep = $booking->guests->firstWhere('is_representative', 1)
-                    ?? $booking->guests->first();
+                $legacyGuests = $this->legacyGuestRecords($booking);
+                $legacyRep = $legacyGuests->firstWhere('is_representative', 1)
+                    ?? $legacyGuests->first();
                 $nameFromLegacy = trim((string) ($legacyRep?->name ?? ''));
                 $nameValue = $nameFromLegacy !== ''
                     ? $legacyRep->name
                     : ($booking->user?->full_name ?? $booking->user?->name ?? 'Khách hàng');
 
-                BookingGuest::create([
+                BookingGuest::create(BookingGuest::filterAttributesForStorage([
                     'booking_id' => $booking->id,
                     'name' => $nameValue,
                     'cccd' => $resolvedRepCccd,
                     'type' => 'adult',
                     'status' => 'pending',
                     'is_representative' => 1,
-                    'checkin_status' => 'pending',
                     'booking_room_id' => $defaultBookingRoomId,
-                ]);
+                    'checkin_status' => 'pending',
+                ]));
 
-                $booking->load('bookingGuests.bookingRoom.room.roomType');
+                $booking->load(['bookingGuests.bookingRoom.room.roomType']);
             }
 
-            // Đồng bộ CCCD đại diện và phòng mặc định (một phòng) nếu DB đang thiếu
-            foreach ($booking->bookingGuests as $guest) {
+            $booking->load(['bookingGuests.bookingRoom.room.roomType']);
+
+            // Một đơn — một khách đại diện trong booking_guests (không theo từng slot phòng).
+            $this->normalizeBookingGuestRepresentativeFlags($booking);
+            $booking->load(['bookingGuests.bookingRoom.room.roomType']);
+
+            $repGuest = $booking->bookingGuests->firstWhere('is_representative', true);
+            if ($repGuest) {
                 $dirty = false;
-                if ($guest->is_representative && trim((string) ($guest->cccd ?? '')) === '' && $resolvedRepCccd) {
-                    $guest->cccd = $resolvedRepCccd;
+                if (trim((string) ($repGuest->cccd ?? '')) === '' && $resolvedRepCccd) {
+                    $repGuest->cccd = $resolvedRepCccd;
                     $dirty = true;
                 }
-                if ($guest->booking_room_id === null && $defaultBookingRoomId !== null) {
-                    $guest->booking_room_id = $defaultBookingRoomId;
+                if ($repGuest->booking_room_id === null && $defaultBookingRoomId !== null) {
+                    $repGuest->booking_room_id = $defaultBookingRoomId;
                     $dirty = true;
                 }
                 if ($dirty) {
-                    $guest->save();
+                    $repGuest->save();
                 }
             }
 
@@ -2770,11 +2505,10 @@ class BookingAdminController extends Controller
                     'id' => $guest->id,
                     'name' => $guest->name,
                     'cccd' => $guest->cccd,
-                    'type' => $guest->type,
+                    'type' => BookingGuest::normalizeTypeForStorage((string) ($guest->type ?? 'adult')),
                     'status' => $guest->status,
                     'booking_room_id' => $guest->booking_room_id,
                     'room_id' => $guest->bookingRoom?->room_id,
-                    'is_representative' => $guest->is_representative,
                     'room_name' => $this->checkInRoomDisplayLabel($guest->bookingRoom?->room),
                 ];
             });
@@ -2789,36 +2523,61 @@ class BookingAdminController extends Controller
                 $checkOut = \Carbon\Carbon::parse($checkOut);
             }
 
+            $repBg = $booking->bookingGuests->firstWhere('is_representative', true)
+                ?? $booking->bookingGuests->first();
+            $repDisplayName = $repBg?->name
+                ?? $booking->user?->full_name
+                ?? $booking->user?->name;
+            $repCccdOut = trim((string) ($repBg?->cccd ?? ''));
+            if ($repCccdOut === '' && $resolvedRepCccd) {
+                $repCccdOut = $resolvedRepCccd;
+            }
+
             return response()->json([
                 'success' => true,
                 'booking' => [
                     'id' => $booking->id,
                     'user' => $booking->user?->only(['id', 'full_name', 'email', 'phone']),
+                    'representative' => [
+                        'full_name' => $repDisplayName,
+                        'email' => $booking->user?->email,
+                        'cccd' => $repCccdOut !== '' ? $repCccdOut : null,
+                    ],
                     'check_in' => $checkIn?->format('d/m/Y'),
                     'check_out' => $checkOut?->format('d/m/Y'),
                 ],
                 'guests' => $guests,
-                'booking_rooms' => $booking->bookingRooms->map(function ($br) use ($booking) {
+                'booking_rooms' => $booking->bookingRooms->values()->map(function ($br, $idx) use ($booking) {
+                    $typeName = $br->room?->roomType?->name ?? 'Phòng đã đặt';
+
                     return [
-                        'id' => $br->id,
-                        'room_id' => $br->room_id,
-                        'room_type_id' => $br->room?->room_type_id,
-                        'slot_label' => $br->room?->roomType?->name ?? 'Phòng đã đặt',
-                        'room_name' => $this->checkInRoomDisplayLabel($br->room),
-                        'room_options' => $this->roomsSelectableForCheckIn($booking, $br),
+                        'id'               => $br->id,
+                        'room_id'          => $br->room_id,
+                        'room_type_name'   => $typeName,
+                        'adults'           => (int) ($br->adults ?? 0),
+                        'children_6_11'    => (int) ($br->children_6_11 ?? 0),
+                        'children_0_5'     => (int) ($br->children_0_5 ?? 0),
+                        'slot_label'       => ($idx + 1) . '. ' . $typeName,
+                        'room_options'     => $this->roomsSelectableForCheckIn($booking, $br),
                     ];
                 }),
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('getCheckInData failed', [
+                'booking_id' => $booking->id ?? null,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
-                'error' => 'Lỗi tải dữ liệu: ' . $e->getMessage()
+                'error' => 'Lỗi tải dữ liệu: ' . $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Xử lý check-in với gán phòng cho từng khách
+     * Xử lý check-in: admin chọn phòng vật lý theo từng dòng đặt (booking_room), sau đó nhập khách.
      */
     public function checkInWithAssignment(Request $request, Booking $booking)
     {
@@ -2827,80 +2586,120 @@ class BookingAdminController extends Controller
                 return back()->with('error', 'Không thể thực hiện check-in cho đơn này.');
             }
 
-            // Lấy và xử lý danh sách khách
-            $result = $this->processGuestAssignmentData($request, $booking);
-            if ($result instanceof \Illuminate\Http\RedirectResponse) {
+            $slotPicks = $this->resolveCheckInSlotRoomPicks($request, $booking);
+            if ($slotPicks instanceof RedirectResponse) {
+                return $slotPicks;
+            }
+
+            $result = $this->processGuestAssignmentData($request, $booking, $slotPicks);
+            if ($result instanceof RedirectResponse) {
                 return $result;
             }
 
-            [$validGuests, $guestsByRoom, $roomDetails] = $result;
+            [$validGuests, $guestsBySlot] = $result;
 
-            // Thực hiện check-in trong transaction
-            return $this->executeCheckInTransaction($booking, $validGuests, $guestsByRoom, $roomDetails);
+            return $this->executeCheckInTransaction($booking, $validGuests, $guestsBySlot, $slotPicks);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('checkInWithAssignment failed', ['booking_id' => $booking->id, 'error' => $e->getMessage()]);
+
             return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())->withInput();
         }
     }
 
     /**
-     * Xử lý dữ liệu khách và phân nhóm theo phòng
-     * @return array|\Illuminate\Http\RedirectResponse
+     * Kiểm tra và trả về map [booking_room_id => room_id] từ form check-in.
+     *
+     * @return array<int, int>|RedirectResponse
      */
-    private function processGuestAssignmentData(Request $request, Booking $booking)
+    private function resolveCheckInSlotRoomPicks(Request $request, Booking $booking): array|RedirectResponse
+    {
+        $slotRoomIds   = $request->input('slot_room_id', []);
+        $bookingRooms  = $booking->bookingRooms()->with('room')->get();
+        $picks         = [];
+
+        foreach ($bookingRooms as $br) {
+            $picked = isset($slotRoomIds[$br->id]) ? (int) $slotRoomIds[$br->id] : 0;
+            if ($picked < 1) {
+                return back()
+                    ->with('error', 'Vui lòng chọn phòng cụ thể cho từng loại phòng đã đặt trước khi check-in.')
+                    ->withInput();
+            }
+
+            $allowed = collect($this->roomsSelectableForCheckIn($booking, $br))
+                ->pluck('room_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($allowed === []) {
+                return back()
+                    ->with('error', 'Không có phòng vật lý khả dụng cho một dòng đặt trên đơn. Kiểm tra loại phòng hoặc lịch trống.')
+                    ->withInput();
+            }
+
+            if (! in_array($picked, $allowed, true)) {
+                return back()
+                    ->with('error', 'Phòng đã chọn không hợp lệ hoặc không còn trống trong kỳ đặt. Vui lòng chọn lại.')
+                    ->withInput();
+            }
+
+            $picks[(int) $br->id] = $picked;
+        }
+
+        return $picks;
+    }
+
+    /**
+     * Đọc danh sách khách từ request, phân nhóm theo booking_room_id.
+     * Phòng vật lý lấy từ lựa chọn admin (slot_room_id), không dùng tạm gán cũ trên booking_room.
+     *
+     * @param  array<int, int>  $slotRoomPicks
+     */
+    private function processGuestAssignmentData(Request $request, Booking $booking, array $slotRoomPicks): array|RedirectResponse
     {
         $requestGuests = $request->input('guests', []);
-        $validGuests = [];
-        $guestsByRoom = [];
-        $roomDetails = [];
+        $validGuests   = [];
+        $guestsBySlot  = [];
+
+        $bookingRoomsMap = $booking->bookingRooms()->with('room')->get()->keyBy('id');
+        $defaultBrId     = $bookingRoomsMap->keys()->first();
+        $roomBySlot      = [];
 
         foreach ($requestGuests as $guest) {
             if (empty($guest['name'])) {
                 continue;
             }
 
-            $bookingRoomId = isset($guest['booking_room_id']) ? (int) $guest['booking_room_id'] : null;
-            $roomId = isset($guest['room_id']) ? (int) $guest['room_id'] : null;
+            $bookingRoomId = isset($guest['booking_room_id']) ? (int) $guest['booking_room_id'] : $defaultBrId;
+            $br            = $bookingRoomsMap->get($bookingRoomId);
 
-            if (! $roomId && $bookingRoomId) {
-                $brRow = BookingRoom::with('room')->where('booking_id', $booking->id)->where('id', $bookingRoomId)->first();
-                $roomId = $brRow?->room_id ? (int) $brRow->room_id : null;
-            }
-
-            if (! $roomId) {
-                return back()->with('error', "Khách {$guest['name']} chưa chọn phòng cụ thể")->withInput();
+            if (! $br) {
+                return back()->with('error', "Khách «{$guest['name']}»: dòng đặt phòng #{$bookingRoomId} không thuộc đơn này.")->withInput();
             }
 
-            $brForPick = null;
-            if ($bookingRoomId) {
-                $brForPick = BookingRoom::where('booking_id', $booking->id)->where('id', $bookingRoomId)->first();
+            $physicalRoomId = $slotRoomPicks[$bookingRoomId] ?? 0;
+            if ($physicalRoomId < 1) {
+                return back()->with('error', 'Thiếu phòng vật lý cho một dòng đặt. Vui lòng chọn phòng và thử lại.')->withInput();
             }
-            if (! $brForPick && $booking->bookingRooms()->count() === 1) {
-                $brForPick = $booking->bookingRooms()->first();
-            }
-            if ($brForPick) {
-                $allowed = collect($this->roomsSelectableForCheckIn($booking, $brForPick))->pluck('room_id')->map(fn ($id) => (int) $id)->all();
-                if (! in_array($roomId, $allowed, true)) {
-                    return back()->with('error', 'Phòng đã chọn không nằm trong danh sách được phép (không cùng loại hoặc không trống trong kỳ đặt).')->withInput();
+
+            $guest['booking_room_id'] = $bookingRoomId;
+            $guest['room_id']         = $physicalRoomId;
+            $validGuests[]            = $guest;
+
+            if (! isset($guestsBySlot[$bookingRoomId])) {
+                if (! isset($roomBySlot[$bookingRoomId])) {
+                    $roomBySlot[$bookingRoomId] = Room::query()->with('roomType')->find($physicalRoomId);
                 }
+                $guestsBySlot[$bookingRoomId] = [
+                    'adults'   => 0,
+                    'children' => 0,
+                    'room'     => $roomBySlot[$bookingRoomId],
+                ];
             }
-
-            $room = Room::with('roomType')->find($roomId);
-            if (!$room) {
-                return back()->with('error', "Phòng không tồn tại");
-            }
-
-            $guest['room_id'] = $roomId;
-            $validGuests[] = $guest;
-            $roomDetails[$roomId] = $room;
-
-            if (!isset($guestsByRoom[$roomId])) {
-                $guestsByRoom[$roomId] = ['adults' => 0, 'children' => 0];
-            }
-            if (($guest['type'] ?? 'adult') === 'adult') {
-                $guestsByRoom[$roomId]['adults']++;
+            if (BookingGuest::isAdultGuestType($guest['type'] ?? 'adult')) {
+                $guestsBySlot[$bookingRoomId]['adults']++;
             } else {
-                $guestsByRoom[$roomId]['children']++;
+                $guestsBySlot[$bookingRoomId]['children']++;
             }
         }
 
@@ -2908,108 +2707,46 @@ class BookingAdminController extends Controller
             return back()->with('error', 'Vui lòng thêm ít nhất 1 khách')->withInput();
         }
 
-        // Kiểm tra capacity
-        $capacityError = $this->validateRoomCapacitiesForCheckin($guestsByRoom, $roomDetails);
-        if ($capacityError) {
-            return $capacityError;
-        }
-
-        return [$validGuests, $guestsByRoom, $roomDetails];
+        return [$validGuests, $guestsBySlot];
     }
 
     /**
-     * Kiểm tra capacity phòng
-     * @return \Illuminate\Http\RedirectResponse|null
+     * @param  array<int, int>  $slotRoomPicks  booking_room.id => rooms.id
      */
-    private function validateRoomCapacitiesForCheckin(array $guestsByRoom, array $roomDetails)
-    {
-        foreach ($guestsByRoom as $roomId => $counts) {
-            $room = $roomDetails[$roomId];
-            $maxAdults = $room->roomType?->max_adults ?? 2;
-            $maxChildren = $room->roomType?->max_children ?? 1;
-
-            if ($counts['adults'] > $maxAdults) {
-                return back()->with('error', "Phòng {$room->room_number} chỉ chứa tối đa {$maxAdults} người lớn, bạn đang có {$counts['adults']}")->withInput();
-            }
-            if ($counts['children'] > $maxChildren) {
-                return back()->with('error', "Phòng {$room->room_number} chỉ chứa tối đa {$maxChildren} trẻ em, bạn đang có {$counts['children']}")->withInput();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Thực hiện check-in trong transaction
-     */
-    private function executeCheckInTransaction(Booking $booking, array $validGuests, array $guestsByRoom, array $roomDetails): \Illuminate\Http\RedirectResponse
+    private function executeCheckInTransaction(Booking $booking, array $validGuests, array $guestsBySlot, array $slotRoomPicks): RedirectResponse
     {
         DB::beginTransaction();
         try {
-            $this->assignRoomsFromGuestSelections($booking, $validGuests);
+            foreach ($slotRoomPicks as $brId => $roomId) {
+                BookingRoom::query()
+                    ->where('booking_id', $booking->id)
+                    ->where('id', $brId)
+                    ->update(['room_id' => $roomId]);
+            }
+            $booking->refresh();
             $this->syncRoomBookedDatesForBooking($booking);
+
             $bookingRooms = $booking->bookingRooms()->with('room')->get();
             $this->saveGuestsForCheckin($booking, $validGuests, $bookingRooms);
-            $result = $this->finalizeCheckInWithAssignment($booking, $guestsByRoom, $roomDetails);
+            $booking->refresh();
+            $booking->loadMissing('user');
+            $this->normalizeBookingGuestRepresentativeFlags($booking);
+            $result = $this->finalizeCheckInWithAssignment($booking, $guestsBySlot);
             DB::commit();
             return $result;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('executeCheckInTransaction failed', ['booking_id' => $booking->id, 'error' => $e->getMessage()]);
+
             return back()->with('error', 'Lỗi: ' . $e->getMessage())->withInput();
         }
     }
 
-    /**
-     * Gán room_id vào booking_rooms theo lựa chọn check-in (room_id + booking_room_id).
-     */
-    private function assignRoomsFromGuestSelections(Booking $booking, array $validGuests): void
-    {
-        $bookingRooms = $booking->bookingRooms()->orderBy('id')->get();
-        $map = [];
-
-        foreach ($validGuests as $g) {
-            $brid = isset($g['booking_room_id']) ? (int) $g['booking_room_id'] : null;
-            $rid = isset($g['room_id']) ? (int) $g['room_id'] : null;
-            if (! $rid) {
-                continue;
-            }
-            if ($brid) {
-                $map[$brid] = $rid;
-            } elseif ($bookingRooms->count() === 1) {
-                $map[$bookingRooms->first()->id] = $rid;
-            }
-        }
-
-        if ($map === []) {
-            $roomIds = [];
-            foreach ($validGuests as $g) {
-                $rid = isset($g['room_id']) ? (int) $g['room_id'] : null;
-                if ($rid && ! in_array($rid, $roomIds, true)) {
-                    $roomIds[] = $rid;
-                }
-            }
-            foreach ($bookingRooms->values() as $index => $br) {
-                $rid = $roomIds[$index] ?? $roomIds[0] ?? null;
-                if ($rid) {
-                    $map[$br->id] = $rid;
-                }
-            }
-        }
-
-        foreach ($bookingRooms as $br) {
-            if (isset($map[$br->id])) {
-                $br->room_id = $map[$br->id];
-                $br->save();
-            }
-        }
-    }
-
-    /**
-     * Lưu thông tin khách
-     */
     private function saveGuestsForCheckin(Booking $booking, array $validGuests, $bookingRooms): void
     {
         $existingGuestIds = $booking->guests()->pluck('id')->toArray();
         $processedGuestIds = [];
+        $repIndex = $this->representativeGuestIndexForCheckIn($booking, $validGuests);
 
         foreach ($validGuests as $index => $guestData) {
             $roomId = (int) $guestData['room_id'];
@@ -3019,14 +2756,16 @@ class BookingAdminController extends Controller
                 $bookingRoomId = $bookingRoom?->id ?? $bookingRooms->first()?->id;
             }
 
+            $isRepresentative = $index === $repIndex;
+
             // Lưu vào bảng guests (legacy)
-            $guestId = $this->saveLegacyGuest($booking, $guestData, $roomId, $index, $existingGuestIds);
+            $guestId = $this->saveLegacyGuest($booking, $guestData, $roomId, $existingGuestIds, $isRepresentative);
             if ($guestId) {
                 $processedGuestIds[] = $guestId;
             }
 
             // Lưu vào bảng booking_guests (mới)
-            $this->saveBookingGuest($booking, $guestData, $bookingRoomId);
+            $this->saveBookingGuest($booking, $guestData, $bookingRoomId, $isRepresentative);
         }
 
         // Xóa khách không còn trong danh sách
@@ -3036,10 +2775,8 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Lưu khách vào bảng guests (legacy)
-     */
-    private function saveLegacyGuest(Booking $booking, array $guestData, int $roomId, int $index, array $existingGuestIds): ?int
+    /** Lưu khách vào bảng guests (legacy). */
+    private function saveLegacyGuest(Booking $booking, array $guestData, int $roomId, array $existingGuestIds, bool $isRepresentative): ?int
     {
         if (isset($guestData['id']) && in_array($guestData['id'], $existingGuestIds)) {
             $guest = Guest::find($guestData['id']);
@@ -3047,9 +2784,10 @@ class BookingAdminController extends Controller
                 $guest->update([
                     'name' => $guestData['name'],
                     'cccd' => $guestData['cccd'] ?? null,
-                    'type' => $guestData['type'] ?? 'adult',
+                    'type' => BookingGuest::normalizeTypeForStorage((string) ($guestData['type'] ?? 'adult')),
                     'room_id' => $roomId,
                     'checkin_status' => 'checked_in',
+                    'is_representative' => $isRepresentative ? 1 : 0,
                 ]);
                 return $guest->id;
             }
@@ -3059,52 +2797,53 @@ class BookingAdminController extends Controller
                 'room_id' => $roomId,
                 'name' => $guestData['name'],
                 'cccd' => $guestData['cccd'] ?? null,
-                'type' => $guestData['type'] ?? 'adult',
+                'type' => BookingGuest::normalizeTypeForStorage((string) ($guestData['type'] ?? 'adult')),
                 'checkin_status' => 'checked_in',
-                'is_representative' => $index === 0 ? 1 : 0,
+                'is_representative' => $isRepresentative ? 1 : 0,
             ]);
             return $guest->id;
         }
         return null;
     }
 
-    /**
-     * Lưu khách vào bảng booking_guests
-     */
-    private function saveBookingGuest(Booking $booking, array $guestData, ?int $bookingRoomId): void
+    /** Lưu khách vào bảng booking_guests (mới). */
+    private function saveBookingGuest(Booking $booking, array $guestData, ?int $bookingRoomId, bool $isRepresentative): void
     {
-        try {
+        $bgGuest = null;
+        if (! empty($guestData['id'])) {
+            $bgGuest = BookingGuest::where('booking_id', $booking->id)
+                ->where('id', (int) $guestData['id'])
+                ->first();
+        }
+        if (! $bgGuest) {
             $bgGuest = BookingGuest::where('booking_id', $booking->id)
                 ->where('name', $guestData['name'])
                 ->first();
+        }
 
-            $data = [
-                'cccd' => $guestData['cccd'] ?? null,
-                'type' => $guestData['type'] ?? 'adult',
-                'status' => 'checked_in',
-                'checkin_status' => 'checked_in',
+        $type = BookingGuest::normalizeTypeForStorage((string) ($guestData['type'] ?? 'adult'));
+
+        $data = BookingGuest::filterAttributesForStorage([
+            'cccd' => $guestData['cccd'] ?? null,
+            'type' => $type,
+            'status' => 'checked_in',
+            'checkin_status' => 'checked_in',
+            'booking_room_id' => $bookingRoomId,
+            'is_representative' => $isRepresentative ? 1 : 0,
+        ]);
+
+        if ($bgGuest) {
+            $bgGuest->update($data);
+        } else {
+            BookingGuest::create(BookingGuest::filterAttributesForStorage(array_merge($data, [
+                'booking_id' => $booking->id,
                 'booking_room_id' => $bookingRoomId,
-            ];
-
-            if ($bgGuest) {
-                $bgGuest->update($data);
-            } else {
-                BookingGuest::create(array_merge($data, [
-                    'booking_id' => $booking->id,
-                    'booking_room_id' => $bookingRoomId,
-                    'name' => $guestData['name'],
-                    'is_representative' => 0,
-                ]));
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to save booking_guest', ['error' => $e->getMessage(), 'guest' => $guestData['name']]);
+                'name' => $guestData['name'],
+            ])));
         }
     }
 
-    /**
-     * Hoàn tất check-in và tạo log
-     */
-    private function finalizeCheckInWithAssignment(Booking $booking, array $guestsByRoom, array $roomDetails): \Illuminate\Http\RedirectResponse
+    private function finalizeCheckInWithAssignment(Booking $booking, array $guestsBySlot): \Illuminate\Http\RedirectResponse
     {
         $old = $booking->status;
         $booking->status = 'checked_in';
@@ -3112,27 +2851,33 @@ class BookingAdminController extends Controller
         $booking->save();
 
         /** @var \App\Models\User|null $user */
-        $user = Auth::user();
+        $user      = Auth::user();
         $staffName = $user?->full_name ?? 'Lễ tân';
-        $rooms = $booking->bookingRooms()->with('room')->get()->map(fn($br) => $br->room?->name)->filter()->implode(', ');
+        $rooms     = $booking->bookingRooms()->with('room')->get()
+            ->map(fn ($br) => $br->room?->room_number ?? $br->room?->name)
+            ->filter()->implode(', ');
         $roomText = $rooms ? " phòng {$rooms}" : '';
 
         BookingLog::create([
             'booking_id' => $booking->id,
-            'user_id' => Auth::id(),
+            'user_id'    => Auth::id(),
             'old_status' => $old,
             'new_status' => 'checked_in',
-            'notes' => "{$staffName} check-in{$roomText}.",
+            'notes'      => "{$staffName} check-in{$roomText}.",
             'changed_at' => now(),
         ]);
 
         Cache::forget("guest_info_{$booking->id}");
 
-        $roomNumbers = collect($roomDetails)->pluck('room_number')->implode(', ');
-        $totalAdults = collect($guestsByRoom)->sum('adults');
-        $totalChildren = collect($guestsByRoom)->sum('children');
+        $totalAdults   = collect($guestsBySlot)->sum('adults');
+        $totalChildren = collect($guestsBySlot)->sum('children');
+        $roomNumbers   = collect($guestsBySlot)->map(fn ($s) => $s['room']?->room_number ?? $s['room']?->name)->filter()->implode(', ');
 
-        return back()->with('success', "Check-in thành công! {$totalAdults} người lớn, {$totalChildren} trẻ em - Phòng: {$roomNumbers}");
+        $msg = "Check-in thành công! {$totalAdults} người lớn";
+        if ($totalChildren) $msg .= ", {$totalChildren} trẻ em";
+        if ($roomNumbers)   $msg .= " — Phòng: {$roomNumbers}";
+
+        return back()->with('success', $msg);
     }
 
     /**
@@ -3157,9 +2902,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Xóa khách khỏi booking
-     */
     public function deleteBookingGuest(BookingGuest $bookingGuest)
     {
         try {
@@ -3187,14 +2929,13 @@ class BookingAdminController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Đã xóa khách']);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('deleteBookingGuest failed', ['error' => $e->getMessage()]);
+
             return response()->json(['error' => 'Lỗi: ' . $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Xóa dịch vụ đã gán cho booking
-     */
     public function deleteBookingService(BookingServiceRow $bookingService)
     {
         try {
@@ -3245,13 +2986,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Thay đổi phòng cho khách hàng
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function changeRoom(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
@@ -3263,13 +2997,6 @@ class BookingAdminController extends Controller
         return DB::transaction(fn () => $this->executeChangeRoomTransaction($validated, $booking));
     }
 
-    /**
-     * Execute the room change transaction logic
-     *
-     * @param array{old_room_id: int, new_room_id: int, reason?: string} $validated
-     * @param \App\Models\Booking $booking
-     * @return \Illuminate\Http\RedirectResponse
-     */
     private function executeChangeRoomTransaction(array $validated, Booking $booking): \Illuminate\Http\RedirectResponse
     {
         $newRoom = Room::findOrFail($validated['new_room_id']);
@@ -3329,15 +3056,6 @@ class BookingAdminController extends Controller
         return back()->with('success', 'Đổi phòng thành công! Số dư phòng cũ đã được ghi nhận.');
     }
 
-    /**
-     * Check if room is occupied during the booking period
-     *
-     * @param int $roomId
-     * @param int $bookingId
-     * @param string $checkIn
-     * @param string $checkOut
-     * @return bool
-     */
     private function isRoomOccupied(int $roomId, int $bookingId, string $checkIn, string $checkOut): bool
     {
         return RoomBookedDate::where('room_id', $roomId)
@@ -3392,15 +3110,6 @@ class BookingAdminController extends Controller
         ];
     }
 
-    /**
-     * Update room booked dates for room change
-     *
-     * @param int $bookingId
-     * @param int $oldRoomId
-     * @param int $newRoomId
-     * @param CarbonPeriod $period
-     * @return void
-     */
     private function updateRoomBookedDates(int $bookingId, int $oldRoomId, int $newRoomId, CarbonPeriod $period): void
     {
         RoomBookedDate::where('booking_id', $bookingId)
@@ -3420,15 +3129,6 @@ class BookingAdminController extends Controller
         RoomBookedDate::insert($days);
     }
 
-    /**
-     * Update room statuses after room change
-     *
-     * @param int $oldRoomId
-     * @param int $newRoomId
-     * @param string $checkIn
-     * @param string $checkOut
-     * @return void
-     */
     private function updateRoomStatuses(int $oldRoomId, int $newRoomId, string $checkIn, string $checkOut): void
     {
         $today = now()->toDateString();
@@ -3438,12 +3138,6 @@ class BookingAdminController extends Controller
         }
     }
 
-    /**
-     * Recalculate booking total price including services and surcharges
-     *
-     * @param \App\Models\Booking $booking
-     * @return void
-     */
     private function recalculateBookingTotalPrice(Booking $booking): void
     {
         $newTotalPrice = $booking->bookingRooms()->sum('subtotal');
@@ -3455,12 +3149,6 @@ class BookingAdminController extends Controller
         ]);
     }
 
-    /**
-     * Calculate total for booking services
-     *
-     * @param \App\Models\Booking $booking
-     * @return float
-     */
     private function calculateBookingServicesTotal(Booking $booking): float
     {
         return (float) $booking->bookingServices()->get()->sum(function ($bs) {
@@ -3468,12 +3156,6 @@ class BookingAdminController extends Controller
         });
     }
 
-    /**
-     * Update payment amount to match new booking total
-     *
-     * @param \App\Models\Booking $booking
-     * @return void
-     */
     private function updatePaymentAmount(Booking $booking): void
     {
         $payment = Payment::where('booking_id', $booking->id)->orderByDesc('id')->first();
