@@ -38,24 +38,8 @@
                     <i class="bi bi-credit-card-2-front fs-4 me-3"></i>
                     <div>
                         <h6 class="alert-heading mb-1">VNPay — chờ khách thanh toán online</h6>
-                        <p class="mb-0 small">Đơn <strong>chờ xác nhận</strong> đến khi khách thanh toán xong trên VNPay. <strong>~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút</strong> trên cổng VNPay được tính từ lúc khách <strong>bấm link</strong> (mở trang thanh toán), không phải từ lúc gửi email. Link dưới đây là link an toàn có chữ ký — mỗi lần bấm sẽ tạo phiên VNPay mới.</p>
+                        <p class="mb-0 small">Đơn <strong>chờ xác nhận</strong> đến khi khách thanh toán xong trên VNPay. Phiên thanh toán trên cổng (~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút) được tính từ lúc khách <strong>bấm link trong email</strong>, không phải từ lúc gửi mail.</p>
                     </div>
-                </div>
-            </div>
-
-            <div class="card shadow-lg border-0 mb-4 border-primary">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-link-45deg me-2"></i>Link vào thanh toán VNPay (gửi cho khách)</h5>
-                </div>
-                <div class="card-body p-4">
-                    <p class="text-muted small mb-2">Số tiền: <strong class="text-danger fs-5">{{ number_format($booking->total_price) }}đ</strong></p>
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control font-monospace small" id="vnpayLinkInput" readonly value="{{ $vnpayPayUrl }}">
-                        <button class="btn btn-outline-primary btn-admin-icon" type="button" title="Sao chép link" onclick="copyToClipboard(document.getElementById('vnpayLinkInput').value)">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                    </div>
-                    <a href="{{ $vnpayPayUrl }}" target="_blank" rel="noopener" class="btn btn-primary btn-lg btn-admin-icon" style="width: auto; min-height: 3rem; min-width: 3rem;" title="Mở VNPay"><i class="bi bi-box-arrow-up-right fs-4"></i></a>
                 </div>
             </div>
             @else
