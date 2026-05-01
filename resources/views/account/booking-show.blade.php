@@ -2,6 +2,14 @@
 
 @section('title', 'Chi tiết đặt phòng #' . $booking->id)
 
+@push('styles')
+<style>
+.booking-room-thumb-wrap { width: 96px; height: 96px; }
+.booking-room-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.booking-room-thumb-placeholder { width: 96px; height: 96px; }
+</style>
+@endpush
+
 @section('content')
 @php
     $paidRecorded = $booking->isPaymentRecordedPaid();
@@ -36,8 +44,31 @@
                 <ul class="list-unstyled mb-0">
                     @if($booking->bookingRooms->isNotEmpty())
                         @foreach($booking->bookingRooms as $br)
-                            @php $room = $br->room; @endphp
+                            @php
+                                $room = $br->room;
+                                $thumbUrl = null;
+                                if ($room) {
+                                    $room->loadMissing('images', 'roomType');
+                                    $thumbUrl = $room->getDisplayImageUrls()[0] ?? null;
+                                }
+                                if (! $thumbUrl && $br->roomType) {
+                                    $thumbUrl = $br->roomType->image_url;
+                                }
+                            @endphp
                             <li class="mb-3">
+                                <div class="d-flex gap-3 align-items-start">
+                                    <div class="flex-shrink-0">
+                                        @if($thumbUrl)
+                                            <div class="booking-room-thumb-wrap rounded-3 overflow-hidden border shadow-sm">
+                                                <img src="{{ $thumbUrl }}" alt="{{ ($room->name ?? $br->roomType?->name ?? 'Phòng') }}" loading="lazy">
+                                            </div>
+                                        @else
+                                            <div class="booking-room-thumb-placeholder rounded-3 border bg-light d-flex align-items-center justify-content-center">
+                                                <i class="bi bi-image text-muted opacity-50 fs-3"></i>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="flex-grow-1 min-w-0">
                                 <p class="mb-1 fw-semibold">
                                     <i class="bi bi-door-open text-primary me-2"></i>
                                     @if($room)
@@ -46,7 +77,7 @@
                                         <span class="text-dark">{{ $br->guestFacingLine() }}</span>
                                     @endif
                                 </p>
-                                <div class="ms-4">
+                                <div>
                                     <small class="text-muted d-block">
                                         @if($br->roomType)
                                             <a href="{{ route('home', ['room_type' => $br->roomType->id]) }}" class="text-decoration-none">{{ $br->roomType->name }}</a>
@@ -95,16 +126,35 @@
                                         @endif
                                     @endauth
                                 </div>
+                                    </div>
+                                </div>
                             </li>
                         @endforeach
                     @else
                     @forelse($booking->rooms as $room)
+                    @php
+                        $room->loadMissing('images', 'roomType');
+                        $pivotThumb = $room->getDisplayImageUrls()[0] ?? $room->roomType?->image_url;
+                    @endphp
                     <li class="mb-3">
+                        <div class="d-flex gap-3 align-items-start">
+                            <div class="flex-shrink-0">
+                                @if($pivotThumb)
+                                    <div class="booking-room-thumb-wrap rounded-3 overflow-hidden border shadow-sm">
+                                        <img src="{{ $pivotThumb }}" alt="{{ $room->name }}" loading="lazy">
+                                    </div>
+                                @else
+                                    <div class="booking-room-thumb-placeholder rounded-3 border bg-light d-flex align-items-center justify-content-center">
+                                        <i class="bi bi-image text-muted opacity-50 fs-3"></i>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
                         <p class="mb-1 fw-semibold">
                             <i class="bi bi-door-open text-primary me-2"></i>
                             <a href="{{ route('rooms.show', $room) }}" class="link-dark text-decoration-underline">{{ $room->name }}</a>
                         </p>
-                        <div class="ms-4">
+                        <div>
                             <small class="text-muted d-block">
                                 @if($room->roomType)
                                     <a href="{{ route('home', ['room_type' => $room->room_type_id]) }}" class="text-decoration-none">{{ $room->roomType->name }}</a>
@@ -144,16 +194,35 @@
                                 @endif
                             @endauth
                         </div>
+                            </div>
+                        </div>
                     </li>
                     @empty
                         @if($booking->room)
-                            @php $r = $booking->room; @endphp
+                            @php
+                                $r = $booking->room;
+                                $r->loadMissing('images', 'roomType');
+                                $legacyThumb = $r->getDisplayImageUrls()[0] ?? $r->roomType?->image_url;
+                            @endphp
                             <li class="mb-3">
+                                <div class="d-flex gap-3 align-items-start">
+                                    <div class="flex-shrink-0">
+                                        @if($legacyThumb)
+                                            <div class="booking-room-thumb-wrap rounded-3 overflow-hidden border shadow-sm">
+                                                <img src="{{ $legacyThumb }}" alt="{{ $r->name }}" loading="lazy">
+                                            </div>
+                                        @else
+                                            <div class="booking-room-thumb-placeholder rounded-3 border bg-light d-flex align-items-center justify-content-center">
+                                                <i class="bi bi-image text-muted opacity-50 fs-3"></i>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="flex-grow-1 min-w-0">
                                 <p class="mb-1 fw-semibold">
                                     <i class="bi bi-door-open text-primary me-2"></i>
                                     <a href="{{ route('rooms.show', $r) }}" class="link-dark text-decoration-underline">{{ $r->name }}</a>
                                 </p>
-                                <div class="ms-4">
+                                <div>
                                     <small class="text-muted d-block">
                                         @if($r->roomType)
                                             <a href="{{ route('home', ['room_type' => $r->room_type_id]) }}" class="text-decoration-none">{{ $r->roomType->name }}</a>
@@ -192,6 +261,8 @@
                                             <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã đánh giá phòng này (mỗi tài khoản một lần / phòng).</span>
                                         @endif
                                     @endauth
+                                </div>
+                                    </div>
                                 </div>
                             </li>
                         @else
@@ -410,7 +481,6 @@
 @endif
 
 @php
-    $bookingPrimaryRoom = $booking->rooms->first() ?? $booking->room;
     $canViewInvoice = \App\Support\BookingInvoiceViewData::customerCanView($booking);
 @endphp
 <div class="mt-3 d-flex flex-wrap gap-2">
@@ -419,17 +489,7 @@
         <i class="bi bi-receipt-cutoff me-1"></i>Hóa đơn
     </a>
     @endif
-    @if($bookingPrimaryRoom)
-    <a href="{{ route('rooms.show', $bookingPrimaryRoom) }}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-eye me-1"></i>Xem phòng đã đặt
-    </a>
-    @if($bookingPrimaryRoom->roomType)
-    <a href="{{ route('home', ['room_type' => $bookingPrimaryRoom->room_type_id]) }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-grid me-1"></i>Xem loại phòng
-    </a>
-    @endif
-    @endif
-    
+
     @if($booking->status === 'confirmed')
         <a href="{{ route('account.bookings.refund', $booking) }}" class="btn btn-danger btn-sm px-4">
             <i class="bi bi-wallet2 me-1"></i>Hủy &amp; hoàn tiền
