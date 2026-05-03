@@ -25,8 +25,8 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th>Chọn</th>
-                                            <th>Phòng</th>
                                             <th>Loại phòng</th>
+                                            <th>Ghi chú</th>
                                             <th>Giá/đêm</th>
                                             <th>Số đêm</th>
                                             <th>Thành tiền</th>
@@ -39,8 +39,8 @@
                                                     <input type="checkbox" name="room_type_ids[]" value="{{ $room->room_type_id }}"
                                                            class="form-check-input room-checkbox" data-room-id="{{ $room->id }}">
                                                 </td>
-                                                <td>{{ $room->name }}</td>
                                                 <td>{{ $room->roomType->name ?? 'N/A' }}</td>
+                                                <td class="small text-muted">Số phòng cụ thể sẽ được bố trí khi check-in</td>
                                                 <td>{{ number_format(1000000, 0, ',', '.') }} VNĐ</td>
                                                 <td>{{ \Carbon\Carbon::parse($check_in)->diffInDays(\Carbon\Carbon::parse($check_out)) }}</td>
                                                 <td>{{ number_format(1000000 * \Carbon\Carbon::parse($check_in)->diffInDays(\Carbon\Carbon::parse($check_out)), 0, ',', '.') }} VNĐ</td>

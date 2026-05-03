@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $hotel?->name ?? 'Danh sách phòng')
+@section('title', 'Đặt phòng — ' . ($hotel?->name ?? 'Light Hotel'))
 
 @section('content')
 
@@ -12,7 +12,7 @@
     <div class="container lh-hero-inner">
         <div class="row align-items-start align-items-lg-center g-4 lh-hero-top-row">
             <div class="col-12 col-lg-8 lh-hero-copy">
-                <p class="lh-hero-eyebrow">Đà Nẵng · {{ $hotel?->name ?? 'Light Hotel' }}</p>
+                <p class="lh-hero-eyebrow">{{ $hotel?->name ?? 'Light Hotel' }}</p>
                 <h1 class="lh-hero-title">
                     Đặt phòng thẳng,<br>
                     <em>nhận ưu đãi tốt nhất.</em>
@@ -45,7 +45,7 @@
                         <i class="bi bi-building bk-seg-icon"></i>
                         <div class="bk-seg-content">
                             <div class="bk-seg-label">Điểm đến</div>
-                            <input type="text" class="bk-input" value="Light Hotel Đà Nẵng" readonly style="cursor: default;">
+                            <input type="text" class="bk-input" value="Light Hotel" readonly style="cursor: default;">
                         </div>
                     </div>
                     <div class="bk-sep"></div>
@@ -124,8 +124,8 @@
                 <div class="lh-stat-label">Lễ tân &amp; hỗ trợ</div>
             </div>
             <div class="col-6 col-md-3 lh-stat-item">
-                <div class="lh-stat-value">ĐN</div>
-                <div class="lh-stat-label">Trung tâm Đà Nẵng</div>
+                <div class="lh-stat-value">5★</div>
+                <div class="lh-stat-label">Light Hotel</div>
             </div>
         </div>
     </div>
@@ -139,11 +139,11 @@
         <div class="col-lg-6 order-lg-1 lh-split-copy">
             <p class="lh-eyebrow">Trải nghiệm</p>
             <h2 class="h3 mb-0">Nghỉ dưỡng hiện đại, phục vụ chuẩn khách sạn</h2>
-            <p class="mt-3 mb-0">{{ $hName }} kết hợp thiết kế tối giản, ánh sáng tự nhiên và dịch vụ tận tâm — lý tưởng cho công tác, gia đình hay kỳ nghỉ ngắn ngày tại Đà Nẵng.</p>
+            <p class="mt-3 mb-0">{{ $hName }} kết hợp thiết kế tối giản, ánh sáng tự nhiên và dịch vụ tận tâm — lý tưởng cho công tác, gia đình hay kỳ nghỉ ngắn ngày.</p>
             <ul class="lh-check-list mt-3">
                 <li><i class="bi bi-check-circle-fill"></i> Đặt phòng trực tiếp trên website, minh bạch giá và điều kiện.</li>
                 <li><i class="bi bi-check-circle-fill"></i> Wi‑Fi tốc độ cao, không gian làm việc và thư giãn riêng.</li>
-                <li><i class="bi bi-check-circle-fill"></i> Gần biển và trục du lịch — thuận tiện di chuyển.</li>
+                <li><i class="bi bi-check-circle-fill"></i> Vị trí thuận tiện — thư giãn và di chuyển dễ dàng.</li>
             </ul>
             <a href="#rooms-section" class="btn btn-primary rounded-pill mt-3">Xem các loại phòng</a>
         </div>

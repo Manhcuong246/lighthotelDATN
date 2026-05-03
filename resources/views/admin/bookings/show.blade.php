@@ -109,10 +109,11 @@
                             <div class="col-md-2">
                                 <label for="total_price" class="text-uppercase small fw-bold text-muted mb-1 d-block">Tổng</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="number" class="form-control form-control-sm" id="total_price" name="total_price"
-                                           min="0" step="1000" value="{{ $booking->total_price }}">
+                                    <input type="text" class="form-control form-control-sm bg-light" id="total_price"
+                                           value="{{ number_format($booking->total_price, 0, ',', '.') }}" readonly>
                                     <span class="input-group-text">₫</span>
                                 </div>
+                                <small class="text-muted">Giá được tính tự động, không sửa tay.</small>
                                 @if($booking->discount_amount > 0)
                                     <small class="text-danger">Giảm: {{ number_format($booking->discount_amount, 0, ',', '.') }} ₫</small>
                                 @endif
@@ -123,7 +124,7 @@
                             </div>
                             <div class="col-md-auto">
                                 <button type="submit" class="btn btn-sm btn-outline-primary rounded-2">
-                                    <i class="bi bi-check-lg me-1"></i>Lưu ngày &amp; tổng
+                                    <i class="bi bi-check-lg me-1"></i>Lưu ngày
                                 </button>
                             </div>
                         </div>
@@ -522,55 +523,26 @@
                     </div>
                     @endif
 
-                    <!-- Trạng thái đơn & thanh toán (chỉnh thủ công) — neo #payment-booking-settings từ màn Thanh toán -->
+                    <!-- Trạng thái đơn & thanh toán (chỉ đọc) -->
                     <div id="payment-booking-settings" class="row g-3 mt-2 pt-3 border-top" style="scroll-margin-top: 5rem;">
                         <div class="col-12">
-                            <h6 class="fw-bold mb-2">Trạng thái &amp; thanh toán</h6>
-                            <p class="small text-muted mb-3">Tiến trình đơn khác ghi nhận tiền. Hoàn tiền: không sửa.</p>
-                            @php
-                                $paymentLocked = in_array((string) $booking->payment_status, ['refunded', 'partial_refunded'], true);
-                                $isCancelled = $booking->status === 'cancelled';
-                            @endphp
-                            @if($paymentLocked)
-                                <div class="alert alert-warning mb-0 small py-2">Đã hoàn tiền — khóa chỉnh sửa.</div>
-                            @else
-                            @if($booking->status === 'confirmed' && $booking->payment_status === 'pending')
-                                <div class="alert alert-warning py-2 mb-3 small">Đơn đã xác nhận nhưng chưa ghi nhận thanh toán — chỉnh cho khớp.</div>
-                            @endif
-                            <form action="{{ route('admin.bookings.update-payment-settings', $booking) }}" method="POST" class="row g-3 align-items-end">
-                                @csrf
-                                <div class="col-md-3">
+                            <h6 class="fw-bold mb-2">Trạng thái &amp; thanh toán (khóa chỉnh tay)</h6>
+                            <p class="small text-muted mb-3">
+                                Để tránh lệch dữ liệu, trạng thái/pttt không chỉnh trực tiếp tại đây.
+                                Vui lòng thao tác theo luồng chuẩn: xác nhận thanh toán, check-in/out, hoàn tiền, hủy đơn.
+                            </p>
+                            <div class="row g-3">
+                                <div class="col-md-4">
                                     <label class="form-label small fw-bold">Tiến trình đơn</label>
-                                    @if($isCancelled)
-                                        <input type="hidden" name="booking_status" value="cancelled">
-                                        <input type="text" class="form-control form-control-sm bg-light" value="Đã hủy" disabled>
-                                    @else
-                                        <select name="booking_status" class="form-select form-select-sm" required>
-                                            <option value="pending" @selected($booking->status === 'pending')>Chờ xác nhận</option>
-                                            <option value="confirmed" @selected($booking->status === 'confirmed')>Đã xác nhận</option>
-                                            <option value="completed" @selected($booking->status === 'completed')>Hoàn thành</option>
-                                            <option value="cancelled" @selected($booking->status === 'cancelled')>Hủy</option>
-                                        </select>
-                                    @endif
+                                    <input type="text" class="form-control form-control-sm bg-light" value="{{ $booking->status }}" disabled>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-bold">Thanh toán (sổ)</label>
-                                    <select name="payment_status" class="form-select form-select-sm" required>
-                                        <option value="pending" @selected($booking->payment_status === 'pending')>Chưa thu</option>
-                                        <option value="paid" @selected($booking->payment_status === 'paid')>Đã thu</option>
-                                    </select>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Thanh toán</label>
+                                    <input type="text" class="form-control form-control-sm bg-light" value="{{ $booking->payment_status ?? 'pending' }}" disabled>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <label class="form-label small fw-bold">PTTT</label>
-                                    <select name="payment_method" class="form-select form-select-sm" required>
-                                        <option value="cash" @selected($booking->payment_method === 'cash')>Tiền mặt</option>
-                                        <option value="vnpay" @selected($booking->payment_method === 'vnpay')>VNPay</option>
-                                        <option value="bank_transfer" @selected($booking->payment_method === 'bank_transfer')>Chuyển khoản</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-bold d-block">&nbsp;</label>
-                                    <button type="submit" class="btn btn-outline-primary btn-sm w-100 rounded-2">Lưu trạng thái &amp; thanh toán</button>
+                                    <input type="text" class="form-control form-control-sm bg-light" value="{{ $booking->payment_method ?? '—' }}" disabled>
                                 </div>
                                 @if(!empty($latestPayment))
                                 <div class="col-12 small text-muted border-top pt-2">
@@ -582,8 +554,7 @@
                                     @endif
                                 </div>
                                 @endif
-                            </form>
-                            @endif
+                            </div>
                         </div>
                     </div>
 
@@ -593,8 +564,6 @@
                             <div class="d-flex flex-wrap gap-2">
                                 @if($booking->invoice)
                                 <a href="{{ route('admin.invoices.show', $booking->invoice) }}" class="btn btn-outline-secondary btn-sm rounded-2 btn-admin-icon" title="Xem hóa đơn"><i class="bi bi-receipt-cutoff"></i></a>
-                                @elseif($booking->isPaidAndCheckedOutForInvoice())
-                                <a href="{{ route('admin.invoices.create', $booking) }}" class="btn btn-outline-secondary btn-sm rounded-2 btn-admin-icon" title="Tạo hóa đơn"><i class="bi bi-receipt"></i></a>
                                 @endif
                             </div>
                         </div>

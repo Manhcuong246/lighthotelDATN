@@ -15,12 +15,27 @@
 @endif
 </div>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('admin.statistics.export') }}" class="btn btn-outline-primary btn-sm btn-admin-icon rounded-2" title="Xuất báo cáo">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            @if(auth()->user()->isAdmin() && isset($roomTypes))
+            <form method="get" action="{{ route('admin.dashboard') }}" class="d-flex flex-wrap align-items-center gap-2">
+                <label class="small text-muted mb-0 text-nowrap">Loại phòng</label>
+                <select name="room_type_id" class="form-select form-select-sm" style="min-width: 200px;" onchange="this.form.submit()">
+                    <option value="">Tất cả</option>
+                    @foreach($roomTypes as $rt)
+                        <option value="{{ $rt->id }}" @selected((int) ($roomTypeFilterId ?? 0) === (int) $rt->id)>{{ $rt->name }}</option>
+                    @endforeach
+                </select>
+            </form>
+            @endif
+            <a href="{{ route('admin.statistics.export', array_filter(['room_type_id' => $roomTypeFilterId ?? null])) }}" class="btn btn-outline-primary btn-sm btn-admin-icon rounded-2" title="Xuất báo cáo">
                 <i class="bi bi-download"></i>
             </a>
         </div>
     </div>
+
+    @if(auth()->user()->isAdmin() && ($roomTypeFilterId ?? null))
+    <p class="small text-muted mb-3">Đang lọc theo <strong>một loại phòng</strong>. Doanh thu trên thẻ là tổng thành tiền dòng đặt (đơn đã thanh toán); biểu đồ cùng phạm vi.</p>
+    @endif
 
     <!-- Stats Cards -->
 <div class="row g-3 g-md-4 mb-4">
@@ -144,19 +159,19 @@
             <div class="card card-admin h-100 dash-card">
                 <div class="card-body p-3 p-md-4 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2 class="h6 fw-bold mb-0">Top 5 phòng doanh thu cao nhất</h2>
-                        <span class="badge bg-light text-muted border">Tổng hợp</span>
+                        <h2 class="h6 fw-bold mb-0">Top 5 loại phòng doanh thu cao nhất</h2>
+                        <span class="badge bg-light text-muted border">Theo loại</span>
                     </div>
-                    @if($topRoomsByRevenue->isNotEmpty())
+                    @if($topRoomTypesByRevenue->isNotEmpty())
                     <div class="row align-items-center flex-grow-1">
                         <div class="col-md-6">
                             <div class="dash-chart" style="position: relative;">
-                                <canvas id="topRoomsRevenueChart"></canvas>
+                                <canvas id="topRoomTypesRevenueChart"></canvas>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <ul class="list-unstyled mb-0 dash-toplist">
-                                @foreach($topRoomsByRevenue as $i => $r)
+                                @foreach($topRoomTypesByRevenue as $i => $r)
                                 <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                                     <span class="text-truncate" style="max-width: 70%;">{{ $r->name }}</span>
                                     <strong class="text-success">{{ number_format($r->total_revenue, 0, ',', '.') }} ₫</strong>
@@ -166,7 +181,7 @@
                         </div>
                     </div>
                     @else
-                    <p class="text-center text-muted py-5 mb-0">Chưa có dữ liệu doanh thu theo phòng.</p>
+                    <p class="text-center text-muted py-5 mb-0">Chưa có dữ liệu doanh thu theo loại phòng.</p>
                     @endif
                 </div>
             </div>
@@ -285,17 +300,19 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Biểu đồ tròn: Top 5 phòng doanh thu cao nhất
-    @if($topRoomsByRevenue->isNotEmpty())
-    const topRoomsCtx = document.getElementById('topRoomsRevenueChart');
-    if (topRoomsCtx) {
-        new Chart(topRoomsCtx.getContext('2d'), {
+    // Biểu đồ tròn: Top loại phòng theo doanh thu (đơn đã thanh toán)
+    @if($topRoomTypesByRevenue->isNotEmpty())
+    const topRoomTypesCtx = document.getElementById('topRoomTypesRevenueChart');
+    if (topRoomTypesCtx) {
+        const palette = ['#4361ee', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#8b5cf6', '#a855f7'];
+        const n = {!! json_encode($topRoomTypesByRevenue->count()) !!};
+        new Chart(topRoomTypesCtx.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels: {!! json_encode($topRoomsByRevenue->pluck('name')->values()) !!},
+                labels: {!! json_encode($topRoomTypesByRevenue->pluck('name')->values()) !!},
                 datasets: [{
-                    data: {!! json_encode($topRoomsByRevenue->pluck('total_revenue')->values()) !!},
-                    backgroundColor: ['#4361ee', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6'],
+                    data: {!! json_encode($topRoomTypesByRevenue->pluck('total_revenue')->values()) !!},
+                    backgroundColor: palette.slice(0, Math.min(n, palette.length)),
                     borderWidth: 2,
                     borderColor: '#fff'
                 }]
@@ -373,6 +390,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = new URL(@json(route('admin.dashboard.revenue-chart')), window.location.origin);
         url.searchParams.set('start', start);
         url.searchParams.set('end', end);
+        const rt = @json($roomTypeFilterId ?? null);
+        if (rt) {
+            url.searchParams.set('room_type_id', String(rt));
+        }
 
         const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -445,7 +466,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-</script>
 </script>
 
 @endif

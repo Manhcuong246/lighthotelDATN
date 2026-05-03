@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\RefundRequest;
 use App\Models\RefundLog;
 use App\Models\RoomBookedDate;
+use App\Support\CancellationRefundPolicy;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -18,9 +20,10 @@ class BookingCancellationService
      * @param int $bookingId
      * @param string|null $reason
      * @param int|null $processedBy
+     * @param bool $isAdminInitiated Cho phép hủy sau mốc nhận phòng (hoàn 0%) — chỉ admin/nội bộ.
      * @return array
      */
-    public function cancelBooking(int $bookingId, ?string $reason = null, ?int $processedBy = null): array
+    public function cancelBooking(int $bookingId, ?string $reason = null, ?int $processedBy = null, bool $isAdminInitiated = false): array
     {
         try {
             DB::beginTransaction();
@@ -31,19 +34,37 @@ class BookingCancellationService
                 throw new Exception('Booking không tồn tại.');
             }
 
+            $isPaymentRecordedPaidEarly = $booking->isPaymentRecordedPaid();
+            if (! $isAdminInitiated && ! CancellationRefundPolicy::customerWebCancelAllowed($booking, $isPaymentRecordedPaidEarly)) {
+                throw new Exception('Theo chính sách, đơn đã qua thời gian nhận phòng nên không thể tự hủy trên web. Vui lòng liên hệ lễ tân.');
+            }
+
             // Check if already cancelled
             if ($booking->status === 'cancelled') {
                 throw new Exception('Booking này đã bị hủy trước đó.');
             }
+            if ($booking->status === 'cancel_requested') {
+                throw new Exception('Booking này đang có yêu cầu hoàn tiền chờ xử lý.');
+            }
+            if (in_array((string) $booking->status, ['checked_in', 'checked_out', 'completed'], true)) {
+                throw new Exception('Booking đã ở giai đoạn lưu trú/hoàn thành, không thể hủy theo luồng này.');
+            }
+            if (RefundRequest::query()->where('booking_id', $booking->id)->where('status', 'pending_refund')->exists()) {
+                throw new Exception('Booking này đang có yêu cầu hoàn tiền chờ xử lý.');
+            }
+
+            $isPaymentRecordedPaid = $booking->isPaymentRecordedPaid();
 
             // Calculate refund based on timing
-            $refundResult = $this->calculateRefund($booking);
+            $refundResult = $this->calculateRefund($booking, $isPaymentRecordedPaid);
 
-            $paymentStatus = match ($refundResult['refund_type']) {
-                'full' => 'refunded',
-                'partial' => 'partial_refunded',
-                default => $booking->payment_status ?? 'pending',
-            };
+            $paymentStatus = $isPaymentRecordedPaid
+                ? match ($refundResult['refund_type']) {
+                    'full' => 'refunded',
+                    'partial' => 'partial_refunded',
+                    default => 'paid',
+                }
+                : 'pending';
 
             // Update booking status + giải phóng lịch phòng (tránh ghost block)
             $booking->update([
@@ -55,19 +76,28 @@ class BookingCancellationService
 
             RoomBookedDate::where('booking_id', $booking->id)->delete();
 
-            if ($booking->payment && $booking->payment->status === 'paid' && $refundResult['refund_type'] === 'full') {
-                $booking->payment->update(['status' => 'refunded']);
+            $latestPayment = $booking->latestPayment()->first();
+            if ($latestPayment) {
+                if (! $isPaymentRecordedPaid && $latestPayment->status === 'pending') {
+                    $latestPayment->update(['status' => 'failed']);
+                }
+
+                if ($isPaymentRecordedPaid && $refundResult['refund_amount'] > 0) {
+                    $latestPayment->update(['status' => 'refunded']);
+                }
             }
 
-            // Create refund log
-            RefundLog::create([
-                'booking_id' => $booking->id,
-                'refund_amount' => $refundResult['refund_amount'],
-                'refund_type' => $refundResult['refund_type'],
-                'reason' => $reason ?? 'Hủy booking theo yêu cầu',
-                'processed_by' => $processedBy,
-                'refunded_at' => Carbon::now(),
-            ]);
+            // Chỉ tạo log hoàn tiền khi đơn đã ghi nhận thanh toán và có số tiền hoàn > 0.
+            if ($isPaymentRecordedPaid && $refundResult['refund_amount'] > 0) {
+                RefundLog::create([
+                    'booking_id' => $booking->id,
+                    'refund_amount' => $refundResult['refund_amount'],
+                    'refund_type' => $refundResult['refund_type'],
+                    'reason' => $reason ?? 'Hủy booking theo yêu cầu',
+                    'processed_by' => $processedBy,
+                    'refunded_at' => Carbon::now(),
+                ]);
+            }
 
             DB::commit();
 
@@ -104,26 +134,30 @@ class BookingCancellationService
      * @param Booking $booking
      * @return array
      */
-    private function calculateRefund(Booking $booking): array
+    private function calculateRefund(Booking $booking, bool $isPaymentRecordedPaid): array
     {
-        $now = Carbon::now();
-        $checkInAt = $this->resolvePolicyCheckIn($booking);
-
-        // Calculate hours difference
-        $hoursUntilCheckIn = $now->diffInHours($checkInAt, false);
-
-        // Case 1: More than 24 hours before check-in
-        if ($hoursUntilCheckIn > 24) {
+        if (! $isPaymentRecordedPaid) {
             return [
-                'refund_amount' => $booking->total_price,
-                'refund_type' => 'full',
-                'message' => 'Hủy thành công. Hoàn lại 100% số tiền (' . number_format($booking->total_price, 0, ',', '.') . ' ₫).',
+                'refund_amount' => 0,
+                'refund_type' => 'none',
+                'message' => 'Hủy thành công. Đơn chưa thanh toán nên không phát sinh hoàn tiền.',
             ];
         }
 
-        // Case 2: Within 24 hours before check-in
-        if ($hoursUntilCheckIn > 0 && $hoursUntilCheckIn <= 24) {
-            $partialRefund = $booking->total_price * 0.5;
+        $b = CancellationRefundPolicy::refundBreakdown($booking, true);
+        $totalPrice = (float) $booking->total_price;
+
+        if ($b['refund_type'] === 'full') {
+            return [
+                'refund_amount' => $b['refund_amount'],
+                'refund_type' => 'full',
+                'message' => 'Hủy thành công. Hoàn lại 100% số tiền (' . number_format($totalPrice, 0, ',', '.') . ' ₫).',
+            ];
+        }
+
+        if ($b['refund_type'] === 'partial') {
+            $partialRefund = $b['refund_amount'];
+
             return [
                 'refund_amount' => $partialRefund,
                 'refund_type' => 'partial',
@@ -131,20 +165,10 @@ class BookingCancellationService
             ];
         }
 
-        // Case 3: On or after check-in time
-        if ($hoursUntilCheckIn <= 0) {
-            return [
-                'refund_amount' => 0,
-                'refund_type' => 'none',
-                'message' => 'Hủy thành công. Không hoàn tiền do đã qua thời gian nhận phòng.',
-            ];
-        }
-
-        // Fallback
         return [
             'refund_amount' => 0,
             'refund_type' => 'none',
-            'message' => 'Không thể xác định chính sách hoàn tiền.',
+            'message' => 'Hủy thành công. Không hoàn tiền do đã qua thời gian nhận phòng.',
         ];
     }
 
@@ -157,8 +181,10 @@ class BookingCancellationService
     public function getCancellationPolicy(Booking $booking): array
     {
         $now = Carbon::now();
-        $checkInDate = $this->resolvePolicyCheckIn($booking);
-        $hoursUntilCheckIn = $now->diffInHours($checkInDate, false);
+        $checkInDate = CancellationRefundPolicy::resolvePolicyCheckIn($booking);
+        $secondsUntil = CancellationRefundPolicy::secondsUntilPolicyCheckIn($booking);
+        $hoursUntilCheckIn = $secondsUntil / 3600;
+        $isPaymentRecordedPaid = $booking->isPaymentRecordedPaid();
 
         $policy = [
             'current_time' => $now->format('d/m/Y H:i'),
@@ -170,32 +196,26 @@ class BookingCancellationService
             'policy_text' => '',
         ];
 
-        if ($hoursUntilCheckIn > 24) {
-            $policy['refund_percentage'] = 100;
-            $policy['refund_amount'] = $booking->total_price;
+        if (! $isPaymentRecordedPaid) {
+            $policy['can_cancel'] = true;
+            $policy['policy_text'] = 'Đơn chưa thanh toán. Bạn có thể hủy đơn và sẽ không có giao dịch hoàn tiền.';
+
+            return $policy;
+        }
+
+        $b = CancellationRefundPolicy::refundBreakdown($booking, true);
+        $policy['can_cancel'] = CancellationRefundPolicy::customerWebCancelAllowed($booking, true);
+        $policy['refund_percentage'] = $b['refund_percentage'];
+        $policy['refund_amount'] = $b['refund_amount'];
+
+        if ($b['refund_percentage'] === 100) {
             $policy['policy_text'] = 'Hoàn 100% tiền nếu hủy trước hơn 24 giờ so với thời gian nhận phòng.';
-        } elseif ($hoursUntilCheckIn > 0 && $hoursUntilCheckIn <= 24) {
-            $policy['refund_percentage'] = 50;
-            $policy['refund_amount'] = $booking->total_price * 0.5;
+        } elseif ($b['refund_percentage'] === 50) {
             $policy['policy_text'] = 'Hoàn 50% tiền nếu hủy trong vòng 24 giờ trước thời gian nhận phòng.';
         } else {
-            $policy['can_cancel'] = false;
             $policy['policy_text'] = 'Không hoàn tiền nếu hủy sau thời gian nhận phòng.';
         }
 
         return $policy;
-    }
-
-    /**
-     * Cùng quy tắc với RefundService: mốc nhận phòng 14:00; ưu tiên check_in_date nếu có.
-     */
-    private function resolvePolicyCheckIn(Booking $booking): Carbon
-    {
-        $base = $booking->check_in_date ?? $booking->check_in;
-        if ($base === null || $base === '') {
-            return Carbon::now();
-        }
-
-        return Carbon::parse($base)->setTime(14, 0, 0);
     }
 }

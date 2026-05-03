@@ -52,10 +52,12 @@ class BookingService
             $roomTypes[$index] = $roomType;
             $pricingRoom = Room::query()
                 ->where('room_type_id', $roomType->id)
+                ->where('status', 'available')
+                ->excludeMaintenance()
                 ->orderBy('id')
                 ->first();
             if (! $pricingRoom) {
-                throw new BookingException('Loại phòng "'.$roomType->name.'" chưa có phòng mẫu để báo giá.');
+                throw new BookingException('Loại phòng "'.$roomType->name.'" chưa có phòng trống (không bảo trì) để báo giá.');
             }
             $pricingRooms[$index] = $pricingRoom;
         }
@@ -127,8 +129,28 @@ class BookingService
             }
         }
 
-        // 6. Thực hiện giao dịch DB
-        return DB::transaction(function () use ($data, $checkIn, $checkOut, $totalPrice, $discountAmount, $couponCode, $roomPriceDetails) {
+        // 6. Thực hiện giao dịch DB — khóa phòng theo từng loại và kiểm tra lại chỗ trống trong transaction (tránh race đặt trùng).
+        return DB::transaction(function () use ($data, $checkIn, $checkOut, $totalPrice, $discountAmount, $couponCode, $roomPriceDetails, $neededByType, $dates) {
+            foreach ($neededByType as $typeId => $needQty) {
+                Room::query()
+                    ->where('room_type_id', (int) $typeId)
+                    ->where('status', 'available')
+                    ->excludeMaintenance()
+                    ->lockForUpdate()
+                    ->pluck('id');
+
+                $physical = $this->countPhysicalFreeRoomsOfType((int) $typeId, $dates);
+                $unassigned = BookingRoom::unassignedCountForRoomTypeBetween(
+                    (int) $typeId,
+                    $checkIn->toDateString(),
+                    $checkOut->toDateString()
+                );
+                if ($physical - $unassigned < $needQty) {
+                    $name = RoomType::find((int) $typeId)?->name ?? 'Loại phòng';
+                    throw new BookingException("Không đủ phòng trống cho \"{$name}\" trong khoảng thời gian này (đã trừ các đơn chưa gán số phòng).");
+                }
+            }
+
             // Một đơn luôn gắn user_id (đăng nhập hoặc user tạm theo email — chưa gắn role guest, xem User::isProvisionalGuestAccount).
             if (Auth::check()) {
                 $userId = (int) Auth::id();
@@ -213,7 +235,8 @@ class BookingService
 
         $q = Room::query()
             ->where('room_type_id', $roomTypeId)
-            ->where('status', 'available');
+            ->where('status', 'available')
+            ->excludeMaintenance();
         if ($busyRoomIds !== []) {
             $q->whereNotIn('id', $busyRoomIds);
         }

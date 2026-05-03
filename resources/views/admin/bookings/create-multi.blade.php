@@ -50,7 +50,6 @@
         <input type="hidden" name="debug_form_version" value="v3-direct-submit">
         <input type="hidden" name="check_in" id="form_check_in">
         <input type="hidden" name="check_out" id="form_check_out">
-        <input type="hidden" name="room_id" id="form_room_id">
         <input type="hidden" name="adults" id="form_adults" value="1">
         <input type="hidden" name="children" id="form_children" value="0">
 
@@ -894,14 +893,6 @@ function generateGuestDetailsForm() {
             </div>
         </div>
     `;
-}
-
-// Simple function to select a room and fill form data
-function selectRoom(roomId, adults, children) {
-    document.getElementById('form_room_id').value = roomId;
-    document.getElementById('form_adults').value = adults || 1;
-    document.getElementById('form_children').value = children || 0;
-    console.log('Room selected:', roomId, 'Adults:', adults, 'Children:', children);
 }
 
 // Form validation and preparation

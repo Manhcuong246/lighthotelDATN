@@ -151,7 +151,7 @@
                             <i class="bi bi-pin-map text-primary fs-5"></i>
                             <span class="fw-bold text-dark">Vị trí</span>
                         </div>
-                        <p class="small text-secondary mb-3">{{ $hotelInfo?->address ?? 'Đà Nẵng, Việt Nam' }}</p>
+                        <p class="small text-secondary mb-3">{{ $hotelInfo?->address ?? 'Light Hotel, Việt Nam' }}</p>
                         <div class="d-flex flex-wrap gap-2">
                             <a href="{{ $mapLink }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm rounded-pill px-4">
                                 Mở Google Maps <i class="bi bi-box-arrow-up-right ms-1"></i>

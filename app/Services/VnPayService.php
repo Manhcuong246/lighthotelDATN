@@ -61,7 +61,8 @@ class VnPayService
         $inputData = [
             'vnp_Version' => '2.1.0',
             'vnp_TmnCode' => $vnpTmnCode,
-            'vnp_Amount' => $amount * 100,
+            /** Số tiền × 100, nguyên — VNPay 2.1.0 kiểm tra khớp chuỗi khi tính checksum */
+            'vnp_Amount' => (string) (int) round($amount * 100),
             'vnp_Command' => 'pay',
             'vnp_CreateDate' => $createDate->format('YmdHis'),
             'vnp_CurrCode' => 'VND',
@@ -80,59 +81,79 @@ class VnPayService
 
         ksort($inputData);
 
-        // Log all input data for debugging
-        \Log::info('VNPAY Payment Data:', [
-            'input_data' => $inputData,
-            'vnp_url' => $vnpUrl,
-            'vnp_tmn_code' => $vnpTmnCode,
-            'amount' => $amount,
-            'order_info' => $orderInfo,
-            'return_url' => $returnUrl,
-            'ip_addr' => $ipAddr,
-        ]);
-
+        // Chuỗi query + chuỗi checksum: giống tài liệu VNPay 2.1.0 (không dùng http_build_query — có thể lệch mã hóa).
         $hashData = '';
+        $query = '';
         $i = 0;
         foreach ($inputData as $key => $value) {
+            $encKey = urlencode((string) $key);
+            $encVal = urlencode((string) $value);
             if ($i === 1) {
-                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
+                $hashData .= '&'.$encKey.'='.$encVal;
             } else {
-                $hashData .= urlencode($key) . '=' . urlencode($value);
+                $hashData .= $encKey.'='.$encVal;
                 $i = 1;
             }
+            $query .= $encKey.'='.$encVal.'&';
         }
 
-        \Log::info('VNPAY Hash Data:', ['hash_data' => $hashData]);
-
         $vnpSecureHash = hash_hmac('sha512', $hashData, $vnpHashSecret);
-        $query = http_build_query($inputData);
+        $fullUrl = $vnpUrl.'?'.$query.'vnp_SecureHash='.$vnpSecureHash;
 
-        $fullUrl = $vnpUrl . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
-
-        \Log::info('VNPAY Full URL Generated:', ['url' => $fullUrl]);
+        Log::info('vnpay.create_payment_url', [
+            'vnp_url' => $vnpUrl,
+            'vnp_tmn_code' => $vnpTmnCode,
+            'amount_vnd' => $amount,
+            'vnp_amount_field' => $inputData['vnp_Amount'] ?? null,
+            'return_url' => $returnUrl,
+            'ip_sent' => $inputData['vnp_IpAddr'] ?? null,
+            'hash_data_preview' => strlen($hashData) > 120 ? substr($hashData, 0, 120).'…' : $hashData,
+        ]);
 
         return $fullUrl;
     }
 
+    /**
+     * @param  array<string, mixed>  $inputData  Các tham số vnp_* (thường lấy từ query VNPay trả về).
+     */
     public function verifyReturn(array $inputData): bool
     {
-        $vnpSecureHash = $inputData['vnp_SecureHash'] ?? '';
+        $vnpSecureHash = (string) ($inputData['vnp_SecureHash'] ?? '');
         unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
 
-        ksort($inputData);
+        $filtered = [];
+        foreach ($inputData as $key => $value) {
+            if (! is_string($key) || ! str_starts_with($key, 'vnp_')) {
+                continue;
+            }
+            if (is_array($value)) {
+                continue;
+            }
+            // Laravel có thể đưa null (ConvertEmptyStringsToNull) — VNPay dùng chuỗi rỗng trong checksum.
+            $filtered[$key] = $value === null ? '' : (string) $value;
+        }
+
+        ksort($filtered);
         $hashData = '';
         $i = 0;
-        foreach ($inputData as $key => $value) {
+        foreach ($filtered as $key => $value) {
+            $encKey = urlencode($key);
+            $encVal = urlencode($value);
             if ($i === 1) {
-                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
+                $hashData .= '&'.$encKey.'='.$encVal;
             } else {
-                $hashData .= urlencode($key) . '=' . urlencode($value);
+                $hashData .= $encKey.'='.$encVal;
                 $i = 1;
             }
         }
 
-        $secureHash = hash_hmac('sha512', $hashData, config('vnpay.hash_secret'));
+        $secret = (string) config('vnpay.hash_secret');
+        $secureHash = hash_hmac('sha512', $hashData, $secret);
 
-        return hash_equals($secureHash, $vnpSecureHash);
+        if ($vnpSecureHash === '') {
+            return false;
+        }
+
+        return hash_equals(strtolower($secureHash), strtolower($vnpSecureHash));
     }
 }

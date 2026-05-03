@@ -16,6 +16,7 @@ class Review extends Model
     protected $fillable = [
         'user_id',
         'room_id',
+        'booking_id',
         'rating',
         'title',
         'comment',
@@ -41,11 +42,31 @@ class Review extends Model
         return $this->belongsTo(Room::class);
     }
 
+    public function booking(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
+    }
+
+    /**
+     * Đã có đánh giá cho đúng đơn và phòng vật lý (một lượt lưu trú).
+     */
+    public static function existsForBookingAndRoom(int $bookingId, int $roomId): bool
+    {
+        return static::query()
+            ->where('booking_id', $bookingId)
+            ->where('room_id', $roomId)
+            ->exists();
+    }
+
+    /**
+     * @deprecated Dùng existsForBookingAndRoom hoặc reviewableBookingsForRoom (theo đơn).
+     */
     public static function userHasReviewedRoom(int $userId, int $roomId): bool
     {
-        return static::withTrashed()
+        return static::query()
             ->where('user_id', $userId)
             ->where('room_id', $roomId)
+            ->whereNotNull('booking_id')
             ->exists();
     }
 }

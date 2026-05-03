@@ -6,6 +6,14 @@
 
 <div class="container py-5">
 
+    @if(session('success'))
+        <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4" role="alert">{{ session('success') }}</div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4" role="alert">{{ session('error') }}</div>
+    @endif
+
         {{-- Navigation Tabs --}}
         <ul class="nav nav-pills mb-4" id="profileTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -18,6 +26,13 @@
                     <i class="bi bi-shield-lock me-2"></i>Đổi mật khẩu
                 </button>
             </li>
+             @if($user->canSelfCloseAccountFromWebsite())
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="close-tab" data-bs-toggle="pill" data-bs-target="#close-account" type="button" role="tab">
+                    <i class="bi bi-person-x me-2"></i>Đóng tài khoản
+                </button>
+            </li>
+            @endif
         </ul>
 
         {{-- Tab Content --}}
@@ -141,9 +156,41 @@
                 </div>
             </div>
 
+             @if($user->canSelfCloseAccountFromWebsite())
+            <div class="tab-pane fade" id="close-account" role="tabpanel">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card border border-danger border-opacity-25 shadow-sm rounded-4">
+                            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                                <h5 class="mb-0 text-danger"><i class="bi bi-exclamation-octagon me-2"></i>Đóng tài khoản</h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <p class="text-muted">Sau khi đóng, bạn sẽ bị đăng xuất. Email được giải phóng để có thể <strong>đăng ký lại</strong>. Lịch sử đơn đặt vẫn được lưu trong hệ thống theo quy định.</p>
+                                <p class="text-muted small mb-4">Chỉ có thể đóng khi bạn <strong>không còn đơn</strong> nào đang xử lý (trừ đơn đã hủy hoặc đã hoàn tất).</p>
+                                <form method="POST" action="{{ route('account.close') }}" onsubmit="return confirm('Bạn chắc chắn muốn đóng tài khoản? Hành động này không hoàn tác qua website.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <div class="mb-3">
+                                        <label class="form-label">Mật khẩu hiện tại <span class="text-danger">*</span></label>
+                                        <input type="password" name="current_password" class="form-control @error('current_password') is-invalid @enderror" required autocomplete="current-password">
+                                        @error('current_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                    <div class="form-check mb-4">
+                                        <input class="form-check-input @error('confirm_close') is-invalid @enderror" type="checkbox" name="confirm_close" id="confirm_close" value="1" {{ old('confirm_close') ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="confirm_close">Tôi hiểu tôi sẽ không đăng nhập được nữa và đồng ý đóng tài khoản.</label>
+                                        @error('confirm_close')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-danger">Xác nhận đóng tài khoản</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
         </div>
 
-    </div>
 </div>
 
 @push('scripts')
@@ -156,12 +203,19 @@ function switchTab(hash) {
             passwordTab.click();
         }
     }
+    if (hash === '#close-account') {
+        const t = document.getElementById('close-tab');
+        if (t) t.click();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     // Xử lý hash trong URL
     if (window.location.hash === '#password') {
         switchTab('#password');
+    }
+    if (window.location.hash === '#close-account') {
+        switchTab('#close-account');
     }
 
     // Preview avatar khi chọn file

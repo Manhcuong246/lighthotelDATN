@@ -2,7 +2,7 @@
 
 /**
  * Họ tên chuẩn UTF-8 theo email — dùng khi DB đã import sai charset (chữ Việt vỡ).
- * Nguồn: seed realistic + tài khoản demo Grand Vista.
+ * Nguồn: seed realistic + tài khoản demo Light Hotel.
  */
 return [
     'admin@hotel.local' => 'Admin User',

@@ -141,6 +141,10 @@ class RoomChangeController extends AdminRoomChangeController
         $oldRoom = Room::findOrFail($request->old_room_id);
         $newRoom = Room::with('roomType')->findOrFail($request->new_room_id);
 
+        if ($newRoom->isInMaintenance() || $newRoom->status !== 'available') {
+            return back()->with('error', 'Phòng đích phải đang trống và không ở trạng thái bảo trì.');
+        }
+
         $nightsRemaining = $this->calculateRemainingNights($booking);
         if ($nightsRemaining <= 0) $nightsRemaining = 1;
 

@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\Storage;
 
 class RoomTypeController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin');
+        $this->middleware('only_admin');
+    }
+
     // Danh sách loại phòng
     public function index(Request $request)
     {

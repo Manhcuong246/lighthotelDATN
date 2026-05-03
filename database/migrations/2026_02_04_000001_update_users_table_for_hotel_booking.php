@@ -26,7 +26,7 @@ return new class extends Migration
             }
             // Add status if not exists
             if (!Schema::hasColumn('users', 'status')) {
-                $table->enum('status', ['active', 'inactive', 'banned'])->default('active')->after('avatar_url');
+                $table->enum('status', ['active', 'banned'])->default('active')->after('avatar_url');
             }
             // Add remember_token if not exists
             if (!Schema::hasColumn('users', 'remember_token')) {

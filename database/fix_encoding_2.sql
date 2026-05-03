@@ -79,7 +79,7 @@ WHERE `id` = 10;
 UPDATE `reviews` SET
   `title`   = 'Cuối năm nghỉ dưỡng rất đáng',
   `comment` = 'Đặt phòng Standard 102 cho 3 đêm cuối tháng 12. Phòng sạch sẽ, view vườn và hồ bơi rất mát. Nhân viên lễ tân nhiệt tình, check-in nhanh. Bữa sáng buffet đa dạng, có cả phở và bánh mì. Chỉ tiếc là thời tiết hơi mưa 1 ngày nhưng không ảnh hưởng nhiều. Sẽ quay lại mùa hè.',
-  `reply`   = 'Cảm ơn anh/chị đã lựa chọn Grand Vista! Chúng tôi mong được đón tiếp gia đình vào mùa hè.'
+  `reply`   = 'Cảm ơn anh/chị đã lựa chọn Light Hotel! Chúng tôi mong được đón tiếp gia đình vào mùa hè.'
 WHERE `id` = 11;
 
 UPDATE `reviews` SET
@@ -90,7 +90,7 @@ WHERE `id` = 12;
 
 UPDATE `reviews` SET
   `title`   = 'Gần gym, tiện cho người hay tập',
-  `comment` = 'Mình hay đi công tác Đà Nẵng, lần nào cũng đặt phòng 104 vì gần phòng gym. Sáng dậy chạy bộ 5 phút ra biển rồi về tập. Phòng sạch, giường êm. Nhân viên dọn phòng kỹ.',
+  `comment` = 'Mình hay đi công tác, lần nào cũng đặt phòng 104 vì gần phòng gym. Sáng dậy chạy bộ khuôn viên rồi về tập. Phòng sạch, giường êm. Nhân viên dọn phòng kỹ.',
   `reply`   = NULL
 WHERE `id` = 13;
 
@@ -156,7 +156,7 @@ WHERE `id` = 23;
 
 UPDATE `reviews` SET
   `title`   = 'VIP Jacuzzi — kỷ niệm 10 năm cưới',
-  `comment` = 'Đặt phòng 503 cho dịp kỷ niệm. Jacuzzi ngoài trời view hoàng hôn quá tuyệt. Nhân viên trang trí hoa và bánh trong phòng. Cảm động lắm. Cảm ơn Grand Vista!',
+  `comment` = 'Đặt phòng 503 cho dịp kỷ niệm. Jacuzzi ngoài trời view hoàng hôn quá tuyệt. Nhân viên trang trí hoa và bánh trong phòng. Cảm động lắm. Cảm ơn Light Hotel!',
   `reply`   = 'Chúc mừng anh chị 10 năm hạnh phúc! Rất vinh dự được phục vụ.'
 WHERE `id` = 24;
 
@@ -210,7 +210,7 @@ WHERE `id` = 32;
 
 UPDATE `reviews` SET
   `title`   = 'VIP 504 — sinh nhật vợ',
-  `comment` = 'Đặt bất ngờ cho vợ. Nhân viên trang trí phòng và bánh. Jacuzzi view biển. Vợ rất cảm động. Cảm ơn team Grand Vista!',
+  `comment` = 'Đặt bất ngờ cho vợ. Nhân viên trang trí phòng và bánh. Jacuzzi view biển. Vợ rất cảm động. Cảm ơn team Light Hotel!',
   `reply`   = 'Chúc mừng sinh nhật chị! Chúc gia đình hạnh phúc.'
 WHERE `id` = 33;
 
@@ -306,7 +306,7 @@ WHERE `id` = 48;
 
 UPDATE `reviews` SET
   `title`   = 'Standard 104 — công tác 3 đêm',
-  `comment` = 'Đi họp ở Đà Nẵng. Phòng gần lobby, tiện. View hồ bơi. Sạch sẽ. Bữa sáng có sớm từ 6h cho khách đi sớm.',
+  `comment` = 'Đi họp công tác. Phòng gần lobby, tiện. View hồ bơi. Sạch sẽ. Bữa sáng có sớm từ 6h cho khách đi sớm.',
   `reply`   = NULL
 WHERE `id` = 49;
 

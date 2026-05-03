@@ -25,13 +25,28 @@
                     <div class="mb-3">
                         <strong>Các phòng đã đặt:</strong>
                         <ul class="list-unstyled mt-2 mb-0">
-                            @foreach($booking->rooms as $room)
+                            @forelse($booking->bookingRooms as $br)
                                 <li class="d-flex justify-content-between align-items-center mb-1 bg-white p-2 rounded shadow-sm">
-                                    <span><i class="bi bi-door-closed me-2"></i>{{ $room->name }}</span>
-                                    <span class="text-muted small">{{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫</span>
+                                    <span><i class="bi bi-door-closed me-2"></i>{{ $br->guestFacingLine() }}</span>
+                                    <span class="text-muted small">{{ number_format((float) $br->price_per_night, 0, ',', '.') }} ₫/đêm</span>
                                 </li>
-                            @endforeach
+                            @empty
+                                @foreach($booking->rooms as $room)
+                                    <li class="d-flex justify-content-between align-items-center mb-1 bg-white p-2 rounded shadow-sm">
+                                        <span><i class="bi bi-door-closed me-2"></i>{{ $room->name }}</span>
+                                        <span class="text-muted small">{{ number_format($room->pivot->price_per_night, 0, ',', '.') }} ₫</span>
+                                    </li>
+                                @endforeach
+                                @if($booking->rooms->isEmpty() && $booking->room)
+                                    <li class="d-flex justify-content-between align-items-center mb-1 bg-white p-2 rounded shadow-sm">
+                                        <span><i class="bi bi-door-closed me-2"></i>{{ $booking->room->displayLabel() }}</span>
+                                    </li>
+                                @endif
+                            @endforelse
                         </ul>
+                        @if($booking->bookingRooms->isNotEmpty() && $booking->bookingRooms->contains(fn ($br) => $br->room_id === null))
+                            <p class="small text-muted mt-2 mb-0">Số phòng cụ thể do lễ tân bố trí và sẽ được xác nhận khi nhận phòng.</p>
+                        @endif
                     </div>
 
                     <p class="mb-1"><strong>Nhận phòng:</strong> {{ \Carbon\Carbon::parse($booking->check_in)->format('d/m/Y') }}</p>

@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Room;
 use App\Models\HotelInfo;
 use App\Models\Service;
-use App\Models\RoomBookedDate;
 use App\Models\RoomType;
 use App\Models\BookingRoom;
+use App\Models\Booking;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -46,6 +46,7 @@ class RoomController extends Controller
         // Ảnh trưng bày: cần phòng có images; ưu tiên available nhưng vẫn lấy phòng khác nếu loại đó hết phòng trống.
         $query = RoomType::with(['rooms' => function ($q) {
             $q->with('images')
+                ->excludeMaintenance()
                 ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
                 ->orderBy('id');
         }, 'services']);
@@ -105,6 +106,7 @@ class RoomController extends Controller
         $allRoomTypes = $this->roomTypeIsActive(RoomType::query())
             ->with(['rooms' => function ($q) {
                 $q->with('images')
+                    ->excludeMaintenance()
                     ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
                     ->orderBy('id');
             }, 'services'])
@@ -116,21 +118,25 @@ class RoomController extends Controller
 
     public function show(Room $room)
     {
+        if ($room->isInMaintenance() && ! $this->viewerMayAccessMaintenanceRoom($room)) {
+            abort(404);
+        }
+
         $room->load(['images', 'roomType', 'amenities']);
 
-        $reviews = $room->reviews()->with('user')->latest()->paginate(5)->withQueryString()->fragment('reviews');
+        $reviews = $room->reviews()
+            ->with(['user', 'booking'])
+            ->latest()
+            ->paginate(10)
+            ->withQueryString()
+            ->fragment('reviews');
 
-        $bookedDates = RoomBookedDate::where('room_id', $room->id)
-            ->where('booked_date', '>=', now()->toDateString())
-            ->pluck('booked_date')
-            ->map(fn ($d) => is_string($d) ? $d : Carbon::parse($d)->format('Y-m-d'))
-            ->values()
-            ->toArray();
+        $reviewableBookings = collect();
+        if (auth()->check()) {
+            $reviewableBookings = Booking::reviewableBookingsForRoom((int) auth()->id(), (int) $room->id);
+        }
 
-        $services = Service::orderBy('name')->get();
-        $hotelInfo = HotelInfo::first();
-
-        return view('rooms.show', compact('room', 'reviews', 'services', 'hotelInfo', 'bookedDates'));
+        return view('rooms.show', compact('room', 'reviews', 'reviewableBookings'));
     }
 
     /**
@@ -155,6 +161,7 @@ class RoomController extends Controller
         // 1) Tìm tất cả các phòng vật lý đang rảnh theo ngày
         $availableRoomsQuery = Room::query()
             ->where('status', 'available')
+            ->excludeMaintenance()
             ->whereDoesntHave('bookedDates', function ($q) use ($checkIn, $checkOut) {
                 $q->whereBetween('booked_date', [
                     $checkIn,
@@ -239,6 +246,7 @@ class RoomController extends Controller
         });
 
         $hotel = HotelInfo::first();
+
         return view('rooms.search', [
             'roomTypes' => $roomTypes,
             'hotel' => $hotel,
@@ -249,6 +257,29 @@ class RoomController extends Controller
             'allRoomTypes' => $this->roomTypeIsActive(RoomType::query())->orderBy('name')->get(),
             'catalogServices' => Service::orderBy('name')->get(),
         ]);
+    }
+
+    /**
+     * Phòng bảo trì: admin/staff, hoặc khách có đơn (đang chờ hoặc đã xác nhận lưu trú) gắn phòng này.
+     */
+    private function viewerMayAccessMaintenanceRoom(Room $room): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+        if ($user->canAccessAdmin()) {
+            return true;
+        }
+
+        return Booking::query()
+            ->where('user_id', $user->id)
+            ->whereNotIn('status', ['cancelled', 'cancel_requested'])
+            ->where(function ($q) use ($room) {
+                $q->where('room_id', $room->id)
+                    ->orWhereHas('bookingRooms', static fn ($br) => $br->where('room_id', $room->id));
+            })
+            ->exists();
     }
 }
 

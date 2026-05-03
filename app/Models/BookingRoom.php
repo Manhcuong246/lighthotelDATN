@@ -49,7 +49,7 @@ class BookingRoom extends Model
             ->where('room_type_id', $roomTypeId)
             ->whereNull('room_id')
             ->whereHas('booking', function ($q) use ($checkIn, $checkOut) {
-                $q->whereNotIn('status', ['cancelled', 'refunded'])
+                $q->whereNotIn('status', ['cancelled', 'completed'])
                     ->whereDate('check_in', '<', $checkOut)
                     ->whereDate('check_out', '>', $checkIn);
             })

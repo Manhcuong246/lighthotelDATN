@@ -9,7 +9,7 @@
             <nav aria-label="breadcrumb" class="mb-4">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ route('account.bookings') }}">Lịch sử đặt phòng</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('account.bookings.show', $booking) }}">Đơn #{{ $booking->id }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('bookings.show', $booking) }}">Đơn #{{ $booking->id }}</a></li>
                     <li class="breadcrumb-item active">Yêu cầu hoàn tiền</li>
                 </ol>
             </nav>
@@ -62,6 +62,15 @@
                         </div>
                     </div>
 
+                    @if(!empty($latestRefundRequest) && $latestRefundRequest->status === 'rejected')
+                        <div class="alert alert-warning border-0 rounded-3 mb-4">
+                            <div class="fw-bold mb-1"><i class="bi bi-arrow-repeat me-1"></i>Yêu cầu trước đó đã bị từ chối</div>
+                            <div class="small">
+                                {{ $latestRefundRequest->admin_note ?: 'Bạn có thể cập nhật lại thông tin tài khoản và gửi lại yêu cầu mới.' }}
+                            </div>
+                        </div>
+                    @endif
+
                     <form action="{{ route('account.bookings.refund.submit', $booking) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <div class="row g-4">
@@ -69,7 +78,7 @@
                                 <label class="form-label fw-semibold text-muted small">Tên chủ tài khoản <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-person text-primary"></i></span>
-                                    <input type="text" name="account_name" class="form-control border-start-0 py-2 ps-0 @error('account_name') is-invalid @enderror" value="{{ old('account_name') }}" placeholder="VD: NGUYEN VAN A" required>
+                                    <input type="text" name="account_name" class="form-control border-start-0 py-2 ps-0 @error('account_name') is-invalid @enderror" value="{{ old('account_name', $latestRefundRequest->account_name ?? '') }}" placeholder="VD: NGUYEN VAN A" required>
                                     @error('account_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
                             </div>
@@ -77,7 +86,7 @@
                                 <label class="form-label fw-semibold text-muted small">Số tài khoản <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-hash text-primary"></i></span>
-                                    <input type="text" name="account_number" class="form-control border-start-0 py-2 ps-0 @error('account_number') is-invalid @enderror" value="{{ old('account_number') }}" placeholder="Nhập số tài khoản" required>
+                                    <input type="text" name="account_number" class="form-control border-start-0 py-2 ps-0 @error('account_number') is-invalid @enderror" value="{{ old('account_number', $latestRefundRequest->account_number ?? '') }}" placeholder="Nhập số tài khoản" required>
                                     @error('account_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
                             </div>
@@ -86,32 +95,32 @@
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-bank text-primary"></i></span>
                                     <select name="bank_name" class="form-select border-start-0 py-2 ps-0 @error('bank_name') is-invalid @enderror" required>
-                                        <option value="" disabled {{ old('bank_name') ? '' : 'selected' }}>-- Chọn ngân hàng --</option>
+                                        <option value="" disabled {{ old('bank_name', $latestRefundRequest->bank_name ?? null) ? '' : 'selected' }}>-- Chọn ngân hàng --</option>
                                         <optgroup label="Phổ biến">
-                                            <option value="Vietcombank" {{ old('bank_name') == 'Vietcombank' ? 'selected' : '' }}>Vietcombank (VCB)</option>
-                                            <option value="Techcombank" {{ old('bank_name') == 'Techcombank' ? 'selected' : '' }}>Techcombank (TCB)</option>
-                                            <option value="BIDV" {{ old('bank_name') == 'BIDV' ? 'selected' : '' }}>BIDV</option>
-                                            <option value="VietinBank" {{ old('bank_name') == 'VietinBank' ? 'selected' : '' }}>VietinBank</option>
-                                            <option value="Agribank" {{ old('bank_name') == 'Agribank' ? 'selected' : '' }}>Agribank</option>
-                                            <option value="MB Bank" {{ old('bank_name') == 'MB Bank' ? 'selected' : '' }}>MB Bank (MB)</option>
-                                            <option value="TPBank" {{ old('bank_name') == 'TPBank' ? 'selected' : '' }}>TPBank</option>
-                                            <option value="ACB" {{ old('bank_name') == 'ACB' ? 'selected' : '' }}>ACB</option>
-                                            <option value="VPBank" {{ old('bank_name') == 'VPBank' ? 'selected' : '' }}>VPBank</option>
+                                            <option value="Vietcombank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Vietcombank' ? 'selected' : '' }}>Vietcombank (VCB)</option>
+                                            <option value="Techcombank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Techcombank' ? 'selected' : '' }}>Techcombank (TCB)</option>
+                                            <option value="BIDV" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'BIDV' ? 'selected' : '' }}>BIDV</option>
+                                            <option value="VietinBank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'VietinBank' ? 'selected' : '' }}>VietinBank</option>
+                                            <option value="Agribank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Agribank' ? 'selected' : '' }}>Agribank</option>
+                                            <option value="MB Bank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'MB Bank' ? 'selected' : '' }}>MB Bank (MB)</option>
+                                            <option value="TPBank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'TPBank' ? 'selected' : '' }}>TPBank</option>
+                                            <option value="ACB" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'ACB' ? 'selected' : '' }}>ACB</option>
+                                            <option value="VPBank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'VPBank' ? 'selected' : '' }}>VPBank</option>
                                         </optgroup>
                                         <optgroup label="Ngân hàng khác">
-                                            <option value="Sacombank" {{ old('bank_name') == 'Sacombank' ? 'selected' : '' }}>Sacombank</option>
-                                            <option value="HDBank" {{ old('bank_name') == 'HDBank' ? 'selected' : '' }}>HDBank</option>
-                                            <option value="VIB" {{ old('bank_name') == 'VIB' ? 'selected' : '' }}>VIB</option>
-                                            <option value="SHB" {{ old('bank_name') == 'SHB' ? 'selected' : '' }}>SHB</option>
-                                            <option value="SeABank" {{ old('bank_name') == 'SeABank' ? 'selected' : '' }}>SeABank</option>
-                                            <option value="MSB" {{ old('bank_name') == 'MSB' ? 'selected' : '' }}>MSB</option>
-                                            <option value="OCB" {{ old('bank_name') == 'OCB' ? 'selected' : '' }}>OCB</option>
-                                            <option value="Nam A Bank" {{ old('bank_name') == 'Nam A Bank' ? 'selected' : '' }}>Nam A Bank</option>
-                                            <option value="Bac A Bank" {{ old('bank_name') == 'Bac A Bank' ? 'selected' : '' }}>Bac A Bank</option>
-                                            <option value="VietCapital Bank" {{ old('bank_name') == 'VietCapital Bank' ? 'selected' : '' }}>Bản Việt (BVBank)</option>
-                                            <option value="Eximbank" {{ old('bank_name') == 'Eximbank' ? 'selected' : '' }}>Eximbank</option>
-                                            <option value="LienVietPostBank" {{ old('bank_name') == 'LienVietPostBank' ? 'selected' : '' }}>LPBank</option>
-                                            <option value="Khác" {{ old('bank_name') == 'Khác' ? 'selected' : '' }}>Ngân hàng khác...</option>
+                                            <option value="Sacombank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Sacombank' ? 'selected' : '' }}>Sacombank</option>
+                                            <option value="HDBank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'HDBank' ? 'selected' : '' }}>HDBank</option>
+                                            <option value="VIB" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'VIB' ? 'selected' : '' }}>VIB</option>
+                                            <option value="SHB" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'SHB' ? 'selected' : '' }}>SHB</option>
+                                            <option value="SeABank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'SeABank' ? 'selected' : '' }}>SeABank</option>
+                                            <option value="MSB" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'MSB' ? 'selected' : '' }}>MSB</option>
+                                            <option value="OCB" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'OCB' ? 'selected' : '' }}>OCB</option>
+                                            <option value="Nam A Bank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Nam A Bank' ? 'selected' : '' }}>Nam A Bank</option>
+                                            <option value="Bac A Bank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Bac A Bank' ? 'selected' : '' }}>Bac A Bank</option>
+                                            <option value="VietCapital Bank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'VietCapital Bank' ? 'selected' : '' }}>Bản Việt (BVBank)</option>
+                                            <option value="Eximbank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Eximbank' ? 'selected' : '' }}>Eximbank</option>
+                                            <option value="LienVietPostBank" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'LienVietPostBank' ? 'selected' : '' }}>LPBank</option>
+                                            <option value="Khác" {{ old('bank_name', $latestRefundRequest->bank_name ?? '') == 'Khác' ? 'selected' : '' }}>Ngân hàng khác...</option>
                                         </optgroup>
                                     </select>
                                     @error('bank_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -127,7 +136,7 @@
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-semibold text-muted small">Ghi chú thêm</label>
-                                <textarea name="note" class="form-control @error('note') is-invalid @enderror" rows="3" placeholder="Lý do hủy hoặc lưu ý thêm...">{{ old('note') }}</textarea>
+                                <textarea name="note" class="form-control @error('note') is-invalid @enderror" rows="3" placeholder="Lý do hủy hoặc lưu ý thêm...">{{ old('note', $latestRefundRequest->note ?? '') }}</textarea>
                                 @error('note') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
@@ -137,7 +146,7 @@
                                 <button type="submit" class="btn btn-primary px-5 py-2 rounded-3 flex-fill">
                                     <i class="bi bi-check-circle me-2"></i>Gửi yêu cầu hoàn tiền
                                 </button>
-                                <a href="{{ route('account.bookings.show', $booking) }}" class="btn btn-light px-4 py-2 rounded-3 border">
+                                <a href="{{ route('bookings.show', $booking) }}" class="btn btn-light px-4 py-2 rounded-3 border">
                                     Hủy bỏ
                                 </a>
                             </div>

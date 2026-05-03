@@ -11,6 +11,7 @@ class PaymentAdminController extends Controller
     public function __construct()
     {
         $this->middleware('admin');
+        $this->middleware('only_admin')->only(['edit', 'update']);
     }
 
     public function index(Request $request)

@@ -40,14 +40,14 @@
                     @if($review->comment)
                     <div class="mb-3">
                         <label class="form-label fw-bold">Nhận xét</label>
-                        <p class="form-control-plaintext">{{ $review->comment }}</p>
+                        <div class="form-control-plaintext border rounded p-3 bg-light small" style="white-space: pre-wrap;">{{ $review->comment }}</div>
                     </div>
                     @endif
 
                     @if($review->reply)
                     <div class="mb-3">
                         <label class="form-label fw-bold">Phản hồi từ khách sạn</label>
-                        <p class="form-control-plaintext">{{ $review->reply }}</p>
+                        <div class="form-control-plaintext border rounded p-3 bg-light small" style="white-space: pre-wrap;">{{ $review->reply }}</div>
                         @if($review->replied_at)
                             <small class="text-muted">
                                 Đã phản hồi: {{ is_string($review->replied_at) ? \Carbon\Carbon::parse($review->replied_at)->format('d/m/Y H:i:s') : $review->replied_at->format('d/m/Y H:i:s') }}
@@ -103,6 +103,21 @@
                         {{ $review->user->full_name }}<br>
                         <small class="text-muted">{{ $review->user->email }}</small>
                     </p>
+                    @endif
+
+                    @if($review->booking)
+                    <p class="mb-3">
+                        <strong>Đơn đặt (xác minh lưu trú):</strong><br>
+                        #{{ $review->booking->id }}
+                        @if($review->booking->check_in && $review->booking->check_out)
+                            <br><small class="text-muted">{{ $review->booking->check_in->format('d/m/Y') }} → {{ $review->booking->check_out->format('d/m/Y') }}</small>
+                        @endif
+                        <a href="{{ route('admin.bookings.show', $review->booking) }}" class="btn btn-outline-secondary btn-sm d-block mt-2">Mở đơn admin</a>
+                    </p>
+                    @elseif($review->booking_id)
+                    <p class="mb-3 text-muted small">Đơn #{{ $review->booking_id }} (đã xóa hoặc không truy cập được).</p>
+                    @else
+                    <p class="mb-3 text-muted small">Đánh giá cũ — chưa gắn mã đơn.</p>
                     @endif
 
                     @if($review->room)

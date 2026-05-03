@@ -5,7 +5,7 @@ $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 // Standard
 \App\Models\RoomType::where('id', 1)->update([
-    'description' => 'Phòng Standard tại Grand Vista được thiết kế tối giản nhưng đầy đủ tiện nghi 5 sao. Diện tích 28-30m² với giường King-size hoặc 2 giường đơn, chăn ga cotton Ai Cập 500 thread count, điều hòa hai chiều. Phòng hướng vườn nhiệt đới hoặc hồ bơi, có ban công nhỏ lý tưởng cho buổi sáng nhâm nhi cà phê. Phù hợp cho cặp đôi, khách công tác ngắn ngày hoặc du khách tiết kiệm muốn trải nghiệm resort biển mà không phải chi quá nhiều.'
+    'description' => 'Phòng Standard tại Light Hotel được thiết kế tối giản nhưng đầy đủ tiện nghi 5 sao. Diện tích 28-30m² với giường King-size hoặc 2 giường đơn, chăn ga cotton Ai Cập 500 thread count, điều hòa hai chiều. Phòng hướng vườn nhiệt đới hoặc hồ bơi, có ban công nhỏ lý tưởng cho buổi sáng nhâm nhi cà phê. Phù hợp cho cặp đôi, khách công tác ngắn ngày hoặc du khách tiết kiệm muốn trải nghiệm resort biển mà không phải chi quá nhiều.'
 ]);
 
 // Deluxe

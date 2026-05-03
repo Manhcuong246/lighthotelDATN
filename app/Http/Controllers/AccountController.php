@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\User;
-use App\Support\BookingInvoiceViewData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -30,64 +29,12 @@ class AccountController extends Controller
 
         $bookings = $user
             ->bookings()
-            ->with(['room', 'rooms.roomType', 'bookingRooms', 'payment'])
+            ->with(['room', 'rooms.roomType', 'bookingRooms.roomType', 'bookingRooms.room.roomType', 'payment'])
             ->withCount('bookingServices')
             ->latest('id')
             ->paginate(10);
 
         return view('account.bookings', compact('bookings'));
-    }
-
-    public function showBooking(Booking $booking)
-    {
-        /** @var User $user */
-        $user = Auth::user();
-
-        if ($user?->canAccessAdmin()) {
-            abort(403);
-        }
-
-        if ($booking->user_id !== Auth::id()) {
-            abort(403);
-        }
-        $booking->load([
-            'room.roomType',
-            'room.images',
-            'rooms.roomType',
-            'rooms.images',
-            'bookingRooms.roomType',
-            'bookingRooms.room.roomType',
-            'bookingRooms.room.images',
-            'payment',
-            'bookingServices.service',
-            'surcharges.service',
-        ]);
-        return view('account.booking-show', compact('booking'));
-    }
-
-    /**
-     * Hóa đơn / biên lai chuẩn sau khi checkout (đủ phòng, dịch vụ, phụ phí, thanh toán).
-     */
-    public function bookingInvoice(Booking $booking)
-    {
-        /** @var User $user */
-        $user = Auth::user();
-
-        if ($user?->canAccessAdmin()) {
-            abort(403);
-        }
-
-        if ($booking->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        if (! BookingInvoiceViewData::customerCanView($booking)) {
-            return redirect()
-                ->route('account.bookings.show', $booking)
-                ->with('error', 'Hóa đơn chỉ xem được khi đơn đã checkout và đã thanh toán.');
-        }
-
-        return view('account.booking-invoice', BookingInvoiceViewData::make($booking));
     }
 
     public function profile()
@@ -139,16 +86,17 @@ class AccountController extends Controller
             abort(403);
         }
 
-        if ($booking->status !== 'confirmed') {
-            return redirect()->route('account.bookings.show', $booking)->with('error', 'Chỉ có thể yêu cầu hoàn tiền cho đơn đã xác nhận.');
+        $eligibility = $refundService->canCustomerRequestRefund($booking, (int) Auth::id());
+        if (! ($eligibility['allowed'] ?? false)) {
+            return redirect()
+                ->route('bookings.show', $booking)
+                ->with('error', $eligibility['message'] ?? 'Đơn chưa đủ điều kiện yêu cầu hoàn tiền.');
         }
 
-        $calc = $refundService->calculateRefund($booking);
+        $calc = $eligibility['calc'];
+        $latestRefundRequest = $eligibility['existing'] ?? null;
 
-        // Cho phép xem form ngay cả khi 0% (calc['eligible'] = false) 
-        // để người dùng vẫn có thể gửi thông tin tài khoản cho admin xem xét.
-
-        return view('account.refund', compact('booking', 'calc'));
+        return view('account.refund', compact('booking', 'calc', 'latestRefundRequest'));
     }
 
     public function submitRefund(Request $request, Booking $booking, \App\Services\RefundService $refundService)
@@ -157,17 +105,9 @@ class AccountController extends Controller
             abort(403);
         }
 
-        if ($booking->status !== 'confirmed') {
-            return back()->with('error', 'Trạng thái đơn không hợp lệ.');
-        }
-
-        $calc = $refundService->calculateRefund($booking);
-        if (!$calc['eligible']) {
-            return back()->with('error', 'Không đủ điều kiện hoàn tiền.');
-        }
-
-        if (\App\Models\RefundRequest::where('booking_id', $booking->id)->where('status', 'pending_refund')->exists()) {
-            return back()->with('error', 'Đơn này đã có yêu cầu hoàn tiền đang chờ xử lý.');
+        $eligibility = $refundService->canCustomerRequestRefund($booking, (int) Auth::id());
+        if (! ($eligibility['allowed'] ?? false)) {
+            return back()->with('error', $eligibility['message'] ?? 'Không đủ điều kiện hoàn tiền.');
         }
 
         $validated = $request->validate([
@@ -182,29 +122,56 @@ class AccountController extends Controller
             $validated['qr_image'] = $request->file('qr_image')->store('refunds', 'public');
         }
 
-        $refundRequest = \App\Models\RefundRequest::create([
-            'booking_id' => $booking->id,
-            'user_id' => Auth::id(),
-            'account_name' => $validated['account_name'],
-            'account_number' => $validated['account_number'],
-            'bank_name' => $validated['bank_name'],
-            'qr_image' => $validated['qr_image'] ?? null,
-            'refund_percentage' => $calc['percentage'],
-            'refund_amount' => $calc['amount'],
-            'note' => $validated['note'],
-            'status' => 'pending_refund',
+        $result = $refundService->submitCustomerRefundRequest($booking, (int) Auth::id(), $validated);
+        if (! $result['success']) {
+            return back()->with('error', $result['message'] ?? 'Không thể gửi yêu cầu.');
+        }
+
+        return redirect()->route('bookings.show', $booking)->with('success', 'Yêu cầu hoàn tiền của bạn đã được gửi và đang chờ xử lý.');
+    }
+
+    public function closeAccount(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if (! $user->canSelfCloseAccountFromWebsite()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'current_password' => 'required|string',
+            'confirm_close' => 'accepted',
+        ], [
+            'confirm_close.accepted' => 'Vui lòng xác nhận bạn muốn đóng tài khoản.',
         ]);
 
-        $booking->update(['status' => 'cancel_requested']);
+        if (! Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors([
+                'current_password' => 'Mật khẩu không đúng.',
+            ]);
+        }
 
-        // Log
-        \App\Models\BookingLog::create([
-            'booking_id' => $booking->id,
-            'old_status' => 'confirmed',
-            'new_status' => 'cancel_requested',
-            'changed_at' => now(),
-        ]);
+        if ($user->hasBookingsBlockingAccountClosure()) {
+            return back()->with(
+                'error',
+                'Bạn còn đơn đặt phòng chưa hoàn tất (ví dụ: đang chờ thanh toán, đang lưu trú hoặc chờ xử lý hủy). '
+                . 'Vui lòng hoàn tất hoặc liên hệ lễ tân trước khi đóng tài khoản.'
+            );
+        }
 
-        return redirect()->route('account.bookings.show', $booking)->with('success', 'Yêu cầu hoàn tiền của bạn đã được gửi và đang chờ xử lý.');
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        $user->delete();
+
+        return redirect()
+            ->route('home')
+            ->with(
+                'success',
+                'Tài khoản của bạn đã được đóng. Dữ liệu đặt phòng trong hệ thống được giữ theo chính sách lưu trữ. '
+                . 'Bạn có thể đăng ký lại với cùng email.'
+            );
     }
 }

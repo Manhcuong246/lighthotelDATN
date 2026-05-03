@@ -1022,6 +1022,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let htmlSnippet = '';
         let hiddenInputs = '';
         let capacityWarnings = ''; // Lưu cảnh báo sức chứa riêng
+        let hasAdultValidationError = false;
 
         saveSelection();
 
@@ -1057,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;">Người lớn</label>
                                             <input type="number" class="form-control form-control-sm guest-count adults-count"
-                                                   name="adults[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="1" min="1" max="6">
+                                                   name="adults[${roomIdx}]" data-type-id="${typeId}" data-room-index="${roomIdx}" value="1" min="1" max="6" required>
                                         </div>
                                         <div class="col-4">
                                             <label style="font-size: 0.65rem; color: #718096;" title="Tối đa 2 em / phòng (miễn phụ thu)">Trẻ 0–5t</label>
@@ -1092,8 +1093,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         continue;
                     }
 
-                    // Kiểm tra an toàn để tránh lỗi .value of undefined
-                    const adults = (adultsArrNew[i]) ? parseInt(adultsArrNew[i].value || 1) : 1;
+                    // Bắt buộc mỗi phòng có >= 1 người lớn (không tự động sửa thành 1).
+                    const adultsInput = adultsArrNew[i] || null;
+                    const rawAdults = adultsInput ? parseInt(adultsInput.value, 10) : NaN;
+                    if (!Number.isFinite(rawAdults) || rawAdults < 1) {
+                        if (adultsInput) adultsInput.classList.add('is-invalid');
+                        hasAdultValidationError = true;
+                        capacityWarnings += `<div>• ${typeName} (P.${i + 1}): mỗi phòng phải có ít nhất 1 người lớn.</div>`;
+                        continue;
+                    }
+                    if (adultsInput) adultsInput.classList.remove('is-invalid');
+                    const adults = rawAdults;
                     const c05 = (child05ArrNew[i]) ? parseInt(child05ArrNew[i].value || 0) : 0;
                     const c611 = (child611ArrNew[i]) ? parseInt(child611ArrNew[i].value || 0) : 0;
 
@@ -1151,14 +1161,22 @@ document.addEventListener('DOMContentLoaded', function() {
             discountRow.classList.add('d-none');
         }
 
+        const warningHtml = capacityWarnings
+            ? `<div class="alert alert-danger py-2 small mb-2">${capacityWarnings}</div>`
+            : '';
+
         if (htmlSnippet === '') {
-            selectedRoomsList.innerHTML = '<p class="text-muted italic small">Chưa có phòng nào được chọn</p>';
+            selectedRoomsList.innerHTML = warningHtml || '<p class="text-muted italic small">Chưa có phòng nào được chọn</p>';
             btnBookNow.disabled = true;
             btnBookNow.classList.remove('active');
         } else {
-            selectedRoomsList.innerHTML = htmlSnippet;
-            btnBookNow.disabled = false;
-            btnBookNow.classList.add('active');
+            selectedRoomsList.innerHTML = warningHtml + htmlSnippet;
+            btnBookNow.disabled = hasAdultValidationError;
+            if (hasAdultValidationError) {
+                btnBookNow.classList.remove('active');
+            } else {
+                btnBookNow.classList.add('active');
+            }
         }
 
         totalDisplay.textContent = new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ';

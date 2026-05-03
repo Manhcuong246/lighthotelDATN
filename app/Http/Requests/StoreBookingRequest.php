@@ -58,12 +58,14 @@ class StoreBookingRequest extends FormRequest
             'payment_method' => 'required|in:vnpay',
             'bank_code'      => 'nullable|string|max:50',
             'coupon_code'    => 'nullable|string|max:50',
-            'adults'         => 'required|array',
-            'children_0_5'   => 'required|array',
+            'adults'         => ['required', 'array'],
+            'adults.*'       => ['required', 'integer', 'min:1', 'max:20'],
+            'children_0_5'   => ['required', 'array'],
             'children_0_5.*' => 'integer|min:0|max:2',
-            'children_6_11'  => 'required|array',
+            'children_6_11'  => ['required', 'array'],
+            'children_6_11.*' => ['integer', 'min:0', 'max:5'],
             'name'           => 'required|string|max:150|min:2',
-            'cccd'           => 'required|string|regex:/^[0-9]{12}$/',
+            'cccd'           => 'nullable|string|regex:/^[0-9]{12}$/',
             'guests'         => 'nullable|array',
             'guests.*.name'  => 'required_with:guests|string|max:150',
             'guests.*.cccd'  => 'nullable|string|regex:/^[0-9]{12}$/',
@@ -71,6 +73,38 @@ class StoreBookingRequest extends FormRequest
             'guests.*.room_index' => 'nullable|integer|min:0',
             'guests_json'    => 'nullable|string',
         ];
+    }
+
+    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    {
+        $validator->after(function (\Illuminate\Validation\Validator $validator): void {
+            $roomIds = $this->input('room_type_ids');
+            if (! is_array($roomIds)) {
+                return;
+            }
+            $n = count($roomIds);
+            if ($n === 0) {
+                return;
+            }
+
+            $adults = $this->input('adults');
+            if (is_array($adults) && count($adults) !== $n) {
+                $validator->errors()->add(
+                    'adults',
+                    'Số dòng "người lớn" phải khớp số phòng đã chọn ('.$n.' phòng).'
+                );
+            }
+
+            foreach (['children_0_5', 'children_6_11'] as $key) {
+                $arr = $this->input($key);
+                if (is_array($arr) && count($arr) !== $n) {
+                    $validator->errors()->add(
+                        $key,
+                        'Số dòng khách theo từng phòng phải khớp số phòng đã chọn ('.$n.' phòng).'
+                    );
+                }
+            }
+        });
     }
 
     /**
@@ -96,7 +130,6 @@ class StoreBookingRequest extends FormRequest
             'check_out.after'        => 'Ngày trả phòng phải sau ngày nhận phòng.',
             'name.required'          => 'Vui lòng nhập tên người đại diện.',
             'name.min'               => 'Tên người đại diện phải có ít nhất 2 ký tự.',
-            'cccd.required'          => 'Vui lòng nhập CCCD người đại diện.',
             'cccd.regex'             => 'CCCD phải gồm đúng 12 số.',
             'guests.required'        => 'Vui lòng cung cấp thông tin khách.',
             'guests.*.name.required' => 'Vui lòng nhập tên khách.',
@@ -106,6 +139,13 @@ class StoreBookingRequest extends FormRequest
             'guests.*.type.in'       => 'Loại khách không hợp lệ.',
             'guests.*.room_index.integer' => 'Index phòng không hợp lệ.',
             'guests.*.room_index.min' => 'Index phòng không được âm.',
+            'adults.*.required' => 'Mỗi phòng phải nhập số người lớn.',
+            'adults.*.integer' => 'Số người lớn mỗi phòng phải là số nguyên.',
+            'adults.*.min' => 'Mỗi phòng phải có ít nhất 1 người lớn.',
+            'adults.*.max' => 'Số người lớn mỗi phòng không hợp lệ.',
+            'children_6_11.*.integer' => 'Số trẻ 6–11 mỗi phòng phải là số nguyên.',
+            'children_6_11.*.min' => 'Số trẻ 6–11 không được âm.',
+            'children_6_11.*.max' => 'Mỗi phòng tối đa 5 trẻ 6–11 tuổi.',
         ];
     }
 }

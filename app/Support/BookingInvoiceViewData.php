@@ -16,6 +16,19 @@ final class BookingInvoiceViewData
     }
 
     /**
+     * Khách (portal / tài khoản): xem biên lai thanh toán trên web khi đã thu tiền, chưa hủy.
+     * Không yêu cầu checkout — dùng sau VNPay; sau checkout vẫn hợp lệ.
+     */
+    public static function guestCanViewInvoiceSheet(Booking $booking): bool
+    {
+        if (in_array($booking->status, ['cancelled', 'cancel_requested'], true)) {
+            return false;
+        }
+
+        return $booking->isPaymentRecordedPaid();
+    }
+
+    /**
      * @return array{booking: Booking, hotel: ?HotelInfo, roomLines: list<array<string, mixed>>, servicesTotal: float, surchargesTotal: float, discountAmount: float, invoiceNo: string}
      */
     public static function make(Booking $booking): array
@@ -29,6 +42,7 @@ final class BookingInvoiceViewData
             'surcharges.service',
             'latestPayment',
             'invoice',
+            'payments',
         ]);
 
         $hotel = HotelInfo::first();
@@ -73,6 +87,25 @@ final class BookingInvoiceViewData
 
         $invoiceNo = 'HĐ-' . $booking->created_at?->format('Ymd') . '-' . str_pad((string) $booking->id, 5, '0', STR_PAD_LEFT);
 
+        $roomSubtotal = $booking->bookingRooms->isNotEmpty()
+            ? (float) $booking->bookingRooms->sum('subtotal')
+            : (float) collect($roomLines)->sum('line_total');
+
+        $extrasSubtotal = $servicesTotal + $surchargesTotal;
+
+        $totalPaidFromPayments = (float) $booking->payments
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $bookingTotal = (float) $booking->total_price;
+        $balanceDue = max(0, round($bookingTotal - $totalPaidFromPayments, 2));
+
+        $invoiceRemaining = null;
+        if ($booking->invoice) {
+            $inv = $booking->invoice;
+            $invoiceRemaining = max(0, round((float) $inv->total_amount - (float) $inv->paid_amount, 2));
+        }
+
         return compact(
             'booking',
             'hotel',
@@ -80,7 +113,12 @@ final class BookingInvoiceViewData
             'servicesTotal',
             'surchargesTotal',
             'discountAmount',
-            'invoiceNo'
+            'invoiceNo',
+            'roomSubtotal',
+            'extrasSubtotal',
+            'totalPaidFromPayments',
+            'balanceDue',
+            'invoiceRemaining'
         );
     }
 }

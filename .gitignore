@@ -1,7 +1,9 @@
 .DS_Store
 .env
 .env.backup
+.env.bak.ngrok
 .env.production
+ngrok.project.yml
 .phpactor.json
 .phpunit.result.cache
 /.fleet

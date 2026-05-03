@@ -317,7 +317,7 @@
             border-radius: 0.375rem;
         }
         /* =====================================================
-           LIGHT HOTEL — PREMIUM LAYOUT STYLES
+           Light Hotel — Premium Layout Styles
            ===================================================== */
 
         /* Hero — z-index trên section (không chỉ .lh-hero-inner) để khối dưới margin âm không đè cả hero + dropdown */

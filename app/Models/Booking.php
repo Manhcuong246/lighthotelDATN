@@ -56,10 +56,17 @@ class Booking extends Model
         'payment_method',
         'payment_status',
         'notes',
+        'cancellation_reason',
+        'cancelled_at',
+        'check_in_date',
+        'check_out_date',
         'placed_via',
         'coupon_code',
         'discount_amount',
         'cccd',
+        'guests',
+        'adults',
+        'children',
     ];
 
     protected $casts = [
@@ -103,6 +110,25 @@ class Booking extends Model
     public function room()
     {
         return $this->belongsTo(Room::class);
+    }
+
+    /**
+     * Đơn đang giữ phòng trong ngày (theo lịch check-in / check-out), gồm đơn multi-room qua booking_rooms.
+     */
+    public static function findActiveOccupancyForRoomToday(int $roomId): ?self
+    {
+        $now = Carbon::now();
+
+        return static::query()
+            ->whereIn('status', ['confirmed', 'checked_in'])
+            ->whereDate('check_in', '<=', $now)
+            ->whereDate('check_out', '>=', $now)
+            ->where(function ($q) use ($roomId) {
+                $q->where('room_id', $roomId)
+                    ->orWhereHas('bookingRooms', static fn ($br) => $br->where('room_id', $roomId));
+            })
+            ->orderByDesc('id')
+            ->first();
     }
 
     public function payment()
@@ -149,12 +175,25 @@ class Booking extends Model
 
     public function refundRequest()
     {
-        return $this->hasOne(RefundRequest::class);
+        return $this->hasOne(RefundRequest::class)->latestOfMany();
+    }
+
+    public function refundRequests()
+    {
+        return $this->hasMany(RefundRequest::class)->latest('id');
     }
 
     public function surcharges()
     {
         return $this->hasMany(BookingSurcharge::class);
+    }
+
+    /**
+     * Đánh giá phòng khách gửi sau lưu trú (gắn booking_id + room_id).
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'booking_id');
     }
 
     public function bookingGuests()
@@ -190,10 +229,11 @@ class Booking extends Model
         }
 
         if ($br->room_id) {
-            return $this->guests
+            // bookings.guests is a column (count); use guests() so we hit the Guest relation, not the attribute.
+            return $this->guests()
                 ->where('room_id', (int) $br->room_id)
-                ->sortBy('id')
-                ->values();
+                ->orderBy('id')
+                ->get();
         }
 
         return collect();
@@ -283,7 +323,7 @@ class Booking extends Model
      */
     public function getAvailableRoomsForAssignment(): \Illuminate\Support\Collection
     {
-        return $this->rooms()->with('roomType')->available()->get();
+        return $this->rooms()->with('roomType')->available()->excludeMaintenance()->get();
     }
 
     /**
@@ -538,6 +578,66 @@ class Booking extends Model
     }
 
     /**
+     * Các đơn của user còn có thể gửi đánh giá cho phòng vật lý này (đã checkout + thanh toán, chưa có review cho cặp booking+phòng).
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Booking>
+     */
+    public static function reviewableBookingsForRoom(int $userId, int $roomId): \Illuminate\Database\Eloquent\Collection
+    {
+        $roomId = (int) $roomId;
+
+        return static::query()
+            ->where('user_id', $userId)
+            ->whereNotIn('status', ['cancelled', 'cancel_requested'])
+            ->whereNotNull('actual_check_out')
+            ->where(function ($q) {
+                $q->where('payment_status', 'paid')
+                    ->orWhereHas('payment', static fn ($p) => $p->where('status', 'paid'));
+            })
+            ->where(function ($q) use ($roomId) {
+                $q->where('room_id', $roomId)
+                    ->orWhereHas('bookingRooms', static fn ($br) => $br->where('room_id', $roomId));
+            })
+            ->whereDoesntHave('reviews', static fn ($q) => $q->where('room_id', $roomId))
+            ->orderByDesc('actual_check_out')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * Khách đã hoàn tất đơn (thanh toán + checkout) và chưa gửi đánh giá cho phòng trên đơn này.
+     */
+    public function userCanSubmitReviewForRoom(int $roomId): bool
+    {
+        $roomId = (int) $roomId;
+
+        if (! auth()->check() || (int) $this->user_id !== (int) auth()->id()) {
+            return false;
+        }
+
+        if (in_array($this->status, ['cancelled', 'cancel_requested'], true)) {
+            return false;
+        }
+
+        if (! $this->isPaymentRecordedPaid()) {
+            return false;
+        }
+
+        if ($this->actual_check_out === null) {
+            return false;
+        }
+
+        $assignedToBooking = (int) ($this->room_id ?? 0) === $roomId
+            || $this->bookingRooms()->where('room_id', $roomId)->exists();
+
+        if (! $assignedToBooking) {
+            return false;
+        }
+
+        return ! Review::existsForBookingAndRoom((int) $this->id, $roomId);
+    }
+
+    /**
      * Đánh giá phòng: chỉ khách đã đặt đúng phòng đó, đã thanh toán, và đã check-out.
      * Hỗ trợ cả đơn một phòng (bookings.room_id) và đơn nhiều phòng (booking_rooms).
      */
@@ -559,12 +659,11 @@ class Booking extends Model
     }
 
     /**
-     * Gửi đánh giá phòng: đủ điều kiện checkout + thanh toán và chưa có đánh giá cho phòng đó.
+     * Có ít nhất một lượt lưu trú (đơn) đủ điều kiện để gửi đánh giá cho phòng này.
      */
     public static function userCanSubmitRoomReview(int $userId, int $roomId): bool
     {
-        return static::userHasCheckedOutRoom($userId, $roomId)
-            && ! Review::userHasReviewedRoom($userId, $roomId);
+        return static::reviewableBookingsForRoom($userId, $roomId)->isNotEmpty();
     }
 
     /** Đặt từ website khách (kể cả không đăng nhập — tài khoản shadow theo email). */
@@ -580,33 +679,55 @@ class Booking extends Model
     {
         $days = $ttlDays ?? max(1, (int) config('booking.signed_booking_show_ttl_days', 90));
 
-        return URL::signedRoute(
+        return self::toAbsoluteSignedUrl(URL::signedRoute(
             'bookings.show',
             ['booking' => $this->id],
-            now()->addDays($days)
-        );
+            now()->addDays($days),
+            false
+        ));
     }
 
     public function signedPublicCancelUrl(?int $ttlDays = null): string
     {
         $days = $ttlDays ?? max(1, (int) config('booking.signed_booking_show_ttl_days', 90));
 
-        return URL::signedRoute(
+        return self::toAbsoluteSignedUrl(URL::signedRoute(
             'bookings.cancel',
             ['booking' => $this->id],
-            now()->addDays($days)
-        );
+            now()->addDays($days),
+            false
+        ));
     }
 
     public function signedPublicPolicyUrl(?int $ttlDays = null): string
     {
         $days = $ttlDays ?? max(1, (int) config('booking.signed_booking_show_ttl_days', 90));
 
-        return URL::signedRoute(
+        return self::toAbsoluteSignedUrl(URL::signedRoute(
             'bookings.policy',
             ['booking' => $this->id],
-            now()->addDays($days)
-        );
+            now()->addDays($days),
+            false
+        ));
+    }
+
+    /** Link có chữ ký: danh sách đặt phòng (giống /account/bookings) — sau thanh toán VNPay trong email. */
+    public function signedGuestPortalIndexUrl(?int $ttlDays = null): string
+    {
+        $days = $ttlDays ?? max(1, (int) config('booking.signed_booking_show_ttl_days', 90));
+
+        return self::toAbsoluteSignedUrl(URL::temporarySignedRoute(
+            'guest.bookings.index',
+            now()->addDays($days),
+            ['user' => $this->user_id],
+            false
+        ));
+    }
+
+    private static function toAbsoluteSignedUrl(string $relativeSignedUrl): string
+    {
+        // Email clients (Gmail, mobile apps) need absolute links; keep relative signature format for signed:relative middleware.
+        return URL::to($relativeSignedUrl);
     }
 
     protected static function booted(): void

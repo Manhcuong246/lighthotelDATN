@@ -13,6 +13,21 @@ use Illuminate\View\View;
 
 class BookingCancellationController extends Controller
 {
+    private const SIGNATURE_IGNORE_QUERY_PARAMS = [
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
+        'gclid',
+        'fbclid',
+        'mc_cid',
+        'mc_eid',
+        'igshid',
+        'si',
+        'source',
+    ];
+
     public function __construct(
         private BookingCancellationService $cancellationService
     ) {}
@@ -20,8 +35,9 @@ class BookingCancellationController extends Controller
     protected function authorizeBookingAccess(Request $request, Booking $booking): void
     {
         $isOwner = auth()->check() && (int) auth()->id() === (int) $booking->user_id;
+        $signedOk = $this->hasValidSignedAccess($request);
         abort_unless(
-            $isOwner || $request->hasValidSignature(),
+            $isOwner || $signedOk,
             403,
             'Bạn không có quyền thực hiện thao tác này. Đăng nhập đúng tài khoản hoặc dùng link được gửi qua email.'
         );
@@ -59,7 +75,8 @@ class BookingCancellationController extends Controller
             : URL::temporarySignedRoute(
                 'bookings.cancel.post',
                 now()->addHours(24),
-                ['booking' => $booking->id]
+                ['booking' => $booking->id],
+                false
             );
         $bookingShowUrl = $this->publicBookingShowUrl($booking);
 
@@ -142,7 +159,8 @@ class BookingCancellationController extends Controller
         $result = $this->cancellationService->cancelBooking(
             $id,
             $request->input('reason'),
-            auth()->id()
+            auth()->id(),
+            true
         );
 
         if ($result['success']) {
@@ -158,5 +176,11 @@ class BookingCancellationController extends Controller
             'success' => false,
             'message' => $result['message'],
         ], 422);
+    }
+
+    private function hasValidSignedAccess(Request $request): bool
+    {
+        return $request->hasValidSignatureWhileIgnoring(self::SIGNATURE_IGNORE_QUERY_PARAMS, true)
+            || $request->hasValidSignatureWhileIgnoring(self::SIGNATURE_IGNORE_QUERY_PARAMS, false);
     }
 }

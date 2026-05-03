@@ -19,6 +19,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VnPayController;
+use App\Http\Controllers\GuestBookingPortalController;
 use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\RefundAdminController;
@@ -57,20 +58,26 @@ Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
 Route::get('/bookings/simple/create', [BookingController::class, 'createSimple'])->name('bookings.create-simple');
 Route::post('/bookings/simple', [BookingController::class, 'storeSimple'])->name('bookings.store-simple');
+Route::get('/bookings/{booking}/invoice', [BookingController::class, 'invoice'])->name('bookings.invoice');
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 Route::get('/bookings/{booking}/cancel', [BookingCancellationController::class, 'show'])->name('bookings.cancel');
 Route::post('/bookings/{booking}/cancel', [BookingCancellationController::class, 'cancel'])->name('bookings.cancel.post');
 Route::get('/bookings/{booking}/policy', [BookingCancellationController::class, 'getPolicy'])->name('bookings.policy');
-Route::get('/bookings/{booking}/refund', [BookingController::class, 'showRefundDetails'])->name('bookings.refund.details');
 Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
 
+Route::get('/rooms/{room}/review', [ReviewController::class, 'create'])->name('reviews.create')->middleware('auth');
 Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
 Route::get('/payment/vnpay/pay/{booking}', [VnPayController::class, 'pay'])
     ->name('payment.vnpay.pay')
-    ->middleware('signed');
+    ->middleware('signed:relative,utm_source,utm_medium,utm_campaign,utm_term,utm_content,gclid,fbclid,mc_cid,mc_eid,igshid,si,source');
 
 Route::get('/payment/vnpay/return', [VnPayController::class, 'return'])->name('payment.vnpay.return');
+
+Route::middleware('signed:relative,utm_source,utm_medium,utm_campaign,utm_term,utm_content,gclid,fbclid,mc_cid,mc_eid,igshid,si,source')->prefix('guest')->name('guest.')->group(function () {
+    Route::get('/bookings/{user}', [GuestBookingPortalController::class, 'index'])->name('bookings.index');
+});
+
 Route::get('/payment/success/{booking}', [PaymentController::class, 'success'])->name('payment.success');
 Route::get('/payment/failed', [PaymentController::class, 'failed'])->name('payment.failed');
 
@@ -146,8 +153,6 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     // ====== QUẢN LÝ HÓA ĐƠN ======
     Route::get('/invoices', [InvoiceAdminController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{invoice}', [InvoiceAdminController::class, 'show'])->name('invoices.show');
-    Route::get('/bookings/{booking}/invoices/create', [InvoiceAdminController::class, 'create'])->name('invoices.create');
-    Route::post('/bookings/{booking}/invoices', [InvoiceAdminController::class, 'store'])->name('invoices.store');
     Route::get('/invoices/{invoice}/edit', [InvoiceAdminController::class, 'edit'])->name('invoices.edit');
     Route::put('/invoices/{invoice}', [InvoiceAdminController::class, 'update'])->name('invoices.update');
     Route::delete('/invoices/{invoice}', [InvoiceAdminController::class, 'destroy'])->name('invoices.destroy');
@@ -173,7 +178,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/damage-reports/{damageReport}/change-room', [\App\Http\Controllers\Admin\DamageReportController::class, 'changeRoom'])->name('damage-reports.change-room');
     Route::post('/damage-reports/{damageReport}/refund', [\App\Http\Controllers\Admin\DamageReportController::class, 'processRefund'])->name('damage-reports.process-refund');
 
-    // ====== ĐỔI PHÒNG (CUSTOM DATN) ======
+    // ====== ĐỔI PHÒNG (admin) ======
     Route::prefix('room-changes')->name('room-changes.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\RoomChangeController::class, 'index'])->name('index');
         Route::get('/create/{booking?}', [\App\Http\Controllers\Admin\RoomChangeController::class, 'create'])->name('create');
@@ -226,11 +231,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
     Route::get('/bookings', [AccountController::class, 'bookings'])->name('bookings');
-    Route::get('/bookings/{booking}/invoice', [AccountController::class, 'bookingInvoice'])->name('bookings.invoice');
-    Route::get('/bookings/{booking}', [AccountController::class, 'showBooking'])->name('bookings.show');
     Route::get('/profile', [AccountController::class, 'profile'])->name('profile');
     Route::put('/profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [AccountController::class, 'updatePassword'])->name('profile.update.password');
+    Route::delete('/', [AccountController::class, 'closeAccount'])->name('close');
 
     // Refund routes
     Route::get('/bookings/{booking}/refund', [AccountController::class, 'refundForm'])->name('bookings.refund');
@@ -238,7 +242,6 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 });
 
 use App\Http\Controllers\Staff\StaffController;
-use App\Http\Controllers\Staff\ActivityLogController;
 use App\Http\Controllers\Staff\DamageReportController;
 use App\Http\Controllers\Staff\RoomChangeController;
 
@@ -250,10 +253,6 @@ Route::middleware(['auth', 'staff'])
         // 📊 Dashboard
         Route::get('/dashboard', [StaffController::class, 'dashboard'])
             ->name('dashboard');
-
-        // 📜 Activity Logs
-        Route::get('/activity-logs', [ActivityLogController::class, 'index'])
-            ->name('activity_logs.index');
 
         // ⚠️ Damage Reports (FULL CRUD)
         Route::resource('damage-reports', DamageReportController::class);

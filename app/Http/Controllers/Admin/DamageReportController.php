@@ -18,6 +18,7 @@ class DamageReportController extends Controller
     public function __construct()
     {
         $this->middleware('admin');
+        $this->middleware('only_admin');
     }
 
     public function index()
@@ -252,11 +253,7 @@ class DamageReportController extends Controller
      */
     private function getCurrentBooking(int $roomId): ?Booking
     {
-        return Booking::where('room_id', $roomId)
-            ->where('check_in', '<=', now())
-            ->where('check_out', '>=', now())
-            ->whereIn('status', ['confirmed', 'checked_in'])
-            ->first();
+        return Booking::findActiveOccupancyForRoomToday($roomId);
     }
 
     /**

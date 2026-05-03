@@ -12,7 +12,7 @@ class SettingsAdminController extends Controller
     public function __construct()
     {
         $this->middleware('admin');
-        $this->middleware('admin.only');
+        $this->middleware('only_admin');
     }
 
     public function index()

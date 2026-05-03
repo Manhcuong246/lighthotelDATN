@@ -1,0 +1,22 @@
+# Light Hotel — tunnel HTTPS tới nginx Docker (hoặc php artisan serve).
+#
+# 1) Đăng ký / authtoken (một lần): https://dashboard.ngrok.com/get-started/your-authtoken
+#    ngrok config add-authtoken <token>
+#    (token lưu trong profile: ngrok config check)
+#
+# 2) Chỉnh upstream.url cho khớp APP_PORT trong .env (vd. 8088).
+#
+# 3) Chạy (merge file project + profile có authtoken):
+#    ngrok start lighthotel --config ngrok.project.yml
+#
+# Cách nhanh không cần file:  .\scripts\ngrok-http.ps1
+
+version: 3
+
+agent: {}
+
+endpoints:
+  - name: lighthotel
+    # url để trống = ngrok cấp HTTPS ngẫu nhiên (*.ngrok-free.app / tương đương)
+    upstream:
+      url: http://127.0.0.1:8088

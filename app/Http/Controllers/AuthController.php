@@ -35,35 +35,41 @@ class AuthController extends Controller
 
         $user = User::whereRaw('LOWER(email) = ?', [$request->email])->first();
 
-        // Nếu là tài khoản guest tạm
-        if ($user && $user->isProvisionalGuestAccount()) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            return back()->withErrors([
+                'email' => 'Email hoặc mật khẩu không chính xác.',
+            ]);
+        }
+
+        if ($user->status === 'banned') {
+            return back()->withErrors([
+                'email' => 'Tài khoản của bạn đã bị cấm. Vui lòng liên hệ khách sạn nếu cần hỗ trợ.',
+            ]);
+        }
+
+        if (($user->status ?? 'active') !== 'active') {
+            return back()->withErrors([
+                'email' => 'Tài khoản không thể đăng nhập.',
+            ]);
+        }
+
+        if ($user->isProvisionalGuestAccount()) {
             return back()->withErrors([
                 'email' => 'Tài khoản chưa kích hoạt, vui lòng đăng ký lại để đặt mật khẩu.',
             ]);
         }
 
-        // Nếu user tồn tại và đúng password
-        if ($user && Hash::check($request->password, $user->password)) {
+        Auth::login($user, $request->filled('remember'));
 
-            Auth::login($user, $request->filled('remember'));
-
-            // 🔴 ADMIN LOGIN
-            if ($user->isAdmin()) {
-                return redirect('/admin/dashboard');
-            }
-
-            // 🔵 STAFF LOGIN
-            if ($user->isStaff()) {
-                return redirect('/staff/dashboard');
-            }
-
-            // 🟢 CUSTOMER LOGIN
-            return redirect('/');
+        if ($user->isAdmin()) {
+            return redirect('/admin/dashboard');
         }
 
-        return back()->withErrors([
-            'email' => 'Email hoặc mật khẩu không chính xác.',
-        ]);
+        if ($user->isStaff()) {
+            return redirect('/staff/dashboard');
+        }
+
+        return redirect('/');
     }
 
     public function register(Request $request)

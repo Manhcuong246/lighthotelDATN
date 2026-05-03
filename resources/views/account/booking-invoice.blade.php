@@ -29,7 +29,7 @@
 
 @section('content')
 <div class="mb-3 no-print">
-    <a href="{{ route('account.bookings.show', $booking) }}" class="btn btn-sm btn-outline-secondary text-decoration-none">
+    <a href="{{ $guestPortalBookingShowUrl ?? route('bookings.show', $booking) }}" class="btn btn-sm btn-outline-secondary text-decoration-none">
         <i class="bi bi-arrow-left me-1"></i>Chi tiết đơn
     </a>
     <button type="button" class="btn btn-sm btn-dark ms-2" onclick="window.print()">

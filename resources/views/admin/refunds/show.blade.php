@@ -106,13 +106,15 @@
                         <label class="form-label small fw-bold text-muted text-uppercase mb-2">Quyết định xử lý</label>
                         <div class="d-flex gap-3">
                             <input type="radio" class="btn-check" name="action" id="approve" value="approve" checked autocomplete="off">
-                            <label class="btn btn-outline-success flex-fill border-2 py-3 d-flex align-items-center justify-content-center" for="approve" title="Chấp nhận">
-                                <i class="bi bi-check2 fs-4"></i>
+                            <label class="btn btn-outline-success flex-fill border-2 py-3 d-flex align-items-center justify-content-center gap-2" for="approve" title="Chấp nhận">
+                                <i class="bi bi-check2 fs-5"></i>
+                                <span>Duyệt hoàn tiền</span>
                             </label>
 
                             <input type="radio" class="btn-check" name="action" id="reject" value="reject" autocomplete="off">
-                            <label class="btn btn-outline-danger flex-fill border-2 py-3 d-flex align-items-center justify-content-center" for="reject" title="Từ chối">
-                                <i class="bi bi-x-lg fs-4"></i>
+                            <label class="btn btn-outline-danger flex-fill border-2 py-3 d-flex align-items-center justify-content-center gap-2" for="reject" title="Từ chối">
+                                <i class="bi bi-x-lg fs-5"></i>
+                                <span>Từ chối yêu cầu</span>
                             </label>
                         </div>
                     </div>
@@ -136,7 +138,8 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm d-flex align-items-center justify-content-center" title="Xử lý yêu cầu" onclick="return confirm('Bạn có chắc chắn muốn xử lý yêu cầu này?')">
-                        <i class="bi bi-check2-circle fs-3"></i>
+                        <i class="bi bi-check2-circle fs-5 me-2"></i>
+                        <span>Xác nhận xử lý</span>
                     </button>
                 </form>
             </div>

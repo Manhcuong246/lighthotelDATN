@@ -1,6 +1,11 @@
 @extends('layouts.admin')
 
+@section('title', 'Báo cáo hư hỏng (Staff)')
+
 @section('content')
+@php
+    $damageTypeLabels = \App\Models\DamageReport::getDamageTypes();
+@endphp
 <div class="container-fluid px-4">
 
     {{-- HEADER --}}
@@ -38,7 +43,7 @@
                 <div class="col-md-4">
                     <label class="form-label small text-muted">Tìm kiếm</label>
                     <input type="text" name="search" class="form-control"
-                           placeholder="Nhập loại hư hỏng..."
+                           placeholder="Loại, mã (broken_bed), hoặc nội dung mô tả..."
                            value="{{ request('search') }}">
                 </div>
 
@@ -88,21 +93,26 @@
 
                     <thead class="table-light">
                         <tr>
-                            <th class="px-4">Loại hư hỏng</th>
+                            <th class="px-4">Phòng</th>
+                            <th>Loại hư hỏng</th>
+                            <th>Mức độ</th>
                             <th>Trạng thái</th>
-                            <th width="180" class="text-end px-4">Thao tác</th>
+                            <th width="200" class="text-end px-4">Thao tác</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         @forelse($reports as $report)
                             <tr>
-                                {{-- ✅ FIX TITLE --}}
-                                <td class="px-4 fw-semibold">
-                                    {{ $report->damage_type }}
+                                <td class="px-4">
+                                    {{ $report->room ? ('Phòng ' . ($report->room->room_number ?? $report->room->id)) : '—' }}
                                 </td>
-
-                                {{-- ✅ FIX STATUS --}}
+                                <td class="fw-semibold">
+                                    {{ $damageTypeLabels[$report->damage_type] ?? $report->damage_type }}
+                                </td>
+                                <td>
+                                    {{ \App\Models\DamageReport::getSeverityLabels()[$report->severity] ?? $report->severity }}
+                                </td>
                                 <td>
                                     @switch($report->status)
                                         @case('reported')
@@ -124,6 +134,10 @@
                                 </td>
 
                                 <td class="text-end px-4">
+                                    <a href="{{ route('staff.damage-reports.show', $report->id) }}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                     <a href="{{ route('staff.damage-reports.edit', $report->id) }}"
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i>
@@ -136,7 +150,7 @@
                                         @csrf
                                         @method('DELETE')
 
-                                        <button class="btn btn-sm btn-outline-danger">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
@@ -144,7 +158,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="text-center py-5 text-muted">
+                                <td colspan="5" class="text-center py-5 text-muted">
                                     Không có dữ liệu
                                 </td>
                             </tr>

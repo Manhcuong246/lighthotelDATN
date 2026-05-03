@@ -171,7 +171,37 @@ class Room extends Model
     }
 
     /**
-     * Scope to get only available rooms (not in maintenance)
+     * Ẩn phòng bảo trì khỏi catalog / tìm kiếm khách (không dùng global scope để admin vẫn thấy đủ).
+     */
+    public function scopeExcludeMaintenance($query)
+    {
+        return $query->where('status', '!=', 'maintenance');
+    }
+
+    /**
+     * Phòng có thể đưa vào luồng kinh doanh (đặt / tìm / đổi phòng đích): không bảo trì.
+     */
+    public function scopeSellable($query)
+    {
+        return $query->excludeMaintenance();
+    }
+
+    /**
+     * Một phòng mẫu trong loại để lấy giá catalogue: không bảo trì, ưu tiên đang available.
+     * Dùng khi cần báo giá nhưng có thể không còn phòng available (chỉ còn đã book).
+     */
+    public static function firstCatalogueRoomForRoomType(int $roomTypeId): ?self
+    {
+        return static::query()
+            ->where('room_type_id', $roomTypeId)
+            ->excludeMaintenance()
+            ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * Chỉ phòng đang trống (đặt được).
      */
     public function scopeAvailable($query)
     {
@@ -179,11 +209,11 @@ class Room extends Model
     }
 
     /**
-     * Scope to exclude maintenance rooms
+     * @deprecated Dùng excludeMaintenance()
      */
     public function scopeNotInMaintenance($query)
     {
-        return $query->where('status', '!=', 'maintenance');
+        return $query->excludeMaintenance();
     }
 
     /**
@@ -199,7 +229,7 @@ class Room extends Model
      */
     public function canBeBooked(): bool
     {
-        return $this->status === 'available';
+        return $this->status === 'available' && ! $this->isInMaintenance();
     }
 
     /**

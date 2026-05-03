@@ -12,18 +12,18 @@
                 </div>
 
                 <div class="card-body">
-                    {{-- Thông tin phòng đã chọn --}}
+                    {{-- Thông tin loại phòng đã chọn --}}
                     <div class="alert alert-info">
-                        <h6><i class="bi bi-house-door me-2"></i>Phòng đã chọn:</h6>
+                        <h6><i class="bi bi-house-door me-2"></i>Loại phòng đã chọn:</h6>
                         <div id="selectedRoomInfo">
-                            <strong>{{ $room->name ?? 'Phòng ' . $room->room_number }}</strong> -
-                            {{ $room->roomType->name ?? 'Standard' }}
+                            <strong>{{ $roomType->name ?? 'Standard' }}</strong> -
+                            <span class="text-muted">Số phòng sẽ được lễ tân bố trí khi check-in</span>
                         </div>
                     </div>
 
                     <form id="bookingForm" action="{{ route('bookings.store-simple') }}" method="POST">
                         @csrf
-                        <input type="hidden" name="room_id" value="{{ $room->id }}">
+                        <input type="hidden" name="room_type_id" value="{{ $roomType->id }}">
                         <input type="hidden" name="check_in" value="{{ $checkIn }}">
                         <input type="hidden" name="check_out" value="{{ $checkOut }}">
 

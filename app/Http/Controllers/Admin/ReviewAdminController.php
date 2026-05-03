@@ -15,7 +15,7 @@ class ReviewAdminController extends Controller
 
     public function index(Request $request)
     {
-        $query = Review::with(['user', 'room'])->latest();
+        $query = Review::with(['user', 'room', 'booking'])->latest();
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -33,6 +33,8 @@ class ReviewAdminController extends Controller
 
     public function show(Review $review)
     {
+        $review->load(['user', 'room.roomType', 'booking']);
+
         return view('admin.reviews.show', compact('review'));
     }
 

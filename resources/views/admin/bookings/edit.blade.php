@@ -112,11 +112,11 @@
                         @error('check_out')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
-                        <label for="total_price" class="form-label small fw-semibold">Tổng tiền (VNĐ)</label>
-                        <input type="number" class="form-control @error('total_price') is-invalid @enderror"
-                               id="total_price" name="total_price" min="0" step="1000"
-                               value="{{ old('total_price', $booking->total_price) }}" required>
-                        @error('total_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <label for="total_price" class="form-label small fw-semibold">Tổng tiền (tự tính)</label>
+                        <input type="text" class="form-control bg-light"
+                               id="total_price"
+                               value="{{ number_format((float) old('total_price', $booking->total_price), 0, ',', '.') }} ₫" readonly>
+                        <small class="text-muted">Giá được hệ thống tính tự động.</small>
                     </div>
                     <div class="col-md-3">
                         <label for="status" class="form-label small fw-semibold">Trạng thái</label>

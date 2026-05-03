@@ -15,7 +15,7 @@ Route::prefix('bookings')->name('bookings.')->group(function () {
     Route::post('/booking-form', [NewBookingController::class, 'bookingForm'])->name('booking-form');
 
     // Xử lý đặt phòng
-    Route::post('/store', [NewBookingController::class, 'store'])->name('store');
+    Route::post('/store', [NewBookingController::class, 'store'])->name('internal.store');
 
     // Trang xác nhận
     Route::get('/confirmation/{booking}', [NewBookingController::class, 'confirmation'])->name('confirmation');

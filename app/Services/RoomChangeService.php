@@ -100,6 +100,46 @@ class RoomChangeService
         // Đang trong kỳ lưu trú → tính từ hôm nay đến check-out
         return $now->diffInDays($checkOut);
     }
+
+    /**
+     * Các room_id không được chọn làm phòng đích khi đổi phòng:
+     * - Mọi phòng vật lý đang gán cho đơn (tránh chọn lại đúng phòng / phòng của slot khác trên cùng đơn).
+     * - Phòng có chỗ trong khoảng từ hôm nay đến đêm cuối lưu trú bởi đơn khách khác (đơn còn hiệu lực).
+     */
+    public function getExcludedRoomIdsForChange(Booking $booking): array
+    {
+        $booking->loadMissing('bookingRooms');
+
+        $held = $booking->bookingRooms
+            ->pluck('room_id')
+            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $checkOut = Carbon::parse($booking->check_out)->startOfDay();
+        $rangeStart = Carbon::now()->startOfDay();
+        $rangeEndNight = $checkOut->copy()->subDay();
+
+        if ($rangeStart->gt($rangeEndNight)) {
+            return $held;
+        }
+
+        $blocked = RoomBookedDate::query()
+            ->whereBetween('booked_date', [$rangeStart->toDateString(), $rangeEndNight->toDateString()])
+            ->whereHas('booking', function ($q) use ($booking) {
+                $q->where('id', '!=', $booking->id)
+                    ->whereIn('status', ['pending', 'confirmed', 'checked_in']);
+            })
+            ->distinct()
+            ->pluck('room_id')
+            ->map(static fn ($id) => (int) $id)
+            ->all();
+
+        return collect($held)->merge($blocked)->unique()->values()->all();
+    }
+
     /**
      * Lấy danh sách phòng có thể đổi - Business rule: chỉ status = available (Ready/Clean)
      */
@@ -107,29 +147,23 @@ class RoomChangeService
     {
         $booking->load('bookingRooms.room');
         $bookingRoom = $booking->bookingRooms->firstWhere('room_id', $currentRoomId);
-        if (!$bookingRoom) return [];
+        if (! $bookingRoom) {
+            return [];
+        }
 
         $currentRoom = $bookingRoom->room;
-        $checkOut = Carbon::parse($booking->check_out);
         $remainingNights = $this->calculateRemainingNights($booking);
         $totalGuests = $bookingRoom->adults + $bookingRoom->children_6_11 + $bookingRoom->children_0_5;
 
-        // Phòng đã đặt trong khoảng còn lại (trừ booking hiện tại)
-        $bookedRoomIds = RoomBookedDate::whereBetween('booked_date', [
-                Carbon::now()->startOfDay()->toDateString(),
-                $checkOut->copy()->subDay()->toDateString()
-            ])
-            ->whereHas('booking', function ($q) use ($booking) {
-                $q->where('id', '!=', $booking->id)
-                  ->whereIn('status', ['pending', 'confirmed', 'checked_in']);
-            })
-            ->distinct()->pluck('room_id')->toArray();
+        $excludeIds = $this->getExcludedRoomIdsForChange($booking);
 
-        // CHỈ lấy phòng available (Ready/Clean) - Business rule
+        // CHỈ lấy phòng available (Ready/Clean), không bảo trì — Business rule; không trùng phòng đang giữ / đã bị book
         $query = Room::with('roomType')
-            ->where('id', '!=', $currentRoomId)
-            ->whereNotIn('id', $bookedRoomIds)
-            ->where('status', 'available');
+            ->where('status', 'available')
+            ->excludeMaintenance();
+        if ($excludeIds !== []) {
+            $query->whereNotIn('id', $excludeIds);
+        }
 
         // Sắp xếp: cùng hạng → nâng hạng → hạ hạng
         if ($currentRoom && $currentRoom->room_type_id) {
@@ -187,6 +221,11 @@ class RoomChangeService
      */
     public function isRoomAvailable(int $roomId, string $checkIn, string $checkOut, ?int $excludeBookingId = null): bool
     {
+        $room = Room::query()->find($roomId);
+        if (! $room || $room->isInMaintenance() || $room->status !== 'available') {
+            return false;
+        }
+
         $query = RoomBookedDate::where('room_id', $roomId)
             ->whereBetween('booked_date', [
                 Carbon::parse($checkIn)->toDateString(),

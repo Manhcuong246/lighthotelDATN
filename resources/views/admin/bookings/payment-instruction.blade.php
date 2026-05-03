@@ -104,7 +104,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Chủ TK:</td>
-                                    <td class="fw-bold">{{ $hotelInfo->bank_account_name ?? 'KHÁCH SẠN LIGHTHOTEL' }}</td>
+                                    <td class="fw-bold">{{ $hotelInfo->bank_account_name ?? 'Light Hotel' }}</td>
                                 </tr>
                             </table>
                         </div>

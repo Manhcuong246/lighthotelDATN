@@ -14,7 +14,7 @@ class HotelInfoSeeder extends Seeder
             [
                 'name' => 'Light Hotel',
                 'description' => 'Khách sạn Light Hotel - Nơi nghỉ dưỡng tuyệt vờii',
-                'address' => '123 Đường ABC, Quận 1, TP.HCM',
+                'address' => 'Khu trung tâm, Việt Nam',
                 'phone' => '0901234567',
                 'email' => 'contact@lighthotel.com',
                 'bank_id' => 'mbbank',

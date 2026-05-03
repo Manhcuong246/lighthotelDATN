@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSimpleBookingRequest extends FormRequest
 {
@@ -15,7 +16,11 @@ class StoreSimpleBookingRequest extends FormRequest
     {
         return [
             // Thông tin booking
-            'room_id'   => 'required|integer|exists:rooms,id',
+            'room_type_id'   => [
+                'required',
+                'integer',
+                Rule::exists('room_types', 'id'),
+            ],
             'check_in'  => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'rooms'     => 'required|integer|min:1|max:10',
@@ -30,8 +35,8 @@ class StoreSimpleBookingRequest extends FormRequest
     {
         return [
             // Booking
-            'room_id.required'  => 'Vui lòng chọn phòng.',
-            'room_id.exists'    => 'Phòng không tồn tại.',
+            'room_type_id.required'  => 'Vui lòng chọn loại phòng.',
+            'room_type_id.exists'    => 'Loại phòng không tồn tại.',
             'check_in.required' => 'Vui lòng chọn ngày nhận phòng.',
             'check_in.after_or_equal' => 'Ngày nhận phòng phải từ hôm nay trở đi.',
             'check_out.required'=> 'Vui lòng chọn ngày trả phòng.',

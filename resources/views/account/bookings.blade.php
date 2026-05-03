@@ -111,6 +111,8 @@
 .booking-page .booking-status.confirmed { background: #dbeafe; color: #1d4ed8; }
 .booking-page .booking-status.completed { background: #d1fae5; color: #047857; }
 .booking-page .booking-status.cancelled { background: #f3f4f6; color: #6b7280; }
+.booking-page .booking-status.cancel_requested { background: #fef3c7; color: #92400e; }
+.booking-page .booking-status.refunded { background: #e0f2fe; color: #0369a1; }
 .booking-page .empty-state {
     padding: 2.5rem 1.5rem;
     text-align: center;
@@ -154,11 +156,21 @@
 @endpush
 
 @section('content')
+@php
+    $bookingDetailUrls = $bookingDetailUrls ?? [];
+@endphp
 <div class="booking-page">
     <div class="page-header">
         <h1 class="page-title">Lịch sử đặt phòng</h1>
-        <p class="page-subtitle">Xem và quản lý các đơn đặt phòng của bạn</p>
+        <p class="page-subtitle">{{ ! empty($guestPortalSubtitle) ? 'Quản lý đơn sau thanh toán VNPay — hủy phòng hoặc yêu cầu hoàn tiền theo chính sách (giống trang lịch sử trong tài khoản).' : 'Xem và quản lý các đơn đặt phòng của bạn' }}</p>
     </div>
+
+    @if(! empty($guestPortalSubtitle))
+        <div class="alert alert-light border shadow-sm small mb-3 rounded-3">
+            <i class="bi bi-link-45deg me-1"></i>
+            Bạn đang mở trang qua <strong>link an toàn trong email</strong>. Nếu đã đăng nhập website, có thể vào <a href="{{ route('account.bookings') }}" class="fw-semibold">Lịch sử đặt phòng</a> trong tài khoản.
+        </div>
+    @endif
 
     @if($bookings->isEmpty())
         <div class="empty-state">
@@ -172,17 +184,19 @@
     @else
         <div class="booking-list">
             @foreach($bookings as $b)
-            <a href="{{ route('account.bookings.show', $b) }}" class="booking-card text-decoration-none text-body d-block">
+            <a href="{{ isset($bookingDetailUrls[$b->id]) ? $bookingDetailUrls[$b->id] : route('bookings.show', $b) }}" class="booking-card text-decoration-none text-body d-block">
                 <div class="booking-card-inner">
                     <div class="booking-main">
                         <div class="booking-room">
                             <i class="bi bi-door-open"></i>
-                            @if($b->rooms->count() > 1)
+                            @if($b->bookingRooms->isNotEmpty())
+                                {{ $b->bookingRooms->map(fn ($br) => $br->guestFacingLine())->unique()->implode(' · ') }}
+                            @elseif($b->rooms->count() > 1)
                                 {{ $b->rooms->count() }} phòng ({{ $b->rooms->pluck('name')->implode(', ') }})
                             @elseif($b->rooms->count() == 1)
                                 {{ $b->rooms->first()->name }}
                             @else
-                                {{ $b->room->name ?? '—' }}
+                                {{ $b->room?->displayLabel() ?? '—' }}
                             @endif
                         </div>
                         <div class="booking-details">
@@ -218,6 +232,8 @@
                             @elseif($b->status === 'confirmed') Đã thanh toán
                             @elseif($b->status === 'completed') Hoàn thành
                             @elseif($b->status === 'cancelled') Đã hủy
+                            @elseif($b->status === 'cancel_requested') Đang chờ hoàn tiền
+                            @elseif($b->status === 'refunded') Đã hoàn tiền
                             @else {{ $b->status }}
                             @endif
                         </span>
@@ -227,7 +243,7 @@
             @endforeach
         </div>
 
-        @if($bookings->hasPages())
+        @if($bookings instanceof \Illuminate\Pagination\AbstractPaginator && $bookings->hasPages())
         <div class="pagination-wrap">
             {{ $bookings->links() }}
         </div>

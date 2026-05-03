@@ -48,8 +48,8 @@
                                 <table class="table table-bordered">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Phòng</th>
                                             <th>Loại phòng</th>
+                                            <th>Ghi chú</th>
                                             <th>Giá/đêm</th>
                                             <th>Số đêm</th>
                                             <th>Thành tiền</th>
@@ -57,10 +57,10 @@
                                     </thead>
                                     <tbody>
                                         @foreach($rooms as $index => $room)
-                                            <input type="hidden" name="rooms[{{ $index }}][room_id]" value="{{ $room->id }}">
+                                            <input type="hidden" name="room_type_ids[]" value="{{ $room->room_type_id }}">
                                             <tr>
-                                                <td>{{ $room->name }}</td>
                                                 <td>{{ $room->roomType->name ?? 'N/A' }}</td>
+                                                <td>Số phòng do lễ tân bố trí khi check-in</td>
                                                 <td>{{ number_format(1000000, 0, ',', '.') }} VNĐ</td>
                                                 <td>{{ \Carbon\Carbon::parse($check_in)->diffInDays(\Carbon\Carbon::parse($check_out)) }}</td>
                                                 <td>{{ number_format(1000000 * \Carbon\Carbon::parse($check_in)->diffInDays(\Carbon\Carbon::parse($check_out)), 0, ',', '.') }} VNĐ</td>
@@ -90,7 +90,7 @@
                                             <div class="col-md-4">
                                                 <label class="form-label small">Người lớn</label>
                                                 <input type="number" name="adults[{{ $index }}]" class="form-control form-control-sm"
-                                                       value="{{ old("adults.{$index}", 1) }}" min="1" max="10">
+                                                       value="{{ old("adults.{$index}", 1) }}" min="1" max="10" required>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label small">Trẻ em (0–5 tuổi, tối đa 2)</label>

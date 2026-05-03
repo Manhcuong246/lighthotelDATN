@@ -56,8 +56,6 @@
                                 <td>
                                     @if($user->status === 'active')
                                         <span class="badge bg-success">Hoạt động</span>
-                                    @elseif($user->status === 'inactive')
-                                        <span class="badge bg-warning text-dark">Không hoạt động</span>
                                     @elseif($user->status === 'banned')
                                         <span class="badge bg-danger">Bị cấm</span>
                                     @else

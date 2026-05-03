@@ -34,13 +34,18 @@ class NewBookingController extends Controller
         $checkIn = $request->check_in;
         $checkOut = $request->check_out;
 
-        // Tìm phòng trống
-        $availableRooms = Room::whereDoesntHave('bookedDates', function ($query) use ($checkIn, $checkOut) {
-            $query->whereBetween('booked_date', [
-                $checkIn,
-                Carbon::parse($checkOut)->subDay()->toDateString()
-            ]);
-        })->with('roomType')->get();
+        // Tìm phòng trống (loại trừ bảo trì và phòng không available)
+        $availableRooms = Room::query()
+            ->where('status', 'available')
+            ->excludeMaintenance()
+            ->whereDoesntHave('bookedDates', function ($query) use ($checkIn, $checkOut) {
+                $query->whereBetween('booked_date', [
+                    $checkIn,
+                    Carbon::parse($checkOut)->subDay()->toDateString()
+                ]);
+            })
+            ->with('roomType')
+            ->get();
 
         return view('bookings.search-results', [
             'availableRooms' => $availableRooms,
@@ -99,7 +104,7 @@ class NewBookingController extends Controller
             // Tạo booking
             $booking = Booking::create([
                 'user_id' => Auth::id(),
-                'room_id' => 1, // Tạm thời, sẽ cập nhật sau
+                'room_id' => null,
                 'check_in' => $request->check_in,
                 'check_out' => $request->check_out,
                 'status' => 'pending',
@@ -257,12 +262,6 @@ class NewBookingController extends Controller
             return redirect()
                 ->route('admin.invoices.show', $booking->invoice)
                 ->with('success', 'Check-out thành công. Xem hóa đơn chi tiết bên dưới.');
-        }
-
-        if ($booking->isPaidAndCheckedOutForInvoice()) {
-            return redirect()
-                ->route('admin.invoices.create', $booking)
-                ->with('success', 'Check-out thành công. Tạo hóa đơn chi tiết ngay bây giờ.');
         }
 
         return back()->with('success', 'Check-out thành công.');

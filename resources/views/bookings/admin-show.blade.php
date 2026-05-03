@@ -215,11 +215,6 @@
                                             <i class="bi bi-printer me-1"></i>
                                             In hóa đơn
                                         </a>
-                                    @elseif($booking->isPaidAndCheckedOutForInvoice())
-                                        <a href="{{ route('admin.invoices.create', $booking) }}" class="btn btn-outline-primary btn-sm rounded-2">
-                                            <i class="bi bi-receipt me-1"></i>
-                                            Tạo hóa đơn chi tiết
-                                        </a>
                                     @endif
                                 </div>
                             @else

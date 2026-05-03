@@ -22,6 +22,18 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i><span>{{ session('error') }}</span>
+        </div>
+    @endif
+
+    @if(session('warning'))
+        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i><span>{{ session('warning') }}</span>
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="alert alert-danger border-0 shadow-sm mb-4">
             <ul class="mb-0 ps-3">
@@ -53,8 +65,6 @@
                             <div class="d-flex flex-wrap gap-2 align-items-center">
                                 @if($user->status === 'active')
                                     <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">Hoạt động</span>
-                                @elseif($user->status === 'inactive')
-                                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle">Không hoạt động</span>
                                 @elseif($user->status === 'banned')
                                     <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle">Bị cấm</span>
                                 @else
@@ -107,9 +117,12 @@
                                 <label for="status" class="form-label fw-semibold small">Trạng thái <span class="text-danger">*</span></label>
                                 <select class="form-select rounded-3 @error('status') is-invalid @enderror" id="status" name="status">
                                     <option value="active" @selected(old('status', $user->status) === 'active')>Hoạt động</option>
-                                    <option value="inactive" @selected(old('status', $user->status) === 'inactive')>Không hoạt động</option>
                                     <option value="banned" @selected(old('status', $user->status) === 'banned')>Bị cấm</option>
                                 </select>
+                                <div class="form-text">
+                                    <strong>Hoạt động:</strong> đăng nhập bình thường.
+                                    <strong>Bị cấm:</strong> không đăng nhập được; hệ thống gửi email thông báo tới khách khi bạn lưu trạng thái này.
+                                </div>
                                 @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>

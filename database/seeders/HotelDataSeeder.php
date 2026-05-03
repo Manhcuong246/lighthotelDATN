@@ -24,7 +24,7 @@ class HotelDataSeeder extends Seeder
             [
                 'name' => 'Light Hotel',
                 'description' => 'Khách sạn sang trọng hàng đầu với dịch vụ 5 sao và tiện nghi hiện đại.',
-                'address' => '123 Đường ABC, Quận 1, TP. Hồ Chí Minh',
+                'address' => 'Khu trung tâm, Việt Nam',
                 'phone' => '+84 123 456 789',
                 'email' => 'info@lighthotel.com',
                 'latitude' => 10.776944,

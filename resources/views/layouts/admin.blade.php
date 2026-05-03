@@ -335,18 +335,6 @@
 </li>@if(!auth()->user()->isAdmin())
 <li class="nav-item">
     <a class="nav-link 
-        {{ request()->routeIs('staff.activity_logs.*') ? 'active' : '' }}"
-        href="{{ route('staff.activity_logs.index') }}">
-
-        <i class="bi bi-clock-history"></i>
-        Nhật ký hoạt động
-    </a>
-</li>
-@endif
-
-@if(!auth()->user()->isAdmin())
-<li class="nav-item">
-    <a class="nav-link 
         {{ request()->routeIs('staff.damage-reports.*') ? 'active' : '' }}"
         href="{{ route('staff.damage-reports.index') }}">
         

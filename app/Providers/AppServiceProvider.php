@@ -17,6 +17,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $root = config('app.url');
+        if (is_string($root) && $root !== '') {
+            // Tránh lệch chữ ký URL (signed / temporarySigned) khi generate vs request thực tế
+            URL::forceRootUrl(rtrim($root, '/'));
+        }
         if (is_string($root) && str_starts_with($root, 'https://')) {
             URL::forceScheme('https');
         }

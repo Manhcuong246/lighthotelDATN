@@ -108,6 +108,24 @@ class User extends Authenticatable
         return $this->hasMany(Review::class);
     }
 
+    /**
+     * Đơn chưa kết thúc hẳn — không cho khách tự đóng tài khoản (tránh tranh chấp / hoàn tiền).
+     */
+    public function hasBookingsBlockingAccountClosure(): bool
+    {
+        return $this->bookings()
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->exists();
+    }
+
+    /**
+     * Chỉ khách (không admin/staff) được đóng tài khoản qua trang hồ sơ.
+     */
+    public function canSelfCloseAccountFromWebsite(): bool
+    {
+        return ! $this->canAccessAdmin();
+    }
+
     protected static function booted(): void
     {
         static::deleting(function (User $user): void {

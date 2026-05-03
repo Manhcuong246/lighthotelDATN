@@ -14,7 +14,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form id="bookingForm" method="POST" action="{{ route('bookings.store') }}">
+                    <form id="bookingForm" method="POST" action="{{ route('bookings.internal.store') }}">
                         @csrf
                         <input type="hidden" name="check_in" value="{{ $check_in }}">
                         <input type="hidden" name="check_out" value="{{ $check_out }}">

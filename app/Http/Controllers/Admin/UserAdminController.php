@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Mail\AccountBannedMail;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 
@@ -15,7 +18,7 @@ class UserAdminController extends Controller
     public function __construct()
     {
         $this->middleware('admin');
-        $this->middleware('admin.only');
+        $this->middleware('only_admin');
     }
 
     public function index(Request $request)
@@ -54,7 +57,7 @@ class UserAdminController extends Controller
             'full_name' => 'required|string|max:150',
             'email' => 'required|string|email|max:150|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
-            'status' => 'required|in:active,inactive,banned',
+            'status' => 'required|in:active,banned',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'role_ids' => 'nullable|array',
             'role_ids.*' => 'integer|exists:roles,id',
@@ -70,6 +73,20 @@ class UserAdminController extends Controller
         unset($validated['avatar']);
         $roleIds = $validated['role_ids'] ?? [];
         unset($validated['role_ids']);
+
+        $previousStatus = $user->status;
+
+        $currentUser = Auth::user();
+        if (
+            $currentUser
+            && (int) $user->id === (int) $currentUser->id
+            && ($validated['status'] ?? 'active') !== 'active'
+        ) {
+            return redirect()
+                ->route('admin.users.show', $user)
+                ->with('error', 'Bạn không thể tự đặt trạng thái Bị cấm cho tài khoản đang đăng nhập.');
+        }
+
         $user->update($validated);
 
         if ($request->filled('password')) {
@@ -77,6 +94,25 @@ class UserAdminController extends Controller
         }
 
         $user->roles()->sync($roleIds);
+
+        $becameBanned = $previousStatus !== 'banned' && $validated['status'] === 'banned';
+        if ($becameBanned) {
+            $user->refresh();
+            try {
+                Mail::to($user->email)->send(new AccountBannedMail($user));
+            } catch (\Throwable $e) {
+                Log::error('AccountBannedMail failed', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'exception' => $e->getMessage(),
+                ]);
+
+                return redirect()
+                    ->route('admin.users.show', $user)
+                    ->with('success', 'Đã lưu thông tin người dùng.')
+                    ->with('warning', 'Không gửi được email thông báo cấm tài khoản. Kiểm tra cấu hình MAIL trong .env.');
+            }
+        }
 
         return redirect()->route('admin.users.show', $user)->with('success', 'Đã lưu thông tin người dùng.');
     }

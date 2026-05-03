@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Hủy & hoàn tiền #' . $booking->id)
+@section('title', 'Hủy đơn #' . $booking->id)
 
 @section('content')
 <div class="container py-5">
@@ -10,7 +10,7 @@
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-times-circle me-2"></i>
-                        Xác nhận hủy &amp; hoàn tiền
+                        Xác nhận hủy đơn đặt phòng
                     </h5>
                 </div>
                 <div class="card-body">
@@ -28,13 +28,23 @@
                             <h6 class="text-muted">Thông tin thanh toán</h6>
                             <p class="mb-1"><strong>Tổng tiền:</strong> <span class="text-primary">{{ number_format($booking->total_price, 0, ',', '.') }} ₫</span></p>
                             <p class="mb-1"><strong>Trạng thái:</strong> 
-                                <span class="badge bg-{{ $booking->status === 'booked' ? 'success' : 'warning' }}">
-                                    {{ $booking->status === 'booked' ? 'Đã đặt' : 'Khác' }}
+                                <span class="badge bg-{{ in_array($booking->status, ['confirmed', 'checked_in', 'checked_out', 'completed']) ? 'success' : ($booking->status === 'pending' ? 'warning text-dark' : 'secondary') }}">
+                                    @if($booking->status === 'pending') Chờ xác nhận
+                                    @elseif($booking->status === 'confirmed') Đã xác nhận
+                                    @elseif($booking->status === 'cancel_requested') Đang chờ hoàn tiền
+                                    @elseif($booking->status === 'cancelled') Đã hủy
+                                    @elseif($booking->status === 'completed') Hoàn thành
+                                    @else {{ $booking->status }}
+                                    @endif
                                 </span>
                             </p>
                             <p class="mb-1"><strong>Thanh toán:</strong> 
-                                <span class="badge bg-{{ $booking->payment_status === 'paid' ? 'info' : 'secondary' }}">
-                                    {{ $booking->payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+                                <span class="badge bg-{{ in_array($booking->payment_status, ['paid', 'refunded', 'partial_refunded']) ? 'info' : 'secondary' }}">
+                                    @if($booking->payment_status === 'paid') Đã thanh toán
+                                    @elseif($booking->payment_status === 'refunded') Đã hoàn tiền
+                                    @elseif($booking->payment_status === 'partial_refunded') Hoàn tiền một phần
+                                    @else Chưa thanh toán
+                                    @endif
                                 </span>
                             </p>
                         </div>
@@ -84,6 +94,7 @@
 
                     <!-- Cancellation Form -->
                     @if($policy['can_cancel'])
+                        @php $hasRefundAmount = (float) ($policy['refund_amount'] ?? 0) > 0; @endphp
                         <form id="cancelForm" method="POST" action="{{ $cancelPostUrl }}">
                             @csrf
                             <div class="mb-3">
@@ -108,7 +119,7 @@
                                 </a>
                                 <button type="submit" class="btn btn-danger" id="cancelBtn">
                                     <i class="fas fa-times me-2"></i>
-                                    Xác nhận hủy &amp; hoàn tiền
+                                    {{ $hasRefundAmount ? 'Xác nhận hủy & hoàn tiền' : 'Xác nhận hủy đơn' }}
                                 </button>
                             </div>
                         </form>
@@ -177,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Show success message
                     Swal.fire({
                         icon: 'success',
-                        title: 'Hủy booking thành công!',
+                        title: 'Hủy đơn thành công!',
                         html: `
                             <p>${data.message}</p>
                             <p><strong>Số tiền hoàn:</strong> ${number_format(data.refund_amount, 0, ',', '.')} ₫</p>
@@ -200,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Reset button
                     cancelBtn.disabled = false;
-                    cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy &amp; hoàn tiền';
+                    cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy đơn';
                 }
             })
             .catch(error => {
@@ -215,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Reset button
                 cancelBtn.disabled = false;
-                cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy &amp; hoàn tiền';
+                cancelBtn.innerHTML = '<i class="fas fa-times me-2"></i>Xác nhận hủy đơn';
             });
         });
     }

@@ -140,7 +140,7 @@
             + '<tr>'
             + '<th style="width:44px" class="text-center">STT</th>'
             + '<th>Họ tên <span class="text-danger">*</span></th>'
-            + '<th style="width:168px">CCCD<br><small class="fw-normal text-muted">Bắt buộc với NL · Tuỳ chọn trẻ</small></th>'
+            + '<th style="width:168px">CCCD<br><small class="fw-normal text-muted">1 người lớn/phòng: 12 số (đại diện)</small></th>'
             + '<th style="width:168px">Loại khách <span class="text-danger">*</span></th>'
             + '<th style="width:52px"></th>'
             + '</tr></thead>'
@@ -193,18 +193,15 @@
         return !!(sel && sel.value === 'adult');
     }
 
-    /** CCCD bắt buộc với người lớn; trẻ em được để trống. */
+    /** Mỗi phòng cần ≥1 người lớn có CCCD 12 số (kiểm tra lúc gửi form). */
     function syncGuestCccdRequirement(row) {
         const cccdInput = row.querySelector('.guest-cccd-input');
         const typeSel = row.querySelector('.guest-type-input');
         if (!cccdInput || !typeSel || cccdInput.readOnly) return;
-        if (guestRowIsAdult(row)) {
-            cccdInput.setAttribute('required', 'required');
-            cccdInput.placeholder = '12 số (bắt buộc)';
-        } else {
-            cccdInput.removeAttribute('required');
-            cccdInput.placeholder = 'Tuỳ chọn';
-        }
+        cccdInput.removeAttribute('required');
+        cccdInput.placeholder = guestRowIsAdult(row)
+            ? 'Một NL trong phòng bắt buộc 12 số'
+            : 'Tuỳ chọn (ưu tiên NL có CCCD)';
     }
 
     /* ── Tạo một hàng khách ────────────────────────────────────────── */
@@ -389,11 +386,8 @@
             }
 
             if (adult) {
-                if (!cccdRaw) {
-                    errors.push(label + ': Người lớn cần CCCD (12 số)');
-                    cccdEl.classList.add('is-invalid');
-                } else if (!/^\d{12}$/.test(cccdRaw)) {
-                    errors.push(label + ': CCCD phải đúng 12 chữ số');
+                if (cccdRaw && !/^\d{12}$/.test(cccdRaw)) {
+                    errors.push(label + ': CCCD phải đúng 12 chữ số (hoặc để trống)');
                     cccdEl.classList.add('is-invalid');
                 } else {
                     cccdEl.classList.remove('is-invalid');
@@ -403,6 +397,34 @@
                 cccdEl.classList.add('is-invalid');
             } else {
                 cccdEl.classList.remove('is-invalid');
+            }
+        });
+
+        slotSections.forEach(function (sec) {
+            const rows = Array.from(sec.querySelectorAll('.guest-row'));
+            let adultWithFullCccd = 0;
+            let named = 0;
+            rows.forEach(function (row) {
+                const name = row.querySelector('.guest-name-input').value.trim();
+                if (!name) {
+                    return;
+                }
+                named++;
+                if (!guestRowIsAdult(row)) {
+                    return;
+                }
+                const cccdRaw = row.querySelector('.guest-cccd-input').value.replace(/\D/g, '');
+                if (/^\d{12}$/.test(cccdRaw)) {
+                    adultWithFullCccd++;
+                }
+            });
+            const hn = sec.querySelector('h6');
+            const slotTitle = hn ? hn.textContent.replace(/\s+/g, ' ').trim() : 'Một dòng phòng trên đơn';
+            if (named === 0) {
+                errors.push(slotTitle + ': Cần ít nhất 1 khách có họ tên.');
+            }
+            if (adultWithFullCccd < 1) {
+                errors.push(slotTitle + ': Mỗi phòng cần ít nhất 1 người lớn có CCCD đủ 12 số (người đại diện; một người đủ nếu có cả hai).');
             }
         });
 

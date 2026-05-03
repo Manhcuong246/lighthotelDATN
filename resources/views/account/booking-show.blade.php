@@ -16,7 +16,13 @@
     $pendingExpired = $booking->status === 'pending' && ! $paidRecorded && $booking->isPendingDisplayExpired();
 @endphp
 <div class="mb-4">
-    <a href="{{ route('account.bookings') }}" class="btn btn-sm btn-outline-secondary text-decoration-none">
+    @php
+        $isOwnerView = auth()->check() && (int) auth()->id() === (int) $booking->user_id;
+        $backToListUrl = isset($guestPortalIndexUrl)
+            ? $guestPortalIndexUrl
+            : ($isOwnerView ? route('account.bookings') : route('home'));
+    @endphp
+    <a href="{{ $backToListUrl }}" class="btn btn-sm btn-outline-secondary text-decoration-none">
         <i class="bi bi-arrow-left me-1"></i>Quay lại lịch sử
     </a>
 </div>
@@ -110,18 +116,17 @@
                                     @auth
                                         @if($room)
                                             @php
-                                                $uidBr = (int) auth()->id();
                                                 $ridBr = (int) $room->id;
-                                                $canSubmitReviewRoom = \App\Models\Booking::userCanSubmitRoomReview($uidBr, $ridBr);
-                                                $reviewedRoom = \App\Models\Review::userHasReviewedRoom($uidBr, $ridBr);
+                                                $canSubmitThisStay = $booking->userCanSubmitReviewForRoom($ridBr);
+                                                $reviewedThisStay = \App\Models\Review::existsForBookingAndRoom((int) $booking->id, $ridBr);
                                             @endphp
-                                            @if($canSubmitReviewRoom)
-                                                <a href="{{ route('rooms.show', $room) }}#write-review" class="btn btn-sm btn-success mt-2 rounded-pill">
+                                            @if($canSubmitThisStay)
+                                                <a href="{{ route('reviews.create', ['room' => $room, 'booking' => $booking->id]) }}" class="btn btn-sm btn-success mt-2 rounded-pill">
                                                     <i class="bi bi-star me-1"></i>
-                                                    Viết đánh giá (loại: {{ $room->roomType->name ?? $room->type ?? 'phòng này' }})
+                                                    Đánh giá phòng (đơn #{{ $booking->id }})
                                                 </a>
-                                            @elseif($reviewedRoom)
-                                                <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã đánh giá phòng này (mỗi tài khoản một lần / phòng).</span>
+                                            @elseif($reviewedThisStay)
+                                                <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã gửi đánh giá cho phòng này trong đơn này.</span>
                                             @endif
                                         @endif
                                     @endauth
@@ -179,18 +184,17 @@
                             </small>
                             @auth
                                 @php
-                                    $uidBr = (int) auth()->id();
                                     $ridBr = (int) $room->id;
-                                    $canSubmitReviewRoom = \App\Models\Booking::userCanSubmitRoomReview($uidBr, $ridBr);
-                                    $reviewedRoom = \App\Models\Review::userHasReviewedRoom($uidBr, $ridBr);
+                                    $canSubmitThisStay = $booking->userCanSubmitReviewForRoom($ridBr);
+                                    $reviewedThisStay = \App\Models\Review::existsForBookingAndRoom((int) $booking->id, $ridBr);
                                 @endphp
-                                @if($canSubmitReviewRoom)
-                                    <a href="{{ route('rooms.show', $room) }}#write-review" class="btn btn-sm btn-success mt-2 rounded-pill">
+                                @if($canSubmitThisStay)
+                                    <a href="{{ route('reviews.create', ['room' => $room, 'booking' => $booking->id]) }}" class="btn btn-sm btn-success mt-2 rounded-pill">
                                         <i class="bi bi-star me-1"></i>
-                                        Viết đánh giá (loại: {{ $room->roomType->name ?? $room->type ?? 'phòng này' }})
+                                        Đánh giá phòng (đơn #{{ $booking->id }})
                                     </a>
-                                @elseif($reviewedRoom)
-                                    <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã đánh giá phòng này (mỗi tài khoản một lần / phòng).</span>
+                                @elseif($reviewedThisStay)
+                                    <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã gửi đánh giá cho phòng này trong đơn này.</span>
                                 @endif
                             @endauth
                         </div>
@@ -247,18 +251,17 @@
                                     @endif
                                     @auth
                                         @php
-                                            $uidLg = (int) auth()->id();
                                             $ridLg = (int) $r->id;
-                                            $canSubmitLegacy = \App\Models\Booking::userCanSubmitRoomReview($uidLg, $ridLg);
-                                            $reviewedLegacy = \App\Models\Review::userHasReviewedRoom($uidLg, $ridLg);
+                                            $canSubmitLegacy = $booking->userCanSubmitReviewForRoom($ridLg);
+                                            $reviewedLegacy = \App\Models\Review::existsForBookingAndRoom((int) $booking->id, $ridLg);
                                         @endphp
                                         @if($canSubmitLegacy)
-                                            <a href="{{ route('rooms.show', $r) }}#write-review" class="btn btn-sm btn-success mt-2 rounded-pill">
+                                            <a href="{{ route('reviews.create', ['room' => $r, 'booking' => $booking->id]) }}" class="btn btn-sm btn-success mt-2 rounded-pill">
                                                 <i class="bi bi-star me-1"></i>
-                                                Viết đánh giá (loại: {{ $r->roomType->name ?? $r->type ?? 'phòng này' }})
+                                                Đánh giá phòng (đơn #{{ $booking->id }})
                                             </a>
                                         @elseif($reviewedLegacy)
-                                            <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã đánh giá phòng này (mỗi tài khoản một lần / phòng).</span>
+                                            <span class="d-block small text-muted mt-2"><i class="bi bi-check2-circle me-1"></i>Đã gửi đánh giá cho phòng này trong đơn này.</span>
                                         @endif
                                     @endauth
                                 </div>
@@ -481,23 +484,57 @@
 @endif
 
 @php
-    $canViewInvoice = \App\Support\BookingInvoiceViewData::customerCanView($booking);
+    $canViewInvoice = \App\Support\BookingInvoiceViewData::guestCanViewInvoiceSheet($booking);
+    $invoiceDetailUrl = isset($guestPortalInvoiceUrl)
+        ? $guestPortalInvoiceUrl
+        : ($isOwnerView ? route('bookings.invoice', $booking) : null);
+    $cancelUrl = $isOwnerView ? route('bookings.cancel', $booking) : $booking->signedPublicCancelUrl();
+    $latestRefundRequest = $booking->refundRequest;
+    $hasPendingRefundRequest = $latestRefundRequest && $latestRefundRequest->status === 'pending_refund';
+    $hasCompletedRefund = $latestRefundRequest && $latestRefundRequest->status === 'refunded';
+    $refundEligibility = null;
+    $canOpenRefundForm = false;
+    $refundUnavailableReason = null;
+    if ($isOwnerView) {
+        $refundEligibility = app(\App\Services\RefundService::class)->canCustomerRequestRefund($booking, (int) auth()->id());
+        $canOpenRefundForm = (bool) ($refundEligibility['allowed'] ?? false);
+        $refundUnavailableReason = $refundEligibility['message'] ?? null;
+    }
 @endphp
 <div class="mt-3 d-flex flex-wrap gap-2">
-    @if($canViewInvoice)
-    <a href="{{ route('account.bookings.invoice', $booking) }}" class="btn btn-outline-dark btn-sm" target="_blank" rel="noopener">
+    @if($canViewInvoice && !empty($invoiceDetailUrl))
+    <a href="{{ $invoiceDetailUrl }}" class="btn btn-outline-dark btn-sm" target="_blank" rel="noopener">
         <i class="bi bi-receipt-cutoff me-1"></i>Hóa đơn
     </a>
     @endif
 
-    @if($booking->status === 'confirmed')
-        <a href="{{ route('account.bookings.refund', $booking) }}" class="btn btn-danger btn-sm px-4">
-            <i class="bi bi-wallet2 me-1"></i>Hủy &amp; hoàn tiền
-        </a>
+    @if($booking->status === 'confirmed' && $isOwnerView)
+        @if($hasPendingRefundRequest)
+            <button type="button" class="btn btn-warning btn-sm px-4" disabled>
+                <i class="bi bi-hourglass-split me-1"></i>Đang chờ xử lý hoàn tiền
+            </button>
+        @elseif($hasCompletedRefund)
+            <button type="button" class="btn btn-success btn-sm px-4" disabled>
+                <i class="bi bi-check2-circle me-1"></i>Đã hoàn tiền
+            </button>
+        @elseif($canOpenRefundForm)
+            <a href="{{ route('account.bookings.refund', $booking) }}" class="btn btn-danger btn-sm px-4">
+                <i class="bi bi-wallet2 me-1"></i>Yêu cầu hoàn tiền
+            </a>
+        @else
+            <button type="button" class="btn btn-outline-secondary btn-sm px-4" disabled title="{{ $refundUnavailableReason }}">
+                <i class="bi bi-ban me-1"></i>Không đủ điều kiện hoàn tiền
+            </button>
+        @endif
     @elseif($booking->status === 'pending')
-        <a href="{{ route('bookings.cancel', $booking) }}" class="btn btn-outline-danger btn-sm">
-            <i class="bi bi-x-circle me-1"></i>Hủy &amp; hoàn tiền (theo chính sách)
+        <a href="{{ $cancelUrl }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-x-circle me-1"></i>Hủy đơn đặt phòng
         </a>
     @endif
 </div>
+@if($booking->status === 'confirmed' && $isOwnerView && !$hasPendingRefundRequest && !$hasCompletedRefund && !$canOpenRefundForm && !empty($refundUnavailableReason))
+    <div class="small text-muted mt-2">
+        <i class="bi bi-info-circle me-1"></i>{{ $refundUnavailableReason }}
+    </div>
+@endif
 @endsection

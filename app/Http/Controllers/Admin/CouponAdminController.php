@@ -8,6 +8,12 @@ use Illuminate\Http\Request;
 
 class CouponAdminController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin');
+        $this->middleware('only_admin');
+    }
+
     public function index()
     {
         $coupons = Coupon::latest()->paginate(10);

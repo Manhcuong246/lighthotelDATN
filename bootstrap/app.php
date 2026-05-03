@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Illuminate\Support\Env;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -26,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Middleware Alias
         // ==============================
 
+        $middleware->web(append: [
+            \App\Http\Middleware\EnsureUserAccountAllowed::class,
+        ]);
+
         $middleware->alias([
 
             // Admin
@@ -36,6 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // Staff (THÊM MỚI)
             'staff' => \App\Http\Middleware\StaffMiddleware::class,
 
+            // Chỉ role admin (không gồm staff)
+            'only_admin' => \App\Http\Middleware\EnsureUserIsAdministrator::class,
+
             // Default Laravel
             'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
 
@@ -43,5 +52,16 @@ return Application::configure(basePath: dirname(__DIR__))
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (InvalidSignatureException $e, Request $request) {
+            if ($request->is('payment/*', 'guest/*', 'bookings/*')) {
+                return redirect()
+                    ->route('home')
+                    ->withErrors(
+                        'Liên kết không hợp lệ hoặc đã hết hạn. Hãy đảm bảo APP_URL trong .env đúng URL bạn đang mở (vd. ngrok https), chạy php artisan config:clear, và TRUSTED_PROXIES=* nếu có HTTPS phía proxy.'
+                    );
+            }
+
+            return null;
+        });
     })
     ->create();

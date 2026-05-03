@@ -9,6 +9,7 @@ use App\Models\RoomChange;
 use App\Models\BookingSurcharge;
 use App\Models\BookingRoom;
 use App\Models\RoomBookedDate;
+use App\Services\RoomChangeService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class RoomChangeController extends Controller
     public function __construct()
     {
         $this->middleware('admin');
+        $this->middleware('only_admin');
     }
 
     /**
@@ -189,41 +191,39 @@ class RoomChangeController extends Controller
     }
 
     /**
-     * API: Lấy danh sách phòng trống đủ sức chứa
+     * API: Lấy danh sách phòng trống đủ sức chứa (đổi phòng — trang riêng)
      */
-    public function getAvailableRooms(Request $request)
+    public function getAvailableRooms(Request $request, RoomChangeService $roomChangeService)
     {
-        $booking = Booking::findOrFail($request->booking_id);
-        $totalAdults = (int) $request->total_adults;
-        $totalChildren = (int) $request->total_children;
+        $request->validate([
+            'booking_id' => 'required|exists:bookings,id',
+        ]);
 
-        // Lấy danh sách phòng đang bận trong khoảng thời gian còn lại
-        $bookedRoomIds = RoomBookedDate::whereBetween('booked_date', [
-                Carbon::now()->toDateString(),
-                Carbon::parse($booking->check_out)->subDay()->toDateString()
-            ])
-            ->where('booking_id', '!=', $booking->id)
-            ->distinct()->pluck('room_id');
+        $booking = Booking::with('bookingRooms')->findOrFail($request->booking_id);
+        $excludeIds = $roomChangeService->getExcludedRoomIdsForChange($booking);
 
-        // Lọc phòng: Trống và không nằm trong danh sách bận
-        $rooms = Room::with('roomType')
+        $query = Room::with('roomType')
             ->where('status', 'available')
-            ->whereNotIn('id', $bookedRoomIds)
-            ->get()
-            ->map(function ($room) {
-                return [
-                    'id' => $room->id,
-                    'room_number' => $room->room_number ?? $room->name ?? 'N/A',
-                    'room_type' => $room->roomType->name ?? 'N/A',
-                    'price' => $room->roomType->price ?? 0,
-                    'capacity' => $room->roomType->capacity ?? 0,
-                    'standard_capacity' => $room->roomType->standard_capacity ?? $room->roomType->capacity ?? 0,
-                ];
-            });
+            ->excludeMaintenance();
+
+        if ($excludeIds !== []) {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        $rooms = $query->get()->map(function ($room) {
+            return [
+                'id' => $room->id,
+                'room_number' => $room->room_number ?? $room->name ?? 'N/A',
+                'room_type' => $room->roomType->name ?? 'N/A',
+                'price' => $room->roomType->price ?? 0,
+                'capacity' => $room->roomType->capacity ?? 0,
+                'standard_capacity' => $room->roomType->standard_capacity ?? $room->roomType->capacity ?? 0,
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $rooms
+            'data' => $rooms,
         ]);
     }
 
@@ -243,6 +243,10 @@ class RoomChangeController extends Controller
         $booking = Booking::findOrFail($request->booking_id);
         $oldRoom = Room::findOrFail($request->old_room_id);
         $newRoom = Room::with('roomType')->findOrFail($request->new_room_id);
+
+        if ($newRoom->isInMaintenance() || $newRoom->status !== 'available') {
+            return back()->with('error', 'Phòng đích phải đang trống và không ở trạng thái bảo trì.');
+        }
         
         $nightsRemaining = $this->calculateRemainingNights($booking);
         if ($nightsRemaining <= 0) $nightsRemaining = 1; // Tối thiểu tính 1 đêm nếu đổi trong ngày

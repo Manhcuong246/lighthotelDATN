@@ -1,5 +1,7 @@
 @extends('layouts.admin')
 
+@section('title', 'Tạo báo cáo hư hỏng')
+
 @section('content')
 <div class="container-fluid px-4">
 

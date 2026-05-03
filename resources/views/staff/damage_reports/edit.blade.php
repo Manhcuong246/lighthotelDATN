@@ -1,5 +1,7 @@
 @extends('layouts.admin')
 
+@section('title', 'Sửa báo cáo #' . $report->id)
+
 @section('content')
 <div class="container-fluid px-4">
 

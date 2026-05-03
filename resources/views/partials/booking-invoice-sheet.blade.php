@@ -1,4 +1,11 @@
-{{-- Biến: $booking, $hotel, $roomLines, $discountAmount, $invoiceNo --}}
+{{-- Biến: $booking, $hotel, $roomLines, $discountAmount, $invoiceNo; tuỳ chọn: roomSubtotal, extrasSubtotal, totalPaidFromPayments, balanceDue, invoiceRemaining --}}
+@php
+    $roomSubtotal = $roomSubtotal ?? null;
+    $extrasSubtotal = $extrasSubtotal ?? null;
+    $totalPaidFromPayments = $totalPaidFromPayments ?? (float) ($booking->payments ?? collect())->where('status', 'paid')->sum('amount');
+    $balanceDue = $balanceDue ?? max(0, (float) $booking->total_price - $totalPaidFromPayments);
+    $invoiceRemaining = $invoiceRemaining ?? null;
+@endphp
 <div class="invoice-sheet border p-4 p-md-5">
     <div class="row align-items-start mb-4 pb-3 border-bottom">
         <div class="col-md-7">
@@ -155,10 +162,36 @@
                         <td class="text-end border-0 fw-semibold text-danger">−{{ number_format($discountAmount, 0, ',', '.') }} ₫</td>
                     </tr>
                 @endif
+                @if($roomSubtotal !== null && $roomSubtotal > 0)
+                    <tr>
+                        <td class="text-muted border-0 small">Tiền lưu trú (phòng)</td>
+                        <td class="text-end border-0 small fw-semibold">{{ number_format((float) $roomSubtotal, 0, ',', '.') }} ₫</td>
+                    </tr>
+                @endif
+                @if($extrasSubtotal !== null && abs($extrasSubtotal) > 0.009)
+                    <tr>
+                        <td class="text-muted border-0 small">Dịch vụ &amp; phụ thu (sau giảm giá đặt phòng)</td>
+                        <td class="text-end border-0 small fw-semibold">{{ number_format((float) $extrasSubtotal, 0, ',', '.') }} ₫</td>
+                    </tr>
+                @endif
                 <tr>
-                    <td class="border-0 pt-2 fs-5 fw-bold">Tổng thanh toán</td>
-                    <td class="border-0 pt-2 text-end fs-5 fw-bold text-success">{{ number_format((float) $booking->total_price, 0, ',', '.') }} ₫</td>
+                    <td class="border-0 pt-2 fs-5 fw-bold">Tổng giá trị đơn</td>
+                    <td class="border-0 pt-2 text-end fs-5 fw-bold text-dark">{{ number_format((float) $booking->total_price, 0, ',', '.') }} ₫</td>
                 </tr>
+                <tr>
+                    <td class="text-muted border-0">Đã thanh toán</td>
+                    <td class="text-end border-0 fw-semibold text-success">{{ number_format((float) $totalPaidFromPayments, 0, ',', '.') }} ₫</td>
+                </tr>
+                <tr class="border-top">
+                    <td class="border-0 pt-2 fs-6 fw-bold">Số tiền cần thanh toán còn lại</td>
+                    <td class="border-0 pt-2 text-end fs-6 fw-bold {{ $balanceDue > 0.009 ? 'text-danger' : 'text-success' }}">{{ number_format((float) $balanceDue, 0, ',', '.') }} ₫</td>
+                </tr>
+                @if($invoiceRemaining !== null && $booking->invoice)
+                    <tr>
+                        <td class="text-muted border-0 small">Theo hóa đơn nội bộ {{ $booking->invoice->invoice_number }} (còn lại)</td>
+                        <td class="text-end border-0 small fw-semibold {{ $invoiceRemaining > 0.009 ? 'text-danger' : 'text-muted' }}">{{ number_format((float) $invoiceRemaining, 0, ',', '.') }} ₫</td>
+                    </tr>
+                @endif
             </table>
         </div>
     </div>

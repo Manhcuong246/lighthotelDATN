@@ -173,8 +173,8 @@
                     <input type="text" name="name" class="form-control" value="{{ old('name') }}" required minlength="2" maxlength="150" placeholder="Giống họ tên liên hệ hoặc người nhận phòng">
                 </div>
                 <div class="mb-0">
-                    <label class="form-label">CCCD (12 số) *</label>
-                    <input type="text" name="cccd" class="form-control" value="{{ old('cccd') }}" required maxlength="12" pattern="[0-9]{12}" placeholder="12 chữ số">
+                    <label class="form-label">CCCD (tuỳ chọn, 12 số)</label>
+                    <input type="text" name="cccd" class="form-control" value="{{ old('cccd') }}" maxlength="12" inputmode="numeric" pattern="^([0-9]{12})?$" title="Để trống hoặc đủ 12 chữ số" placeholder="Có thể bổ sung khi check-in">
                 </div>
             </div>
 
