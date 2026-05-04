@@ -20,9 +20,7 @@
         </div>
     </div>
 
-    @if(session('success'))<div class="alert alert-success rounded-3">{{ session('success') }}</div>@endif
     @if(session('info'))<div class="alert alert-info rounded-3">{{ session('info') }}</div>@endif
-    @if(session('error'))<div class="alert alert-danger rounded-3">{{ session('error') }}</div>@endif
 
     <div class="row g-3">
         <div class="col-lg-8">
@@ -100,7 +98,7 @@
                     @if((float) $invoice->remaining_amount > 0.009)
                         <form action="{{ route('admin.invoices.markAsPaid', $invoice) }}" method="POST" class="mt-3 border-top pt-3">
                             @csrf
-                            <label class="form-label small fw-bold">Ghi nhận thanh toán (VNĐ)</label>
+                            <label class="form-label">Ghi nhận thanh toán (VNĐ)</label>
                             <input type="number" name="amount" class="form-control form-control-sm mb-2" min="0.01" max="{{ number_format((float) $invoice->remaining_amount, 2, '.', '') }}" step="0.01" value="{{ old('amount', number_format((float) $invoice->remaining_amount, 2, '.', '')) }}" required>
                             <button type="submit" class="btn btn-success btn-sm w-100 rounded-2">Cập nhật đã thu</button>
                         </form>

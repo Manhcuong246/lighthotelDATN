@@ -41,7 +41,7 @@
 
                     <!-- Tên loại phòng -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-semibold">Tên loại phòng</label>
+                        <label class="form-label">Tên loại phòng</label>
                         <input type="text"
                                name="name"
                                class="form-control"
@@ -52,7 +52,7 @@
 
                     <!-- Số người -->
                     <div class="col-md-3 mb-3">
-                        <label class="form-label fw-semibold">Số người</label>
+                        <label class="form-label">Số người</label>
                         <input type="number"
                                name="capacity"
                                class="form-control"
@@ -63,7 +63,7 @@
 
                     <!-- Số người tiêu chuẩn (không phụ phí) -->
                     <div class="col-md-3 mb-3">
-                        <label class="form-label fw-semibold">Tiêu chuẩn (không phụ phí)</label>
+                        <label class="form-label">Tiêu chuẩn (không phụ phí)</label>
                         <input type="number"
                                name="standard_capacity"
                                class="form-control"
@@ -76,7 +76,7 @@
 
                     <!-- Số giường -->
                     <div class="col-md-3 mb-3">
-                        <label class="form-label fw-semibold">Số giường</label>
+                        <label class="form-label">Số giường</label>
                         <input type="number"
                                name="beds"
                                class="form-control"
@@ -88,7 +88,7 @@
 
                     <!-- Số phòng tắm -->
                     <div class="col-md-3 mb-3">
-                        <label class="form-label fw-semibold">Số phòng tắm</label>
+                        <label class="form-label">Số phòng tắm</label>
                         <input type="number"
                                name="baths"
                                class="form-control"
@@ -100,7 +100,7 @@
 
                     <!-- Giá -->
                     <div class="col-md-3 mb-3">
-                        <label class="form-label fw-semibold">Giá phòng</label>
+                        <label class="form-label">Giá phòng</label>
                         <input type="number"
                                name="price"
                                class="form-control"
@@ -111,7 +111,7 @@
 
                     <!-- Mô tả -->
                     <div class="col-md-12 mb-3">
-                        <label class="form-label fw-semibold">Mô tả</label>
+                        <label class="form-label">Mô tả</label>
                         <textarea name="description"
                                   rows="4"
                                   class="form-control"
@@ -120,14 +120,14 @@
 
                     <!-- Ảnh đại diện -->
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-semibold">Ảnh đại diện</label>
+                        <label class="form-label">Ảnh đại diện</label>
                         <input type="file" name="image" class="form-control" accept="image/*">
                         <small class="text-muted">Định dạng: JPG, PNG, GIF. Tối đa 2MB</small>
                     </div>
 
                     <!-- Trạng thái -->
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-semibold">Trạng thái</label>
+                        <label class="form-label">Trạng thái</label>
                         <select name="status" class="form-select">
                             <option value="1">Hiển thị</option>
                             <option value="0">Ẩn</option>
@@ -135,7 +135,7 @@
                     </div>
 
                     <div class="col-12 mb-3">
-                        <label class="form-label fw-semibold">Dịch vụ đi kèm có sẵn</label>
+                        <label class="form-label">Dịch vụ đi kèm có sẵn</label>
                         <p class="small text-muted mb-2">Chọn từ <a href="{{ route('admin.services.index') }}" target="_blank" rel="noopener">danh mục dịch vụ</a>. Khách tìm phòng có thể lọc theo các dịch vụ này.</p>
                         <div class="row g-2 border rounded p-3 bg-light">
                             @forelse($services as $svc)

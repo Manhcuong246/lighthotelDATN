@@ -18,13 +18,13 @@
                 @csrf
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Mã giảm giá (Code) <span class="text-danger">*</span></label>
+                        <label class="form-label">Mã giảm giá (Code) <span class="text-danger">*</span></label>
                         <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" value="{{ old('code') }}" required autofocus>
                         @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Khuyến mãi (%) <span class="text-danger">*</span></label>
+                        <label class="form-label">Khuyến mãi (%) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="number" name="discount_percent" class="form-control @error('discount_percent') is-invalid @enderror" value="{{ old('discount_percent') }}" min="0" max="100" required>
                             <span class="input-group-text">%</span>
@@ -33,7 +33,7 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Ngày hết hạn (tùy chọn)</label>
+                        <label class="form-label">Ngày hết hạn (tùy chọn)</label>
                         <input type="date" name="expired_at" class="form-control @error('expired_at') is-invalid @enderror" value="{{ old('expired_at') }}" min="{{ date('Y-m-d') }}">
                         @error('expired_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>

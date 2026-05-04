@@ -12,11 +12,7 @@
                 </div>
                 <h3 class="card-title mb-3">Thanh toán không thành công</h3>
                 <p class="text-muted mb-4">
-                    @if(session('error'))
-                        {{ session('error') }}
-                    @else
-                        Giao dịch đã bị hủy hoặc có lỗi xảy ra. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.
-                    @endif
+                    Giao dịch đã bị hủy hoặc có lỗi xảy ra. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.
                 </p>
                 <div class="d-flex gap-2 justify-content-center flex-wrap">
                     <a href="{{ route('home') }}#rooms-section" class="btn btn-primary">Đặt phòng lại</a>

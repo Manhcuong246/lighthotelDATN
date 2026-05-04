@@ -47,7 +47,7 @@ return [
             'username' => trim((string) env('MAIL_USERNAME', '')),
             // Gmail App Passwords are shown with spaces; SMTP expects 16 chars without spaces.
             'password' => preg_replace('/\s+/', '', (string) env('MAIL_PASSWORD', '')),
-            'timeout' => null,
+            'timeout' => env('MAIL_TIMEOUT', 10),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 

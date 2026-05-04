@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 
 /**
- * Trang lịch sử / chi tiết đơn cho khách qua link có chữ ký (sau thanh toán VNPay).
+ * Trang lịch sử / chi tiết đơn cho khách qua link có chữ ký (email sau khi thanh toán).
  */
 class GuestBookingPortalController extends Controller
 {

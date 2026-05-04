@@ -23,6 +23,11 @@ ngrok.project.yml
 /storage/framework/sessions/*
 /storage/framework/cache/*
 /storage/logs/*.log
+# Uploads do người dùng / khách — không đưa lên git
+/storage/app/public/avatars/
+/storage/app/public/refund_proofs/
+/storage/app/public/refunds/
+/storage/app/public/room_images/
 /vendor
 Homestead.json
 Homestead.yaml

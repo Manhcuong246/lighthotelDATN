@@ -14,6 +14,11 @@ use Illuminate\Validation\ValidationException;
 
 class RoomAdminController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('only_admin')->only(['create', 'store', 'edit', 'update', 'destroy']);
+    }
+
     public function index(Request $request)
     {
         $query = Room::with('roomType')->orderBy('created_at', 'desc');

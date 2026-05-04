@@ -27,6 +27,32 @@
                         <input type="hidden" name="check_in" value="{{ $checkIn }}">
                         <input type="hidden" name="check_out" value="{{ $checkOut }}">
 
+                        @php $cust = auth()->user(); @endphp
+
+                        <div class="mb-4">
+                            <h5 class="mb-3"><i class="bi bi-person-lines-fill me-2"></i>Thông tin liên hệ</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Họ tên <span class="text-danger">*</span></label>
+                                    <input type="text" name="full_name" class="form-control @error('full_name') is-invalid @enderror"
+                                           value="{{ old('full_name', $cust?->full_name) }}" {{ $cust ? 'readonly' : '' }} required>
+                                    @error('full_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Email <span class="text-danger">*</span></label>
+                                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
+                                           value="{{ old('email', $cust?->email) }}" {{ $cust ? 'readonly' : '' }} required>
+                                    @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                                    <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror"
+                                           value="{{ old('phone', $cust?->phone) }}" required>
+                                    @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Chọn số phòng --}}
                         <div class="mb-4">
                             <label for="rooms" class="form-label fw-bold">

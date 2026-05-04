@@ -46,10 +46,8 @@ class PaymentInstructionMail extends Mailable
 
     public function content(): Content
     {
-        $logoPublicPath = 'images/logo-light-hotel.svg';
-        $logoUrl = is_file(public_path($logoPublicPath))
-            ? asset($logoPublicPath)
-            : null;
+        $logoPath = storage_path('app/public/logo.png');
+        $logoUrl = is_file($logoPath) ? asset('storage/logo.png') : null;
 
         return new Content(
             view: 'emails.payment-instruction',

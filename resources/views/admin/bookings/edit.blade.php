@@ -26,7 +26,7 @@
                 <small class="text-muted">Tạo {{ $booking->created_at?->format('d/m/Y H:i') }}</small>
             </div>
         </div>
-        <span class="badge bg-{{ $st['color'] }} fs-6 px-3 py-2">{{ $st['label'] }}</span>
+        <span class="badge bg-{{ $st['color'] }}">{{ $st['label'] }}</span>
     </div>
 
     @if($errors->any())
@@ -98,28 +98,28 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <label for="check_in" class="form-label small fw-semibold">Nhận phòng</label>
+                        <label for="check_in" class="form-label">Nhận phòng</label>
                         <input type="date" class="form-control @error('check_in') is-invalid @enderror"
                                id="check_in" name="check_in"
                                value="{{ old('check_in', $booking->check_in?->format('Y-m-d')) }}" required>
                         @error('check_in')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
-                        <label for="check_out" class="form-label small fw-semibold">Trả phòng</label>
+                        <label for="check_out" class="form-label">Trả phòng</label>
                         <input type="date" class="form-control @error('check_out') is-invalid @enderror"
                                id="check_out" name="check_out"
                                value="{{ old('check_out', $booking->check_out?->format('Y-m-d')) }}" required>
                         @error('check_out')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
-                        <label for="total_price" class="form-label small fw-semibold">Tổng tiền (tự tính)</label>
+                        <label for="total_price" class="form-label">Tổng tiền (tự tính)</label>
                         <input type="text" class="form-control bg-light"
                                id="total_price"
                                value="{{ number_format((float) old('total_price', $booking->total_price), 0, ',', '.') }} ₫" readonly>
                         <small class="text-muted">Giá được hệ thống tính tự động.</small>
                     </div>
                     <div class="col-md-3">
-                        <label for="status" class="form-label small fw-semibold">Trạng thái</label>
+                        <label for="status" class="form-label">Trạng thái</label>
                         <select class="form-select @error('status') is-invalid @enderror" id="status" name="status" required>
                             <option value="pending" @selected(old('status', $booking->status) === 'pending')>Chờ thanh toán</option>
                             <option value="confirmed" @selected(old('status', $booking->status) === 'confirmed')>Đã thanh toán</option>

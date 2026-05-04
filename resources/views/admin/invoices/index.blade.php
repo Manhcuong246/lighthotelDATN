@@ -9,10 +9,6 @@
         <a href="{{ route('admin.bookings.index') }}" class="btn btn-sm btn-outline-primary rounded-2">Đơn đặt phòng</a>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success rounded-3 alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-
     <div class="row g-2 mb-3 small">
         <div class="col-auto"><span class="badge bg-secondary">Tổng {{ $counts['total'] ?? 0 }}</span></div>
         <div class="col-auto"><span class="badge bg-warning text-dark">Chờ {{ $counts['pending'] ?? 0 }}</span></div>

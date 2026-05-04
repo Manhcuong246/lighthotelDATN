@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Support\RoomImageStorage;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class RoomTypeController extends Controller
@@ -53,7 +54,7 @@ class RoomTypeController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
             'service_ids' => 'nullable|array',
-            'service_ids.*' => 'integer|exists:services,id',
+            'service_ids.*' => ['integer', Service::existsActiveIdRule()],
         ]);
 
         // Tự động tính capacity = standard_capacity + 2 (giới hạn phụ thu 2 người)
@@ -78,6 +79,7 @@ class RoomTypeController extends Controller
 
         $serviceIds = array_values(array_unique(array_map('intval', $validated['service_ids'] ?? [])));
         $roomType->services()->sync($serviceIds);
+        Cache::forget('catalog.services.order_by_name');
 
         return redirect()->route('admin.roomtypes.index')
             ->with('success', 'Thêm loại phòng thành công');
@@ -108,7 +110,7 @@ class RoomTypeController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'nullable|boolean',
             'service_ids' => 'nullable|array',
-            'service_ids.*' => 'integer|exists:services,id',
+            'service_ids.*' => ['integer', Service::existsActiveIdRule()],
         ]);
 
         // Tự động tính capacity = standard_capacity + 2 (giới hạn phụ thu 2 người)
@@ -130,6 +132,7 @@ class RoomTypeController extends Controller
         $roomType->update($validated);
 
         $roomType->services()->sync($serviceIds);
+        Cache::forget('catalog.services.order_by_name');
 
         return redirect()->route('admin.roomtypes.index')
             ->with('success', 'Cập nhật thành công');

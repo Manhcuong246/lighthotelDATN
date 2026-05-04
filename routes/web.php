@@ -55,10 +55,12 @@ Route::get('/chinh-sach', [DynamicPageController::class, 'policy'])->name('pages
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/search', [RoomController::class, 'search'])->name('rooms.search');
 
-Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:20,1')->name('bookings.store');
 Route::get('/bookings/simple/create', [BookingController::class, 'createSimple'])->name('bookings.create-simple');
-Route::post('/bookings/simple', [BookingController::class, 'storeSimple'])->name('bookings.store-simple');
+Route::post('/bookings/simple', [BookingController::class, 'storeSimple'])->middleware('throttle:20,1')->name('bookings.store-simple');
 Route::get('/bookings/{booking}/invoice', [BookingController::class, 'invoice'])->name('bookings.invoice');
+Route::get('/bookings/{booking}/refund', [BookingController::class, 'refundForm'])->name('bookings.refund');
+Route::post('/bookings/{booking}/refund', [BookingController::class, 'submitRefund'])->name('bookings.refund.submit');
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 Route::get('/bookings/{booking}/cancel', [BookingCancellationController::class, 'show'])->name('bookings.cancel');
 Route::post('/bookings/{booking}/cancel', [BookingCancellationController::class, 'cancel'])->name('bookings.cancel.post');
@@ -88,6 +90,8 @@ Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.lo
 Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/dashboard/revenue-chart', [AdminController::class, 'revenueChartData'])->name('dashboard.revenue-chart');
+    Route::get('/dashboard/room-type-detail', [AdminController::class, 'roomTypeDetail'])->name('dashboard.room-type-detail');
+    Route::get('/dashboard/room-revenue-ranking', [AdminController::class, 'roomRevenueRanking'])->name('dashboard.room-revenue-ranking');
     Route::get('/statistics/export', [AdminController::class, 'exportStatistics'])->name('statistics.export');
     Route::get('/rooms', [RoomAdminController::class, 'index'])->name('rooms.index');
     Route::get('/rooms/create', [RoomAdminController::class, 'create'])->name('rooms.create');
@@ -103,9 +107,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/bookings/check-availability', [BookingAdminController::class, 'checkAvailability'])->name('bookings.check-availability');
     Route::get('/bookings/validate-coupon', [BookingAdminController::class, 'validateCoupon'])->name('bookings.validate-coupon');
     Route::get('/bookings/{booking}/payment-instruction', [BookingAdminController::class, 'paymentInstruction'])->name('bookings.payment-instruction');
-    Route::post('/bookings/{booking}/confirm-payment', [BookingAdminController::class, 'confirmPayment'])->name('bookings.confirm-payment');
     Route::get('/bookings/{booking}/invoice', [BookingAdminController::class, 'bookingInvoice'])->name('bookings.invoice');
     Route::get('/bookings/{booking}', [BookingAdminController::class, 'show'])->name('bookings.show');
+    Route::get('/bookings/{booking}/extend-quote', [BookingAdminController::class, 'extendStayQuote'])->name('bookings.extend-quote');
+    Route::post('/bookings/{booking}/extend-stay', [BookingAdminController::class, 'extendStay'])->name('bookings.extend-stay');
     Route::post('/bookings/{booking}/status', [BookingAdminController::class, 'updateStatus'])->name('bookings.updateStatus');
     Route::post('/bookings/{booking}/payment-settings', [BookingAdminController::class, 'updatePaymentSettings'])->name('bookings.update-payment-settings');
     Route::post('/bookings/{booking}/checkin', [BookingAdminController::class, 'checkIn'])->name('bookings.checkIn');
@@ -123,6 +128,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/bookings/{booking}/booking-services', [BookingAdminController::class, 'storeBookingServices'])->name('bookings.storeBookingServices');
     Route::post('/bookings/{booking}/extras', [BookingAdminController::class, 'storeBookingExtras'])->name('bookings.storeExtras');
     Route::post('/bookings/{booking}/change-room', [BookingAdminController::class, 'changeRoom'])->name('bookings.changeRoom');
+    Route::get('/bookings/{booking}/available-rooms-for-change', [BookingAdminController::class, 'getAvailableRoomsForChange'])->name('bookings.available-rooms-for-change');
     Route::post('/bookings/{booking}/cancel', [BookingAdminController::class, 'cancel'])->name('bookings.cancel');
 
     Route::middleware(['admin_only'])->group(function () {
@@ -236,9 +242,6 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::put('/profile/password', [AccountController::class, 'updatePassword'])->name('profile.update.password');
     Route::delete('/', [AccountController::class, 'closeAccount'])->name('close');
 
-    // Refund routes
-    Route::get('/bookings/{booking}/refund', [AccountController::class, 'refundForm'])->name('bookings.refund');
-    Route::post('/bookings/{booking}/refund', [AccountController::class, 'submitRefund'])->name('bookings.refund.submit');
 });
 
 use App\Http\Controllers\Staff\StaffController;

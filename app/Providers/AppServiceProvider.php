@@ -30,7 +30,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app['router']->aliasMiddleware('admin.only', \App\Http\Middleware\AdminOnlyMiddleware::class);
 
         View::composer(
-            ['layouts.app', 'pages.*'],
+            ['layouts.app', 'pages.*', 'layouts.admin'],
             function ($view) {
                 $view->with('hotelInfo', HotelInfo::first());
             }

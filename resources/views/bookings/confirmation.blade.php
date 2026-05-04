@@ -14,19 +14,14 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        <strong>Đặt phòng của bạn đã được ghi nhận!</strong>
-                    </div>
-                    
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <strong>Mã đặt phòng:</strong> #{{ $booking->id }}
                         </div>
                         <div class="col-md-6">
                             <strong>Trạng thái:</strong> 
-                            <span class="badge bg-warning text-dark">
-                                {{ $booking->status === 'pending' ? 'Chờ check-in' : $booking->status }}
+                            <span class="badge {{ $booking->customerAccountStatusBadgeClass() }}">
+                                {{ $booking->customerAccountStatusLabel() }}
                             </span>
                         </div>
                     </div>
@@ -57,9 +52,7 @@
                             Thông tin khách hàng
                         </h5>
                         
-                        {{-- $booking->guests là cột số khách; danh sách khách lấy qua quan hệ guests() --}}
-                        @php $confirmationGuests = $booking->guests()->get(); @endphp
-                        @if($confirmationGuests->count() > 0)
+                        @if($booking->guests->isNotEmpty())
                             <div class="table-responsive">
                                 <table class="table table-bordered">
                                     <thead class="table-light">
@@ -71,7 +64,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($confirmationGuests as $guest)
+                                        @foreach($booking->guests as $guest)
                                             <tr>
                                                 <td>{{ $guest->room_display_name }}</td>
                                                 <td>{{ $guest->name }}</td>
@@ -96,7 +89,7 @@
 
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        <strong>Lưu ý:</strong> Vui lòng đến đúng giờ để check-in. Nhân viên lễ tân sẽ đối chiếu CCCD với thông tin bạn đã cung cấp.
+                        <strong>Lưu ý:</strong> Vui lòng đến đúng giờ check-in và mang CCCD để đối chiếu.
                     </div>
 
                     <div class="text-center mt-4">

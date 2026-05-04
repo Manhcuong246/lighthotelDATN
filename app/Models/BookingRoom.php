@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class BookingRoom extends Model
@@ -41,19 +42,53 @@ class BookingRoom extends Model
     }
 
     /**
+     * Scope booking phục vụ đếm "giữ chỗ" (logic chung một lần, tránh lệch batch vs đơn lẻ).
+     */
+    public static function applyUnassignedOccupancyBookingOverlap(Builder $q, string $checkIn, string $checkOut): void
+    {
+        $q->whereNotIn('status', ['cancelled', 'cancel_requested', 'completed'])
+            ->whereDate('check_in', '<', $checkOut)
+            ->whereDate('check_out', '>', $checkIn)
+            ->where(static function (Builder $slot): void {
+                // Giữ chỗ khi đã có thanh toán / cam kết đơn hợp lệ (tránh DDOS đặt chỗ chưa trả tiền trên web).
+                $slot->whereIn('payment_status', ['paid', 'partial'])
+                    ->orWhere(static function (Builder $adm): void {
+                        $adm->where('placed_via', Booking::PLACED_VIA_ADMIN)
+                            ->whereIn('status', ['confirmed', 'checked_in']);
+                    });
+            });
+    }
+
+    /**
+     * @return array<int, int> room_type_id => số dòng chưa gán phòng vật lý
+     */
+    public static function unassignedCountsForRoomTypesBetween(array $roomTypeIds, string $checkIn, string $checkOut): array
+    {
+        $roomTypeIds = array_values(array_unique(array_values(array_filter(array_map('intval', $roomTypeIds)))));
+        if ($roomTypeIds === []) {
+            return [];
+        }
+
+        /** @var \Illuminate\Support\Collection<int|string,int|string> */
+        $plucked = static::query()
+            ->selectRaw('booking_rooms.room_type_id, COUNT(*) as unassigned_aggregate')
+            ->whereNull('room_id')
+            ->whereIn('room_type_id', $roomTypeIds)
+            ->whereHas('booking', function ($bq) use ($checkIn, $checkOut): void {
+                static::applyUnassignedOccupancyBookingOverlap($bq, $checkIn, $checkOut);
+            })
+            ->groupBy('booking_rooms.room_type_id')
+            ->pluck('unassigned_aggregate', 'room_type_id');
+
+        return $plucked->mapWithKeys(fn ($c, $id): array => [(int) $id => (int) $c])->all();
+    }
+
+    /**
      * Số dòng đặt theo loại phòng chưa gán phòng vật lý, trùng khoảng ngày với check-in/check-out.
      */
     public static function unassignedCountForRoomTypeBetween(int $roomTypeId, string $checkIn, string $checkOut): int
     {
-        return static::query()
-            ->where('room_type_id', $roomTypeId)
-            ->whereNull('room_id')
-            ->whereHas('booking', function ($q) use ($checkIn, $checkOut) {
-                $q->whereNotIn('status', ['cancelled', 'completed'])
-                    ->whereDate('check_in', '<', $checkOut)
-                    ->whereDate('check_out', '>', $checkIn);
-            })
-            ->count();
+        return (int) (static::unassignedCountsForRoomTypesBetween([$roomTypeId], $checkIn, $checkOut)[$roomTypeId] ?? 0);
     }
 
     /** Nhãn hiển thị cho khách (chưa có số phòng cụ thể). */

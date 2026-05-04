@@ -33,7 +33,7 @@
                                 <span data-summary-checkout>{{ $booking->check_out?->format('d/m/Y') ?? '—' }}</span>
                             </div>
                         </div>
-                        <p class="small text-muted mb-0 mt-2">Mỗi đơn chỉ có <strong>một</strong> người đại diện (theo CCCD trên đơn hoặc tài khoản đặt). <strong>Mỗi phòng khi check-in:</strong> ít nhất 1 người lớn <strong>khai báo CCCD đủ 12 số</strong> (người đại diện lưu trú tại phòng đó). Có thể chỉ cần <strong>một</strong> người lớn nếu người đó có CCCD. Nếu số người thực tế cao hơn lúc đặt và vẫn trong sức chứa phòng, hệ thống tự ghi nhận <strong>phụ thu chênh lệch người ở</strong>; nếu thấp hơn, hệ thống chỉ ghi nhận chênh lệch (không tự động hoàn/giảm tiền).</p>
+                        <p class="small text-muted mb-0 mt-2">Mỗi đơn có một người đại diện. Mỗi phòng cần ít nhất một người lớn có CCCD 12 số. Nếu số người thực tế cao hơn lúc đặt, hệ thống tự tính phụ thu; nếu thấp hơn, hệ thống chỉ ghi nhận chênh lệch.</p>
                     </div>
 
                     {{-- Thông báo lỗi validate --}}

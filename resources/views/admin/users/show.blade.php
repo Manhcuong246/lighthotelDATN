@@ -16,31 +16,9 @@
         </ol>
     </nav>
 
-    @if(session('success'))
-        <div class="alert alert-success border-0 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
-            <i class="bi bi-check-circle-fill"></i><span>{{ session('success') }}</span>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i><span>{{ session('error') }}</span>
-        </div>
-    @endif
-
     @if(session('warning'))
         <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
             <i class="bi bi-exclamation-triangle-fill"></i><span>{{ session('warning') }}</span>
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger border-0 shadow-sm mb-4">
-            <ul class="mb-0 ps-3">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
         </div>
     @endif
 
@@ -64,11 +42,11 @@
                             <p class="text-muted mb-2 small text-break">{{ $user->email }}</p>
                             <div class="d-flex flex-wrap gap-2 align-items-center">
                                 @if($user->status === 'active')
-                                    <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">Hoạt động</span>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Hoạt động</span>
                                 @elseif($user->status === 'banned')
-                                    <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle">Bị cấm</span>
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Bị cấm</span>
                                 @else
-                                    <span class="badge rounded-pill bg-secondary-subtle text-secondary border">{{ $user->status }}</span>
+                                    <span class="badge bg-secondary-subtle text-secondary border">{{ $user->status }}</span>
                                 @endif
                             </div>
                         </div>
@@ -93,13 +71,13 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label for="full_name" class="form-label fw-semibold small">Họ tên <span class="text-danger">*</span></label>
+                                <label for="full_name" class="form-label">Họ tên <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control form-control-lg rounded-3 @error('full_name') is-invalid @enderror"
                                        id="full_name" name="full_name" value="{{ old('full_name', $user->full_name) }}" required>
                                 @error('full_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="email" class="form-label fw-semibold small">Email <span class="text-danger">*</span></label>
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                                 <input type="email" class="form-control form-control-lg rounded-3 @error('email') is-invalid @enderror"
                                        id="email" name="email" value="{{ old('email', $user->email) }}" required>
                                 @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -108,13 +86,13 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label for="phone" class="form-label fw-semibold small">Điện thoại</label>
+                                <label for="phone" class="form-label">Điện thoại</label>
                                 <input type="text" class="form-control rounded-3 @error('phone') is-invalid @enderror"
                                        id="phone" name="phone" value="{{ old('phone', $user->phone) }}" placeholder="VD: 0901234567">
                                 @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="status" class="form-label fw-semibold small">Trạng thái <span class="text-danger">*</span></label>
+                                <label for="status" class="form-label">Trạng thái <span class="text-danger">*</span></label>
                                 <select class="form-select rounded-3 @error('status') is-invalid @enderror" id="status" name="status">
                                     <option value="active" @selected(old('status', $user->status) === 'active')>Hoạt động</option>
                                     <option value="banned" @selected(old('status', $user->status) === 'banned')>Bị cấm</option>
@@ -128,7 +106,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="avatar" class="form-label fw-semibold small">Ảnh đại diện</label>
+                            <label for="avatar" class="form-label">Ảnh đại diện</label>
                             <input type="file" class="form-control rounded-3 @error('avatar') is-invalid @enderror" id="avatar" name="avatar" accept="image/*">
                             <div class="form-text">JPG, PNG, GIF — tối đa 2MB.</div>
                             @error('avatar')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror

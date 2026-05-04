@@ -29,13 +29,7 @@
                             <p class="mb-1"><strong>Tổng tiền:</strong> <span class="text-primary">{{ number_format($booking->total_price, 0, ',', '.') }} ₫</span></p>
                             <p class="mb-1"><strong>Trạng thái:</strong> 
                                 <span class="badge bg-{{ in_array($booking->status, ['confirmed', 'checked_in', 'checked_out', 'completed']) ? 'success' : ($booking->status === 'pending' ? 'warning text-dark' : 'secondary') }}">
-                                    @if($booking->status === 'pending') Chờ xác nhận
-                                    @elseif($booking->status === 'confirmed') Đã xác nhận
-                                    @elseif($booking->status === 'cancel_requested') Đang chờ hoàn tiền
-                                    @elseif($booking->status === 'cancelled') Đã hủy
-                                    @elseif($booking->status === 'completed') Hoàn thành
-                                    @else {{ $booking->status }}
-                                    @endif
+                                    {{ $booking->customerCancellationPageStatusLabel() }}
                                 </span>
                             </p>
                             <p class="mb-1"><strong>Thanh toán:</strong> 

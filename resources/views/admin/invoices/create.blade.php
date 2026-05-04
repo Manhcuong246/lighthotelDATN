@@ -87,7 +87,7 @@
                                         <tr>
                                             <td>{{ $bs->service?->name ?? '#' . $bs->service_id }}</td>
                                             <td class="text-end">{{ $bs->quantity }}</td>
-                                            <td class="text-end fw-semibold">{{ number_format($line, 0, ',', '.') }} ₫</td>
+                                            <td class="text-end fw-semibold">@include('shared.partials.money-customer-flow', ['amount' => $line])</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -110,7 +110,7 @@
                                     @foreach($booking->surcharges as $sc)
                                         <tr>
                                             <td>{{ $sc->reason }}</td>
-                                            <td class="text-end fw-semibold text-danger">{{ number_format((float) $sc->amount, 0, ',', '.') }} ₫</td>
+                                            <td class="text-end fw-semibold">@include('shared.partials.money-customer-flow', ['amount' => (float) $sc->amount])</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -130,9 +130,9 @@
                     <ul class="list-unstyled small mb-4">
                         <li class="d-flex justify-content-between py-1"><span>Tiền lưu trú (ước tính)</span><strong>{{ number_format($roomPreview, 0, ',', '.') }} ₫</strong></li>
                         <li class="d-flex justify-content-between py-1"><span>Dịch vụ đặt kèm</span><strong>{{ number_format($servicesAmount, 0, ',', '.') }} ₫</strong></li>
-                        <li class="d-flex justify-content-between py-1"><span>Phụ thu phát sinh</span><strong>{{ number_format($surchargesAmount, 0, ',', '.') }} ₫</strong></li>
+                        <li class="d-flex justify-content-between py-1"><span>Phụ thu phát sinh</span><strong>@include('shared.partials.money-customer-flow', ['amount' => (float) $surchargesAmount])</strong></li>
                         @if($couponDiscount > 0)
-                            <li class="d-flex justify-content-between py-1 text-danger"><span>Giảm khi đặt phòng</span><strong>− {{ number_format($couponDiscount, 0, ',', '.') }} ₫</strong></li>
+                            <li class="d-flex justify-content-between py-1"><span>Giảm khi đặt phòng</span><strong>@include('shared.partials.money-customer-flow', ['amount' => -1 * (float) $couponDiscount])</strong></li>
                         @endif
                         <li class="d-flex justify-content-between py-2 border-top mt-2 fw-bold"><span>Tổng đơn (thanh toán)</span><span>{{ number_format($bookingTotal, 0, ',', '.') }} ₫</span></li>
                     </ul>
@@ -141,15 +141,15 @@
                     <form action="{{ route('admin.invoices.store', $booking) }}" method="POST">
                         @csrf
                         <div class="mb-3">
-                            <label class="form-label small fw-bold" for="discount_amount">Giảm giá thêm (VNĐ)</label>
+                            <label class="form-label" for="discount_amount">Giảm giá thêm (VNĐ)</label>
                             <input type="number" name="discount_amount" id="discount_amount" class="form-control form-control-sm" min="0" step="1000" value="{{ old('discount_amount', 0) }}" placeholder="0">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold" for="tax_amount">Thuế &amp; phí (VNĐ)</label>
+                            <label class="form-label" for="tax_amount">Thuế &amp; phí (VNĐ)</label>
                             <input type="number" name="tax_amount" id="tax_amount" class="form-control form-control-sm" min="0" step="1000" value="{{ old('tax_amount', 0) }}" placeholder="0">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold" for="notes">Ghi chú hóa đơn</label>
+                            <label class="form-label" for="notes">Ghi chú hóa đơn</label>
                             <textarea name="notes" id="notes" rows="3" class="form-control form-control-sm" maxlength="1000" placeholder="Tùy chọn">{{ old('notes') }}</textarea>
                         </div>
                         <div class="d-grid gap-2">

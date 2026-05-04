@@ -15,8 +15,10 @@ final class InvoiceExtrasSynchronizer
 {
     /**
      * Xóa các dòng service/surcharge/adjustment cũ trên HĐ và ghi lại theo đơn hiện tại.
+     *
+     * @param  bool  $wrapInTransaction  False khi đã đứng trong transaction lớn hơn (vd. đồng bộ cả dòng phòng).
      */
-    public static function replaceExtrasFromBooking(Invoice $invoice): void
+    public static function replaceExtrasFromBooking(Invoice $invoice, bool $wrapInTransaction = true): void
     {
         $invoice->loadMissing([
             'booking.bookingServices.service',
@@ -28,7 +30,7 @@ final class InvoiceExtrasSynchronizer
             throw new \InvalidArgumentException('Không có đơn đặt gắn với hóa đơn.');
         }
 
-        DB::transaction(function () use ($invoice, $booking) {
+        $runner = static function () use ($invoice, $booking): void {
             $servicesAmount = (float) $booking->bookingServices->sum(
                 static fn ($s) => (float) $s->price * (int) $s->quantity
             );
@@ -63,7 +65,13 @@ final class InvoiceExtrasSynchronizer
             }
 
             $invoice->save();
-        });
+        };
+
+        if ($wrapInTransaction) {
+            DB::transaction($runner);
+        } else {
+            $runner();
+        }
     }
 
     public static function appendServiceItems(Invoice $invoice, Booking $booking): void

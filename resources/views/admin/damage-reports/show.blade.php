@@ -2,44 +2,57 @@
 
 @section('title', 'Chi tiết báo cáo hư hỏng #' . $damageReport->id)
 
-@section('content')
-<div class="container-fluid px-0">
-    <div class="mb-4">
-        <a href="{{ route('admin.damage-reports.index') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
-    </div>
+@push('styles')
+<style>
+    .damage-report-show .section-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        color: #6c757d;
+        margin-bottom: 0;
+    }
+    .damage-report-show .meta-label {
+        color: #6c757d;
+        min-width: 140px;
+        display: inline-block;
+    }
+</style>
+@endpush
 
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-start mb-4">
+@section('content')
+@php
+    $roomLabel = $damageReport->room
+        ? ($damageReport->room->room_number ?: $damageReport->room->name ?: ('#' . $damageReport->room->id))
+        : 'Đã xóa/chưa gán';
+@endphp
+<div class="container-fluid px-3 px-lg-4 damage-report-show">
+    <div class="page-header mb-3">
         <div>
-            <h1 class="text-dark fw-bold">
-                🚨 Báo cáo hư hỏng #{{ $damageReport->id }}
-            </h1>
-            <p class="text-muted mb-0">
-                Phòng <strong>{{ $damageReport->room->room_number ?? 'N/A' }}</strong> -
-                {{ $damageReport->room->roomType->name ?? '' }}
+            <a href="{{ route('admin.damage-reports.index') }}" class="btn btn-sm btn-outline-secondary rounded-2 mb-2">
+                <i class="bi bi-arrow-left me-1"></i>Danh sách báo cáo
+            </a>
+            <h1 class="h3 fw-bold mb-1">Báo cáo hư hỏng #{{ $damageReport->id }}</h1>
+            <p class="text-muted small mb-0">
+                Phòng <strong>{{ $roomLabel }}</strong>
+                @if($damageReport->room->roomType?->name)
+                    — {{ $damageReport->room->roomType->name }}
+                @endif
             </p>
         </div>
-        <div class="text-end">
+        <div class="text-md-end">
             {!! $damageReport->severity_badge !!}
-            <br><small class="text-muted">{{ $damageReport->created_at->format('d/m/Y H:i') }}</small>
+            <div class="small text-muted mt-1">{{ $damageReport->created_at->format('d/m/Y H:i') }}</div>
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
-    <div class="row">
+    <div class="row g-3">
         <!-- Left Column: Report Details -->
         <div class="col-md-8">
             <!-- Status Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">📋 Trạng thái báo cáo</h5>
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
+                    <h2 class="section-title">Trạng thái báo cáo</h2>
                     {!! $damageReport->status_badge !!}
                 </div>
                 <div class="card-body">
@@ -66,8 +79,9 @@
                                     value="{{ $damageReport->repair_cost }}">
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center btn-admin-icon" style="height: 2.5rem;" title="Cập nhật">
+                                <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" style="height: 2.5rem;" title="Cập nhật">
                                     <i class="bi bi-check2-lg"></i>
+                                    <span>Cập nhật</span>
                                 </button>
                             </div>
                         </div>
@@ -81,9 +95,9 @@
             </div>
 
             <!-- Damage Details -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-warning">
-                    <h5 class="mb-0">🔧 Chi tiết hư hỏng</h5>
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+                <div class="card-header bg-white border-0 py-3">
+                    <h2 class="section-title">Chi tiết hư hỏng</h2>
                 </div>
                 <div class="card-body">
                     <table class="table table-borderless">
@@ -112,14 +126,14 @@
             </div>
 
             <!-- Room Information -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">🏨 Thông tin phòng</h5>
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+                <div class="card-header bg-white border-0 py-3">
+                    <h2 class="section-title">Thông tin phòng</h2>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <p><strong>Phòng:</strong> {{ $damageReport->room->room_number ?? 'N/A' }}</p>
+                            <p><strong>Phòng:</strong> {{ $roomLabel }}</p>
                             <p><strong>Loại phòng:</strong> {{ $damageReport->room->roomType->name ?? 'N/A' }}</p>
                             <p><strong>Trạng thái phòng:</strong>
                                 @if($damageReport->room->status === 'maintenance')
@@ -145,9 +159,9 @@
 
             <!-- Booking Information (if any) -->
             @if($damageReport->booking)
-            <div class="card shadow-sm mb-4 border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0">👤 Thông tin khách đang ở</h5>
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+                <div class="card-header bg-white border-0 py-3">
+                    <h2 class="section-title">Thông tin khách đang ở</h2>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -175,9 +189,9 @@
 
             <!-- Room Change History -->
             @if($damageReport->roomChangeHistories->count() > 0)
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">📜 Lịch sử chuyển phòng</h5>
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+                <div class="card-header bg-white border-0 py-3">
+                    <h2 class="section-title">Lịch sử chuyển phòng</h2>
                 </div>
                 <div class="card-body">
                     <table class="table table-sm">
@@ -211,9 +225,9 @@
         <div class="col-md-4">
             <!-- Room Change Action -->
             @if($damageReport->booking_id && !$damageReport->isResolved() && count($alternativeRooms) > 0)
-            <div class="card shadow-sm mb-4 border-warning">
-                <div class="card-header bg-warning">
-                    <h5 class="mb-0">🔄 Chuyển phòng cho khách</h5>
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+                <div class="card-header bg-white border-0 py-3">
+                    <h2 class="section-title">Chuyển phòng cho khách</h2>
                 </div>
                 <div class="card-body">
                     <form action="{{ route('admin.damage-reports.change-room', $damageReport) }}" method="POST">
@@ -231,8 +245,9 @@
                                 @endforeach
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-warning w-100 d-flex align-items-center justify-content-center btn-admin-icon" style="height: 2.5rem;" title="Chuyển phòng">
+                        <button type="submit" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2" style="height: 2.5rem;" title="Chuyển phòng">
                             <i class="bi bi-arrow-left-right"></i>
+                            <span>Chuyển phòng</span>
                         </button>
                     </form>
                 </div>
@@ -241,9 +256,9 @@
 
             <!-- Refund Action -->
             @if($damageReport->booking_id && !$damageReport->isResolved())
-            <div class="card shadow-sm mb-4 border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0">💰 Hoàn tiền cho khách</h5>
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+                <div class="card-header bg-white border-0 py-3">
+                    <h2 class="section-title">Hoàn tiền cho khách</h2>
                 </div>
                 <div class="card-body">
                     <form action="{{ route('admin.damage-reports.process-refund', $damageReport) }}" method="POST">
@@ -261,8 +276,9 @@
                             <textarea name="refund_reason" class="form-control" rows="2"
                                 placeholder="Ví dụ: Phòng không thể sử dụng do giường hỏng..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100 d-flex align-items-center justify-content-center btn-admin-icon" style="height: 2.5rem;" title="Xử lý hoàn tiền">
+                        <button type="submit" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2" style="height: 2.5rem;" title="Xử lý hoàn tiền">
                             <i class="bi bi-cash-stack"></i>
+                            <span>Xử lý hoàn tiền</span>
                         </button>
                     </form>
                 </div>
@@ -270,9 +286,9 @@
             @endif
 
             <!-- Quick Info -->
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">ℹ️ Thông tin nhanh</h5>
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white border-0 py-3">
+                    <h2 class="section-title">Thông tin nhanh</h2>
                 </div>
                 <div class="card-body">
                     <ul class="list-unstyled mb-0">

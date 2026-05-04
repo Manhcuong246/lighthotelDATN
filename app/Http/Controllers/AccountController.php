@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +30,7 @@ class AccountController extends Controller
             ->bookings()
             ->with(['room', 'rooms.roomType', 'bookingRooms.roomType', 'bookingRooms.room.roomType', 'payment'])
             ->withCount('bookingServices')
+            ->whereNotIn('status', ['cancelled', 'cancel_requested'])
             ->latest('id')
             ->paginate(10);
 
@@ -39,7 +39,12 @@ class AccountController extends Controller
 
     public function profile()
     {
+        /** @var User $user */
         $user = Auth::user();
+        if ($user->canAccessAdmin()) {
+            return redirect()->route($user->isAdmin() ? 'admin.dashboard' : 'staff.dashboard');
+        }
+
         return view('account.profile', compact('user'));
     }
 
@@ -47,6 +52,9 @@ class AccountController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
+        if ($user->canAccessAdmin()) {
+            abort(403);
+        }
         $validated = $request->validate([
             'full_name' => 'required|string|max:150',
             'phone' => 'nullable|string|max:20',
@@ -67,67 +75,21 @@ class AccountController extends Controller
 
     public function updatePassword(Request $request)
     {
+        /** @var User $user */
+        $user = Auth::user();
+        if ($user->canAccessAdmin()) {
+            abort(403);
+        }
+
         $request->validate([
             'current_password' => 'required|string',
             'password' => 'required|string|min:6|confirmed',
         ]);
-        /** @var User $user */
-        $user = Auth::user();
         if (!Hash::check($request->current_password, $user->password)) {
             return back()->withErrors(['current_password' => 'Mật khẩu hiện tại không đúng.']);
         }
         $user->update(['password' => Hash::make($request->password)]);
         return redirect()->route('account.profile')->with('success', 'Đổi mật khẩu thành công.');
-    }
-
-    public function refundForm(Booking $booking, \App\Services\RefundService $refundService)
-    {
-        if ($booking->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $eligibility = $refundService->canCustomerRequestRefund($booking, (int) Auth::id());
-        if (! ($eligibility['allowed'] ?? false)) {
-            return redirect()
-                ->route('bookings.show', $booking)
-                ->with('error', $eligibility['message'] ?? 'Đơn chưa đủ điều kiện yêu cầu hoàn tiền.');
-        }
-
-        $calc = $eligibility['calc'];
-        $latestRefundRequest = $eligibility['existing'] ?? null;
-
-        return view('account.refund', compact('booking', 'calc', 'latestRefundRequest'));
-    }
-
-    public function submitRefund(Request $request, Booking $booking, \App\Services\RefundService $refundService)
-    {
-        if ($booking->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $eligibility = $refundService->canCustomerRequestRefund($booking, (int) Auth::id());
-        if (! ($eligibility['allowed'] ?? false)) {
-            return back()->with('error', $eligibility['message'] ?? 'Không đủ điều kiện hoàn tiền.');
-        }
-
-        $validated = $request->validate([
-            'account_name' => 'required|string|max:255',
-            'account_number' => 'required|string|max:50',
-            'bank_name' => 'required|string|max:255',
-            'qr_image' => 'nullable|image|max:2048',
-            'note' => 'nullable|string|max:1000',
-        ]);
-
-        if ($request->hasFile('qr_image')) {
-            $validated['qr_image'] = $request->file('qr_image')->store('refunds', 'public');
-        }
-
-        $result = $refundService->submitCustomerRefundRequest($booking, (int) Auth::id(), $validated);
-        if (! $result['success']) {
-            return back()->with('error', $result['message'] ?? 'Không thể gửi yêu cầu.');
-        }
-
-        return redirect()->route('bookings.show', $booking)->with('success', 'Yêu cầu hoàn tiền của bạn đã được gửi và đang chờ xử lý.');
     }
 
     public function closeAccount(Request $request)

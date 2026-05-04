@@ -105,6 +105,23 @@ class BookingCancellationController extends Controller
         $respondJson = $request->expectsJson() || $request->isJson() || $request->wantsJson();
 
         if ($result['success']) {
+            if (! empty($result['obliterated'])) {
+                $redirectTo = auth()->check() ? route('account.bookings') : route('home');
+
+                if ($respondJson) {
+                    return response()->json([
+                        'success' => true,
+                        'obliterated' => true,
+                        'message' => $result['message'],
+                        'refund_amount' => 0,
+                        'refund_type' => 'none',
+                        'redirect_url' => $redirectTo,
+                    ]);
+                }
+
+                return redirect()->to($redirectTo)->with('success', $result['message']);
+            }
+
             $booking = $result['booking'];
             $redirectTo = $this->publicBookingShowUrl($booking);
 
@@ -166,7 +183,8 @@ class BookingCancellationController extends Controller
         if ($result['success']) {
             return response()->json([
                 'success' => true,
-                'message' => 'Đã hủy booking thành công.',
+                'obliterated' => ! empty($result['obliterated']),
+                'message' => $result['message'] ?? 'Đã hủy booking thành công.',
                 'refund_amount' => $result['refund_amount'],
                 'refund_type' => $result['refund_type'],
             ]);

@@ -113,6 +113,8 @@
 .booking-page .booking-status.cancelled { background: #f3f4f6; color: #6b7280; }
 .booking-page .booking-status.cancel_requested { background: #fef3c7; color: #92400e; }
 .booking-page .booking-status.refunded { background: #e0f2fe; color: #0369a1; }
+.booking-page .booking-status.checked_in { background: #e0e7ff; color: #4338ca; }
+.booking-page .booking-status.checked_out { background: #cffafe; color: #0e7490; }
 .booking-page .empty-state {
     padding: 2.5rem 1.5rem;
     text-align: center;
@@ -160,9 +162,10 @@
     $bookingDetailUrls = $bookingDetailUrls ?? [];
 @endphp
 <div class="booking-page">
+    @include('partials.account-context-nav', ['current' => 'bookings'])
     <div class="page-header">
         <h1 class="page-title">Lịch sử đặt phòng</h1>
-        <p class="page-subtitle">{{ ! empty($guestPortalSubtitle) ? 'Quản lý đơn sau thanh toán VNPay — hủy phòng hoặc yêu cầu hoàn tiền theo chính sách (giống trang lịch sử trong tài khoản).' : 'Xem và quản lý các đơn đặt phòng của bạn' }}</p>
+        <p class="page-subtitle">{{ ! empty($guestPortalSubtitle) ? 'Đơn chỉ xuất hiện sau khi thanh toán thành công — quản lý đơn qua link email hoặc trong tài khoản.' : 'Xem và quản lý các đơn đặt phòng của bạn' }}</p>
     </div>
 
     @if(! empty($guestPortalSubtitle))
@@ -221,22 +224,7 @@
                     </div>
                     <div class="booking-side">
                         <span class="booking-price">{{ $b->total_price ? number_format($b->total_price, 0, ',', '.') . ' ₫' : '—' }}</span>
-                        @php
-                            $paidRecorded = $b->isPaymentRecordedPaid();
-                            $pendingExpired = $b->status === 'pending' && ! $paidRecorded && $b->isPendingDisplayExpired();
-                        @endphp
-                        <span class="booking-status {{ $pendingExpired ? 'pending-expired' : $b->status }}">
-                            @if($pendingExpired) Hết hạn
-                            @elseif($b->status === 'pending' && ! $paidRecorded) Chờ thanh toán
-                            @elseif($b->status === 'pending' && $paidRecorded) Đã thanh toán
-                            @elseif($b->status === 'confirmed') Đã thanh toán
-                            @elseif($b->status === 'completed') Hoàn thành
-                            @elseif($b->status === 'cancelled') Đã hủy
-                            @elseif($b->status === 'cancel_requested') Đang chờ hoàn tiền
-                            @elseif($b->status === 'refunded') Đã hoàn tiền
-                            @else {{ $b->status }}
-                            @endif
-                        </span>
+                        <span class="booking-status {{ $b->customerAccountStatusCssModifier() }}">{{ $b->customerAccountStatusLabel() }}</span>
                     </div>
                 </div>
             </a>

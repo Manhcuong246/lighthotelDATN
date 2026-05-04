@@ -17,11 +17,10 @@
                     Đặt phòng thẳng,<br>
                     <em>nhận ưu đãi tốt nhất.</em>
                 </h1>
-                <p class="lh-hero-sub">Không qua trung gian · Giá tốt nhất · Hủy linh hoạt theo chính sách</p>
+                <p class="lh-hero-sub">Giá tốt · Hủy theo chính sách</p>
                 <div class="lh-hero-feature-row">
-                    <span class="lh-hero-pill"><i class="bi bi-wifi"></i> Wi‑Fi tốc độ cao</span>
-                    <span class="lh-hero-pill"><i class="bi bi-shield-check"></i> Thanh toán an toàn</span>
-                    <span class="lh-hero-pill"><i class="bi bi-headset"></i> Hỗ trợ 24/7</span>
+                    <span class="lh-hero-pill"><i class="bi bi-wifi"></i> Wi‑Fi</span>
+                    <span class="lh-hero-pill"><i class="bi bi-shield-check"></i> TT an toàn</span>
                 </div>
             </div>
             <div class="col-12 col-lg-4 d-flex justify-content-lg-end lh-rating-wrap">
@@ -45,7 +44,7 @@
                         <i class="bi bi-building bk-seg-icon"></i>
                         <div class="bk-seg-content">
                             <div class="bk-seg-label">Điểm đến</div>
-                            <input type="text" class="bk-input" value="Light Hotel" readonly style="cursor: default;">
+                            <input type="text" class="bk-input" value="{{ $hotel?->name ?? 'Light Hotel' }}" readonly style="cursor: default;">
                         </div>
                     </div>
                     <div class="bk-sep"></div>
@@ -54,7 +53,7 @@
                         <i class="bi bi-calendar-event bk-seg-icon"></i>
                         <div class="bk-seg-content">
                             <div class="bk-seg-label">Nhận phòng - Trả phòng</div>
-                            <div class="d-flex align-items-center gap-1">
+                            <div class="d-flex align-items-center gap-1 bk-date-range-inputs flex-wrap flex-sm-nowrap">
                                 <input type="date" name="check_in" id="check_in_input" class="bk-date-input"
                                        value="{{ request('check_in', date('Y-m-d')) }}" min="{{ date('Y-m-d') }}">
                                 <span class="text-muted">→</span>
@@ -125,7 +124,7 @@
             </div>
             <div class="col-6 col-md-3 lh-stat-item">
                 <div class="lh-stat-value">5★</div>
-                <div class="lh-stat-label">Light Hotel</div>
+                <div class="lh-stat-label">{{ $hotel?->name ?? 'Light Hotel' }}</div>
             </div>
         </div>
     </div>
@@ -235,7 +234,7 @@
     <section class="lh-section-block" id="gallery" aria-label="Ảnh các loại phòng">
         <h2 class="visually-hidden">Hình ảnh phòng</h2>
         <div class="row g-2 g-md-3">
-            @foreach($allRoomTypes as $gType)
+            @foreach($galleryRoomTypes as $gType)
                 @php
                     $gImg = null;
                     foreach ($gType->rooms as $gr) {

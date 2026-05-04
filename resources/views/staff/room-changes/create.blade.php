@@ -38,12 +38,15 @@
         </div>
     </div>
     @else
+    @php
+        $oldRoomForPricingStaff = $currentBookingRoom->room ?? null;
+        $oldCatalogueBaseStaff = $oldRoomForPricingStaff ? (float) $oldRoomForPricingStaff->catalogueBasePrice() : 0.0;
+    @endphp
     <form action="{{ route('staff.room-changes.store') }}" method="POST" id="roomChangeForm">
         @csrf
         <input type="hidden" name="booking_id" value="{{ $booking->id }}">
-        @if($currentBookingRoom)
+        @if($currentBookingRoom && $currentBookingRoom->room_id)
         <input type="hidden" name="old_room_id" value="{{ $currentBookingRoom->room_id }}">
-        <input type="hidden" name="old_price" value="{{ $currentBookingRoom->price_per_night }}">
         @endif
 
         <div class="row">
@@ -85,7 +88,7 @@
                                     <select class="form-select form-select-sm" onchange="window.location.href='{{ url('staff/room-changes/create/'.$booking->id) }}?room_id=' + this.value">
                                         @foreach($booking->bookingRooms as $br)
                                             <option value="{{ $br->room_id }}" {{ $currentBookingRoom->room_id == $br->room_id ? 'selected' : '' }}>
-                                                {{ $br->room->room_number }} ({{ $br->room->roomType->name }})
+                                                {{ $br->room?->room_number ?? 'Chưa gán' }} ({{ $br->room?->roomType?->name ?? $br->roomType?->name ?? '—' }})
                                             </option>
                                         @endforeach
                                     </select>
@@ -189,11 +192,11 @@
                                 <div class="row g-3">
                                     <div class="col-md-6 border-end">
                                         <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Chênh lệch giá phòng:</span>
+                                            <span class="text-muted">Chênh lệch giá gốc (catalogue):</span>
                                             <span id="labelPriceDiff" class="fw-bold">0 ₫</span>
                                         </div>
                                         <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Phụ thu ngườii thêm:</span>
+                                            <span class="text-muted">Phụ phí khách (phòng mới, ước tính):</span>
                                             <span id="labelSurcharge" class="fw-bold text-danger">0 ₫</span>
                                         </div>
                                         <div class="d-flex justify-content-between pt-2 border-top">
@@ -220,8 +223,6 @@
 
         <!-- Hidden Inputs for logic -->
         <input type="hidden" name="new_room_id" id="inputNewRoomId">
-        <input type="hidden" name="adults" value="{{ $booking->guests()->where('type', 'adult')->count() ?: 1 }}">
-        <input type="hidden" name="children" value="{{ $booking->guests()->where('type', '!=', 'adult')->count() ?: 0 }}">
     </form>
     @endif
 </div>
@@ -258,11 +259,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             html = '<div class="list-group-item text-center text-muted py-4">Không tìm thấy đơn nào đang check-in.</div>';
                         } else {
                             res.data.forEach(b => {
+                                const assigned = b.room_assigned === true;
+                                const badgeCls = assigned ? 'bg-success' : 'bg-warning text-dark';
                                 html += `
-                                <a href="{{ url('staff/room-changes/create') }}/${b.id}?room_id=${b.room_id}" class="list-group-item list-group-item-action py-3">
+                                <a href="{{ url('staff/room-changes/create') }}/${b.id}?room_id=${b.room_id ?? ''}" class="list-group-item list-group-item-action py-3">
                                     <div class="d-flex w-100 justify-content-between">
                                         <h6 class="mb-1 fw-bold text-primary">#${b.id} - ${b.guest_name}</h6>
-                                        <span class="badge bg-success">Phòng: ${b.room_number}</span>
+                                        <span class="badge ${badgeCls}">Phòng: ${b.room_number}</span>
                                     </div>
                                     <p class="mb-1 small text-muted"><i class="bi bi-telephone me-1"></i> ${b.phone}</p>
                                 </a>
@@ -301,11 +304,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     @else
         // Logic thực hiện đổi phòng (Vanilla JS)
-        const bookingId = {{ $booking->id }};
-        const nightsRemaining = {{ $remainingNights }};
-        const oldPrice = {{ $currentBookingRoom->price_per_night ?? 0 }};
-        const totalAdults = {{ $booking->guests()->where('type', 'adult')->count() ?: 1 }};
-        const totalChildren = {{ $booking->guests()->where('type', '!=', 'adult')->count() ?: 0 }};
+        const bookingId = @json($booking->id);
+        const oldRoomId = @json($currentBookingRoom->room_id);
+        const nightsRemaining = @json($remainingNights);
+        const oldPrice = @json((float) ($currentBookingRoom->price_per_night ?? 0));
+        const oldCatalogueBase = @json($oldCatalogueBaseStaff);
 
         let allRooms = [];
         let selectedRoom = null;
@@ -314,11 +317,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const roomsList = document.getElementById('roomsList');
             roomsList.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Đang tải...</td></tr>';
 
-            const params = new URLSearchParams({
-                booking_id: bookingId,
-                total_adults: totalAdults,
-                total_children: totalChildren
-            });
+            const params = new URLSearchParams({ booking_id: String(bookingId) });
+            if (oldRoomId != null && oldRoomId !== '') {
+                params.set('old_room_id', String(oldRoomId));
+            }
 
             fetch("{{ route('staff.room-changes.available-rooms') }}?" + params.toString())
                 .then(response => response.json())
@@ -346,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td class="fw-bold">${room.room_number}</td>
                         <td>${room.room_type}</td>
                         <td><span class="badge bg-light text-dark">${room.capacity} Khách</span></td>
-                        <td class="fw-bold text-primary">${new Intl.NumberFormat('vi-VN').format(room.price)} ₫</td>
+                        <td class="fw-bold text-primary">${new Intl.NumberFormat('vi-VN').format(room.price_per_night_full ?? room.price)} ₫</td>
                         <td class="text-end">
                             <button type="button" class="btn btn-sm btn-link p-0 fw-bold">Chọn</button>
                         </td>
@@ -386,29 +388,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function calculateFinal(room) {
-            const priceDiff = (room.price - oldPrice) * nightsRemaining;
-            const standardCapacity = room.standard_capacity || room.capacity;
-            let surcharge = 0;
-            const totalGuests = totalAdults + totalChildren;
+            const baseNew = Number(room.price ?? 0);
+            const newNightly = Number(room.price_per_night_full ?? room.price);
+            const surPerNight = Number(room.surcharge_per_night ?? 0);
 
-            if (totalGuests > standardCapacity) {
-                const extraAdults = Math.max(0, totalAdults - standardCapacity);
-                const remainingForChildren = Math.max(0, standardCapacity - totalAdults);
-                const extraChildren = Math.max(0, totalChildren - remainingForChildren);
-                surcharge = (extraAdults * 200000 + extraChildren * 100000) * nightsRemaining;
-            }
+            const catalogueDiff = (baseNew - oldCatalogueBase) * nightsRemaining;
+            const surchargeTotal = surPerNight * nightsRemaining;
+            const totalDiff = (newNightly - oldPrice) * nightsRemaining;
 
-            const totalDiff = priceDiff + surcharge;
             const fmt = new Intl.NumberFormat('vi-VN');
 
-            document.getElementById('labelPriceDiff').innerText = fmt.format(priceDiff) + ' ₫';
-            document.getElementById('labelSurcharge').innerText = fmt.format(surcharge) + ' ₫';
+            document.getElementById('labelPriceDiff').innerText = fmt.format(catalogueDiff) + ' ₫';
+            document.getElementById('labelSurcharge').innerText = fmt.format(surchargeTotal) + ' ₫';
             document.getElementById('labelTotalDiff').innerText = fmt.format(totalDiff) + ' ₫';
 
             let badgeHtml = '';
-            if (room.price > oldPrice) {
+            if (newNightly > oldPrice) {
                 badgeHtml = '<span class="badge bg-primary px-3 py-2 rounded-pill"><i class="bi bi-graph-up-arrow me-1"></i> UPGRADE</span>';
-            } else if (room.price < oldPrice) {
+            } else if (newNightly < oldPrice) {
                 badgeHtml = '<span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-graph-down-arrow me-1"></i> DOWNGRADE</span>';
             } else {
                 badgeHtml = '<span class="badge bg-secondary px-3 py-2 rounded-pill">SAME GRADE</span>';
@@ -417,7 +414,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let note = '';
             if (totalDiff > 0) {
-                note = 'Khách cần thanh toán thêm tổng cộng <strong>' + fmt.format(totalDiff) + ' ₫</strong>';
+                note = 'Khách cần thanh toán thêm tổng cộng <strong>' + fmt.format(totalDiff) + ' ₫</strong> (ước tính theo giá/đêm đã gồm phụ phí khách).';
             } else if (totalDiff < 0) {
                 note = 'Hệ thống sẽ ghi nhận hoàn trả <strong>' + fmt.format(Math.abs(totalDiff)) + ' ₫</strong>';
             } else {
@@ -442,8 +439,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 return matchSearch && matchType;
             });
-            if(filterPrice.value === 'asc') filtered.sort((a, b) => a.price - b.price);
-            else if(filterPrice.value === 'desc') filtered.sort((a, b) => b.price - a.price);
+            if(filterPrice.value === 'asc') filtered.sort((a, b) => (a.price_per_night_full ?? a.price) - (b.price_per_night_full ?? b.price));
+            else if(filterPrice.value === 'desc') filtered.sort((a, b) => (b.price_per_night_full ?? b.price) - (a.price_per_night_full ?? a.price));
             renderRooms(filtered);
         };
 

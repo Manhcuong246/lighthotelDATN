@@ -252,10 +252,42 @@
         }
     }
 
-    // Toast notification
     function showToast(message, type = 'info') {
-        // Có thể tích hợp với hệ thống toast hiện có
-        console.log(`[${type}] ${message}`);
+        const bgClass = type === 'success' ? 'text-bg-success'
+            : type === 'error' ? 'text-bg-danger'
+            : 'text-bg-info';
+        let container = document.getElementById('admin-assign-room-toast-stack');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'admin-assign-room-toast-stack';
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            container.style.zIndex = '1085';
+            document.body.appendChild(container);
+        }
+        const el = document.createElement('div');
+        el.className = 'toast align-items-center ' + bgClass + ' border-0';
+        el.setAttribute('role', 'alert');
+        el.setAttribute('aria-live', 'polite');
+        el.setAttribute('aria-atomic', 'true');
+        const flex = document.createElement('div');
+        flex.className = 'd-flex';
+        const body = document.createElement('div');
+        body.className = 'toast-body';
+        body.textContent = message;
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'btn-close me-2 m-auto' + (type === 'info' ? '' : ' btn-close-white');
+        closeBtn.setAttribute('data-bs-dismiss', 'toast');
+        closeBtn.setAttribute('aria-label', 'Đóng');
+        flex.appendChild(body);
+        flex.appendChild(closeBtn);
+        el.appendChild(flex);
+        container.appendChild(el);
+        const toast = new bootstrap.Toast(el, { delay: 4000 });
+        el.addEventListener('hidden.bs.toast', function () {
+            el.remove();
+        });
+        toast.show();
     }
 </script>
 @endpush

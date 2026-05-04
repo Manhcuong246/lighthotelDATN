@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Support\VnPaySuccessSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\URL;
 
 class PaymentController extends Controller
 {
@@ -49,15 +50,20 @@ class PaymentController extends Controller
             return redirect()->route('home')->withErrors('Đơn hàng chưa được thanh toán.');
         }
 
-        $booking->load([
-            'rooms.roomType',
-            'bookingRooms.roomType',
-            'bookingRooms.room.roomType',
-            'room.roomType',
-        ]);
-        $signedBookingViewUrl = $booking->signedPublicShowUrl();
+        if ($isOwner) {
+            return redirect()
+                ->route('bookings.show', $booking)
+                ->with('success', 'Thanh toán thành công. Chi tiết đơn bên dưới.');
+        }
 
-        return view('payment.success', compact('booking', 'signedBookingViewUrl'));
+        return redirect()->to(
+            URL::temporarySignedRoute(
+                'bookings.show',
+                now()->addDays(max(1, (int) config('booking.signed_booking_show_ttl_days', 90))),
+                ['booking' => $booking->id, 'portal_user' => $booking->user_id],
+                false
+            )
+        )->with('success', 'Thanh toán thành công.');
     }
 
     public function failed()

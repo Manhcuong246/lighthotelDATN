@@ -42,13 +42,13 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Ảnh phòng</label>
+                    <label class="form-label">Ảnh phòng</label>
                     <input type="file" name="images[]" class="form-control" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" multiple>
                     <small class="text-muted">Có thể chọn nhiều ảnh (tối đa 4 ảnh, mỗi ảnh &lt; 2MB)</small>
                 </div>
                 <!-- Hiển thị ảnh từ loại phòng -->
                 <div class="mb-3" id="roomTypeImagePreview" style="display: none;">
-                    <label class="form-label fw-semibold">Ảnh từ loại phòng:</label>
+                    <label class="form-label">Ảnh từ loại phòng:</label>
                     <div>
                         <img id="previewImg" src="" alt="Preview" class="img-thumbnail" style="max-width: 300px; max-height: 200px;">
                     </div>

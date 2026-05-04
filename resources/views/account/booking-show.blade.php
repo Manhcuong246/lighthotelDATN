@@ -14,10 +14,15 @@
 @php
     $paidRecorded = $booking->isPaymentRecordedPaid();
     $pendingExpired = $booking->status === 'pending' && ! $paidRecorded && $booking->isPendingDisplayExpired();
+    $isOwnerView = auth()->check() && (int) auth()->id() === (int) $booking->user_id;
+    $canCustomerRefundOnDetail = $canCustomerRefundOnDetail ?? false;
+    $refundFormUrl = $refundFormUrl ?? null;
 @endphp
+@if($isOwnerView)
+    @include('partials.account-context-nav', ['current' => 'bookings'])
+@endif
 <div class="mb-4">
     @php
-        $isOwnerView = auth()->check() && (int) auth()->id() === (int) $booking->user_id;
         $backToListUrl = isset($guestPortalIndexUrl)
             ? $guestPortalIndexUrl
             : ($isOwnerView ? route('account.bookings') : route('home'));
@@ -30,18 +35,7 @@
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
     <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="mb-0 fw-bold">Đơn đặt phòng #{{ $booking->id }}</h5>
-        <span class="badge {{ $pendingExpired ? 'bg-secondary' : ($booking->status === 'pending' ? 'bg-warning text-dark' : ($booking->status === 'confirmed' ? 'bg-info' : ($booking->status === 'completed' ? 'bg-success' : 'bg-secondary'))) }} px-3 py-2">
-            @if($pendingExpired) Hết hạn
-            @elseif($booking->status === 'pending' && $paidRecorded) Đã thanh toán
-            @elseif($booking->status === 'pending') Chờ thanh toán
-            @elseif($booking->status === 'confirmed') Đã thanh toán
-            @elseif($booking->status === 'completed') Hoàn thành
-            @elseif($booking->status === 'cancelled') Đã hủy
-            @elseif($booking->status === 'cancel_requested') Đang chờ hoàn tiền
-            @elseif($booking->status === 'refunded') Đã hoàn tiền
-            @else {{ $booking->status }}
-            @endif
-        </span>
+        <span class="badge {{ $booking->customerAccountStatusBadgeClass() }} px-3 py-2">{{ $booking->customerAccountStatusLabel() }}</span>
     </div>
     <div class="card-body p-4">
         <div class="row g-4">
@@ -320,7 +314,7 @@
                         <tr>
                             <td class="ps-3">{{ $bs->service?->name ?? 'Dịch vụ #' . $bs->service_id }}</td>
                             <td class="text-end text-muted">{{ $bs->quantity }}</td>
-                            <td class="text-end pe-3 fw-semibold">{{ number_format($line, 0, ',', '.') }} ₫</td>
+                            <td class="text-end pe-3 fw-semibold">@include('shared.partials.money-customer-flow', ['amount' => $line])</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -333,7 +327,7 @@
         <div class="mt-4">
             <h6 class="text-muted text-uppercase small fw-semibold mb-2">Phụ thu &amp; phí phát sinh (sau khi nhận phòng)</h6>
             <p class="small text-muted mb-2">Các khoản ghi nhận khi lưu trú (ví dụ dịch vụ dùng thêm không có trong đơn đặt ban đầu).</p>
-            <div class="table-responsive rounded-2 border border-warning border-opacity-50">
+            <div class="table-responsive rounded-2 border border-primary border-opacity-25">
                 <table class="table table-sm mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
@@ -355,7 +349,7 @@
                                     {{ $sc->reason }}
                                 @endif
                             </td>
-                            <td class="text-end pe-3 fw-semibold text-danger">+ {{ number_format($sc->amount, 0, ',', '.') }} ₫</td>
+                            <td class="text-end pe-3 fw-semibold">@include('shared.partials.money-customer-flow', ['amount' => (float) $sc->amount])</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -495,8 +489,8 @@
     $refundEligibility = null;
     $canOpenRefundForm = false;
     $refundUnavailableReason = null;
-    if ($isOwnerView) {
-        $refundEligibility = app(\App\Services\RefundService::class)->canCustomerRequestRefund($booking, (int) auth()->id());
+    if (! empty($canCustomerRefundOnDetail)) {
+        $refundEligibility = app(\App\Services\RefundService::class)->canCustomerRequestRefund($booking, (int) $booking->user_id);
         $canOpenRefundForm = (bool) ($refundEligibility['allowed'] ?? false);
         $refundUnavailableReason = $refundEligibility['message'] ?? null;
     }
@@ -508,7 +502,7 @@
     </a>
     @endif
 
-    @if($booking->status === 'confirmed' && $isOwnerView)
+    @if($booking->status === 'confirmed' && ! empty($canCustomerRefundOnDetail))
         @if($hasPendingRefundRequest)
             <button type="button" class="btn btn-warning btn-sm px-4" disabled>
                 <i class="bi bi-hourglass-split me-1"></i>Đang chờ xử lý hoàn tiền
@@ -517,8 +511,8 @@
             <button type="button" class="btn btn-success btn-sm px-4" disabled>
                 <i class="bi bi-check2-circle me-1"></i>Đã hoàn tiền
             </button>
-        @elseif($canOpenRefundForm)
-            <a href="{{ route('account.bookings.refund', $booking) }}" class="btn btn-danger btn-sm px-4">
+        @elseif($canOpenRefundForm && ! empty($refundFormUrl))
+            <a href="{{ $refundFormUrl }}" class="btn btn-danger btn-sm px-4">
                 <i class="bi bi-wallet2 me-1"></i>Yêu cầu hoàn tiền
             </a>
         @else
@@ -532,7 +526,7 @@
         </a>
     @endif
 </div>
-@if($booking->status === 'confirmed' && $isOwnerView && !$hasPendingRefundRequest && !$hasCompletedRefund && !$canOpenRefundForm && !empty($refundUnavailableReason))
+@if($booking->status === 'confirmed' && ! empty($canCustomerRefundOnDetail) && !$hasPendingRefundRequest && !$hasCompletedRefund && !$canOpenRefundForm && !empty($refundUnavailableReason))
     <div class="small text-muted mt-2">
         <i class="bi bi-info-circle me-1"></i>{{ $refundUnavailableReason }}
     </div>

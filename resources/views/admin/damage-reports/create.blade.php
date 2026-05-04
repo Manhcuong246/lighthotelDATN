@@ -32,7 +32,7 @@
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Phòng *</label>
+                            <label class="form-label">Phòng *</label>
                             <select name="room_id" class="form-select @error('room_id') is-invalid @enderror" required>
                                 <option value="">-- Chọn phòng --</option>
                                 @foreach($rooms as $room)
@@ -53,7 +53,7 @@
 
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle"></i>
-                            <strong>Lưu ý:</strong> Nếu chọn mức độ <strong>Cao</strong> hoặc <strong>Khẩn cấp</strong>, phòng sẽ tự động chuyển sang trạng thái bảo trì và không thể đặt được.
+                            <strong>Lưu ý:</strong> Mức <strong>Cao</strong> hoặc <strong>Khẩn cấp</strong> sẽ tự chuyển phòng sang trạng thái bảo trì.
                         </div>
                     </div>
                 </div>
@@ -66,7 +66,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Loại lỗi *</label>
+                                <label class="form-label">Loại lỗi *</label>
                                 <select name="damage_type" class="form-select @error('damage_type') is-invalid @enderror" required>
                                     <option value="">-- Chọn loại lỗi --</option>
                                     @foreach($damageTypes as $key => $label)
@@ -81,7 +81,7 @@
                             </div>
 
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Mức độ *</label>
+                                <label class="form-label">Mức độ *</label>
                                 <select name="severity" class="form-select @error('severity') is-invalid @enderror" required>
                                     <option value="low" {{ old('severity') == 'low' ? 'selected' : '' }}>🟢 Thấp - Không ảnh hưởng sử dụng</option>
                                     <option value="medium" {{ old('severity') == 'medium' ? 'selected' : '' }}>🟡 Trung bình - Có thể sử dụng</option>
@@ -95,7 +95,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Mô tả chi tiết *</label>
+                            <label class="form-label">Mô tả chi tiết *</label>
                             <textarea name="description" rows="5" class="form-control @error('description') is-invalid @enderror"
                                 placeholder="Mô tả chi tiết vấn đề hư hỏng, ví dụ: Giường bị gãy chân trước bên trái, nệm rơi xuống sàn..." required>{{ old('description') }}</textarea>
                             @error('description')

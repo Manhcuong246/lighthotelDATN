@@ -3,24 +3,21 @@
 @section('title', 'Quản lý báo cáo hư hỏng')
 
 @section('content')
-<div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="text-dark fw-bold">🚨 Quản lý báo cáo hư hỏng</h1>
-        <a href="{{ route('admin.damage-reports.create') }}" class="btn btn-danger btn-admin-icon" title="Tạo báo cáo"><i class="bi bi-plus-lg"></i></a>
+<div class="container-fluid px-3 px-lg-4">
+    <div class="page-header mb-3">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Quản lý báo cáo hư hỏng</h1>
+            <p class="text-muted small mb-0">Theo dõi trạng thái xử lý và các ca cần ưu tiên</p>
+        </div>
+        <a href="{{ route('admin.damage-reports.create') }}" class="btn btn-danger rounded-2">
+            <i class="bi bi-plus-lg me-1"></i>Tạo báo cáo
+        </a>
     </div>
-
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
 
     <!-- Stats Cards -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card border-danger">
+            <div class="card border-0 shadow-sm rounded-3">
                 <div class="card-body text-center">
                     <h3 class="text-danger mb-1">{{ $reports->where('severity', 'urgent')->count() }}</h3>
                     <small class="text-muted">Khẩn cấp</small>
@@ -28,7 +25,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-warning">
+            <div class="card border-0 shadow-sm rounded-3">
                 <div class="card-body text-center">
                     <h3 class="text-warning mb-1">{{ $reports->where('severity', 'high')->count() }}</h3>
                     <small class="text-muted">Cao</small>
@@ -36,7 +33,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-info">
+            <div class="card border-0 shadow-sm rounded-3">
                 <div class="card-body text-center">
                     <h3 class="text-info mb-1">{{ $reports->where('status', 'in_progress')->count() }}</h3>
                     <small class="text-muted">Đang xử lý</small>
@@ -44,7 +41,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-success">
+            <div class="card border-0 shadow-sm rounded-3">
                 <div class="card-body text-center">
                     <h3 class="text-success mb-1">{{ $reports->where('status', 'resolved')->count() }}</h3>
                     <small class="text-muted">Đã giải quyết</small>
@@ -54,7 +51,7 @@
     </div>
 
     <!-- Reports Table -->
-    <div class="card shadow-sm">
+    <div class="card border-0 shadow-sm rounded-3">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -72,10 +69,15 @@
                     </thead>
                     <tbody>
                         @forelse($reports as $report)
+                        @php
+                            $roomLabel = $report->room
+                                ? ($report->room->room_number ?: $report->room->name ?: ('#' . $report->room->id))
+                                : 'Đã xóa/chưa gán';
+                        @endphp
                         <tr class="{{ $report->severity === 'urgent' ? 'table-danger' : ($report->severity === 'high' ? 'table-warning' : '') }}">
                             <td>#{{ $report->id }}</td>
                             <td>
-                                <strong>Phòng {{ $report->room->room_number ?? 'N/A' }}</strong>
+                                <strong>Phòng {{ $roomLabel }}</strong>
                                 <br><small class="text-muted">{{ $report->room->roomType->name ?? '' }}</small>
                             </td>
                             <td>{{ \App\Models\DamageReport::getDamageTypes()[$report->damage_type] ?? $report->damage_type }}</td>
@@ -93,7 +95,9 @@
                             </td>
                             <td>{{ $report->created_at->format('d/m/Y H:i') }}</td>
                             <td>
-                                <a href="{{ route('admin.damage-reports.show', $report) }}" class="btn btn-sm btn-outline-primary btn-admin-icon" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
+                                <a href="{{ route('admin.damage-reports.show', $report) }}" class="btn btn-sm btn-outline-primary rounded-2" title="Xem chi tiết">
+                                    <i class="bi bi-eye me-1"></i>Xem
+                                </a>
                             </td>
                         </tr>
                         @empty

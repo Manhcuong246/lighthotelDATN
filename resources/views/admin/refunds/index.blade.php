@@ -9,18 +9,6 @@
         <p class="text-muted">Danh sách các yêu cầu hủy phòng và hoàn tiền từ khách hàng.</p>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success border-0 shadow-sm mb-4">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger border-0 shadow-sm mb-4">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}
-        </div>
-    @endif
-
     <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
         <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold text-primary">Yêu cầu hoàn tiền</h5>
@@ -65,11 +53,11 @@
                             </td>
                             <td class="text-center">
                                 @if($request->status === 'pending_refund')
-                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Chờ xử lý</span>
+                                    <span class="badge bg-warning text-dark">Chờ xử lý</span>
                                 @elseif($request->status === 'refunded')
-                                    <span class="badge bg-success px-3 py-2 rounded-pill">Đã hoàn tiền</span>
+                                    <span class="badge bg-success">Đã hoàn tiền</span>
                                 @elseif($request->status === 'rejected')
-                                    <span class="badge bg-danger px-3 py-2 rounded-pill">Đã từ chối</span>
+                                    <span class="badge bg-danger">Đã từ chối</span>
                                 @endif
                             </td>
                             <td class="text-end pe-4">

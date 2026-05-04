@@ -55,6 +55,27 @@ class BookingCancellationService
 
             $isPaymentRecordedPaid = $booking->isPaymentRecordedPaid();
 
+            // Chưa thanh toán: xóa hẳn đơn — không lưu trạng thái hủy (giảm rác DB / spam).
+            if (! $isPaymentRecordedPaid) {
+                $obliterator = app(UnpaidBookingObliterateService::class);
+                if ($obliterator->obliterateIfUnpaid($booking)) {
+                    DB::commit();
+
+                    Log::info("Booking {$bookingId} obliterated on cancel (unpaid)");
+
+                    return [
+                        'success' => true,
+                        'obliterated' => true,
+                        'message' => 'Hủy thành công. Đơn chưa thanh toán đã được gỡ khỏi hệ thống — không lưu bản ghi hủy, phòng được mở lại ngay.',
+                        'refund_amount' => 0,
+                        'refund_type' => 'none',
+                        'booking' => null,
+                    ];
+                }
+
+                throw new Exception('Không thể gỡ đơn — vui lòng thử lại.');
+            }
+
             // Calculate refund based on timing
             $refundResult = $this->calculateRefund($booking, $isPaymentRecordedPaid);
 
@@ -109,6 +130,7 @@ class BookingCancellationService
 
             return [
                 'success' => true,
+                'obliterated' => false,
                 'message' => $refundResult['message'],
                 'refund_amount' => $refundResult['refund_amount'],
                 'refund_type' => $refundResult['refund_type'],

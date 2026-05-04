@@ -25,9 +25,9 @@
                             <tr>
                                 <td valign="middle" style="width:1%;padding-right:14px;">
                                     @if(!empty($logoUrl))
-                                        <img src="{{ $logoUrl }}" alt="" width="48" height="48" style="display:block;border-radius:10px;background:#fff;padding:4px;width:48px;height:48px;object-fit:contain;">
+                                        <img src="{{ $logoUrl }}" alt="" width="200" height="40" style="display:block;border-radius:10px;background:#fff;padding:6px 10px;height:40px;width:auto;max-width:200px;object-fit:contain;">
                                     @else
-                                        <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.2);text-align:center;line-height:48px;font-size:22px;color:#fff;">✦</div>
+                                        <div style="width:56px;height:40px;border-radius:10px;background:rgba(255,255,255,0.2);text-align:center;line-height:40px;font-size:22px;color:#fff;">✦</div>
                                     @endif
                                 </td>
                                 <td valign="middle" style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -45,7 +45,7 @@
                         </p>
                         <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#475569;">
                             Xin chào <strong style="color:#0f172a;">{{ $booking->user->full_name ?? 'Quý khách' }}</strong>,
-                            chúng tôi đã ghi nhận thanh toán VNPay. Dưới đây là tóm tắt đặt phòng. <strong>Số phòng cụ thể</strong> do lễ tân bố trí khi nhận phòng (trừ khi đơn đã ghi phòng vật lý trong hệ thống). Bấm nút bên dưới để mở thẳng <strong>biên lai / chi tiết hóa đơn</strong> — không cần đăng nhập. Hủy phòng hoặc hoàn tiền theo chính sách: từ trang chi tiết đơn (liên kết trong biên lai) hoặc mục «Đơn của tôi» nếu Quý khách đã có tài khoản.
+                            chúng tôi đã ghi nhận thanh toán VNPay. Dưới đây là tóm tắt đặt phòng. <strong>Số phòng cụ thể</strong> do lễ tân bố trí khi nhận phòng (trừ khi đơn đã ghi phòng vật lý trong hệ thống). Bấm <strong>Chi tiết đơn</strong> để xem đơn và yêu cầu hoàn tiền (nếu đủ điều kiện) — không cần đăng nhập. Có thể mở thêm biên lai/hóa đơn từ nút phụ bên dưới.
                         </p>
                         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f8fafc;border-radius:14px;border:1px solid #e2e8f0;">
                             <tr>
@@ -58,10 +58,17 @@
                             </tr>
                         </table>
                         <div style="text-align:center;padding:28px 0 12px;">
-                            <a href="{{ $invoiceUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(180deg,#059669 0%,#047857 100%);color:#ffffff;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;padding:16px 36px;border-radius:12px;box-shadow:0 4px 14px rgba(5,150,105,0.35);">
+                            <a href="{{ $bookingDetailUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:linear-gradient(180deg,#059669 0%,#047857 100%);color:#ffffff;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;padding:16px 36px;border-radius:12px;box-shadow:0 4px 14px rgba(5,150,105,0.35);">
+                                Xem chi tiết đơn
+                            </a>
+                        </div>
+                        @if(!empty($invoiceUrl) && $invoiceUrl !== $bookingDetailUrl)
+                        <div style="text-align:center;padding:0 0 12px;">
+                            <a href="{{ $invoiceUrl }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;color:#0369a1;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;text-decoration:underline;">
                                 Xem biên lai &amp; hóa đơn
                             </a>
                         </div>
+                        @endif
                         <p style="margin:0 0 24px;font-size:13px;line-height:1.55;color:#64748b;text-align:center;">
                             Link có thời hạn (khoảng {{ (int) config('booking.signed_booking_show_ttl_days', 90) }} ngày). Không chia sẻ email này cho người khác.
                         </p>

@@ -1,5 +1,7 @@
 @extends('layouts.admin')
 
+@section('title', 'Tạo đơn đặt phòng')
+
 @section('content')
 <div class="container-fluid px-3 px-lg-4 py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
@@ -12,10 +14,6 @@
         </a>
     </div>
 
-    @if(session('error'))
-        <div class="alert alert-danger rounded-3">{{ session('error') }}</div>
-    @endif
-
     <!-- Step 1: Chọn Ngày -->
     <div class="card shadow-sm border-0 rounded-3 mb-4" id="step1">
         <div class="card-header bg-white border-0 rounded-top-3">
@@ -27,11 +25,11 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label small fw-bold">Ngày nhận phòng *</label>
+                    <label class="form-label">Ngày nhận phòng *</label>
                     <input type="date" class="form-control" id="check_in" min="{{ date('Y-m-d') }}">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small fw-bold">Ngày trả phòng *</label>
+                    <label class="form-label">Ngày trả phòng *</label>
                     <input type="date" class="form-control" id="check_out">
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
@@ -47,7 +45,6 @@
     <!-- Step 2: Chọn Phòng và Thông Tin -->
     <form id="bookingForm" action="{{ route('admin.bookings.store-multi') }}" method="POST">
         @csrf
-        <input type="hidden" name="debug_form_version" value="v3-direct-submit">
         <input type="hidden" name="check_in" id="form_check_in">
         <input type="hidden" name="check_out" id="form_check_out">
         <input type="hidden" name="adults" id="form_adults" value="1">
@@ -76,15 +73,15 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Họ tên *</label>
+                        <label class="form-label">Họ tên *</label>
                         <input type="text" name="full_name" class="form-control" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Email *</label>
+                        <label class="form-label">Email *</label>
                         <input type="email" name="email" class="form-control" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-bold">Số điện thoại</label>
+                        <label class="form-label">Số điện thoại</label>
                         <input type="tel" name="phone" class="form-control">
                     </div>
                 </div>
@@ -99,11 +96,11 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold">Họ tên ngườii đại diện *</label>
+                        <label class="form-label">Họ tên ngườii đại diện *</label>
                         <input type="text" name="representative_name" id="representative_name" class="form-control" required placeholder="Nguyễn Văn A">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold">Số CCCD *</label>
+                        <label class="form-label">Số CCCD *</label>
                         <input type="text" name="representative_cccd" id="representative_cccd" class="form-control" required placeholder="12 số CCCD" maxlength="12" pattern="[0-9]{12}" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12);">
                     </div>
                 </div>
@@ -140,7 +137,7 @@
                     <div class="card-body">
                         <!-- Payment Method Radio -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Phương thức thanh toán *</label>
+                            <label class="form-label">Phương thức thanh toán *</label>
                             <div class="d-flex flex-wrap gap-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="payment_method" id="payment_cash" value="cash" checked onchange="togglePaymentMethod()">
@@ -155,12 +152,12 @@
                                     </label>
                                 </div>
                             </div>
-                            <p class="small text-muted mb-0 mt-2">Chuyển khoản không dùng khi tạo đơn hộ; nếu khách CK sau, cập nhật tại chi tiết đơn.</p>
+                            <p class="small text-muted mb-0 mt-2">Nếu khách chuyển khoản sau, vui lòng cập nhật tại chi tiết đơn.</p>
                         </div>
 
                         <!-- Cash Payment Status (show when cash selected) -->
                         <div id="cashPaymentStatus" class="mb-3">
-                            <label class="form-label small fw-bold">Trạng thái thanh toán *</label>
+                            <label class="form-label">Trạng thái thanh toán *</label>
                             <select name="payment_status" id="cash_status" class="form-select" onchange="toggleCashAmount()">
                                 <option value="pending">⏳ Chưa thanh toán</option>
                                 <option value="paid">✅ Đã thanh toán</option>
@@ -169,14 +166,14 @@
 
                         <!-- Cash Amount Paid (show when cash paid selected) -->
                         <div id="cashAmountDiv" class="mb-3" style="display: none;">
-                            <label class="form-label small fw-bold">Số tiền đã thu *</label>
+                            <label class="form-label">Số tiền đã thu *</label>
                             <input type="number" name="amount_paid" id="cash_amount" class="form-control" min="0" value="0">
                             <small class="text-muted">Nhập số tiền đã thu từ khách</small>
                         </div>
 
                         <div id="vnpayInfo" class="alert alert-primary mb-0 small" style="display: none;">
                             <div class="fw-bold mb-1">Thanh toán VNPay</div>
-                            <p class="small mb-0">Sau khi tạo đơn, hệ thống gửi email cho khách (nếu đã cấu hình SMTP) kèm link có chữ ký. Thời hạn ~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút trên VNPay tính từ lúc khách <strong>bấm link</strong> trong email.</p>
+                            <p class="small mb-0">Sau khi tạo đơn, hệ thống gửi link thanh toán VNPay qua email (nếu đã cấu hình SMTP). Link có hiệu lực khoảng {{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút kể từ lúc khách mở link.</p>
                         </div>
                     </div>
                 </div>
@@ -237,7 +234,8 @@ function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, st
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
     const total = adults + c611 + c05;
-    const billableSlots = Math.max(0, _stdCap - c05);
+    // Trẻ 0–5: không chiếm chỗ tiêu chuẩn / không tính max capacity (đồng bộ RoomOccupancyPricing)
+    const billableSlots = Math.max(0, _stdCap);
     const extraAdults = Math.max(0, adults - billableSlots);
     const remainingSlots = Math.max(0, billableSlots - adults);
     const extraChildren = Math.max(0, c611 - remainingSlots);
@@ -350,7 +348,7 @@ function renderAvailableRooms(rooms) {
 
                         <!-- Quantity Selector -->
                         <div class="mb-2">
-                            <label class="form-label small fw-bold mb-1">Số phòng</label>
+                            <label class="form-label mb-1">Số phòng</label>
                             <div class="d-flex align-items-center gap-1 justify-content-end">
                                 <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2"
                                         onclick="changeRoomQuantity('${roomType.room_type_id}', -1, ${roomType.available_count}, ${roomType.base_price}, '${roomType.name}', ${roomType.adult_capacity || 2}, ${roomType.child_capacity || 0})"
@@ -492,11 +490,11 @@ function generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, chi
                 <div class="card-body p-2">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <h6 class="fw-bold mb-0 text-primary">Phòng ${roomIndex + 1}</h6>
-                        <span class="text-muted small">TC: 3 (tính cả trẻ 0–5); trẻ 0–5 miễn phụ thu · Tối đa 6 · Tối đa 2 trẻ 0–5</span>
+                        <span class="text-muted small">TC: 3 · Tối đa: 6 · Trẻ 0–5 tối đa: 2</span>
                     </div>
                     <div class="row g-2">
                         <div class="col-md-4">
-                            <label class="form-label small mb-1" style="font-size: 0.75rem;">Người lớn</label>
+                            <label class="form-label mb-1">Người lớn</label>
                             <input type="number" class="form-control form-control-sm room-adults"
                                    id="adults_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
@@ -505,7 +503,7 @@ function generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, chi
                                    style="font-size: 0.85rem;" onchange="updateRoomGuestData('${roomTypeId}', ${roomIndex})">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small mb-1" style="font-size: 0.75rem;">Trẻ 0–5 tuổi</label>
+                            <label class="form-label mb-1">Trẻ 0–5 tuổi</label>
                             <select class="form-select form-select-sm room-children-0-5"
                                    id="children05_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
@@ -517,7 +515,7 @@ function generateRoomForms(roomTypeId, quantity, price, name, adultCapacity, chi
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small mb-1" style="font-size: 0.75rem;" title="50% giá phòng/đêm mỗi em">Trẻ 6–11 tuổi</label>
+                            <label class="form-label mb-1" title="50% giá phòng/đêm mỗi em">Trẻ 6–11 tuổi</label>
                             <input type="number" class="form-control form-control-sm room-children-6-11"
                                    id="children611_${roomTypeId}_${roomIndex}"
                                    data-room-type="${roomTypeId}"
@@ -579,12 +577,12 @@ function updateRoomPriceDetails(roomTypeId, roomIndex, adults, children05, child
 
     const feeDisplay = document.getElementById(`feeDisplay_${roomTypeId}_${roomIndex}`);
     if (feeDisplay) {
-        let feeHtml = `<div class="text-muted small mb-1">Tổng khách trong phòng: <strong>${br.effective}</strong> (NL: ${adults}, trẻ 6–11: ${children611}, trẻ 0–5: ${children05}). Tiêu chuẩn: <strong>${br.stdCap}</strong>, tối đa: <strong>${br.maxCap}</strong>. Trẻ 0–5 tối đa: <strong>${br.maxC05}</strong>.</div>`;
+        let feeHtml = `<div class="text-muted small mb-1">Tổng khách: <strong>${br.effective}</strong> (NL: ${adults}, trẻ 6–11: ${children611}, trẻ 0–5: ${children05}) · TC: <strong>${br.stdCap}</strong> · Tối đa: <strong>${br.maxCap}</strong>.</div>`;
         if (br.adultFee > 0) {
-            feeHtml += `<div class="text-danger small">Phụ thu NL vượt TC (${br.extraAdults} người): +${formatMoney(br.adultFee)}/đêm</div>`;
+            feeHtml += `<div class="text-primary small">Phụ thu NL vượt TC (${br.extraAdults} người): +${formatMoney(br.adultFee)}/đêm</div>`;
         }
         if (br.childFee > 0) {
-            feeHtml += `<div class="text-danger small">Phụ thu trẻ 6–11 vượt TC (${br.extraChildren} em): +${formatMoney(br.childFee)}/đêm</div>`;
+            feeHtml += `<div class="text-primary small">Phụ thu trẻ 6–11 vượt TC (${br.extraChildren} em): +${formatMoney(br.childFee)}/đêm</div>`;
         }
         feeDisplay.innerHTML = feeHtml;
     }
@@ -636,7 +634,7 @@ function updateRoomCardSubtotal(roomTypeId) {
                     <div class="text-primary fw-bold">${formatMoney(typeSubtotal)}</div>
                     <div class="small">
                         <span class="text-muted">Giá gốc: ${formatMoney(baseTotal)}</span>
-                        <span class="text-danger"> + Phụ thu: ${formatMoney(typeExtraFees)}</span>
+                        <span class="text-primary"> + Phụ thu: ${formatMoney(typeExtraFees)}</span>
                     </div>
                 `;
             } else {
@@ -646,7 +644,6 @@ function updateRoomCardSubtotal(roomTypeId) {
     }
 }
 
-// Legacy function - kept for compatibility but not used
 function updateSelectedRoomData(roomTypeId, roomIndex) {
     updateRoomGuestData(roomTypeId, roomIndex);
 }
@@ -687,8 +684,8 @@ function calculateTotal() {
                     <div class="small text-muted">
                         ${nights} đêm x ${formatMoney(roomPricePerNight)}
                     </div>
-                    ${br.adultFee > 0 ? `<div class="text-danger small">Phụ thu NL vượt TC (${br.extraAdults}): +${formatMoney(br.adultFee * nights)}</div>` : ''}
-                    ${br.childFee > 0 ? `<div class="text-danger small">Phụ thu trẻ 6–11 vượt TC (${br.extraChildren} em): +${formatMoney(br.childFee * nights)}</div>` : ''}
+                    ${br.adultFee > 0 ? `<div class="text-primary small">Phụ thu NL vượt TC (${br.extraAdults}): +${formatMoney(br.adultFee * nights)}</div>` : ''}
+                    ${br.childFee > 0 ? `<div class="text-primary small">Phụ thu trẻ 6–11 vượt TC (${br.extraChildren} em): +${formatMoney(br.childFee * nights)}</div>` : ''}
                 </div>
             `;
 
@@ -910,7 +907,6 @@ document.getElementById('bookingForm').addEventListener('submit', function(e) {
 
     // Prepare dynamic fields before submission
     prepareFormData();
-    console.log('Form submitting with selected rooms:', selectedRooms);
 });
 </script>
 @endsection

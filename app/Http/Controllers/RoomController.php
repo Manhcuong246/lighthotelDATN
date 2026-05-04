@@ -10,9 +10,39 @@ use App\Models\BookingRoom;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class RoomController extends Controller
 {
+    private function catalogServicesCached()
+    {
+        return Cache::remember('catalog.services.order_by_name', 300, static fn () => Service::orderBy('name')->get());
+    }
+
+    private function roomTypesForFilterSidebar()
+    {
+        return Cache::remember('rooms.active_roomtypes.id_name.v2', 300, function () {
+            return $this->roomTypeIsActive(RoomType::query())
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        });
+    }
+
+    private function galleryRoomTypesCached()
+    {
+        return Cache::remember('rooms.gallery_room_types', 300, function () {
+            return $this->roomTypeIsActive(RoomType::query())
+                ->with(['rooms' => function ($q) {
+                    $q->with('images')
+                        ->excludeMaintenance()
+                        ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
+                        ->orderBy('id');
+                }])
+                ->orderBy('name')
+                ->get();
+        });
+    }
+
     private function roomTypeIsActive($query)
     {
         // room_types.status is boolean in migration; allow NULL for backward-compat
@@ -101,19 +131,11 @@ class RoomController extends Controller
         }
 
         $roomTypesList = $query->paginate(10)->withQueryString();
-        $catalogServices = Service::orderBy('name')->get();
-        // Data cho dropdown + gallery ảnh phòng (eager load để tránh N+1)
-        $allRoomTypes = $this->roomTypeIsActive(RoomType::query())
-            ->with(['rooms' => function ($q) {
-                $q->with('images')
-                    ->excludeMaintenance()
-                    ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
-                    ->orderBy('id');
-            }, 'services'])
-            ->orderBy('name')
-            ->get();
+        $catalogServices = $this->catalogServicesCached();
+        $allRoomTypes = $this->roomTypesForFilterSidebar();
+        $galleryRoomTypes = $this->galleryRoomTypesCached();
 
-        return view('rooms.index', compact('hotel', 'roomTypesList', 'allRoomTypes', 'catalogServices'));
+        return view('rooms.index', compact('hotel', 'roomTypesList', 'allRoomTypes', 'galleryRoomTypes', 'catalogServices'));
     }
 
     public function show(Room $room)
@@ -189,13 +211,20 @@ class RoomController extends Controller
         $availableRooms = $availableRoomsQuery->get();
 
         $typeCounts = $availableRooms->groupBy('room_type_id')->map->count();
+        $typeIdsForOccupancy = [];
+        foreach ($typeCounts->keys() as $typeId) {
+            if ($typeId !== null && $typeId !== '') {
+                $typeIdsForOccupancy[] = (int) $typeId;
+            }
+        }
+        $unassignedByType = BookingRoom::unassignedCountsForRoomTypesBetween($typeIdsForOccupancy, $checkIn, $checkOut);
         $availableRoomTypeIds = collect();
         foreach ($typeCounts as $typeId => $physical) {
             if ($typeId === null || $typeId === '') {
                 continue;
             }
             $tid = (int) $typeId;
-            $unassigned = BookingRoom::unassignedCountForRoomTypeBetween($tid, $checkIn, $checkOut);
+            $unassigned = (int) ($unassignedByType[$tid] ?? 0);
             $bookable = max(0, (int) $physical - $unassigned);
             if ($bookable >= $roomsNeeded) {
                 $availableRoomTypeIds->push($tid);
@@ -236,12 +265,15 @@ class RoomController extends Controller
         // 6) Phân trang theo Loại phòng
         $roomTypes = $roomTypesQuery->with('services')->paginate(10)->withQueryString();
 
+        $pageTypeIds = $roomTypes->getCollection()->map(fn ($type) => (int) $type->id)->unique()->values()->all();
+        $unassignedOnPage = BookingRoom::unassignedCountsForRoomTypesBetween($pageTypeIds, $checkIn, $checkOut);
+
         // 7) Với mỗi loại phòng, gắn danh sách phòng vật lý đang rảnh của nó vào
-        $roomTypes->each(function ($type) use ($availableRooms, $checkIn, $checkOut) {
+        $roomTypes->each(function ($type) use ($availableRooms, $unassignedOnPage) {
             $rows = $availableRooms->where('room_type_id', $type->id)->values();
             $type->setRelation('available_rooms', $rows);
             $physical = $rows->count();
-            $unassigned = BookingRoom::unassignedCountForRoomTypeBetween((int) $type->id, $checkIn, $checkOut);
+            $unassigned = (int) ($unassignedOnPage[(int) $type->id] ?? 0);
             $type->setAttribute('bookable_slot_count', max(0, $physical - $unassigned));
         });
 
@@ -254,8 +286,8 @@ class RoomController extends Controller
             'check_out' => $checkOut,
             'nights' => Carbon::parse($checkIn)->diffInDays(Carbon::parse($checkOut)),
             // Optional: provide filter datasets if we later extend search UI
-            'allRoomTypes' => $this->roomTypeIsActive(RoomType::query())->orderBy('name')->get(),
-            'catalogServices' => Service::orderBy('name')->get(),
+            'allRoomTypes' => $this->roomTypesForFilterSidebar(),
+            'catalogServices' => $this->catalogServicesCached(),
         ]);
     }
 

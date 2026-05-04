@@ -28,6 +28,7 @@ COPY --from=vendor /app/vendor ./vendor
 
 # UTF-8 mặc định cho tiếng Việt (file nằm trong repo; không phụ thuộc COPY .)
 COPY docker/php/zz-charset.ini /usr/local/etc/php/conf.d/zz-charset.ini
+COPY docker/php/zz-uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
 
 RUN php artisan package:discover --ansi
 

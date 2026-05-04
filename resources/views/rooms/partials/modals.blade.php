@@ -49,7 +49,7 @@
                     </div>
 
                     <div class="policy-section mb-4">
-                        <div class="policy-title fs-6 fw-bold text-dark mb-2">Phụ thu</div>
+                        <div class="policy-title fs-6 fw-bold text-primary mb-2">Phụ thu</div>
                         <ul class="list-unstyled text-muted mb-0">
                             <li>Phụ thu người lớn: <strong>Liên hệ khi check-in</strong></li>
                             <li>Phụ thu trẻ em: <strong>Liên hệ khi check-in</strong></li>

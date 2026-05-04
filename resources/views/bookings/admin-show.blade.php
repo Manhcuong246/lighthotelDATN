@@ -256,7 +256,7 @@
                                                     <td class="ps-3">{{ $bs->service?->name ?? 'Dịch vụ #' . $bs->service_id }}</td>
                                                     <td class="text-end">{{ $bs->quantity }}</td>
                                                     <td class="text-end text-muted">{{ number_format((float) $bs->price, 0, ',', '.') }} ₫</td>
-                                                    <td class="text-end pe-3 fw-semibold">{{ number_format($line, 0, ',', '.') }} ₫</td>
+                                                    <td class="text-end pe-3 fw-semibold">@include('shared.partials.money-customer-flow', ['amount' => $line])</td>
                                                     <td class="text-center">
                                                         <form action="{{ route('admin.booking-services.delete', $bs->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa dịch vụ này?');">
                                                             @csrf
@@ -278,11 +278,11 @@
                             @endif
 
                             @if($booking->status !== 'cancelled' && ! $booking->actual_check_out)
-                                <form method="POST" action="{{ route('admin.bookings.storeBookingServices', $booking->id) }}">
+                                <form method="POST" action="{{ route('admin.bookings.storeBookingServices', $booking->id) }}" class="abs-extras-form-skin">
                                     @csrf
                                     @if($services->isNotEmpty())
-                                        <p class="small text-muted mb-2">Chọn dịch vụ từ danh mục để gán vào đơn sau khi check-in.</p>
-                                        @include('admin.bookings.partials.booking-catalog-service-lines', ['services' => $services])
+                                        <p class="small text-muted mb-2">Chọn dịch vụ phù hợp loại phòng trên đơn (trước khi checkout).</p>
+                                        @include('admin.bookings.partials.booking-catalog-service-lines', ['services' => $services, 'catalogNotice' => $bookingSvcCatalogNotice ?? null])
                                         <button type="submit" class="btn btn-primary btn-sm mt-3">
                                             <i class="bi bi-save me-1"></i> Lưu dịch vụ kèm
                                         </button>
@@ -302,9 +302,9 @@
                             </h5>
 
                             @if($booking->surcharges && $booking->surcharges->isNotEmpty())
-                                <div class="table-responsive rounded-2 border border-danger bg-white mb-3">
+                                <div class="table-responsive rounded-2 border border-primary border-opacity-25 bg-white mb-3">
                                     <table class="table table-sm mb-0 align-middle">
-                                        <thead class="table-danger">
+                                        <thead class="table-primary">
                                             <tr>
                                                 <th class="ps-3">Nội dung</th>
                                                 <th class="text-end">Ngày giờ lập</th>
@@ -320,8 +320,8 @@
                                                     <td class="text-end text-muted">
                                                         {{ optional($surcharge->created_at)->format('d/m/Y H:i') ?? '—' }}
                                                     </td>
-                                                    <td class="text-end pe-3 fw-semibold text-danger">
-                                                        + {{ number_format((float) $surcharge->amount, 0, ',', '.') }} ₫
+                                                    <td class="text-end pe-3 fw-semibold">
+                                                        @include('shared.partials.money-customer-flow', ['amount' => (float) $surcharge->amount])
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -335,7 +335,7 @@
                             @endif
 
                             @if($booking->status !== 'cancelled' && ! $booking->actual_check_out)
-                                <form method="POST" action="{{ route('admin.bookings.storeSurcharge', $booking->id) }}" class="border rounded-3 p-3 bg-light">
+                                <form method="POST" action="{{ route('admin.bookings.storeSurcharge', $booking->id) }}" class="rounded-3 p-3 bg-light bg-opacity-50 border border-light-subtle abs-extras-form-skin">
                                     @csrf
                                     <p class="small text-muted mb-2">
                                         Dùng cho trường hợp ngoại lệ (ví dụ: hỏng bàn ghế, vỡ thiết bị, bồi thường phát sinh...).
@@ -412,21 +412,21 @@
                                         <dd class="col-5 text-end">{{ number_format($serviceTotal, 0, ',', '.') }} ₫</dd>
 
                                         <dt class="col-7 text-muted">Phí phát sinh</dt>
-                                        <dd class="col-5 text-end text-danger">+ {{ number_format($surchargeTotal, 0, ',', '.') }} ₫</dd>
+                                        <dd class="col-5 text-end">@include('shared.partials.money-customer-flow', ['amount' => $surchargeTotal])</dd>
 
                                         @if($discountAmount > 0)
                                             <dt class="col-7 text-muted">Giảm giá</dt>
-                                            <dd class="col-5 text-end text-danger">- {{ number_format($discountAmount, 0, ',', '.') }} ₫</dd>
+                                            <dd class="col-5 text-end">@include('shared.partials.money-customer-flow', ['amount' => -1 * (float) $discountAmount])</dd>
                                         @endif
 
                                         <dt class="col-7 fw-semibold">Tổng trước cọc</dt>
                                         <dd class="col-5 text-end fw-semibold">{{ number_format($invoiceSubtotal, 0, ',', '.') }} ₫</dd>
 
                                         <dt class="col-7 text-muted">Đã cọc</dt>
-                                        <dd class="col-5 text-end text-success">{{ number_format($depositAmount, 0, ',', '.') }} ₫</dd>
+                                        <dd class="col-5 text-end">@include('shared.partials.money-paid', ['amount' => $depositAmount])</dd>
 
                                         <dt class="col-7 fw-semibold">Còn nợ</dt>
-                                        <dd class="col-5 text-end fw-bold">{{ number_format($amountDue, 0, ',', '.') }} ₫</dd>
+                                        <dd class="col-5 text-end fw-bold">@include('shared.partials.money-debt-due', ['amount' => $amountDue])</dd>
                                     </dl>
                                 </div>
                             </div>

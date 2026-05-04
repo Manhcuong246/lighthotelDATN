@@ -14,13 +14,13 @@ return [
     | Occupancy & Surcharge — App\Support\RoomOccupancyPricing
     |--------------------------------------------------------------------------
     |
-    | standard_capacity : số người tối đa KHÔNG phụ phí (tính TẤT CẢ khách).
-    | max_capacity      : giới hạn cứng (tất cả khách); vượt → từ chối.
-    | max_children_05   : tối đa trẻ 0–5 mỗi phòng.
+    | standard_capacity : số NL + trẻ 6–11 tối đa KHÔNG phụ phí (trẻ 0–5 không chiếm chỗ).
+    | max_capacity      : giới hạn cứng NL + trẻ 6–11; trẻ 0–5 không tính; vượt → từ chối.
+    | max_children_05   : tối đa trẻ 0–5 mỗi phòng (policy, không cộng vào capacity).
     | default_*_rate    : % giá phòng/đêm, áp dụng khi room_type chưa set.
     |
-    | Trẻ 0–5 tuổi: MIỄN PHÍ nhưng TÍNH VÀO sức chứa phòng.
-    | Khi tổng người > standard, phụ phí chỉ áp dụng cho NL / trẻ 6–11 dư.
+    | Trẻ 0–5 tuổi: MIỄN PHÍ và KHÔNG tính vào sức chứa / chỗ tiêu chuẩn.
+    | Khi NL + trẻ 6–11 > standard, phụ phí chỉ áp dụng cho phần vượt.
     |
     | Mức đề xuất theo hạng:
     |   Standard         → adult 30%, child 15%
@@ -34,6 +34,18 @@ return [
         'max_children_05' => (int) env('BOOKING_MAX_CHILDREN_05', 2), // Giới hạn 2 trẻ 0-5 miễn phí
         'default_adult_surcharge_rate' => (float) env('BOOKING_DEFAULT_ADULT_SURCHARGE_RATE', 0.25),
         'default_child_surcharge_rate' => (float) env('BOOKING_DEFAULT_CHILD_SURCHARGE_RATE', 0.125),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin UI — nhãn phương thức thanh toán (bảng đơn,…)
+    |--------------------------------------------------------------------------
+    */
+    'admin_payment_method_labels' => [
+        'vnpay' => ['text' => 'VNPay', 'color' => 'dark'],
+        'cash' => ['text' => 'Tiền mặt', 'color' => 'secondary'],
+        'credit_card' => ['text' => 'Thẻ', 'color' => 'info'],
+        'bank_transfer' => ['text' => 'Chuyển khoản', 'color' => 'primary'],
     ],
 
 ];

@@ -234,21 +234,6 @@
                         <h4 class="fw-bold mb-0">Viết đánh giá</h4>
                     </div>
                     <div class="card-body p-4 p-md-5">
-                        @if(session('success'))
-                            <div class="alert alert-success">{{ session('success') }}</div>
-                        @endif
-                        @if(session('error'))
-                            <div class="alert alert-danger">{{ session('error') }}</div>
-                        @endif
-                        @if($errors->any())
-                            <div class="alert alert-danger">
-                                <ul class="mb-0 ps-3">
-                                    @foreach($errors->all() as $err)
-                                        <li>{{ $err }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
                         <p class="small text-muted mb-4">
                             Chính sách: <strong>một đánh giá cho mỗi đơn đặt</strong> (sau khi đã thanh toán và đã làm thủ tục trả phòng).
                             Bạn có thể đánh giá lại khi có <strong>lưu trú mới</strong> tại phòng này.

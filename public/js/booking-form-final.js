@@ -1,11 +1,6 @@
-console.log('FINAL BOOKING FORM LOADING');
-
 function renderRooms() {
-    console.log('=== RENDER ROOMS START ===');
     const roomCount = document.getElementById('roomCount')?.value;
     const container = document.getElementById('roomsContainer');
-
-    console.log('RoomCount:', roomCount);
 
     if (!container) {
         console.error('Container not found!');
@@ -24,12 +19,9 @@ function renderRooms() {
     }
 
     container.innerHTML = html;
-    console.log('Rooms HTML inserted');
 
-    // Render guests immediately
     requestAnimationFrame(() => {
         for (let i = 0; i < roomCount; i++) {
-            console.log('Calling renderGuests for room', i);
             renderGuests(i);
         }
     });
@@ -84,13 +76,8 @@ function createRoomHTML(roomIndex) {
 }
 
 function renderGuests(roomIndex) {
-    console.log('=== RENDER GUESTS FOR ROOM', roomIndex, '===');
-
     const adultsInput = document.getElementById(`adults_${roomIndex}`);
     const container = document.getElementById(`guestsContainer_${roomIndex}`);
-
-    console.log('Adults input:', adultsInput);
-    console.log('Container:', container);
 
     if (!adultsInput || !container) {
         console.error('Missing elements for room', roomIndex);
@@ -98,7 +85,6 @@ function renderGuests(roomIndex) {
     }
 
     const adults = parseInt(adultsInput.value) || 0;
-    console.log('Adult count:', adults);
 
     if (adults <= 0) {
         container.innerHTML = '<div class="text-muted text-center py-2 bg-light rounded"><small>Vui lòng chọn số lượng người lớn</small></div>';
@@ -112,7 +98,6 @@ function renderGuests(roomIndex) {
     }
 
     container.innerHTML = html;
-    console.log('Guests rendered successfully for room', roomIndex);
 }
 
 function createGuestHTML(roomIndex, guestIndex) {
@@ -148,12 +133,9 @@ function createGuestHTML(roomIndex, guestIndex) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM LOADED - FINAL FORM');
-
     const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {
         bookingForm.addEventListener('submit', function(e) {
-            console.log('FORM SUBMIT VALIDATION');
             const roomCount = document.getElementById('roomCount')?.value;
 
             if (!roomCount || roomCount < 1) {
@@ -190,12 +172,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
 
-            console.log('Form validation passed');
             return true;
         });
     }
 
-    // CCCD validation
     document.addEventListener('input', function(e) {
         if (e.target.name && e.target.name.includes('cccd')) {
             const value = e.target.value;
@@ -207,20 +187,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Initial render when page loads
     const roomCountElement = document.getElementById('roomCount');
     if (roomCountElement) {
         roomCountElement.addEventListener('change', renderRooms);
-        // Trigger initial render if a room count is already set
         if (roomCountElement.value > 0) {
             renderRooms();
         }
     }
 
-    // Also call renderRooms on DOMContentLoaded if no initial value is set or to ensure it runs
     if (!roomCountElement || roomCountElement.value === '0') {
         renderRooms();
     }
 });
-
-console.log('FINAL BOOKING FORM READY');

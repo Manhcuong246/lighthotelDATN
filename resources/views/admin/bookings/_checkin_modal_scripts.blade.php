@@ -120,7 +120,7 @@
             + '<span class="badge bg-secondary me-2">' + (idx + 1) + '</span>'
             + esc(typeName) + capText
             + '</h6>'
-            + '<label class="form-label small mb-0">Phòng cụ thể <span class="text-danger">*</span></label>'
+            + '<label class="form-label mb-0">Phòng cụ thể <span class="text-danger">*</span></label>'
             + '<select class="form-select form-select-sm slot-room-select mt-1" name="slot_room_id[' + br.id + ']" required '
             + (noOpts ? 'disabled' : '') + ' style="max-width:380px">'
             + optionsHtml
@@ -128,7 +128,7 @@
             + (noOpts ? '<div class="small text-danger mt-1">Không có phòng cùng loại khả dụng hoặc thiếu dữ liệu phòng.</div>' : '')
             + '</div>'
             + '<div class="col-auto">'
-            + '<label class="form-label small mb-0 d-block text-end text-muted">&nbsp;</label>'
+            + '<label class="form-label mb-0 d-block text-end text-muted">&nbsp;</label>'
             + '<button type="button" class="btn btn-sm btn-success btn-add-guest-slot mt-1" '
             + 'data-booking-id="' + bookingId + '" data-slot-id="' + br.id + '">'
             + '<i class="bi bi-plus-circle me-1"></i>Thêm khách</button>'

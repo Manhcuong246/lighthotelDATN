@@ -20,13 +20,13 @@
                 <div class="card-body">
                     @if($review->title)
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Tiêu đề</label>
+                        <label class="form-label">Tiêu đề</label>
                         <p class="form-control-plaintext">{{ $review->title }}</p>
                     </div>
                     @endif
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Xếp hạng</label>
+                        <label class="form-label">Xếp hạng</label>
                         <p class="form-control-plaintext">
                             <div class="text-warning">
                                 @for($i = 0; $i < $review->rating; $i++)
@@ -39,14 +39,14 @@
 
                     @if($review->comment)
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Nhận xét</label>
+                        <label class="form-label">Nhận xét</label>
                         <div class="form-control-plaintext border rounded p-3 bg-light small" style="white-space: pre-wrap;">{{ $review->comment }}</div>
                     </div>
                     @endif
 
                     @if($review->reply)
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Phản hồi từ khách sạn</label>
+                        <label class="form-label">Phản hồi từ khách sạn</label>
                         <div class="form-control-plaintext border rounded p-3 bg-light small" style="white-space: pre-wrap;">{{ $review->reply }}</div>
                         @if($review->replied_at)
                             <small class="text-muted">
@@ -59,7 +59,7 @@
                     <form action="{{ route('admin.reviews.reply', $review) }}" method="POST" class="mt-3">
                         @csrf
                         <div class="mb-3">
-                            <label for="reply" class="form-label fw-bold">Cập nhật phản hồi</label>
+                            <label for="reply" class="form-label">Cập nhật phản hồi</label>
                             <textarea
                                 class="form-control @error('reply') is-invalid @enderror"
                                 id="reply"
@@ -79,11 +79,11 @@
 
                     <div class="row">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Ngày tạo</label>
+                            <label class="form-label">Ngày tạo</label>
                             <p class="form-control-plaintext">{{ $review->created_at ? (is_string($review->created_at) ? \Carbon\Carbon::parse($review->created_at)->format('d/m/Y H:i:s') : $review->created_at->format('d/m/Y H:i:s')) : '—' }}</p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Cập nhật lần cuối</label>
+                            <label class="form-label">Cập nhật lần cuối</label>
                             <p class="form-control-plaintext">{{ $review->updated_at ? (is_string($review->updated_at) ? \Carbon\Carbon::parse($review->updated_at)->format('d/m/Y H:i:s') : $review->updated_at->format('d/m/Y H:i:s')) : '—' }}</p>
                         </div>
                     </div>

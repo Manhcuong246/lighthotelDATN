@@ -113,7 +113,6 @@ function saveCurrentGuestData() {
             guestDataByRoom[roomIndex][guestIndex][field] = input.value;
         });
 
-        console.log(`Saved guest data for room ${roomIndex}:`, guestDataByRoom[roomIndex]);
     });
 }
 

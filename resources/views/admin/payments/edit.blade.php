@@ -31,7 +31,7 @@
                         @method('PUT')
 
                         <div class="mb-3">
-                            <label for="amount" class="form-label fw-bold">Số tiền (VNĐ)</label>
+                            <label for="amount" class="form-label">Số tiền (VNĐ)</label>
                             <input type="number" 
                                    class="form-control @error('amount') is-invalid @enderror" 
                                    id="amount" 
@@ -45,7 +45,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="method" class="form-label fw-bold">Phương thức thanh toán</label>
+                            <label for="method" class="form-label">Phương thức thanh toán</label>
                             <input type="text" 
                                    class="form-control @error('method') is-invalid @enderror" 
                                    id="method" 
@@ -58,7 +58,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="status" class="form-label fw-bold">Trạng thái</label>
+                            <label for="status" class="form-label">Trạng thái</label>
                             <select class="form-select @error('status') is-invalid @enderror" 
                                     id="status" 
                                     name="status">

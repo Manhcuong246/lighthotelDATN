@@ -52,7 +52,8 @@ class Review extends Model
      */
     public static function existsForBookingAndRoom(int $bookingId, int $roomId): bool
     {
-        return static::query()
+        // Include soft-deleted rows because DB unique key also blocks duplicates.
+        return static::withTrashed()
             ->where('booking_id', $bookingId)
             ->where('room_id', $roomId)
             ->exists();

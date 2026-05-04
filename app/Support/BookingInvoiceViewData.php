@@ -37,9 +37,13 @@ final class BookingInvoiceViewData
             'user',
             'room.roomType',
             'rooms.roomType',
+            'bookingGuests',
             'bookingRooms.room.roomType',
             'bookingServices.service',
             'surcharges.service',
+            'roomChangeHistories.fromRoom.roomType',
+            'roomChangeHistories.toRoom.roomType',
+            'roomChangeHistories.changedBy',
             'latestPayment',
             'invoice',
             'payments',
@@ -59,18 +63,25 @@ final class BookingInvoiceViewData
         if ($booking->bookingRooms->isNotEmpty()) {
             foreach ($booking->bookingRooms as $br) {
                 $room = $br->room;
+                $occ = $booking->occupancyDisplayCountsForBookingRoom($br);
+                $sub = (float) $br->subtotal;
+                $ppn = (float) $br->price_per_night;
+                $nightsBilled = $ppn > 0.009 ? max(1, (int) round($sub / $ppn)) : max(1, (int) $br->nights);
+                $nightsCalendar = (int) $br->nights;
+
                 $roomLines[] = [
                     'label' => $room?->name ?? 'Phòng #' . $br->room_id,
                     'detail' => $room?->roomType?->name,
-                    'nights' => (int) $br->nights,
-                    'unit_price' => (float) $br->price_per_night,
+                    'nights' => $nightsBilled,
+                    'nights_calendar' => $nightsCalendar,
+                    'unit_price' => $ppn,
                     'quantity_note' => sprintf(
-                        '%d NL, %d trẻ 6–11t, %d trẻ 0–5t',
-                        (int) $br->adults,
-                        (int) $br->children_6_11,
-                        (int) $br->children_0_5
+                        '%d NL, %d trẻ 6–11t, %d trẻ 0–5t (theo nhận phòng)',
+                        $occ['adults'],
+                        $occ['children_6_11'],
+                        $occ['children_0_5']
                     ),
-                    'line_total' => (float) $br->subtotal,
+                    'line_total' => $sub,
                 ];
             }
         } elseif ($booking->room) {
@@ -86,6 +97,27 @@ final class BookingInvoiceViewData
         }
 
         $invoiceNo = 'HĐ-' . $booking->created_at?->format('Ymd') . '-' . str_pad((string) $booking->id, 5, '0', STR_PAD_LEFT);
+
+        $roomChangeLines = $booking->roomChangeHistories
+            ->sortBy('changed_at')
+            ->values()
+            ->map(static function ($h): array {
+                $from = $h->fromRoom?->displayLabel() ?? ('#'.$h->from_room_id);
+                $to = $h->toRoom?->displayLabel() ?? ('#'.$h->to_room_id);
+                $delta = (float) ($h->price_difference ?? 0);
+
+                return [
+                    'at' => $h->changed_at,
+                    'from_room' => $from,
+                    'to_room' => $to,
+                    'reason' => (string) ($h->reason ?? ''),
+                    'changed_by' => (string) ($h->changedBy?->full_name ?? 'Hệ thống'),
+                    'delta' => $delta,
+                ];
+            })
+            ->all();
+
+        $roomChangeDeltaTotal = (float) collect($roomChangeLines)->sum('delta');
 
         $roomSubtotal = $booking->bookingRooms->isNotEmpty()
             ? (float) $booking->bookingRooms->sum('subtotal')
@@ -115,6 +147,8 @@ final class BookingInvoiceViewData
             'discountAmount',
             'invoiceNo',
             'roomSubtotal',
+            'roomChangeLines',
+            'roomChangeDeltaTotal',
             'extrasSubtotal',
             'totalPaidFromPayments',
             'balanceDue',

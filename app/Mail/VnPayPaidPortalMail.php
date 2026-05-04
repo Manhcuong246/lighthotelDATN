@@ -16,7 +16,9 @@ class VnPayPaidPortalMail extends Mailable
 
     public function __construct(
         public Booking $booking,
-        /** URL có chữ ký tới biên lai / chi tiết hóa đơn (bookings.invoice). */
+        /** URL có chữ ký tới chi tiết đơn (màn hình chính, có hoàn tiền khi đủ điều kiện). */
+        public string $bookingDetailUrl,
+        /** URL có chữ ký tới biên lai / hóa đơn. */
         public string $invoiceUrl,
         public ?HotelInfo $hotelInfo = null,
         /** URL có chữ ký tới danh sách đơn (liên kết phụ). */
@@ -38,10 +40,8 @@ class VnPayPaidPortalMail extends Mailable
 
     public function content(): Content
     {
-        $logoPublicPath = 'images/logo-light-hotel.svg';
-        $logoUrl = is_file(public_path($logoPublicPath))
-            ? asset($logoPublicPath)
-            : null;
+        $logoPath = storage_path('app/public/logo.png');
+        $logoUrl = is_file($logoPath) ? asset('storage/logo.png') : null;
 
         $nights = max(1, (int) $this->booking->check_in->diffInDays($this->booking->check_out));
 
@@ -50,6 +50,7 @@ class VnPayPaidPortalMail extends Mailable
             with: [
                 'booking' => $this->booking,
                 'hotelInfo' => $this->hotelInfo,
+                'bookingDetailUrl' => $this->bookingDetailUrl,
                 'invoiceUrl' => $this->invoiceUrl,
                 'guestPortalIndexUrl' => $this->guestPortalIndexUrl,
                 'nights' => $nights,

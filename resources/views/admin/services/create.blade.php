@@ -21,7 +21,7 @@
 
 <div class="mb-3">
 
-<label class="form-label fw-semibold">
+<label class="form-label">
 
 Tên dịch vụ
 
@@ -38,7 +38,7 @@ Tên dịch vụ
 
 <div class="mb-3">
 
-<label class="form-label fw-semibold">
+<label class="form-label">
 
 Giá (VNĐ)
 
@@ -55,7 +55,7 @@ Giá (VNĐ)
 
 <div class="mb-3">
 
-<label class="form-label fw-semibold">
+<label class="form-label">
 
 Mô tả
 

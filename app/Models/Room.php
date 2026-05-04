@@ -237,13 +237,18 @@ class Room extends Model
      */
     public function getStatusBadgeAttribute(): string
     {
+        $note = $this->maintenance_note ?? '';
+        if ($this->status === 'maintenance' && $note !== '' && str_contains(mb_strtolower((string) $note), 'dọn')) {
+            return '<span class="badge bg-info">Cần dọn</span>';
+        }
         $badges = [
             'available' => '<span class="badge bg-success">Trống</span>',
             'booked' => '<span class="badge bg-warning">Đã đặt</span>',
             'maintenance' => '<span class="badge bg-danger">Bảo trì</span>',
             'cleaning' => '<span class="badge bg-info">Đang dọn</span>',
         ];
-        return $badges[$this->status] ?? '<span class="badge bg-secondary">' . $this->status . '</span>';
+
+        return $badges[$this->status] ?? '<span class="badge bg-secondary">' . e($this->status) . '</span>';
     }
 
     /**

@@ -30,7 +30,7 @@
                         @method('PUT')
 
                         <div class="mb-3">
-                            <label for="type" class="form-label fw-bold">
+                            <label for="type" class="form-label">
                                 Loại nội dung <span class="text-danger">*</span>
                             </label>
                             <select name="type" id="type" class="form-select @error('type') is-invalid @enderror" required>
@@ -59,7 +59,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="title" class="form-label fw-bold">Tiêu đề</label>
+                            <label for="title" class="form-label">Tiêu đề</label>
                             <input type="text" 
                                    name="title" 
                                    id="title" 
@@ -72,7 +72,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="content" class="form-label fw-bold">Nội dung</label>
+                            <label for="content" class="form-label">Nội dung</label>
                             <textarea name="content" 
                                       id="content" 
                                       rows="12"
@@ -87,7 +87,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="image_url" class="form-label fw-bold">Hình ảnh</label>
+                            <label for="image_url" class="form-label">Hình ảnh</label>
                             @if($siteContent->image_url)
                             <div class="mb-2">
                                 <img src="{{ $siteContent->image_url }}" alt="Current image" 

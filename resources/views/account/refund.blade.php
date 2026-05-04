@@ -6,13 +6,20 @@
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <nav aria-label="breadcrumb" class="mb-4">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ route('account.bookings') }}">Lịch sử đặt phòng</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('bookings.show', $booking) }}">Đơn #{{ $booking->id }}</a></li>
-                    <li class="breadcrumb-item active">Yêu cầu hoàn tiền</li>
-                </ol>
-            </nav>
+            @if(empty($refundNavIsGuest))
+                @include('partials.account-context-nav', ['current' => 'refund', 'booking' => $booking])
+            @else
+                <nav aria-label="Breadcrumb" class="lh-account-context border-bottom pb-3 mb-4">
+                    <ol class="breadcrumb small mb-2">
+                        <li class="breadcrumb-item"><a href="{{ route('home') }}">Trang chủ</a></li>
+                        @if(! empty($guestPortalIndexUrl))
+                            <li class="breadcrumb-item"><a href="{{ $guestPortalIndexUrl }}">Đơn của tôi (link)</a></li>
+                        @endif
+                        <li class="breadcrumb-item"><a href="{{ $refundBookingShowUrl ?? route('bookings.show', $booking) }}">Đơn #{{ $booking->id }}</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Yêu cầu hoàn tiền</li>
+                    </ol>
+                </nav>
+            @endif
 
             <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
                 <div class="card-header bg-primary text-white py-4 text-center">
@@ -71,7 +78,7 @@
                         </div>
                     @endif
 
-                    <form action="{{ route('account.bookings.refund.submit', $booking) }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ $refundPostUrl ?? route('bookings.refund.submit', $booking) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <div class="row g-4">
                             <div class="col-md-6">
@@ -146,7 +153,7 @@
                                 <button type="submit" class="btn btn-primary px-5 py-2 rounded-3 flex-fill">
                                     <i class="bi bi-check-circle me-2"></i>Gửi yêu cầu hoàn tiền
                                 </button>
-                                <a href="{{ route('bookings.show', $booking) }}" class="btn btn-light px-4 py-2 rounded-3 border">
+                                <a href="{{ $refundBookingShowUrl ?? route('bookings.show', $booking) }}" class="btn btn-light px-4 py-2 rounded-3 border">
                                     Hủy bỏ
                                 </a>
                             </div>

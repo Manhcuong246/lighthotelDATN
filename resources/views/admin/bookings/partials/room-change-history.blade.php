@@ -1,6 +1,5 @@
 {{--
-    Component hiển thị lịch sử đổi phòng
-    Sử dụng: @include('admin.bookings.partials.room-change-history', ['booking' => $booking])
+    Lịch sử đổi phòng — @include('admin.bookings.partials.room-change-history', ['booking' => $booking])
 --}}
 
 @php
@@ -11,81 +10,70 @@
 @endphp
 
 @if($changeHistories->count() > 0)
-<div class="card shadow-sm mb-4 border-info">
-    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
-            <i class="bi bi-clock-history me-2"></i>Lịch sử đổi phòng
-        </h5>
-        <span class="badge bg-white text-info">{{ $changeHistories->count() }} lần đổi</span>
+<div class="abs-panel mb-4 border-secondary-subtle" style="border-left: 4px solid #64748b;">
+    <div class="rounded-top px-3 py-2 border-bottom bg-light d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-color: rgba(148,163,184,0.35);">
+        <h3 class="h6 fw-bold mb-0 text-secondary">
+            <i class="bi bi-arrow-left-right me-2 text-muted"></i>Lịch sử đổi phòng
+        </h3>
+        <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border">{{ $changeHistories->count() }} lần</span>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-3">Thởi gian</th>
-                        <th>Từ phòng</th>
-                        <th>→</th>
-                        <th>Đến phòng</th>
-                        <th>Chênh lệch giá</th>
-                        <th>Lý do</th>
-                        <th>Ngườii thực hiện</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($changeHistories as $history)
-                    <tr>
-                        <td class="ps-3">
-                            <div class="fw-semibold">{{ $history->changed_at->format('d/m/Y') }}</div>
-                            <small class="text-muted">{{ $history->changed_at->format('H:i') }}</small>
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">
-                                {{ $history->fromRoom?->name ?? 'N/A' }}
-                            </span>
-                            @if($history->fromRoom?->roomType)
-                                <br><small class="text-muted">{{ $history->fromRoom->roomType->name }}</small>
-                            @endif
-                        </td>
-                        <td class="text-center">
-                            <i class="bi bi-arrow-right-circle-fill text-info fs-5"></i>
-                        </td>
-                        <td>
-                            <span class="badge bg-primary">
-                                {{ $history->toRoom?->name ?? 'N/A' }}
-                            </span>
-                            @if($history->toRoom?->roomType)
-                                <br><small class="text-muted">{{ $history->toRoom->roomType->name }}</small>
-                            @endif
-                        </td>
-                        <td>
-                            @php
-                                $priceDiff = $history->price_difference ?? 0;
-                            @endphp
-                            @if($priceDiff > 0)
-                                <span class="badge bg-danger">+{{ number_format($priceDiff, 0, ',', '.') }} ₫</span>
-                            @elseif($priceDiff < 0)
-                                <span class="badge bg-success">{{ number_format($priceDiff, 0, ',', '.') }} ₫</span>
-                            @else
-                                <span class="badge bg-secondary">0 ₫</span>
-                            @endif
-                        </td>
-                        <td>
-                            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ $history->reason }}">
-                                {{ Str::limit($history->reason, 50) }}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge bg-light text-dark">
-                                <i class="bi bi-person-circle me-1"></i>
-                                {{ $history->changedBy?->full_name ?? 'System' }}
-                            </span>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+    <div class="table-responsive rounded-bottom">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Thời gian</th>
+                    <th>Từ phòng</th>
+                    <th class="text-center" style="width:2rem;"></th>
+                    <th>Đến phòng</th>
+                    <th class="text-nowrap">Chênh giá</th>
+                    <th>Lý do</th>
+                    <th class="pe-3 text-nowrap">Thực hiện</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($changeHistories as $history)
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-semibold">{{ $history->changed_at->format('d/m/Y') }}</div>
+                        <small class="text-muted">{{ $history->changed_at->format('H:i') }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-secondary border">
+                            {{ $history->fromRoom?->name ?? 'N/A' }}
+                        </span>
+                        @if($history->fromRoom?->roomType)
+                            <div class="small text-muted">{{ $history->fromRoom->roomType->name }}</div>
+                        @endif
+                    </td>
+                    <td class="text-center text-muted">
+                        <i class="bi bi-arrow-right"></i>
+                    </td>
+                    <td>
+                        <span class="badge rounded-pill" style="background: rgba(15,118,110,0.12); border: 1px solid rgba(15,118,110,0.25);">
+                            {{ $history->toRoom?->name ?? 'N/A' }}
+                        </span>
+                        @if($history->toRoom?->roomType)
+                            <div class="small text-muted">{{ $history->toRoom->roomType->name }}</div>
+                        @endif
+                    </td>
+                    <td>
+                        @include('shared.partials.room-change-price-diff', [
+                            'diff' => $history->price_difference ?? 0,
+                            'class' => 'fw-semibold small text-nowrap',
+                        ])
+                    </td>
+                    <td>
+                        <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ $history->reason }}">
+                            {{ Str::limit($history->reason, 45) }}
+                        </span>
+                    </td>
+                    <td class="pe-3 small text-muted">
+                        <i class="bi bi-person me-1"></i>{{ $history->changedBy?->full_name ?? 'Hệ thống' }}
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </div>
 @endif

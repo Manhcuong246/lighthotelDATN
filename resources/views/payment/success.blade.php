@@ -11,13 +11,9 @@
                     <i class="bi bi-check-circle display-4"></i>
                 </div>
                 <h3 class="card-title mb-3">Thanh toán thành công</h3>
-                @if(session('success'))
-                <p class="text-muted mb-4">{{ session('success') }}</p>
-                @else
                 <p class="text-muted mb-4">
                     Đơn đặt phòng của bạn đã được xác nhận. Chúng tôi sẽ liên hệ với bạn qua email để hoàn tất thủ tục.
                 </p>
-                @endif
                 @if(isset($booking))
                 <div class="bg-light rounded p-4 mb-4 text-start">
                     <p class="mb-2 border-bottom pb-2"><strong>Mã đơn:</strong> <span class="text-primary">#{{ $booking->id }}</span></p>

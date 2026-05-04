@@ -55,9 +55,9 @@
                             <tr>
                                 <td valign="middle" style="width:1%;padding-right:14px;">
                                     @if(!empty($logoUrl))
-                                        <img src="{{ $logoUrl }}" alt="" width="48" height="48" style="display:block;border-radius:10px;background:#fff;padding:4px;width:48px;height:48px;object-fit:contain;">
+                                        <img src="{{ $logoUrl }}" alt="" width="200" height="40" style="display:block;border-radius:10px;background:#fff;padding:6px 10px;height:40px;width:auto;max-width:200px;object-fit:contain;">
                                     @else
-                                        <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.15);text-align:center;line-height:48px;font-size:22px;">✦</div>
+                                        <div style="width:56px;height:40px;border-radius:10px;background:rgba(255,255,255,0.15);text-align:center;line-height:40px;font-size:22px;">✦</div>
                                     @endif
                                 </td>
                                 <td valign="middle" style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">

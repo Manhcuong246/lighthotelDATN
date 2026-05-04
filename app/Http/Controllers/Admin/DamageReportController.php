@@ -6,8 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\DamageReport;
 use App\Models\Room;
 use App\Models\Booking;
-use App\Models\RoomChangeHistory;
+use App\Models\BookingRoom;
 use App\Models\RoomBookedDate;
+use App\Services\RoomChangeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -140,71 +141,66 @@ class DamageReportController extends Controller
     }
 
     /**
-     * Change room for guest
+     * Change room for guest (cùng luồng pricing / lịch / HĐ với đổi phòng thông thường).
      */
-    public function changeRoom(Request $request, DamageReport $damageReport)
+    public function changeRoom(Request $request, DamageReport $damageReport, RoomChangeService $roomChangeService)
     {
         $validated = $request->validate([
             'new_room_id' => 'required|exists:rooms,id',
         ]);
 
-        if (!$damageReport->booking_id) {
+        if (! $damageReport->booking_id) {
             return back()->withErrors('Không có booking nào cần chuyển phòng');
         }
 
-        DB::beginTransaction();
-        try {
-            $booking = Booking::findOrFail($damageReport->booking_id);
-            $oldRoomId = $booking->room_id;
-            $newRoomId = $validated['new_room_id'];
-            $newRoom = Room::findOrFail($newRoomId);
+        $booking = Booking::findOrFail($damageReport->booking_id);
+        $newRoomId = (int) $validated['new_room_id'];
 
-            // Check new room availability
-            if (!$this->isRoomAvailable($newRoomId, $booking->check_in, $booking->check_out)) {
-                return back()->withErrors('Phòng mới không còn trống trong khoảng thời gian này');
+        $oldRoomId = (int) ($booking->room_id ?: 0);
+        if ($damageReport->room_id) {
+            $matchBr = BookingRoom::where('booking_id', $booking->id)
+                ->where('room_id', $damageReport->room_id)
+                ->exists();
+            if ($matchBr) {
+                $oldRoomId = (int) $damageReport->room_id;
             }
-
-            // Delete old booked dates
-            RoomBookedDate::where('booking_id', $booking->id)->delete();
-
-            // Create new booked dates
-            $period = CarbonPeriod::create($booking->check_in, $booking->check_out->copy()->subDay());
-            foreach ($period as $date) {
-                RoomBookedDate::create([
-                    'room_id' => $newRoomId,
-                    'booked_date' => $date->toDateString(),
-                    'booking_id' => $booking->id,
-                ]);
-            }
-
-            // Update booking
-            $booking->update([
-                'room_id' => $newRoomId,
-            ]);
-
-            // Create history record
-            RoomChangeHistory::create([
-                'booking_id' => $booking->id,
-                'from_room_id' => $oldRoomId,
-                'to_room_id' => $newRoomId,
-                'damage_report_id' => $damageReport->id,
-                'reason' => 'Phòng bị hư hỏng: ' . $damageReport->damage_type,
-                'changed_by' => Auth::id(),
-                'changed_at' => now(),
-            ]);
-
-            // Update damage report
-            $damageReport->update([
-                'requires_room_change' => false,
-            ]);
-
-            DB::commit();
-
-            return back()->with('success', 'Đã chuyển khách sang phòng ' . $newRoom->room_number . ' thành công!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage());
         }
+        if ($oldRoomId <= 0) {
+            $fallbackBr = BookingRoom::where('booking_id', $booking->id)
+                ->whereNotNull('room_id')
+                ->orderByDesc('id')
+                ->first();
+            $oldRoomId = $fallbackBr ? (int) $fallbackBr->room_id : 0;
+        }
+
+        if ($oldRoomId <= 0) {
+            return back()->withErrors('Không xác định được phòng hiện tại của khách để đổi.');
+        }
+
+        try {
+            $roomChangeService->changeRoom(
+                $booking,
+                $oldRoomId,
+                $newRoomId,
+                'Phòng bị hư hỏng: '.$damageReport->damage_type,
+                Auth::id(),
+                $damageReport->id,
+                true
+            );
+        } catch (\Throwable $e) {
+            return back()->withErrors('Có lỗi xảy ra: '.$e->getMessage());
+        }
+
+        $damageReport->update([
+            'requires_room_change' => false,
+        ]);
+
+        $newRoom = Room::findOrFail($newRoomId);
+
+        return back()->with(
+            'success',
+            'Đã chuyển khách sang phòng '.($newRoom->room_number ?: $newRoom->name).' thành công!'
+        );
     }
 
     /**

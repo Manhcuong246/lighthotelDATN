@@ -9,6 +9,9 @@ use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomBookedDate;
 use App\Models\RoomChangeHistory;
+use App\Support\BookingFinancialAudit;
+use App\Support\InvoiceBookingSynchronizer;
+use App\Support\RoomOccupancyPricing;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +68,10 @@ class RoomChangeService
      */
     public function isWithinAllowedTime(?string $reason = null): bool
     {
+        if (! config('room_changes.enforce_time_restriction', false)) {
+            return true;
+        }
+
         // Lý do khẩn cấp thì luôn cho phép
         if ($reason === self::TYPE_EMERGENCY || $reason === 'emergency') {
             return true;
@@ -102,9 +109,39 @@ class RoomChangeService
     }
 
     /**
+     * Đêm cần phòng trống khi đổi sang phòng mới (trùng với kiểm tra lịch lúc submit).
+     * Chưa vào kỳ lưu trú: từ đêm check-in đến đêm trước check-out.
+     * Đã trong kỳ lưu trú: từ đêm nay đến đêm trước check-out (đêm đã qua không cần phòng mới).
+     *
+     * @return array{0: string, 1: string} [Y-m-d đầu, Y-m-d cuối] inclusive
+     */
+    private function roomChangeHoldNightRangeInclusive(Booking $booking): array
+    {
+        $checkIn = Carbon::parse($booking->check_in)->startOfDay();
+        $checkOut = Carbon::parse($booking->check_out)->startOfDay();
+        $lastNight = $checkOut->copy()->subDay();
+        $today = Carbon::now()->startOfDay();
+
+        if ($lastNight->lt($checkIn)) {
+            return [$checkIn->toDateString(), $checkIn->toDateString()];
+        }
+
+        $firstNight = $checkIn;
+        if ($today->gte($checkIn) && $today->lt($checkOut)) {
+            $firstNight = $today;
+        }
+
+        if ($firstNight->gt($lastNight)) {
+            return [$lastNight->toDateString(), $lastNight->toDateString()];
+        }
+
+        return [$firstNight->toDateString(), $lastNight->toDateString()];
+    }
+
+    /**
      * Các room_id không được chọn làm phòng đích khi đổi phòng:
      * - Mọi phòng vật lý đang gán cho đơn (tránh chọn lại đúng phòng / phòng của slot khác trên cùng đơn).
-     * - Phòng có chỗ trong khoảng từ hôm nay đến đêm cuối lưu trú bởi đơn khách khác (đơn còn hiệu lực).
+     * - Phòng có lịch đơn khác trùng các đêm cần giữ (theo roomChangeHoldNightRangeInclusive).
      */
     public function getExcludedRoomIdsForChange(Booking $booking): array
     {
@@ -118,16 +155,14 @@ class RoomChangeService
             ->values()
             ->all();
 
-        $checkOut = Carbon::parse($booking->check_out)->startOfDay();
-        $rangeStart = Carbon::now()->startOfDay();
-        $rangeEndNight = $checkOut->copy()->subDay();
+        [$rangeStart, $rangeEndNight] = $this->roomChangeHoldNightRangeInclusive($booking);
 
-        if ($rangeStart->gt($rangeEndNight)) {
+        if (Carbon::parse($rangeStart)->gt(Carbon::parse($rangeEndNight))) {
             return $held;
         }
 
         $blocked = RoomBookedDate::query()
-            ->whereBetween('booked_date', [$rangeStart->toDateString(), $rangeEndNight->toDateString()])
+            ->whereBetween('booked_date', [$rangeStart, $rangeEndNight])
             ->whereHas('booking', function ($q) use ($booking) {
                 $q->where('id', '!=', $booking->id)
                     ->whereIn('status', ['pending', 'confirmed', 'checked_in']);
@@ -153,7 +188,8 @@ class RoomChangeService
 
         $currentRoom = $bookingRoom->room;
         $remainingNights = $this->calculateRemainingNights($booking);
-        $totalGuests = $bookingRoom->adults + $bookingRoom->children_6_11 + $bookingRoom->children_0_5;
+        // Trẻ 0–5 không tính vào sức chứa khi chọn phòng mới
+        $totalGuests = (int) $bookingRoom->adults + (int) $bookingRoom->children_6_11;
 
         $excludeIds = $this->getExcludedRoomIdsForChange($booking);
 
@@ -184,8 +220,11 @@ class RoomChangeService
             $priceDiffPerNight = $newPrice - $currentPrice;
 
             $changeType = self::TYPE_SAME_GRADE;
-            if ($priceDiffPerNight > 0) $changeType = self::TYPE_UPGRADE;
-            elseif ($priceDiffPerNight < 0) $changeType = self::TYPE_DOWNGRADE;
+            if ($priceDiffPerNight > 0) {
+                $changeType = self::TYPE_UPGRADE;
+            } elseif ($priceDiffPerNight < 0) {
+                $changeType = self::TYPE_DOWNGRADE;
+            }
 
             $totalDiff = $priceDiffPerNight * $remainingNights;
             $maxGuests = $room->catalogueMaxGuests();
@@ -207,30 +246,23 @@ class RoomChangeService
                 'status'                 => $room->status,
                 'is_available_now'       => $room->status === 'available',
             ];
-        })->toArray();
+        })->filter(static fn (array $row): bool => $row['has_capacity'] === true)->values()->toArray();
     }
 
     /**
-     * Kiểm tra xem phòng mới có khả dụng không
+     * Trùng lịch room_booked_dates từ đơn khác (đơn hiện tại đã loại trừ).
      *
-     * @param int $roomId
-     * @param string $checkIn
-     * @param string $checkOut
-     * @param int|null $excludeBookingId
-     * @return bool
+     * @param  string  $firstNightYmd  Đêm đầu (inclusive, Y-m-d)
+     * @param  string  $lastNightYmd  Đêm cuối (inclusive, Y-m-d)
      */
-    public function isRoomAvailable(int $roomId, string $checkIn, string $checkOut, ?int $excludeBookingId = null): bool
-    {
-        $room = Room::query()->find($roomId);
-        if (! $room || $room->isInMaintenance() || $room->status !== 'available') {
-            return false;
-        }
-
+    private function roomHasCalendarConflictFromOtherBookings(
+        int $roomId,
+        string $firstNightYmd,
+        string $lastNightYmd,
+        ?int $excludeBookingId = null
+    ): bool {
         $query = RoomBookedDate::where('room_id', $roomId)
-            ->whereBetween('booked_date', [
-                Carbon::parse($checkIn)->toDateString(),
-                Carbon::parse($checkOut)->copy()->subDay()->toDateString()
-            ])
+            ->whereBetween('booked_date', [$firstNightYmd, $lastNightYmd])
             ->whereHas('booking', function ($q) {
                 $q->whereIn('status', ['pending', 'confirmed', 'checked_in']);
             });
@@ -241,7 +273,25 @@ class RoomChangeService
             });
         }
 
-        return $query->doesntExist();
+        return $query->exists();
+    }
+
+    /**
+     * Phòng trống trên lịch + trạng thái «available» và không bảo trì.
+     *
+     * @param int $excludeBookingId Loại trừ đơn đang đổi (không tính chỗ giữ của chính đơn đó).
+     */
+    public function isRoomAvailable(int $roomId, string $checkIn, string $checkOut, ?int $excludeBookingId = null): bool
+    {
+        $room = Room::query()->find($roomId);
+        if (! $room || $room->isInMaintenance() || $room->status !== 'available') {
+            return false;
+        }
+
+        $first = Carbon::parse($checkIn)->toDateString();
+        $last = Carbon::parse($checkOut)->copy()->subDay()->toDateString();
+
+        return ! $this->roomHasCalendarConflictFromOtherBookings($roomId, $first, $last, $excludeBookingId);
     }
 
     /**
@@ -254,6 +304,7 @@ class RoomChangeService
      * @param int $newRoomId
      * @param string|null $reason
      * @param int|null $changedBy
+     * @param int|null $damageReportId Gắn lịch sử đổi phòng với báo hư hỏng (nếu có)
      * @param bool $isEmergency Bỏ qua giới hạn giờ
      * @return array
      * @throws \Exception
@@ -264,6 +315,7 @@ class RoomChangeService
         int $newRoomId, 
         ?string $reason = null, 
         ?int $changedBy = null,
+        ?int $damageReportId = null,
         bool $isEmergency = false
     ): array {
         // === VALIDATION (Bước 2: Kiểm tra tình trạng phòng) ===
@@ -274,16 +326,26 @@ class RoomChangeService
             throw new \Exception("Không thể đổi phòng sau {$deadline}:00. Chỉ cho phép trong trường hợp khẩn cấp.");
         }
 
-        // Kiểm tra phòng mới có khả dụng không
-        if (!$this->isRoomAvailable($newRoomId, $booking->check_in, $booking->check_out, $booking->id)) {
-            throw new \Exception('Phòng mới đã được đặt trong khoảng thời gian này');
-        }
-
         $newRoom = Room::with('roomType')->findOrFail($newRoomId);
 
-        // Business rule: Phòng mới phải status = available (Ready/Clean)
+        [$holdFirstNight, $holdLastNight] = $this->roomChangeHoldNightRangeInclusive($booking);
+        if ($this->roomHasCalendarConflictFromOtherBookings($newRoomId, $holdFirstNight, $holdLastNight, $booking->id)) {
+            throw new \Exception(
+                'Phòng mới đã có đơn khác giữ lịch trùng ngày với đơn #'.$booking->id.'.'
+            );
+        }
+
+        if ($newRoom->isInMaintenance()) {
+            throw new \Exception(
+                'Phòng mới đang bảo trì / chờ dọn (không đổi sang được). Kiểm tra ghi chú bảo trì hoặc đặt phòng về Trống sau khi dọn xong.'
+            );
+        }
+
         if ($newRoom->status !== 'available') {
-            throw new \Exception('Phòng mới phải ở trạng thái sẵn sàng (Ready/Clean) mới được đổi sang.');
+            throw new \Exception(
+                'Phòng mới đang ở trạng thái «'.$newRoom->status.'», không phải Trống — hệ thống chỉ cho đổi sang phòng available. '.
+                '(Nếu lịch đã rảnh nhưng trạng thái chưa cập nhật, vào danh mục phòng và đặt Trống.)'
+            );
         }
 
         $bookingRoom = BookingRoom::where('booking_id', $booking->id)
@@ -293,21 +355,22 @@ class RoomChangeService
         $oldRoom = Room::find($oldRoomId);
 
         // Kiểm tra sức chứa phòng mới (Bước 2: Validation)
-        $totalGuests = $bookingRoom->adults + $bookingRoom->children_6_11 + $bookingRoom->children_0_5;
+        // Trẻ 0–5 không tính vào sức chứa khi chọn phòng mới
+        $totalGuests = (int) $bookingRoom->adults + (int) $bookingRoom->children_6_11;
         $maxGuests = $newRoom->catalogueMaxGuests();
         if ($totalGuests > $maxGuests) {
-            throw new \Exception("Phòng mới chỉ chứa tối đa {$maxGuests} khách, hiện tại có {$totalGuests} khách.");
+            throw new \Exception("Phòng mới chỉ chứa tối đa {$maxGuests} khách (NL + trẻ 6–11; trẻ 0–5 không tính), hiện có {$totalGuests} khách tính sức chứa.");
         }
 
         // === EXECUTION ===
-        return DB::transaction(function () use ($booking, $oldRoomId, $newRoomId, $newRoom, $bookingRoom, $oldRoom, $reason, $changedBy, $isEmergency, $totalGuests) {
+        return DB::transaction(function () use ($booking, $oldRoomId, $newRoomId, $newRoom, $bookingRoom, $oldRoom, $reason, $changedBy, $damageReportId, $isEmergency, $totalGuests) {
             $nights = $bookingRoom->nights;
             $remainingNights = $this->calculateRemainingNights($booking);
             $oldPricePerNight = $bookingRoom->price_per_night;
 
             // === Bước 3: Tính chênh lệch ===
             // Công thức: Phí bổ sung = (Giá mới - Giá cũ) × Số đêm còn lại
-            $newPricePerNight = $this->calculateNewPrice($oldRoom, $newRoom, $oldPricePerNight);
+            $newPricePerNight = $this->calculateNewPrice($bookingRoom, $oldRoom, $newRoom, $oldPricePerNight);
 
             // Xác định loại đổi phòng
             $changeType = self::TYPE_SAME_GRADE;
@@ -339,12 +402,16 @@ class RoomChangeService
                 'subtotal' => $newSubtotal,
             ]);
 
+            // Đồng bộ bookings.room_id (legacy / màn hình cũ) khi trùng phòng đổi hoặc đơn chỉ một dòng phòng
+            if ((int) ($booking->room_id ?? 0) === $oldRoomId
+                || BookingRoom::where('booking_id', $booking->id)->count() === 1) {
+                Booking::where('id', $booking->id)->update(['room_id' => $newRoomId]);
+            }
+
             // 5. Cập nhật room_booked_dates
             $this->updateRoomBookedDates($booking, $oldRoomId, $newRoomId);
 
-            // 6. Cập nhật trạng thái phòng
-            // Business rule: Phòng cũ → "cleaning" (Dirty/Cần dọn dẹp)
-            //               Phòng mới → "occupied" (Đang sử dụng)
+            // 6. Cập nhật trạng thái phòng (ENUM DB: available | booked | maintenance)
             $oldRoomStatus = $this->updateRoomStatuses($oldRoomId, $newRoomId, $booking);
 
             // 7. Tính lại tổng tiền booking
@@ -354,7 +421,8 @@ class RoomChangeService
             $history = $this->createChangeHistory(
                 $booking->id, $oldRoomId, $newRoomId, $reason, $changedBy,
                 $oldPricePerNight, $newPricePerNight, $priceDifference,
-                $changeType, $remainingNights, $oldRoomStatus
+                $changeType, $remainingNights, $oldRoomStatus,
+                $damageReportId
             );
 
             // 9. Xử lý tài chính (Bước 3 tiếp)
@@ -363,6 +431,7 @@ class RoomChangeService
             // 10. Ghi BookingLog
             BookingLog::create([
                 'booking_id'  => $booking->id,
+                'user_id'     => $changedBy,
                 'old_status'  => $booking->status,
                 'new_status'  => $booking->status,
                 'notes'       => "Đổi phòng: " . ($oldRoom?->name ?? '#'.$oldRoomId) . " → " . $newRoom->name . ($reason ? " ({$reason})" : ''),
@@ -380,6 +449,29 @@ class RoomChangeService
                 'changed_by'      => $changedBy,
             ]);
 
+            $booking->refresh();
+            BookingFinancialAudit::record($booking, 'room_change', [
+                'room_change_history_id' => $history->id,
+                'from_room_id' => $oldRoomId,
+                'to_room_id' => $newRoomId,
+                'reason' => $reason,
+                'price_difference' => $priceDifference,
+                'change_type' => $changeType,
+                'remaining_nights' => $remainingNights,
+                'old_room_subtotal' => $oldSubtotal,
+                'new_room_subtotal' => $newSubtotal,
+                'payment_adjustment_attempted' => $paymentUpdate,
+            ], $changedBy);
+
+            try {
+                InvoiceBookingSynchronizer::syncFullFromBooking($booking->fresh());
+            } catch (\Throwable $e) {
+                Log::warning('invoice_sync_after_room_change_failed', [
+                    'booking_id' => $booking->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
             return [
                 'success'          => true,
                 'history_id'       => $history->id,
@@ -396,16 +488,27 @@ class RoomChangeService
     }
 
     /**
-     * Tính giá mới cho phòng
+     * Tính giá / đêm mới (giá gốc + phụ phí khách theo % loại phòng).
      */
-    private function calculateNewPrice(?Room $oldRoom, Room $newRoom, float $oldPricePerNight): float
+    private function calculateNewPrice(BookingRoom $bookingRoom, ?Room $oldRoom, Room $newRoom, float $oldPricePerNight): float
     {
-        // Cùng loại phòng → giữ nguyên giá cũ
         if ($oldRoom && $oldRoom->room_type_id === $newRoom->room_type_id) {
             return $oldPricePerNight;
         }
-        // Khác loại phòng → lấy giá catalogue
-        return $newRoom->catalogueBasePrice();
+
+        $newRoom->loadMissing('roomType');
+        $base = (float) $newRoom->catalogueBasePrice();
+        $rt = $newRoom->roomType;
+
+        $b = RoomOccupancyPricing::breakdown(
+            $base,
+            (int) $bookingRoom->adults,
+            (int) $bookingRoom->children_6_11,
+            (int) $bookingRoom->children_0_5,
+            $rt
+        );
+
+        return (float) $b['price_per_night'];
     }
 
     /**
@@ -413,34 +516,34 @@ class RoomChangeService
      */
     private function updateRoomBookedDates(Booking $booking, int $oldRoomId, int $newRoomId): void
     {
-        // Xóa các ngày đã đặt của phòng cũ
-        RoomBookedDate::where('booking_id', $booking->id)
-            ->where('room_id', $oldRoomId)
-            ->delete();
+        $checkIn = Carbon::parse($booking->check_in)->startOfDay();
+        $checkOut = Carbon::parse($booking->check_out)->startOfDay();
+        $lastNight = $checkOut->copy()->subDay();
 
-        // Thêm các ngày cho phòng mới
-        $period = CarbonPeriod::create($booking->check_in, $booking->check_out->copy()->subDay());
-        $days = [];
-        
-        foreach ($period as $date) {
-            $days[] = [
-                'room_id' => $newRoomId,
-                'booking_id' => $booking->id,
-                'booked_date' => $date->toDateString(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+        if ($checkIn->gt($lastNight)) {
+            return;
         }
 
-        if (!empty($days)) {
-            RoomBookedDate::insert($days);
+        $today = Carbon::now()->startOfDay();
+
+        if ($booking->status === 'checked_in' && $today->lt($checkOut)) {
+            $periodStart = $today->gt($checkIn) ? $today : $checkIn;
+            if ($periodStart->gt($lastNight)) {
+                return;
+            }
+            $period = CarbonPeriod::create($periodStart, $lastNight);
+            RoomBookedDate::replaceBookingRoomNights($booking->id, $oldRoomId, $newRoomId, $period);
+
+            return;
         }
+
+        $period = CarbonPeriod::create($checkIn, $lastNight);
+        RoomBookedDate::replaceBookingRoomNights($booking->id, $oldRoomId, $newRoomId, $period);
     }
 
     /**
-     * Cập nhật trạng thái phòng theo nghiệp vụ KS
-     * Business rule: Phòng cũ → cleaning (Dirty/Cần dọn dẹp), Phòng mới → occupied
-     * Tự động push lệnh dọn phòng cho Housekeeping
+     * Phòng cũ đang lưu trú: đánh dấu maintenance + ghi chú dọn (không dùng ENUM cleaning — DB thường chỉ có available/booked/maintenance).
+     * Phòng mới đang lưu trú: booked (đồng nghĩa đang có khách / đã giữ chỗ).
      */
     private function updateRoomStatuses(int $oldRoomId, int $newRoomId, Booking $booking): string
     {
@@ -451,13 +554,11 @@ class RoomChangeService
 
         // Nếu đang trong kỳ lưu trú
         if ($today >= $checkIn && $today < $checkOut) {
-            // Phòng cũ → cleaning (Dirty) - tự động push lệnh dọn cho Housekeeping
             Room::where('id', $oldRoomId)->update([
-                'status'           => 'cleaning',
+                'status'           => 'maintenance',
                 'maintenance_note' => 'Cần dọn dẹp sau khi khách đổi phòng từ đơn #' . $booking->id,
             ]);
-            // Phòng mới → occupied
-            Room::where('id', $newRoomId)->update(['status' => 'occupied']);
+            Room::where('id', $newRoomId)->update(['status' => 'booked']);
 
             Log::info('Housekeeping notification: room needs cleaning', [
                 'room_id'    => $oldRoomId,
@@ -487,9 +588,10 @@ class RoomChangeService
             return $bs->quantity * $bs->price;
         });
         $surchargesTotal = $booking->surcharges()->sum('amount');
+        $discount = (float) ($booking->discount_amount ?? 0);
 
-        $newTotal = $roomsTotal + $servicesTotal + $surchargesTotal;
-        
+        $newTotal = max(0.0, $roomsTotal + $servicesTotal + $surchargesTotal - $discount);
+
         $booking->update(['total_price' => $newTotal]);
 
         return $newTotal;
@@ -504,13 +606,14 @@ class RoomChangeService
         float $oldPrice, float $newPrice, float $priceDifference,
         string $changeType = self::TYPE_SAME_GRADE,
         int $remainingNights = 0,
-        string $oldRoomStatus = 'available'
+        string $oldRoomStatus = 'available',
+        ?int $damageReportId = null
     ): RoomChangeHistory {
         return RoomChangeHistory::create([
             'booking_id'         => $bookingId,
             'from_room_id'       => $fromRoomId,
             'to_room_id'         => $toRoomId,
-            'damage_report_id'   => null,
+            'damage_report_id'   => $damageReportId,
             'reason'             => $reason ?? 'Khách yêu cầu đổi phòng',
             'changed_by'         => $changedBy,
             'changed_at'         => now(),
@@ -534,12 +637,18 @@ class RoomChangeService
             ->orderByDesc('id')
             ->first();
 
-        if (!$payment || !in_array($payment->status, ['paid', 'partial', 'pending'])) {
+        if (! $payment) {
+            $booking->reconcilePaymentStatusWithPayments();
+
             return false;
         }
 
-        // Cập nhật số tiền payment
-        $payment->update(['amount' => $newTotalPrice]);
+        // Chỉ chỉnh amount khi giao dịch còn pending — paid là tiền đã vào quỹ, không được nhân với tổng đơn mới.
+        if ($payment->status === 'pending') {
+            $payment->update(['amount' => $newTotalPrice]);
+        }
+
+        $booking->reconcilePaymentStatusWithPayments();
 
         if ($priceDifference < 0) {
             // Hạ hạng: phát sinh hoàn tiền hoặc credit
@@ -604,7 +713,9 @@ class RoomChangeService
             $history->to_room_id,
             $history->from_room_id,
             'Hoàn tác: ' . ($reason ?? $history->reason),
-            $changedBy
+            $changedBy,
+            null,
+            false
         );
     }
 }

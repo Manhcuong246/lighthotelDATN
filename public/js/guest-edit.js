@@ -22,16 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function loadGuestInfo(modal, bookingId) {
     const url = `/admin/bookings/${bookingId}/guest-info`;
-    console.log('Fetching guest info from:', url);
 
     fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Received data:', data);
             if (data.error) {
                 console.error('Server error:', data.error);
                 return;
@@ -85,7 +79,6 @@ function loadGuestInfo(modal, bookingId) {
                     <div class="alert alert-danger">
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         <strong>Lỗi tải dữ liệu:</strong> ${error.message || 'Không thể tải thông tin khách hàng. Vui lòng thử lại.'}
-                        <br><small>Vui lòng kiểm tra console để biết chi tiết lỗi.</small>
                     </div>
                 `;
             }
@@ -162,28 +155,17 @@ function enterEditMode(modal, bookingId) {
 }
 
 function saveGuestChanges(modal, bookingId) {
-    console.log('saveGuestChanges called for booking', bookingId);
-
     if (!window.currentGuestData || !window.currentGuestData[bookingId]) {
-        console.error('No guest data found for booking', bookingId);
         return;
     }
 
     const guestList = window.currentGuestData[bookingId];
     const guests = [];
 
-    console.log('Processing guests:', guestList);
-
     guestList.forEach(guest => {
         const nameInput = document.getElementById(`guestName${guest.id}`);
         const cccdInput = document.getElementById(`guestCccd${guest.id}`);
         const typeInput = document.getElementById(`guestType${guest.id}`);
-
-        console.log(`Guest ${guest.id}:`, {
-            nameInput: nameInput?.value,
-            cccdInput: cccdInput?.value,
-            typeInput: typeInput?.value
-        });
 
         if (nameInput && cccdInput && typeInput) {
             guests.push({
@@ -194,8 +176,6 @@ function saveGuestChanges(modal, bookingId) {
             });
         }
     });
-
-    console.log('Prepared guests data:', guests);
 
     if (guests.some(g => !g.name)) {
         alert('Vui lòng nhập tên cho tất cả khách hàng!');
@@ -209,9 +189,6 @@ function saveGuestChanges(modal, bookingId) {
 
     // Send update request
     const url = `/admin/bookings/${bookingId}/guest-info`;
-    console.log('Sending PUT request to:', url);
-    console.log('CSRF Token:', csrfToken);
-    console.log('Request body:', JSON.stringify({ guests: guests }));
 
     fetch(url, {
         method: 'PUT',
@@ -222,13 +199,8 @@ function saveGuestChanges(modal, bookingId) {
         },
         body: JSON.stringify({ guests: guests })
     })
-    .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
-        console.log('Response data:', data);
         if (data.error) {
             alert('Lỗi: ' + data.error);
             return;

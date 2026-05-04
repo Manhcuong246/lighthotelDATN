@@ -23,7 +23,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('admin.bookings.changeRoomV2', $booking) }}" method="POST" class="room-change-form">
+            <form action="{{ route('admin.bookings.changeRoom', $booking) }}" method="POST" class="room-change-form">
                 @csrf
                 <div class="modal-body">
                     <input type="hidden" name="old_room_id" value="{{ $bookingRoom->room_id }}">
@@ -47,7 +47,7 @@
 
                     <!-- Chọn phòng mới -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold">
+                        <label class="form-label">
                             <i class="bi bi-door-open me-1"></i>Chọn phòng mới
                         </label>
                         <select name="new_room_id" class="form-select new-room-select" required data-current-room="{{ $bookingRoom->room_id }}">
@@ -55,7 +55,7 @@
                         </select>
                         <div class="form-text text-muted">
                             <i class="bi bi-info-circle me-1"></i>
-                            Chỉ hiển thị các phòng trống trong khoảng thởi gian đặt phòng
+                            Chỉ phòng Trống, không trùng lịch đơn khác trên các đêm cần giữ, và đủ sức chứa cho dòng đặt này.
                         </div>
                     </div>
 
@@ -79,7 +79,7 @@
 
                     <!-- Lý do đổi -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold">
+                        <label class="form-label">
                             <i class="bi bi-chat-left-text me-1"></i>Lý do đổi phòng
                         </label>
                         <textarea name="reason" class="form-control" rows="2" placeholder="Ví dụ: Khách yêu cầu đổi phòng rộng hơn, Phòng hỏng thiết bị..." required></textarea>
@@ -89,7 +89,7 @@
                     <div class="alert alert-warning d-flex align-items-center">
                         <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
                         <div>
-                            <strong>Lưu ý:</strong> Sau khi đổi phòng, giá sẽ được tính lại theo giá của phòng mới.
+                            <strong>Lưu ý:</strong> Sau khi đổi phòng, hệ thống cập nhật lại giá theo phòng mới.
                             @if($booking->status === 'checked_in')
                                 <br>Đơn đang check-in, việc đổi phòng sẽ cập nhật trạng thái phòng ngay lập tức.
                             @endif
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             option.dataset.price = room.base_price;
                             option.dataset.name = room.name;
                             option.dataset.type = room.room_type?.name || 'N/A';
-                            option.dataset.diff = room.price_difference;
+                            option.dataset.diff = room.total_price_difference;
                             optgroup.appendChild(option);
                         });
                         select.appendChild(optgroup);
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             option.dataset.price = room.base_price;
                             option.dataset.name = room.name;
                             option.dataset.type = room.room_type?.name || 'N/A';
-                            option.dataset.diff = room.price_difference;
+                            option.dataset.diff = room.total_price_difference;
                             optgroup.appendChild(option);
                         });
                         select.appendChild(optgroup);
@@ -191,19 +191,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const type = selected.dataset.type;
             const diff = parseFloat(selected.dataset.diff);
             const currentPrice = {{ $bookingRoom->price_per_night }};
-            const nights = {{ $bookingRoom->nights }};
 
             infoDiv.classList.remove('d-none');
             infoDiv.querySelector('.new-room-name').textContent = name;
             infoDiv.querySelector('.new-room-type').textContent = type;
             infoDiv.querySelector('.new-room-price').textContent = new Intl.NumberFormat('vi-VN').format(price) + ' ₫/đêm';
             
-            const totalDiff = diff * nights;
+            const totalDiff = diff;
             const diffText = infoDiv.querySelector('.price-difference');
+            const fmt = (n) => new Intl.NumberFormat('vi-VN').format(Math.abs(n));
             if (totalDiff > 0) {
-                diffText.innerHTML = `<span class="text-danger">Tăng thêm: ${new Intl.NumberFormat('vi-VN').format(totalDiff)} ₫ (${nights} đêm)</span>`;
+                diffText.innerHTML = `<span class="text-danger" title="Khách phải trả thêm">Khách trả thêm: −${fmt(totalDiff)} ₫</span>`;
             } else if (totalDiff < 0) {
-                diffText.innerHTML = `<span class="text-success">Giảm: ${new Intl.NumberFormat('vi-VN').format(Math.abs(totalDiff))} ₫ (${nights} đêm)</span>`;
+                diffText.innerHTML = `<span class="text-success" title="Khách được hoàn / nhận lại">Khách được hoàn: +${fmt(totalDiff)} ₫</span>`;
             } else {
                 diffText.innerHTML = '<span class="text-muted">Giá không đổi</span>';
             }

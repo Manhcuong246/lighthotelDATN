@@ -78,38 +78,19 @@ class AuthController extends Controller
             'email' => Str::lower(trim((string) $request->email))
         ]);
 
-        // DEBUG: Log input data
-        Log::info('Register attempt', [
-            'email' => $request->email,
-            'full_name' => $request->full_name,
-            'phone' => $request->phone,
-            'has_password' => !empty($request->password),
-            'password_confirmation' => $request->password_confirmation
-        ]);
-
-        // Tìm user có email này
         $existing = User::whereRaw('LOWER(email) = ?', [$request->email])->first();
 
-        // Kiểm tra email trùng lặp
         $emailRule = Rule::unique('users', 'email');
 
-        // Cho phép email này nếu là tài khoản guest tạm
         if ($existing && $existing->isProvisionalGuestAccount()) {
             $emailRule = Rule::unique('users', 'email')->ignore($existing->id);
-            Log::info('Found existing provisional guest', ['user_id' => $existing->id]);
         }
 
-        try {
-            $validated = $request->validate([
-                'full_name' => 'required|string|max:150',
-                'email' => ['required', 'email', 'max:150', $emailRule],
-                'password' => 'required|min:6|confirmed',
-            ]);
-            Log::info('Validation passed', ['validated' => $validated]);
-        } catch (\Exception $e) {
-            Log::error('Validation failed', ['errors' => $e->getMessage()]);
-            throw $e;
-        }
+        $request->validate([
+            'full_name' => 'required|string|max:150',
+            'email' => ['required', 'email', 'max:150', $emailRule],
+            'password' => 'required|min:6|confirmed',
+        ]);
 
         // Nếu là guest tạm -> nâng cấp account
         if ($existing && $existing->isProvisionalGuestAccount()) {
@@ -130,14 +111,7 @@ class AuthController extends Controller
             return redirect('/login')->with('success', 'Kích hoạt tài khoản thành công! Vui lòng đăng nhập.');
         }
 
-        // Tạo user mới
         try {
-            Log::info('Creating new user', [
-                'email' => $request->email,
-                'full_name' => $request->full_name,
-                'phone' => $request->phone
-            ]);
-            
             $user = User::create([
                 'full_name' => $request->full_name,
                 'email' => $request->email,
@@ -145,14 +119,11 @@ class AuthController extends Controller
                 'phone' => $request->phone,
                 'status' => 'active',
             ]);
-            
-            Log::info('User created successfully', ['user_id' => $user->id, 'email' => $user->email]);
 
             $customerRole = \App\Models\Role::where('name', 'customer')->first();
 
             if ($customerRole) {
                 $user->roles()->attach($customerRole->id);
-                Log::info('Customer role attached to user', ['user_id' => $user->id]);
             } else {
                 Log::error('Customer role not found in database');
             }

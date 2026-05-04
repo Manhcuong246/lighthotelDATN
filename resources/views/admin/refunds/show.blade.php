@@ -7,7 +7,7 @@
     <div class="d-flex align-items-center">
         <a href="{{ route('admin.refunds.index') }}" class="btn btn-sm btn-outline-secondary btn-admin-icon me-3" title="Danh sách"><i class="bi bi-arrow-left"></i></a>
         <h4 class="mb-0 fw-bold pe-3 border-end">Chi tiết hoàn tiền #{{ $refundRequest->booking_id }}</h4>
-        <span class="ms-3 badge {{ $refundRequest->status === 'pending_refund' ? 'bg-warning text-dark' : ($refundRequest->status === 'refunded' ? 'bg-success' : 'bg-danger') }} rounded-pill px-3 py-2">
+        <span class="ms-3 badge {{ $refundRequest->status === 'pending_refund' ? 'bg-warning text-dark' : ($refundRequest->status === 'refunded' ? 'bg-success' : 'bg-danger') }}">
             @if($refundRequest->status === 'pending_refund') Đang chờ xử lý
             @elseif($refundRequest->status === 'refunded') Đã hoàn tiền
             @elseif($refundRequest->status === 'rejected') Đã từ chối
@@ -103,7 +103,7 @@
                 <form action="{{ route('admin.refunds.process', $refundRequest) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="mb-4">
-                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Quyết định xử lý</label>
+                        <label class="form-label mb-2">Quyết định xử lý</label>
                         <div class="d-flex gap-3">
                             <input type="radio" class="btn-check" name="action" id="approve" value="approve" checked autocomplete="off">
                             <label class="btn btn-outline-success flex-fill border-2 py-3 d-flex align-items-center justify-content-center gap-2" for="approve" title="Chấp nhận">
@@ -120,7 +120,7 @@
                     </div>
 
                     <div id="proof-container" class="mb-4">
-                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Minh chứng chuyển khoản (Bắt buộc nếu chấp nhận)</label>
+                        <label class="form-label mb-2" for="refund_proof_image">Minh chứng chuyển khoản (Bắt buộc nếu chấp nhận)</label>
                         <div class="p-3 rounded-3 bg-light border border-dashed border-2">
                             <input type="file" name="refund_proof_image" class="form-control" id="refund_proof_image">
                             <div class="form-text small mt-2">Đính kèm ảnh chụp màn hình xác nhận chuyển khoản thành công.</div>
@@ -128,13 +128,13 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Ghi chú phản hồi khách (Tùy chọn)</label>
-                        <textarea name="admin_note" rows="4" class="form-control p-3 bg-light border-0" placeholder="Nhập lý do từ chối hoặc lời nhắn gửi khách..."></textarea>
+                        <label class="form-label mb-2" for="admin_note">Ghi chú phản hồi khách (Tùy chọn)</label>
+                        <textarea name="admin_note" id="admin_note" rows="4" class="form-control p-3 bg-light border-0" placeholder="Nhập lý do từ chối hoặc lời nhắn gửi khách..."></textarea>
                     </div>
 
                     <div class="alert alert-warning border-0 small mb-4 bg-opacity-75 d-flex">
                         <i class="bi bi-lightbulb me-2 pt-1 text-warning"></i>
-                        <span><strong>Lưu ý:</strong> Khi chấp nhận, đơn đặt phòng sẽ bị hủy vĩnh viễn và ngày đặt sẽ được giải phóng. Hành động này không thể hoàn tác.</span>
+                        <span><strong>Lưu ý:</strong> Khi chấp nhận, đơn sẽ bị hủy vĩnh viễn và không thể hoàn tác.</span>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm d-flex align-items-center justify-content-center" title="Xử lý yêu cầu" onclick="return confirm('Bạn có chắc chắn muốn xử lý yêu cầu này?')">

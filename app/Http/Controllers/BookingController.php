@@ -3,16 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
-use App\Models\Guest;
-use App\Models\Payment;
+use App\Models\BookingPaymentIntent;
 use App\Models\Room;
 use App\Models\RoomType;
-use App\Models\BookingRoom;
 use App\Models\User;
 use App\Models\BookingLog;
 use App\Support\BookingInvoiceViewData;
 use App\Services\VnPayService;
 use App\Services\BookingService;
+use App\Services\RefundService;
 use App\Http\Requests\StoreBookingRequest;
 use App\Exceptions\BookingException;
 use Illuminate\Support\Str;
@@ -106,7 +105,122 @@ class BookingController extends Controller
             }
         }
 
-        return view('account.booking-show', compact('booking', 'guestPortalUser', 'guestPortalIndexUrl', 'guestPortalInvoiceUrl'));
+        $canCustomerRefundOnDetail = $isOwner || $signedOk;
+        $refundFormUrl = null;
+        if ($canCustomerRefundOnDetail) {
+            $expires = now()->addDays(max(1, (int) config('booking.signed_booking_show_ttl_days', 90)));
+            $refundFormUrl = $signedOk && ! $isOwner
+                ? URL::temporarySignedRoute('bookings.refund', $expires, ['booking' => $booking->id], true)
+                : route('bookings.refund', $booking, true);
+        }
+
+        return view(
+            'account.booking-show',
+            compact('booking', 'guestPortalUser', 'guestPortalIndexUrl', 'guestPortalInvoiceUrl', 'canCustomerRefundOnDetail', 'refundFormUrl')
+        );
+    }
+
+    /**
+     * Form yêu cầu hoàn tiền: chủ đơn đăng nhập hoặc khách mở link có chữ ký (cùng quy tắc với chi tiết đơn).
+     */
+    public function refundForm(Request $request, Booking $booking, RefundService $refundService)
+    {
+        $booking->load(['payment', 'refundRequest']);
+
+        $isOwner = Auth::check() && (int) Auth::id() === (int) $booking->user_id;
+        $signedOk = $this->hasValidSignedAccess($request);
+        if (! $isOwner && ! $signedOk) {
+            abort(403, 'Bạn không có quyền truy cập. Đăng nhập tài khoản đặt phòng hoặc dùng link được gửi trong email.');
+        }
+
+        $eligibility = $refundService->canCustomerRequestRefund($booking, (int) $booking->user_id);
+        if (! ($eligibility['allowed'] ?? false)) {
+            return redirect()->to($this->customerBookingShowUrl($booking, $isOwner, $request))
+                ->with('error', $eligibility['message'] ?? 'Đơn chưa đủ điều kiện yêu cầu hoàn tiền.');
+        }
+
+        $calc = $eligibility['calc'];
+        $latestRefundRequest = $eligibility['existing'] ?? null;
+
+        $expires = now()->addDays(max(1, (int) config('booking.signed_booking_show_ttl_days', 90)));
+        $refundPostUrl = $signedOk && ! $isOwner
+            ? URL::temporarySignedRoute('bookings.refund.submit', $expires, ['booking' => $booking->id], true)
+            : route('bookings.refund.submit', $booking, true);
+        $refundBookingShowUrl = $this->customerBookingShowUrl($booking, $isOwner, $request);
+        $refundNavIsGuest = $signedOk && ! $isOwner;
+        $guestPortalIndexUrl = null;
+        if ($refundNavIsGuest) {
+            $portal = User::query()->find((int) $booking->user_id);
+            if ($portal && ! $portal->canAccessAdmin()) {
+                $guestPortalIndexUrl = URL::temporarySignedRoute('guest.bookings.index', $expires, ['user' => $portal->id], true);
+            }
+        }
+
+        return view('account.refund', compact(
+            'booking',
+            'calc',
+            'latestRefundRequest',
+            'refundPostUrl',
+            'refundBookingShowUrl',
+            'refundNavIsGuest',
+            'guestPortalIndexUrl'
+        ));
+    }
+
+    public function submitRefund(Request $request, Booking $booking, RefundService $refundService)
+    {
+        $isOwner = Auth::check() && (int) Auth::id() === (int) $booking->user_id;
+        $signedOk = $this->hasValidSignedAccess($request);
+        if (! $isOwner && ! $signedOk) {
+            abort(403);
+        }
+
+        $eligibility = $refundService->canCustomerRequestRefund($booking, (int) $booking->user_id);
+        if (! ($eligibility['allowed'] ?? false)) {
+            return back()->with('error', $eligibility['message'] ?? 'Không đủ điều kiện hoàn tiền.');
+        }
+
+        $validated = $request->validate([
+            'account_name' => 'required|string|max:255',
+            'account_number' => 'required|string|max:50',
+            'bank_name' => 'required|string|max:255',
+            'qr_image' => 'nullable|image|max:2048',
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        if ($request->hasFile('qr_image')) {
+            $validated['qr_image'] = $request->file('qr_image')->store('refunds', 'public');
+        }
+
+        $result = $refundService->submitCustomerRefundRequest($booking, (int) $booking->user_id, $validated);
+        if (! $result['success']) {
+            return back()->with('error', $result['message'] ?? 'Không thể gửi yêu cầu.');
+        }
+
+        return redirect()->to($this->customerBookingShowUrl($booking, $isOwner, $request))
+            ->with('success', 'Yêu cầu hoàn tiền của bạn đã được gửi và đang chờ xử lý.');
+    }
+
+    private function customerBookingShowUrl(Booking $booking, bool $isOwner, ?Request $request = null): string
+    {
+        if ($isOwner) {
+            return route('bookings.show', $booking, true);
+        }
+
+        $portalUserId = (int) $booking->user_id;
+        if ($request) {
+            $q = (int) $request->query('portal_user', 0);
+            if ($q > 0 && $q === (int) $booking->user_id) {
+                $portalUserId = $q;
+            }
+        }
+
+        return URL::temporarySignedRoute(
+            'bookings.show',
+            now()->addDays(max(1, (int) config('booking.signed_booking_show_ttl_days', 90))),
+            ['booking' => $booking->id, 'portal_user' => $portalUserId],
+            true
+        );
     }
 
     /**
@@ -161,43 +275,31 @@ class BookingController extends Controller
 
         try {
             $validated = $request->validated();
-            $booking = $this->bookingService->createBooking($validated);
+            $ctx = $this->bookingService->composeCheckoutContext($validated);
+            $amountVnd = (int) round((float) $ctx['totalPrice']);
 
-            // Tạo 1 Guest duy nhất - người đại diện (CCCD có thể bổ sung khi check-in)
-            if ($request->filled('name')) {
-                $repCccd = trim((string) $request->input('cccd', ''));
-                Guest::create([
-                    'booking_id'       => $booking->id,
-                    'room_type'        => null,
-                    'room_index'       => 0,
-                    'name'             => trim($request->input('name')),
-                    'cccd'             => $repCccd !== '' ? $repCccd : null,
-                    'type'             => 'adult',
-                    'is_representative'=> 1,
-                    'checkin_status'   => 'pending',
-                ]);
-            }
+            $expireMinutes = max(5, min(1440, (int) config('vnpay.transaction_expire_minutes', 30)));
+            $intent = BookingPaymentIntent::query()->create([
+                'payload' => $validated,
+                'amount_vnd' => $amountVnd,
+                'expires_at' => now()->addMinutes($expireMinutes + 2),
+            ]);
 
-            // 11. Redirect VNPay
             $vnPayService = app(VnPayService::class);
-            $returnUrl    = route('payment.vnpay.return');
-            $orderInfo    = 'Dat phong Light Hotel #' . $booking->id;
-            $txnRef       = 'LIGHT' . $booking->id;
-            $amountVND    = (int) round($booking->total_price);
-            $bankCode     = $request->input('bank_code') ?: null;
+            $returnUrl = route('payment.vnpay.return');
+            $orderInfo = 'Dat phong Light Hotel phien #' . $intent->id;
+            $txnRef = $intent->vnPayTxnRef();
+            $bankCode = $request->input('bank_code') ?: null;
 
             $paymentUrl = $vnPayService->createPaymentUrl(
                 $txnRef,
-                $amountVND,
+                $amountVnd,
                 $orderInfo,
                 $returnUrl,
                 $request->ip(),
                 'vn',
                 $bankCode
             );
-
-            // Email hướng dẫn/link thanh toán chỉ gửi khi admin đặt hộ (BookingAdminController).
-            // Khách đặt web: chuyển thẳng VNPay; sau khi trả về thành công sẽ gửi mail xác nhận (VnPayController).
 
             return $vnPayService->redirectAwayNoCache($paymentUrl);
 
@@ -333,108 +435,60 @@ class BookingController extends Controller
     {
         /** @var User|null $user */
         $user = Auth::user();
+        if ($user && $user->canAccessAdmin()) {
+            return back()->withErrors('Tài khoản nhân viên/quản trị không thể đặt phòng trên giao diện khách.')->withInput();
+        }
 
         try {
             $validated = $request->validated();
 
-            DB::beginTransaction();
+            $roomTypeId = (int) $validated['room_type_id'];
+            $qty = (int) $validated['rooms'];
+            $roomTypeIds = array_fill(0, $qty, $roomTypeId);
 
-            // 1. Tính giá theo loại phòng (không gán số phòng trước check-in)
-            $checkIn = \Carbon\Carbon::parse($validated['check_in']);
-            $checkOut = \Carbon\Carbon::parse($validated['check_out']);
-            $nights = max(1, $checkIn->diffInDays($checkOut));
-            $roomType = RoomType::query()->findOrFail((int) $validated['room_type_id']);
-            $pricingRoom = Room::query()
-                ->where('room_type_id', $roomType->id)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->orderBy('id')
-                ->first()
-                ?? Room::firstCatalogueRoomForRoomType((int) $roomType->id);
-            if (! $pricingRoom) {
-                throw new \RuntimeException('Loại phòng đã chọn không có phòng hợp lệ (tránh phòng bảo trì) để báo giá.');
-            }
-
-            $dates = [];
-            foreach (CarbonPeriod::create($checkIn, $checkOut->copy()->subDay()) as $date) {
-                $dates[] = $date->toDateString();
-            }
-
-            Room::query()
-                ->where('room_type_id', (int) $roomType->id)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->lockForUpdate()
-                ->pluck('id');
-
-            $bookedRoomIds = \App\Models\RoomBookedDate::query()
-                ->whereIn('booked_date', $dates)
-                ->pluck('room_id')
-                ->unique()
-                ->toArray();
-            $physicalAvailable = Room::query()
-                ->where('room_type_id', $roomType->id)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->whereNotIn('id', $bookedRoomIds)
-                ->count();
-
-            $roomsCount = $validated['rooms'];
-            $unassigned = BookingRoom::unassignedCountForRoomTypeBetween(
-                (int) $roomType->id,
-                $checkIn->toDateString(),
-                $checkOut->toDateString()
-            );
-            if (($physicalAvailable - $unassigned) < $roomsCount) {
-                DB::rollBack();
-                return back()->withErrors('Không đủ phòng trống theo loại đã chọn trong khoảng thời gian này.')->withInput();
-            }
-            $pricePerNight = (float) $pricingRoom->catalogueBasePrice();
-            $roomSubtotal = $pricePerNight * $nights;
-
-            $booking = Booking::create([
-                'user_id'     => $user?->id,
-                'check_in'    => $validated['check_in'],
-                'check_out'   => $validated['check_out'],
-                'room_id'     => null,
-                'adults'      => $roomsCount,
-                'total_price' => $roomSubtotal * $roomsCount,
-                'status'      => 'pending',
-                'payment_status' => 'pending',
+            $asStoreBookingPayload = [
+                'room_type_ids' => $roomTypeIds,
+                'check_in' => $validated['check_in'],
+                'check_out' => $validated['check_out'],
+                'full_name' => $validated['full_name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
                 'payment_method' => 'vnpay',
-                'placed_via' => Booking::PLACED_VIA_CUSTOMER_WEB,
+                'coupon_code' => null,
+                'adults' => array_fill(0, $qty, 1),
+                'children_0_5' => array_fill(0, $qty, 0),
+                'children_6_11' => array_fill(0, $qty, 0),
+                'name' => $validated['name'],
+                'cccd' => $validated['cccd'],
+                'bank_code' => null,
+            ];
+
+            $ctx = $this->bookingService->composeCheckoutContext($asStoreBookingPayload);
+            $amountVnd = (int) round((float) $ctx['totalPrice']);
+
+            $expireMinutes = max(5, min(1440, (int) config('vnpay.transaction_expire_minutes', 30)));
+            $intent = BookingPaymentIntent::query()->create([
+                'payload' => $asStoreBookingPayload,
+                'amount_vnd' => $amountVnd,
+                'expires_at' => now()->addMinutes($expireMinutes + 2),
             ]);
 
-            for ($i = 0; $i < $roomsCount; $i++) {
-                $booking->bookingRooms()->create([
-                    'room_type_id' => $roomType->id,
-                    'room_id' => null,
-                    'adults' => 1,
-                    'children_0_5' => 0,
-                    'children_6_11' => 0,
-                    'price_per_night' => $pricePerNight,
-                    'nights' => $nights,
-                    'subtotal' => $roomSubtotal,
-                ]);
-            }
+            $vnPayService = app(VnPayService::class);
+            $paymentUrl = $vnPayService->createPaymentUrl(
+                $intent->vnPayTxnRef(),
+                $amountVnd,
+                'Dat phong Light Hotel phien #' . $intent->id,
+                route('payment.vnpay.return'),
+                $request->ip(),
+                'vn',
+                null
+            );
 
-            // 3. Tạo 1 guest duy nhất - người đại diện
-            Guest::create([
-                'booking_id'       => $booking->id,
-                'name'             => $validated['name'],
-                'cccd'             => $validated['cccd'],
-                'type'             => 'adult',
-                'is_representative'=> 1,
-                'checkin_status'   => 'pending',
-            ]);
+            return $vnPayService->redirectAwayNoCache($paymentUrl);
 
-            DB::commit();
-
-            return redirect()->route('bookings.show', $booking)
-                ->with('success', 'Đặt phòng thành công! Vui lòng thanh toán để hoàn tất.');
-
+        } catch (BookingException $e) {
+            return back()->withErrors($e->getMessage())->withInput();
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Simple booking error: ' . $e->getMessage());
             return back()->withErrors('Có lỗi xảy ra: ' . $e->getMessage())->withInput();
         }

@@ -1,21 +1,27 @@
-{{-- Biến: $booking, $hotel, $roomLines, $discountAmount, $invoiceNo; tuỳ chọn: roomSubtotal, extrasSubtotal, totalPaidFromPayments, balanceDue, invoiceRemaining --}}
+{{-- Biến: $booking, $hotel, $roomLines, $discountAmount, $invoiceNo; tuỳ chọn: roomSubtotal, roomChangeLines, roomChangeDeltaTotal, extrasSubtotal, totalPaidFromPayments, balanceDue, invoiceRemaining --}}
 @php
     $roomSubtotal = $roomSubtotal ?? null;
+    $roomChangeLines = $roomChangeLines ?? [];
+    $roomChangeDeltaTotal = (float) ($roomChangeDeltaTotal ?? 0);
     $extrasSubtotal = $extrasSubtotal ?? null;
     $totalPaidFromPayments = $totalPaidFromPayments ?? (float) ($booking->payments ?? collect())->where('status', 'paid')->sum('amount');
     $balanceDue = $balanceDue ?? max(0, (float) $booking->total_price - $totalPaidFromPayments);
     $invoiceRemaining = $invoiceRemaining ?? null;
+    $brandName = 'Light Hotel';
+    $brandEmail = 'info@lighthotel.vn';
+    $displayPhone = optional($hotel)->phone;
+    $displayAddress = optional($hotel)->address;
 @endphp
 <div class="invoice-sheet border p-4 p-md-5">
     <div class="row align-items-start mb-4 pb-3 border-bottom">
         <div class="col-md-7">
-            <h1 class="h4 fw-bold mb-1">{{ optional($hotel)->name ?? 'Light Hotel' }}</h1>
-            @if(optional($hotel)->address)
-                <p class="mb-1 small text-muted">{{ $hotel->address }}</p>
+            <h1 class="h4 fw-bold mb-1">{{ $brandName }}</h1>
+            @if($displayAddress)
+                <p class="mb-1 small text-muted">{{ $displayAddress }}</p>
             @endif
             <p class="mb-0 small text-muted">
-                @if(optional($hotel)->phone)<span>ĐT: {{ $hotel->phone }}</span>@endif
-                @if(optional($hotel)->email)<span class="ms-2">Email: {{ $hotel->email }}</span>@endif
+                @if($displayPhone)<span>ĐT: {{ $displayPhone }}</span>@endif
+                <span class="{{ $displayPhone ? 'ms-2' : '' }}">Email: {{ $brandEmail }}</span>
             </p>
         </div>
         <div class="col-md-5 text-md-end mt-3 mt-md-0">
@@ -73,6 +79,9 @@
                             @if(!empty($line['quantity_note']))
                                 <div class="small text-muted mt-1">{{ $line['quantity_note'] }}</div>
                             @endif
+                            @if(!empty($line['nights_calendar']) && isset($line['nights']) && (int) $line['nights_calendar'] !== (int) $line['nights'])
+                                <div class="small text-muted mt-1">Đêm trên lịch đặt: {{ (int) $line['nights_calendar'] }} (gia hạn nằm ở mục phụ phí)</div>
+                            @endif
                         </td>
                         <td class="text-center">{{ $line['nights'] !== null ? $line['nights'] : '—' }}</td>
                         <td class="text-end text-muted">
@@ -82,7 +91,7 @@
                                 —
                             @endif
                         </td>
-                        <td class="text-end pe-3 fw-semibold">{{ number_format($line['line_total'], 0, ',', '.') }} ₫</td>
+                        <td class="text-end pe-3 fw-semibold text-dark">{{ number_format($line['line_total'], 0, ',', '.') }} ₫</td>
                     </tr>
                 @empty
                     <tr>
@@ -112,7 +121,7 @@
                             <td class="ps-3">{{ $bs->service?->name ?? 'Dịch vụ #' . $bs->service_id }}</td>
                             <td class="text-end text-muted">{{ number_format((float) $bs->price, 0, ',', '.') }} ₫</td>
                             <td class="text-center">{{ $bs->quantity }}</td>
-                            <td class="text-end pe-3 fw-semibold">{{ number_format($line, 0, ',', '.') }} ₫</td>
+                            <td class="text-end pe-3 fw-semibold text-dark">{{ number_format($line, 0, ',', '.') }} ₫</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -141,7 +150,7 @@
                                 @endif
                             </td>
                             <td class="text-center">{{ (int) ($s->quantity ?? 1) }}</td>
-                            <td class="text-end pe-3 fw-semibold">{{ number_format((float) $s->amount, 0, ',', '.') }} ₫</td>
+                            <td class="text-end pe-3 fw-semibold text-dark">{{ number_format((float) $s->amount, 0, ',', '.') }} ₫</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -149,8 +158,56 @@
         </div>
     @endif
 
-    <div class="row justify-content-end">
-        <div class="col-md-5">
+    @if(!empty($roomChangeLines))
+        <h2 class="h6 text-muted text-uppercase fw-semibold mb-2">Lịch sử đổi phòng (điều chỉnh tiền)</h2>
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Thời gian</th>
+                        <th>Đổi phòng</th>
+                        <th>Lý do</th>
+                        <th class="text-end pe-3">Ảnh hưởng tiền (đối chiếu)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($roomChangeLines as $line)
+                        @php $delta = (float) ($line['delta'] ?? 0); @endphp
+                        <tr>
+                            <td class="ps-3 text-nowrap">
+                                {{ optional($line['at'] ?? null)?->format('d/m/Y H:i') ?? '—' }}
+                            </td>
+                            <td>
+                                <div>{{ $line['from_room'] ?? '—' }} → {{ $line['to_room'] ?? '—' }}</div>
+                                <div class="small text-muted">Thực hiện: {{ $line['changed_by'] ?? 'Hệ thống' }}</div>
+                            </td>
+                            <td>{{ $line['reason'] ?: '—' }}</td>
+                            <td class="text-end pe-3 text-nowrap">
+                                @include('shared.partials.invoice-sheet-room-change-delta', ['delta' => $delta])
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-end fw-semibold">Tổng điều chỉnh do đổi phòng</td>
+                        <td class="text-end pe-3 text-nowrap">
+                            @include('shared.partials.invoice-sheet-room-change-delta', ['delta' => $roomChangeDeltaTotal])
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    @endif
+
+    <div class="row align-items-center justify-content-center g-3 g-md-4">
+        <div class="col-md-5 mb-2 mb-md-0 d-flex justify-content-center">
+            <div class="text-center">
+                <img src="{{ asset('images/fake-hotel-qr.png') }}" alt="QR khách sạn (trang trí)" width="220" height="220" class="img-fluid border rounded p-1 bg-white">
+                <p class="mb-0 mt-2 small text-muted">Quét để xem thông tin khách sạn</p>
+            </div>
+        </div>
+        <div class="col-md-7 ps-md-4" style="border-left: 1px solid #e9ecef;">
             <table class="table table-sm mb-0">
                 @if($discountAmount > 0)
                     <tr>
@@ -159,19 +216,24 @@
                                 <span class="text-muted">(mã {{ $booking->coupon_code }})</span>
                             @endif
                         </td>
-                        <td class="text-end border-0 fw-semibold text-danger">−{{ number_format($discountAmount, 0, ',', '.') }} ₫</td>
+                        <td class="text-end border-0"><span class="text-success fw-semibold">− {{ number_format((float) $discountAmount, 0, ',', '.') }} ₫</span></td>
                     </tr>
                 @endif
                 @if($roomSubtotal !== null && $roomSubtotal > 0)
                     <tr>
-                        <td class="text-muted border-0 small">Tiền lưu trú (phòng)</td>
-                        <td class="text-end border-0 small fw-semibold">{{ number_format((float) $roomSubtotal, 0, ',', '.') }} ₫</td>
+                        <td class="text-muted border-0 small">
+                            Tiền lưu trú (phòng)
+                            @if(abs($roomChangeDeltaTotal) > 0.009)
+                                <span class="d-block small text-muted lh-sm mt-1">Đã gồm điều chỉnh sau đổi phòng — xem bảng «Lịch sử đổi phòng».</span>
+                            @endif
+                        </td>
+                        <td class="text-end border-0 small fw-semibold text-dark">{{ number_format((float) $roomSubtotal, 0, ',', '.') }} ₫</td>
                     </tr>
                 @endif
                 @if($extrasSubtotal !== null && abs($extrasSubtotal) > 0.009)
                     <tr>
                         <td class="text-muted border-0 small">Dịch vụ &amp; phụ thu (sau giảm giá đặt phòng)</td>
-                        <td class="text-end border-0 small fw-semibold">{{ number_format((float) $extrasSubtotal, 0, ',', '.') }} ₫</td>
+                        <td class="text-end border-0 small fw-semibold text-dark">{{ number_format((float) $extrasSubtotal, 0, ',', '.') }} ₫</td>
                     </tr>
                 @endif
                 <tr>
@@ -180,19 +242,34 @@
                 </tr>
                 <tr>
                     <td class="text-muted border-0">Đã thanh toán</td>
-                    <td class="text-end border-0 fw-semibold text-success">{{ number_format((float) $totalPaidFromPayments, 0, ',', '.') }} ₫</td>
+                    <td class="text-end border-0 fw-semibold">
+                        @include('shared.partials.money-paid', ['amount' => $totalPaidFromPayments, 'class' => 'fw-semibold'])
+                    </td>
                 </tr>
                 <tr class="border-top">
                     <td class="border-0 pt-2 fs-6 fw-bold">Số tiền cần thanh toán còn lại</td>
-                    <td class="border-0 pt-2 text-end fs-6 fw-bold {{ $balanceDue > 0.009 ? 'text-danger' : 'text-success' }}">{{ number_format((float) $balanceDue, 0, ',', '.') }} ₫</td>
+                    <td class="border-0 pt-2 text-end fs-6 fw-bold">
+                        @include('shared.partials.money-debt-due', ['amount' => $balanceDue, 'class' => 'fs-6'])
+                    </td>
                 </tr>
                 @if($invoiceRemaining !== null && $booking->invoice)
                     <tr>
                         <td class="text-muted border-0 small">Theo hóa đơn nội bộ {{ $booking->invoice->invoice_number }} (còn lại)</td>
-                        <td class="text-end border-0 small fw-semibold {{ $invoiceRemaining > 0.009 ? 'text-danger' : 'text-muted' }}">{{ number_format((float) $invoiceRemaining, 0, ',', '.') }} ₫</td>
+                        <td class="text-end border-0 small fw-semibold">
+                            @if($invoiceRemaining > 0.009)
+                                @include('shared.partials.money-debt-due', ['amount' => $invoiceRemaining, 'class' => 'fw-semibold small'])
+                            @else
+                                <span class="text-muted">{{ number_format((float) $invoiceRemaining, 0, ',', '.') }} ₫</span>
+                            @endif
+                        </td>
                     </tr>
                 @endif
             </table>
+            <p class="small text-muted mb-0 mt-2 pt-1 border-top border-light-subtle">
+                <strong>Đọc nhanh:</strong> số <span class="text-dark fw-semibold">đen</span> là các phần cộng vào tổng đơn.
+                <span class="text-success fw-semibold">Xanh</span> — đã thanh toán hoặc giảm giá.
+                <span class="text-danger fw-semibold">Đỏ</span> — số tiền còn phải thu.
+            </p>
         </div>
     </div>
 
@@ -201,21 +278,6 @@
     <h2 class="h6 text-muted text-uppercase fw-semibold mb-2">Thanh toán</h2>
     @php $pay = $booking->latestPayment; @endphp
     @if($pay)
-        <p class="mb-1 small">
-            <span class="text-muted">Phương thức:</span>
-            @if($pay->method === 'bank_transfer') Chuyển khoản
-            @elseif($pay->method === 'vnpay') VNPay
-            @elseif($pay->method === 'cash') Tiền mặt
-            @else {{ $pay->method }}
-            @endif
-        </p>
-        <p class="mb-1 small">
-            <span class="text-muted">Trạng thái:</span>
-            @if($pay->status === 'paid') <span class="text-success fw-semibold">Đã thanh toán</span>
-            @elseif($pay->status === 'refunded') <span class="text-info fw-semibold">Đã hoàn tiền</span>
-            @else {{ $pay->status }}
-            @endif
-        </p>
         @if($pay->transaction_id)
             <p class="mb-1 small text-muted">Mã giao dịch: {{ $pay->transaction_id }}</p>
         @endif

@@ -38,7 +38,6 @@
                             </div>
                         </div>
 
-                        <!-- Chọn số phòng - chỉ để tính giá -->
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <label class="form-label">Số lượng phòng *</label>

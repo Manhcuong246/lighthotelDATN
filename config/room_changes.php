@@ -15,6 +15,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Bật giới hạn giờ đổi phòng
+    |--------------------------------------------------------------------------
+    |
+    | false (mặc định): Lễ tân/Admin đổi phòng mọi lúc (giống luồng cũ trên web).
+    | true: Sau time_restriction_hour chỉ đổi khi báo khẩn cấp.
+    |
+    */
+    'enforce_time_restriction' => filter_var(
+        env('ROOM_CHANGE_ENFORCE_TIME', false),
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Chính sách hạ hạng (Downgrade)
     |--------------------------------------------------------------------------
     |

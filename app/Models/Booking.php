@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use App\Models\RefundLog;
+use App\Models\RoomChangeHistory;
 use Illuminate\Support\Facades\URL;
 
 /**
@@ -56,6 +57,7 @@ class Booking extends Model
         'payment_method',
         'payment_status',
         'notes',
+        'pending_checkout_payload',
         'cancellation_reason',
         'cancelled_at',
         'check_in_date',
@@ -79,6 +81,7 @@ class Booking extends Model
         'cancelled_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'pending_checkout_payload' => 'array',
     ];
 
     public function user()
@@ -150,7 +153,13 @@ class Booking extends Model
 
     public function refundLogs()
     {
-        return $this->hasMany(RefundLog::class);
+        return $this->hasMany(RefundLog::class)->orderByDesc('refunded_at')->orderByDesc('id');
+    }
+
+    /** Lịch sử đổi phòng (bảng room_change_history). */
+    public function roomChangeHistories(): HasMany
+    {
+        return $this->hasMany(RoomChangeHistory::class)->orderByDesc('changed_at')->orderByDesc('id');
     }
 
     public function invoice()
@@ -160,7 +169,15 @@ class Booking extends Model
 
     public function logs()
     {
-        return $this->hasMany(BookingLog::class);
+        return $this->hasMany(BookingLog::class)
+            ->orderByDesc('changed_at')
+            ->orderByDesc('id');
+    }
+
+    /** Nhật ký snapshot tài chính (đối soát thanh toán / đổi phòng / gia hạn). */
+    public function financialAuditLogs()
+    {
+        return $this->hasMany(BookingFinancialAuditLog::class)->orderByDesc('created_at')->orderByDesc('id');
     }
 
     public function bookedDates()
@@ -511,6 +528,38 @@ class Booking extends Model
     }
 
     /**
+     * Đồng bộ bookings.payment_status với tổng các giao dịch payments.status = paid (tiền thực thu).
+     * Không sửa payments.amount — bản ghi paid là bất biến; phát sinh phụ phí/gia hạn chỉ làm tăng total_price → còn nợ.
+     */
+    public function reconcilePaymentStatusWithPayments(): void
+    {
+        if (in_array((string) ($this->payment_status ?? ''), ['refunded', 'partial_refunded'], true)) {
+            return;
+        }
+
+        $total = max(0.0, (float) ($this->total_price ?? 0));
+        $paidCollected = (float) Payment::query()
+            ->where('booking_id', $this->getKey())
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $eps = 0.009;
+        $target = 'pending';
+        if ($total <= $eps) {
+            $target = $paidCollected > $eps ? 'paid' : 'pending';
+        } elseif ($paidCollected >= $total - $eps) {
+            $target = 'paid';
+        } elseif ($paidCollected > $eps) {
+            $target = 'partial';
+        }
+
+        if ((string) ($this->payment_status ?? '') !== $target) {
+            static::query()->whereKey($this->getKey())->update(['payment_status' => $target]);
+            $this->payment_status = $target;
+        }
+    }
+
+    /**
      * Đơn chờ thanh toán coi như hết hạn: quá ngày nhận phòng, hoặc các đêm phòng đã bị đơn khác (còn hiệu lực) giữ.
      */
     public function isPendingDisplayExpired(): bool
@@ -523,6 +572,86 @@ class Booking extends Model
         }
 
         return $this->hasRoomDatesClaimedByAnotherActiveBooking();
+    }
+
+    /**
+     * Nhãn trạng thái đơn cho khách (lịch sử / chi tiết trong tài khoản).
+     */
+    public function customerAccountStatusLabel(): string
+    {
+        $pendingExpired = $this->status === 'pending' && ! $this->isPaymentRecordedPaid() && $this->isPendingDisplayExpired();
+        if ($pendingExpired) {
+            return 'Hết hạn';
+        }
+
+        $paid = $this->isPaymentRecordedPaid();
+
+        return match ($this->status) {
+            'pending' => $paid
+                ? 'Đã thanh toán'
+                : (((string) ($this->payment_method ?? '')) === 'vnpay' ? 'Chưa thanh toán VNPay' : 'Chờ thanh toán'),
+            'confirmed' => 'Đã thanh toán',
+            'checked_in' => 'Đang lưu trú',
+            'checked_out' => 'Đã trả phòng',
+            'completed' => 'Hoàn thành',
+            'cancelled' => 'Đã hủy',
+            'cancel_requested' => 'Đang chờ hoàn tiền',
+            'refunded' => 'Đã hoàn tiền',
+            default => (string) $this->status,
+        };
+    }
+
+    /**
+     * Modifier class cho .booking-status (khớp CSS theo status DB hoặc pending-expired).
+     */
+    public function customerAccountStatusCssModifier(): string
+    {
+        $pendingExpired = $this->status === 'pending' && ! $this->isPaymentRecordedPaid() && $this->isPendingDisplayExpired();
+
+        return $pendingExpired ? 'pending-expired' : (string) $this->status;
+    }
+
+    /**
+     * Class Bootstrap cho badge trạng thái (chi tiết đơn trong tài khoản).
+     */
+    public function customerAccountStatusBadgeClass(): string
+    {
+        $pendingExpired = $this->status === 'pending' && ! $this->isPaymentRecordedPaid() && $this->isPendingDisplayExpired();
+        if ($pendingExpired) {
+            return 'bg-secondary';
+        }
+
+        $paid = $this->isPaymentRecordedPaid();
+
+        return match ($this->status) {
+            'pending' => $paid ? 'bg-info' : 'bg-warning text-dark',
+            'confirmed' => 'bg-info',
+            'checked_in' => 'bg-primary',
+            'checked_out' => 'bg-info text-dark',
+            'completed' => 'bg-success',
+            'cancelled' => 'bg-danger',
+            'cancel_requested' => 'bg-warning text-dark',
+            'refunded' => 'bg-secondary',
+            default => 'bg-secondary',
+        };
+    }
+
+    /**
+     * Nhãn trạng thái trên màn hủy đơn (từ vựng “xác nhận” thay vì “thanh toán”).
+     */
+    public function customerCancellationPageStatusLabel(): string
+    {
+        return match ($this->status) {
+            'pending' => 'Chờ xác nhận',
+            'confirmed' => 'Đã xác nhận',
+            'checked_in' => 'Đang lưu trú',
+            'checked_out' => 'Đã trả phòng',
+            'cancel_requested' => 'Đang chờ hoàn tiền',
+            'cancelled' => 'Đã hủy',
+            'completed' => 'Hoàn thành',
+            'refunded' => 'Đã hoàn tiền',
+            default => (string) $this->status,
+        };
     }
 
     private function hasRoomDatesClaimedByAnotherActiveBooking(): bool
@@ -598,7 +727,7 @@ class Booking extends Model
                 $q->where('room_id', $roomId)
                     ->orWhereHas('bookingRooms', static fn ($br) => $br->where('room_id', $roomId));
             })
-            ->whereDoesntHave('reviews', static fn ($q) => $q->where('room_id', $roomId))
+            ->whereDoesntHave('reviews', static fn ($q) => $q->withTrashed()->where('room_id', $roomId))
             ->orderByDesc('actual_check_out')
             ->orderByDesc('id')
             ->get();
@@ -681,7 +810,7 @@ class Booking extends Model
 
         return self::toAbsoluteSignedUrl(URL::signedRoute(
             'bookings.show',
-            ['booking' => $this->id],
+            ['booking' => $this->id, 'portal_user' => $this->user_id],
             now()->addDays($days),
             false
         ));

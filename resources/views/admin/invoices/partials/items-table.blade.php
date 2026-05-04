@@ -9,6 +9,7 @@
 
     $typeOrder = [
         'room' => 10,
+        'room_change_note' => 15,
         'service' => 20,
         'surcharge' => 30,
         'coupon' => 40,
@@ -18,6 +19,7 @@
     ];
     $sectionLabels = [
         'room' => 'Lưu trú',
+        'room_change_note' => 'Lịch sử đổi phòng (ghi chú)',
         'service' => 'Dịch vụ đặt kèm',
         'surcharge' => 'Phụ thu & phát sinh',
         'coupon' => 'Giảm giá (đặt phòng)',
@@ -28,7 +30,7 @@
     $sorted = $invoice->items->sortBy(static fn ($i) => $typeOrder[$i->item_type] ?? 99)->values();
     $byType = $sorted->groupBy('item_type');
 
-    $detailTypesFirst = ['room', 'service', 'surcharge'];
+    $detailTypesFirst = ['room', 'room_change_note', 'service', 'surcharge'];
     $tailTypes = ['coupon', 'adjustment', 'discount', 'fee'];
 
     $surchargesAmt = (float) ($invoice->surcharges_amount ?? 0);
@@ -69,7 +71,7 @@
                             <td class="text-center small align-top">@include('admin.invoices.partials.item-guest-cell', ['item' => $item])</td>
                             <td class="text-end">{{ $item->quantity }}</td>
                             <td class="text-end">{{ number_format((float) $item->unit_price, 0, ',', '.') }}</td>
-                            <td class="text-end fw-semibold @if((float) $item->total_price < 0) text-danger @endif">
+                            <td class="text-end fw-semibold @if((float) $item->total_price < 0) text-danger @elseif($type === 'surcharge') text-primary @endif">
                                 {{ number_format((float) $item->total_price, 0, ',', '.') }}
                             </td>
                         </tr>
@@ -113,18 +115,20 @@
             </tr>
             <tr class="table-light">
                 <td colspan="4" class="fw-semibold text-end pe-2">Cộng phụ thu / phát sinh</td>
-                <td class="text-end fw-bold">{{ number_format($surchargesAmt, 0, ',', '.') }}</td>
+                <td class="text-end fw-bold">@include('shared.partials.money-customer-flow', ['amount' => (float) $surchargesAmt])</td>
             </tr>
             @if($bookingCoupon > 0.009 && ! $hasCouponLine)
                 <tr class="table-light">
-                    <td colspan="4" class="fw-semibold text-end pe-2 text-danger">Giảm khi đặt phòng (trên đơn)</td>
-                    <td class="text-end fw-bold text-danger">− {{ number_format($bookingCoupon, 0, ',', '.') }}</td>
+                    <td colspan="4" class="fw-semibold text-end pe-2">Giảm khi đặt phòng (trên đơn)</td>
+                    <td class="text-end fw-bold">@include('shared.partials.money-customer-flow', ['amount' => -1 * (float) $bookingCoupon])</td>
                 </tr>
             @endif
+            @if((float) $invoice->discount_amount > 0.009)
             <tr class="table-light">
-                <td colspan="4" class="fw-semibold text-end pe-2 text-danger">Giảm giá trên hóa đơn</td>
-                <td class="text-end fw-bold text-danger">− {{ number_format((float) $invoice->discount_amount, 0, ',', '.') }}</td>
+                <td colspan="4" class="fw-semibold text-end pe-2">Giảm giá trên hóa đơn</td>
+                <td class="text-end fw-bold">@include('shared.partials.money-customer-flow', ['amount' => -1 * (float) $invoice->discount_amount])</td>
             </tr>
+            @endif
             <tr class="table-light">
                 <td colspan="4" class="fw-semibold text-end pe-2">Thuế &amp; phí</td>
                 <td class="text-end fw-bold">{{ number_format((float) $invoice->tax_amount, 0, ',', '.') }}</td>

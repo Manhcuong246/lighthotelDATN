@@ -254,6 +254,52 @@
             width: 100% !important;
             max-width: none;
         }
+
+        /*
+         * Nhãn UI thống nhất (toàn bộ route dùng layouts.admin):
+         * — Nhãn trường: cùng kiểu chữ / khoảng cách cho mọi .form-label (trừ form-check).
+         * — Nhãn trạng thái / metadata: cùng dạng viên thuốc cho mọi .badge trong #content.
+         */
+        #content .form-label:not(.form-check-label) {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #6c757d;
+            margin-bottom: 0.375rem;
+        }
+        #content .form-label.mb-0:not(.form-check-label) {
+            margin-bottom: 0 !important;
+        }
+        /* Tiêu đề nhóm (caption) — cùng typography với nhãn trường */
+        #content p.text-uppercase.small.fw-bold.text-muted {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: #6c757d !important;
+        }
+        #content p.mb-1.text-muted.small.text-uppercase.fw-semibold {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: #6c757d !important;
+            margin-bottom: 0.35rem !important;
+        }
+        #content .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3em;
+            padding: 0.4rem 0.85rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.2;
+            border-radius: 50rem;
+            vertical-align: middle;
+        }
+        #content .badge.fw-normal {
+            font-weight: 400 !important;
+        }
     </style>
     @stack('styles')
 </head>
@@ -300,9 +346,6 @@
                         <span class="d-none d-md-inline small">{{ auth()->user()->isAdmin() ? 'Admin' : 'Nhân viên' }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-1">
-                        <li><a class="dropdown-item py-2" href="{{ route('account.profile') }}"><i class="bi bi-person me-2"></i>Hồ sơ</a></li>
-
-                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item py-2 text-danger" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
                     </ul>
                     <form id="logout-form" action="{{ route('admin.logout') }}" method="POST" class="d-none">@csrf</form>
@@ -315,7 +358,7 @@
 
     <aside id="sidebar">
         <div class="sidebar-header">
-            <h4><i class="bi bi-building me-2"></i>Light Hotel</h4>
+            <h4><i class="bi bi-building me-2"></i>{{ $hotelInfo?->name ?? 'Light Hotel' }}</h4>
             <p class="small mb-0 opacity-75">Quản trị</p>
         </div>
         <ul class="nav flex-column">
@@ -402,6 +445,12 @@
                     Đổi phòng
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.damage-reports.*') ? 'active' : '' }}" href="{{ route('admin.damage-reports.index') }}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Báo cáo hư hỏng
+                </a>
+            </li>
             @endif
             @if(!auth()->user()->isAdmin())
             <li class="nav-item">
@@ -437,8 +486,8 @@
             @if(auth()->user()->isAdmin())
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('admin.settings*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
-                    <i class="bi bi-gear"></i>
-                    Cài đặt
+                    <i class="bi bi-sliders2"></i>
+                    Khách sạn &amp; nội dung
                 </a>
             </li>
             @endif
@@ -451,21 +500,22 @@
         </ul>
     </aside>
 
-    <main id="content">
+    <main id="content" class="admin-main-content">
+        <div class="container-fluid px-3 px-lg-4 pt-3 pb-0">
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
+            <div class="alert alert-success alert-dismissible fade show rounded-3 border-0 shadow-sm mb-3" role="alert">
+                <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
             </div>
         @endif
         @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ session('error') }}
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ session('error') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
             </div>
         @endif
         @if($errors->any())
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-3" role="alert">
                 <ul class="mb-0 ps-3">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -474,6 +524,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
             </div>
         @endif
+        </div>
 
         @yield('content')
     </main>

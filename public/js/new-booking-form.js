@@ -7,7 +7,6 @@ class NewBookingFormManager {
     }
 
     init() {
-        console.log('New Booking Form Manager initialized');
         this.bindEvents();
         this.initializeAllRooms();
     }
@@ -35,7 +34,6 @@ class NewBookingFormManager {
                 const match = e.target.name.match(/(\w+)\[(\d+)\]/);
                 if (match) {
                     const roomIndex = parseInt(match[2]);
-                    console.log(`Number of people changed for room ${roomIndex}`);
                     this.updateGuestCountForRoom(roomIndex);
                 }
             }
@@ -50,7 +48,6 @@ class NewBookingFormManager {
             const match = input.name.match(/adults\[(\d+)\]/);
             if (match) {
                 const roomIndex = parseInt(match[1]);
-                console.log(`Initializing guest forms for room ${roomIndex}`);
                 this.updateGuestCountForRoom(roomIndex);
             }
         });
@@ -78,8 +75,6 @@ class NewBookingFormManager {
 
             // Tổng số khách = số người lớn (vì trẻ em không cần thông tin riêng)
             const totalGuests = adults;
-
-            console.log(`Updating guest count for room ${roomIndex}: ${totalGuests} guests (${adults} adults, ${children05 + children611} children)`);
 
             this.guestCounts[roomIndex] = totalGuests;
             this.renderGuestInputs(roomIndex);
@@ -180,7 +175,6 @@ class NewBookingFormManager {
         });
 
         this.guestData[roomIndex] = roomData;
-        console.log(`Saved guest data for room ${roomIndex}:`, this.guestData[roomIndex]);
     }
 
     restoreGuestData(roomIndex) {
@@ -188,8 +182,6 @@ class NewBookingFormManager {
         if (!roomData) {
             return;
         }
-
-        console.log(`Restoring guest data for room ${roomIndex}:`, roomData);
 
         Object.keys(roomData).forEach(guestIndex => {
             const guestData = roomData[guestIndex];
@@ -240,7 +232,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {
         bookingForm.addEventListener('submit', function(e) {
-            console.log('=== FORM SUBMIT VALIDATION ===');
 
             // Kiểm tra tất cả guest inputs
             const guestInputs = document.querySelectorAll('[name*="guests"]');
@@ -270,9 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Vui lòng điền đầy đủ thông tin khách hàng!');
                 return false;
             }
-
-            console.log('Form validation passed');
-            console.log('=== END FORM SUBMIT VALIDATION ===');
         });
     }
 });

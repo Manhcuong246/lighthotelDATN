@@ -14,8 +14,41 @@ final class PaymentInstructionDelivery
     /**
      * Gửi email đặt phòng / thanh toán: thử template Blade, lỗi thì gửi HTML dự phòng (không Blade).
      * Không ném exception ra ngoài — mọi lỗi ghi log.
+     * Chạy sau khi response trả về để không chặn redirect (SMTP chậm).
      */
     public static function send(
+        Booking $booking,
+        ?HotelInfo $hotelInfo,
+        int $nights,
+        ?string $qrCodeUrl,
+        ?string $vnpayPayUrl,
+        string $toEmail,
+        bool $cashPaidAtDesk = false,
+    ): void {
+        $toEmail = trim($toEmail);
+        if ($toEmail === '' || ! filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            Log::warning('payment_instruction.skip_invalid_email', ['booking_id' => $booking->id]);
+
+            return;
+        }
+
+        $bookingId = $booking->id;
+        $hotelInfoId = $hotelInfo?->id;
+
+        dispatch(function () use ($bookingId, $hotelInfoId, $nights, $qrCodeUrl, $vnpayPayUrl, $toEmail, $cashPaidAtDesk): void {
+            $bookingModel = Booking::query()->find($bookingId);
+            if (! $bookingModel) {
+                return;
+            }
+            $hotelModel = $hotelInfoId ? HotelInfo::query()->find($hotelInfoId) : null;
+            self::sendSynchronously($bookingModel, $hotelModel, $nights, $qrCodeUrl, $vnpayPayUrl, $toEmail, $cashPaidAtDesk);
+        })->afterResponse();
+    }
+
+    /**
+     * @internal Dùng cho test hoặc gửi đồng bộ khi cần.
+     */
+    public static function sendSynchronously(
         Booking $booking,
         ?HotelInfo $hotelInfo,
         int $nights,

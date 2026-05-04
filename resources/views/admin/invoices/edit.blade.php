@@ -20,15 +20,15 @@
                 @csrf
                 @method('PUT')
                 <div class="mb-3">
-                    <label class="form-label small fw-bold" for="discount_amount">Giảm giá (VNĐ)</label>
+                    <label class="form-label" for="discount_amount">Giảm giá (VNĐ)</label>
                     <input type="number" name="discount_amount" id="discount_amount" class="form-control form-control-sm" min="0" step="1000" value="{{ old('discount_amount', $invoice->discount_amount) }}">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small fw-bold" for="tax_amount">Thuế &amp; phí (VNĐ)</label>
+                    <label class="form-label" for="tax_amount">Thuế &amp; phí (VNĐ)</label>
                     <input type="number" name="tax_amount" id="tax_amount" class="form-control form-control-sm" min="0" step="1000" value="{{ old('tax_amount', $invoice->tax_amount) }}">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small fw-bold" for="notes">Ghi chú</label>
+                    <label class="form-label" for="notes">Ghi chú</label>
                     <textarea name="notes" id="notes" rows="3" class="form-control form-control-sm" maxlength="1000">{{ old('notes', $invoice->notes) }}</textarea>
                 </div>
                 <button type="submit" class="btn btn-primary rounded-2">Lưu</button>

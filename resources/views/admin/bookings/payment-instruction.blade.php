@@ -15,10 +15,6 @@
                 <a href="{{ route('admin.bookings.create-multi') }}" class="btn btn-outline-secondary btn-sm btn-admin-icon" title="Quay lại"><i class="bi bi-arrow-left"></i></a>
             </div>
 
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-
             @if(session('info'))
                 <div class="alert alert-info">{{ session('info') }}</div>
             @endif
@@ -27,18 +23,14 @@
                 <div class="alert alert-warning">{{ session('warning') }}</div>
             @endif
 
-            @if(session('error'))
-                <div class="alert alert-danger">{{ session('error') }}</div>
-            @endif
-
             <!-- Payment Status Alert -->
             @if(!empty($vnpayPayUrl))
             <div class="alert alert-info">
                 <div class="d-flex align-items-start">
                     <i class="bi bi-credit-card-2-front fs-4 me-3"></i>
                     <div>
-                        <h6 class="alert-heading mb-1">VNPay — chờ khách thanh toán online</h6>
-                        <p class="mb-0 small">Đơn <strong>chờ xác nhận</strong> đến khi khách thanh toán xong trên VNPay. Phiên thanh toán trên cổng (~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút) được tính từ lúc khách <strong>mở link thanh toán</strong> (quét QR hoặc bấm nút), không phải từ lúc gửi mail.</p>
+                        <h6 class="alert-heading mb-1">VNPay — chờ khách hoàn tất thanh toán</h6>
+                        <p class="mb-0 small">Đơn đã được tạo và giữ chỗ theo luồng admin. Phiên cổng VNPay (~{{ (int) config('vnpay.transaction_expire_minutes', 15) }} phút) bắt đầu khi khách <strong>mở link thanh toán</strong> (QR hoặc nút).</p>
                     </div>
                 </div>
             </div>
@@ -70,78 +62,12 @@
                 </div>
             </div>
             @else
-            <div class="alert alert-warning">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-clock-history fs-4 me-3"></i>
-                    <div>
-                        <h6 class="alert-heading mb-1">⏳ Đang chờ thanh toán</h6>
-                        <p class="mb-0">Khách cần chuyển khoản theo thông tin bên dưới. Sau khi nhận được tiền, hãy click "Xác nhận đã nhận tiền".</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bank Transfer Info Card -->
-            <div class="card shadow-lg border-0 mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-bank me-2"></i>Thông Tin Chuyển Khoản</h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <td width="120" class="text-muted">Ngân hàng:</td>
-                                    <td class="fw-bold">{{ $hotelInfo->bank_name ?? ($hotelInfo->bank_id ? strtoupper($hotelInfo->bank_id) : '—') }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">Số tài khoản:</td>
-                                    <td class="fw-bold fs-5 text-primary">
-                                        {{ $hotelInfo->bank_account ?? '1234567890' }}
-                                        <button type="button" class="btn btn-sm btn-outline-primary btn-admin-icon ms-2" title="Sao chép STK" onclick="copyToClipboard('{{ $hotelInfo->bank_account ?? '1234567890' }}')">
-                                            <i class="bi bi-clipboard"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">Chủ TK:</td>
-                                    <td class="fw-bold">{{ $hotelInfo->bank_account_name ?? 'Light Hotel' }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <td width="120" class="text-muted">Số tiền:</td>
-                                    <td class="fw-bold fs-4 text-danger">{{ number_format($booking->total_price) }}đ</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">Nội dung CK:</td>
-                                    <td>
-                                        <span class="fw-bold text-primary">BOOKING_{{ $booking->id }}</span>
-                                        <button type="button" class="btn btn-sm btn-outline-primary btn-admin-icon ms-2" title="Sao chép nội dung CK" onclick="copyToClipboard('BOOKING_{{ $booking->id }}')">
-                                            <i class="bi bi-clipboard"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    @php
-                        $vietQrBankBin = $hotelInfo->bank_id ?? '970436';
-                    @endphp
-                    @if($hotelInfo && $hotelInfo->bank_account)
-                    <div class="text-center">
-                        <p class="text-muted mb-2">Quét mã VietQR để chuyển khoản nhanh:</p>
-                        <div class="d-inline-block p-3 bg-white border rounded">
-                            <img src="https://img.vietqr.io/image/{{ $vietQrBankBin }}-{{ $hotelInfo->bank_account }}-compact2.png?amount={{ (int) $booking->total_price }}&addInfo=BOOKING_{{ $booking->id }}&accountName={{ rawurlencode($hotelInfo->bank_account_name ?? '') }}"
-                                 alt="Mã QR chuyển khoản" style="max-width: 280px;" class="img-fluid">
-                        </div>
-                    </div>
-                    @endif
-                </div>
+            <div class="alert alert-light border mb-4">
+                <p class="mb-2 fw-semibold">Không có link VNPay kèm đơn này.</p>
+                <p class="mb-0 small text-muted">
+                    Luồng đặt trên website chỉ ghi nhận đơn và giữ chỗ sau khi VNPay thành công.
+                    Đối với tiền mặt / xác nhận thủ công khác: dùng mục cập nhật trạng thái và thanh toán trên <a href="{{ route('admin.bookings.show', $booking) }}" class="fw-semibold">trang chi tiết đơn</a>.
+                </p>
             </div>
             @endif
 
@@ -194,12 +120,12 @@
                             @if($booking->discount_amount > 0)
                             <tr>
                                 <td colspan="3" class="text-end"><strong>Giảm giá:</strong></td>
-                                <td class="text-end text-success">-{{ number_format($booking->discount_amount) }}đ</td>
+                                <td class="text-end fs-6 fw-semibold">@include('shared.partials.money-customer-flow', ['amount' => -1 * (float) $booking->discount_amount])</td>
                             </tr>
                             @endif
                             <tr>
-                                <td colspan="3" class="text-end fs-5"><strong>Tổng cộng:</strong></td>
-                                <td class="text-end fs-5 fw-bold text-danger">{{ number_format($booking->total_price) }}đ</td>
+                                <td colspan="3" class="text-end fs-5"><strong>Tổng cộng (phải thanh toán):</strong></td>
+                                <td class="text-end fs-5 fw-bold">@include('shared.partials.money-debt-due', ['amount' => (float) $booking->total_price, 'class' => 'fs-5'])</td>
                             </tr>
                             @php
                                 $calculatedTotal = $booking->bookingRooms->sum('subtotal') - ($booking->discount_amount ?? 0);
@@ -216,33 +142,6 @@
                     </table>
                 </div>
             </div>
-
-            <!-- Admin Actions (chuyển khoản thủ công) -->
-            @if(empty($vnpayPayUrl))
-            <div class="card shadow-lg border-success">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-check-circle me-2"></i>Xác Nhận Thanh Toán</h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="mb-1">Khi đã nhận được tiền chuyển khoản từ khách:</p>
-                            <ul class="mb-0 text-muted small">
-                                <li>Đơn đặt phòng sẽ được đánh dấu là "Đã thanh toán"</li>
-                                <li>Tạo record thanh toán trong hệ thống</li>
-                                <li>Khách có thể check-in bình thường</li>
-                            </ul>
-                        </div>
-                        <form action="{{ route('admin.bookings.confirm-payment', $booking) }}" method="POST" class="ms-4">
-                            @csrf
-                            <button type="submit" class="btn btn-success btn-lg btn-admin-icon" style="width: auto; min-height: 3rem; min-width: 3rem;" title="Xác nhận đã nhận tiền" onclick="return confirm('Bạn có chắc đã nhận được tiền chuyển khoản?')">
-                                <i class="bi bi-check-lg fs-3"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            @endif
 
         </div>
     </div>

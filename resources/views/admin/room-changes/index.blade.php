@@ -56,16 +56,16 @@
         <div class="col-6 col-md-4 col-lg">
             <div class="card shadow-sm border-0 rounded-3">
                 <div class="card-body text-center py-3">
-                    <div class="text-muted small">Tổng tăng giá</div>
-                    <div class="fs-6 fw-bold text-danger">{{ number_format($stats['total_price_increase'], 0, ',', '.') }} ₫</div>
+                    <div class="text-muted small">Khách trả thêm (tổng)</div>
+                    <div class="fs-6 fw-bold">@include('shared.partials.money-customer-flow', ['amount' => (float) $stats['total_price_increase']])</div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-md-4 col-lg">
             <div class="card shadow-sm border-0 rounded-3">
                 <div class="card-body text-center py-3">
-                    <div class="text-muted small">Tổng giảm giá</div>
-                    <div class="fs-6 fw-bold text-success">{{ number_format(abs($stats['total_price_decrease']), 0, ',', '.') }} ₫</div>
+                    <div class="text-muted small">Khách được hoàn / giảm (tổng)</div>
+                    <div class="fs-6 fw-bold">@include('shared.partials.money-customer-flow', ['amount' => -1 * abs((float) $stats['total_price_decrease'])])</div>
                 </div>
             </div>
         </div>
@@ -82,11 +82,11 @@
         <div class="card-body">
             <form method="GET" action="{{ route('admin.room-changes.index') }}" class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label small">Tìm kiếm</label>
+                    <label class="form-label">Tìm kiếm</label>
                     <input type="text" name="q" class="form-control form-control-sm" value="{{ request('q') }}" placeholder="Mã đơn, phòng, lý do...">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">Chênh lệch giá</label>
+                    <label class="form-label">Chênh lệch giá</label>
                     <select name="price_direction" class="form-select form-select-sm">
                         <option value="">Tất cả</option>
                         <option value="increase" {{ request('price_direction') === 'increase' ? 'selected' : '' }}>Tăng</option>
@@ -95,7 +95,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">Loại đổi phòng</label>
+                    <label class="form-label">Loại đổi phòng</label>
                     <select name="change_type" class="form-select form-select-sm">
                         <option value="">Tất cả</option>
                         <option value="same_grade" {{ request('change_type') === 'same_grade' ? 'selected' : '' }}>Cùng hạng</option>
@@ -105,11 +105,11 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">Từ ngày</label>
+                    <label class="form-label">Từ ngày</label>
                     <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">Đến ngày</label>
+                    <label class="form-label">Đến ngày</label>
                     <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
@@ -162,19 +162,13 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="badge bg-secondary">{{ $h->fromRoom?->name ?? 'N/A' }}</span>
-                                @if($h->fromRoom?->roomType)
-                                    <br><small class="text-muted">{{ $h->fromRoom->roomType->name }}</small>
-                                @endif
+                                <span class="badge bg-secondary">{{ $h->fromRoom ? $h->fromRoom->displayLabel() : '—' }}</span>
                             </td>
                             <td class="text-center">
                                 <i class="bi bi-arrow-right text-primary"></i>
                             </td>
                             <td>
-                                <span class="badge bg-primary">{{ $h->toRoom?->name ?? 'N/A' }}</span>
-                                @if($h->toRoom?->roomType)
-                                    <br><small class="text-muted">{{ $h->toRoom->roomType->name }}</small>
-                                @endif
+                                <span class="badge bg-primary">{{ $h->toRoom ? $h->toRoom->displayLabel() : '—' }}</span>
                             </td>
                             <td>
                                 <span class="badge {{ $h->change_type_badge }}">{{ $h->change_type_label }}</span>
@@ -188,14 +182,11 @@
                                 @endif
                             </td>
                             <td>
-                                @php $diff = $h->price_difference ?? 0; @endphp
-                                @if($diff > 0)
-                                    <span class="text-danger fw-semibold">+{{ number_format($diff, 0, ',', '.') }} ₫</span>
-                                @elseif($diff < 0)
-                                    <span class="text-success fw-semibold">{{ number_format($diff, 0, ',', '.') }} ₫</span>
-                                @else
-                                    <span class="text-muted">—</span>
-                                @endif
+                                @include('shared.partials.room-change-price-diff', [
+                                    'diff' => $h->price_difference ?? 0,
+                                    'class' => 'fw-semibold',
+                                    'zeroAsDash' => true,
+                                ])
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark">

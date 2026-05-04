@@ -52,8 +52,8 @@ final class PaymentInstructionFallbackHtml
         }
 
         $logoUrl = null;
-        if (is_file(public_path('images/logo-light-hotel.svg'))) {
-            $logoUrl = $baseUrl.'/images/logo-light-hotel.svg';
+        if (is_file(storage_path('app/public/logo.png'))) {
+            $logoUrl = $baseUrl.'/storage/logo.png';
         }
 
         $hotelName = e((string) ($hotelInfo?->name ?? 'Light Hotel'));
@@ -177,9 +177,9 @@ final class PaymentInstructionFallbackHtml
         $logoCell = '';
         if ($logoUrl !== null) {
             $lg = self::escAttr($logoUrl);
-            $logoCell = '<img src="'.$lg.'" alt="" width="48" height="48" style="display:block;border-radius:10px;background:#fff;padding:4px;width:48px;height:48px;object-fit:contain;">';
+            $logoCell = '<img src="'.$lg.'" alt="" width="200" height="40" style="display:block;border-radius:10px;background:#fff;padding:6px 10px;height:40px;width:auto;max-width:200px;object-fit:contain;">';
         } else {
-            $logoCell = '<div style="width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.15);text-align:center;line-height:48px;font-size:22px;color:#fff;">✦</div>';
+            $logoCell = '<div style="width:56px;height:40px;border-radius:10px;background:rgba(255,255,255,0.15);text-align:center;line-height:40px;font-size:22px;color:#fff;">✦</div>';
         }
 
         $heroAttr = self::escAttr($heroUrl);

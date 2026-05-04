@@ -1,4 +1,5 @@
 @php
+    $brandName = $hotelInfo?->name ?? 'Light Hotel';
     $chatRequest = [
         'url' => url('/api/chat-process'),
         'method' => 'POST',
@@ -11,14 +12,14 @@
     ];
 @endphp
 <div id="chat-widget-container">
-    <button type="button" class="chat-toggle btn btn-primary shadow-lg rounded-circle p-3" id="chat-toggle" title="Chat với trợ lý AI" aria-label="Mở chat">
+    <button type="button" class="chat-toggle btn btn-primary rounded-circle p-3" id="chat-toggle" title="Chat với trợ lý AI" aria-label="Mở chat">
         <i class="bi bi-chat-dots-fill fs-5"></i>
     </button>
     <div class="chat-panel shadow-lg" id="chat-panel" hidden>
         <div class="chat-panel-header d-flex align-items-center justify-content-between px-3 py-2">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-building text-white"></i>
-                <span class="fw-semibold text-white">Light Hotel - Chat AI</span>
+                <span class="fw-semibold text-white">{{ $brandName }} - Chat AI</span>
             </div>
             <button type="button" class="btn btn-link text-white p-0 chat-close" id="chat-close" aria-label="Đóng">
                 <i class="bi bi-x-lg"></i>
@@ -34,8 +35,13 @@
 </div>
 
 <style>
-#chat-widget-container { position: fixed; bottom: 24px; right: 24px; z-index: 1050; }
-.chat-toggle { width: 56px; height: 56px; border: none; }
+#chat-widget-container { position: fixed; bottom: 24px; right: 24px; z-index: 1060; }
+.chat-toggle {
+    width: 56px;
+    height: 56px;
+    border: none;
+    box-shadow: 0 8px 24px rgba(29, 78, 216, 0.45);
+}
 .chat-panel { position: absolute; bottom: 70px; right: 0; width: 400px; max-width: calc(100vw - 48px); height: 520px; background: #fff; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
 .chat-panel[hidden] { display: none !important; }
 .chat-panel:not([hidden]) { display: flex !important; }
@@ -70,7 +76,7 @@
         customElements.whenDefined('deep-chat').then(function() {
             chat.connect = chatRequest;
             chat.requestBodyLimits = { maxMessages: 0 };
-            chat.introMessage = { text: 'Chào bạn! Tôi là trợ lý AI của Light Hotel. Bạn cần hỏi gì về giá phòng, đặt phòng hay dịch vụ?' };
+            chat.introMessage = { text: @json('Chào bạn! Tôi là trợ lý AI của '.$brandName.'. Bạn cần hỏi gì về giá phòng, đặt phòng hay dịch vụ?') };
         });
     }
 

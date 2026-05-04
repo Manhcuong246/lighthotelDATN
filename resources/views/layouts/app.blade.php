@@ -29,8 +29,10 @@
             letter-spacing: 1px;
         }
         .logo-mark {
-            width: 36px;
-            height: 36px;
+            flex-shrink: 0;
+            height: 48px;
+            width: auto;
+            max-width: min(240px, 55vw);
             border-radius: 10px;
             display: inline-flex;
             align-items: center;
@@ -40,9 +42,11 @@
             box-shadow: none;
         }
         .logo-mark img {
-            width: 100%;
             height: 100%;
+            width: auto;
+            max-width: 100%;
             object-fit: contain;
+            object-position: left center;
             display: block;
         }
         .navbar {
@@ -77,13 +81,10 @@
             position: relative;
             z-index: 2;
         }
-        /* Fix alert bị chìm dưới navbar */
-        .alert {
-            position: relative;
-            z-index: 1050;
-        }
-        /* Đảm bảo alert ở container không bị đè */
+        /* Thông báo trong luồng trang — không dùng z-index ~1050 (tầng modal) để tránh đè dropdown/popover và FAB cố định */
         main.container .alert {
+            position: relative;
+            z-index: 30;
             margin-top: 1rem;
         }
         .hero-badge {
@@ -211,8 +212,10 @@
             letter-spacing: 0.5px;
         }
         .footer-logo {
-            width: 48px;
-            height: 48px;
+            flex-shrink: 0;
+            height: 52px;
+            width: auto;
+            max-width: min(220px, 75vw);
             background: transparent;
             border-radius: 12px;
             display: inline-flex;
@@ -221,9 +224,11 @@
             box-shadow: none;
         }
         .footer-logo img {
-            width: 100%;
             height: 100%;
+            width: auto;
+            max-width: 100%;
             object-fit: contain;
+            object-position: left center;
             display: block;
         }
         .footer-tagline {
@@ -630,9 +635,10 @@
             background: #fff;
             border: 3px solid #febb02;
             border-radius: 8px;
-            overflow: visible;
+            overflow: hidden;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             position: relative;
+            box-sizing: border-box;
         }
         .bk-seg {
             display: flex;
@@ -683,6 +689,25 @@
             cursor: pointer;
             font-weight: 500;
             width: auto;
+            max-height: 26px;
+            line-height: 1.2;
+            padding: 0;
+            box-sizing: border-box;
+            position: relative;
+        }
+        /* Một icon lịch segment đủ; ẩn indicator trình duyệt (WebKit) để khỏi trùng / lệch hàng */
+        .bk-date-range-inputs {
+            position: relative;
+            align-items: center;
+        }
+        .bk-date-range-inputs .bk-date-input::-webkit-calendar-picker-indicator {
+            opacity: 0;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            cursor: pointer;
         }
         .bk-clear-btn {
             background: none;
@@ -697,9 +722,11 @@
         .bk-clear-btn:hover { color: #333; }
         .bk-sep {
             width: 1px;
+            align-self: stretch;
             background: #ddd;
-            margin: 8px 0;
+            margin: 0;
             flex-shrink: 0;
+            min-height: 100%;
         }
         .bk-search-btn {
             background: #0071c2;
@@ -713,6 +740,12 @@
             flex-shrink: 0;
             transition: background 0.2s;
             white-space: nowrap;
+            align-self: stretch;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            margin: 0;
         }
         .bk-search-btn:hover { background: #005fa3; }
 
@@ -722,6 +755,7 @@
             overflow: visible;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             background: #fff;
+            box-sizing: border-box;
         }
         .bk-search-bar.bk-search-bar--in-stack {
             border: none;
@@ -780,9 +814,14 @@
 
         @media (max-width: 767px) {
             .bk-search-bar { flex-direction: column; border-radius: 8px; }
-            .bk-sep { width: 100%; height: 1px; margin: 0; }
+            .bk-sep { width: 100%; height: 1px; min-height: 0; align-self: stretch; }
             .bk-seg-dest { border-radius: 5px 5px 0 0; }
-            .bk-search-btn { border-radius: 0 0 5px 5px; padding: 14px; }
+            .bk-search-btn {
+                border-radius: 0 0 5px 5px;
+                padding: 14px;
+                width: 100%;
+                align-self: stretch;
+            }
             .bk-seg-dates, .bk-seg-guests, .bk-seg-dest { flex: none; width: 100%; }
         }
 
@@ -1024,6 +1063,10 @@
             overflow: hidden;
             background: #fff;
         }
+        /* Trang chỉ có một hàng tìm kiếm (không có bộ lọc): bo đủ 4 góc + clip nút Tìm khớp khung */
+        .bk-search-stack:not(:has(.bk-filter-row)) .bk-search-bar.bk-search-bar--in-stack {
+            border-radius: 14px;
+        }
         .bk-search-bar.bk-search-bar--in-stack .bk-seg-dest {
             border-radius: 0;
         }
@@ -1035,6 +1078,10 @@
         .bk-search-btn {
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
             border-radius: 0;
+            align-self: stretch;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .bk-search-btn:hover {
             background: linear-gradient(135deg, #1d4ed8, #1e40af);
@@ -1048,6 +1095,9 @@
         @media (max-width: 767px) {
             .bk-search-bar.bk-search-bar--in-stack {
                 border-radius: 14px 14px 0 0;
+            }
+            .bk-search-stack:not(:has(.bk-filter-row)) .bk-search-bar.bk-search-bar--in-stack {
+                border-radius: 14px;
             }
             .bk-search-bar.bk-search-bar--in-stack .bk-search-btn {
                 border-radius: 0;
@@ -1569,10 +1619,11 @@
             min-height: 200px;
             display: block;
         }
+        /* Cách nút chat AI (56px + lề) để hai FAB không chồng góc phải dưới */
         .lh-back-to-top {
             position: fixed;
-            right: 20px;
-            bottom: 20px;
+            right: 24px;
+            bottom: calc(24px + 56px + 12px);
             width: 46px;
             height: 46px;
             border: none;
@@ -1583,7 +1634,7 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 10px 24px rgba(30, 64, 175, 0.35);
-            z-index: 1040;
+            z-index: 1055;
             opacity: 0;
             transform: translateY(8px);
             pointer-events: none;
@@ -1606,20 +1657,22 @@
     <script type="module" src="https://unpkg.com/deep-chat@2.4.2/dist/deepChat.bundle.js"></script>
 </head>
 <body>
-@if(!request()->routeIs('account.profile'))
 <nav class="navbar navbar-expand-lg navbar-dark mb-4">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('home') }}">
             <span class="logo-mark">
-                <img src="{{ asset('images/logo-light-hotel.svg') }}" alt="Light Hotel" width="160" height="32">
+                <img src="{{ asset('storage/logo.png') }}" alt="{{ $hotelInfo?->name ?? 'Light Hotel' }}" width="200" height="40">
             </span>
-            <span>Light Hotel</span>
+            <span>{{ $hotelInfo?->name ?? 'Light Hotel' }}</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                <li class="nav-item">
+                    <a class="nav-link fw-medium {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">Trang chủ</a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link fw-medium {{ request()->routeIs('pages.contact') ? 'active' : '' }}" href="{{ route('pages.contact') }}">Liên hệ</a>
                 </li>
@@ -1660,9 +1713,11 @@
                         <span class="d-none d-md-inline fw-medium">{{ auth()->user()->full_name }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
+                        @if(! auth()->user()->canAccessAdmin())
                         <li><a class="dropdown-item" href="{{ route('account.profile') }}">
                             <i class="bi bi-person me-2"></i>Thông tin cá nhân
                         </a></li>
+                        @endif
                         @if(!auth()->user()->canAccessAdmin())
                         <li><a class="dropdown-item" href="{{ route('account.bookings') }}">
                             <i class="bi bi-clock-history me-2"></i>Lịch sử đặt phòng
@@ -1689,7 +1744,6 @@
         </div>
     </div>
 </nav>
-@endif
 
 <main class="container mb-5">
     @if(session('success'))
@@ -1727,189 +1781,18 @@
     <i class="bi bi-arrow-up"></i>
 </button>
 
-    {{-- Floating Admin Edit Button --}}
     @if(auth()->check() && auth()->user()->isAdmin())
-        <div class="admin-quick-edit" style="position: fixed; bottom: 30px; left: 30px; z-index: 10000;">
-            <button type="button" 
-               class="btn btn-warning rounded-circle shadow-lg d-flex align-items-center justify-content-center pulse-animation" 
-               style="width: 60px; height: 60px; border: 3px solid #fff;"
-               data-bs-toggle="modal" 
-               data-bs-target="#quickEditModal"
-               title="Chỉnh sửa trực tiếp">
-                <i class="bi bi-pencil-fill" style="font-size: 1.6rem; color: #1e293b;"></i>
-            </button>
+        @php
+            $lhSettingsFabQuery = request()->routeIs('pages.policy') ? ['tab' => 'policies'] : [];
+        @endphp
+        <div class="lh-admin-hub-fab" style="position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 10000;">
+            <a href="{{ route('admin.settings.index', $lhSettingsFabQuery) }}"
+               class="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center"
+               style="width: 3.25rem; height: 3.25rem; border: 2px solid rgba(255,255,255,.85);"
+               title="Mở trang cài đặt khách sạn &amp; chính sách (admin)">
+                <i class="bi bi-sliders2 fs-4" aria-hidden="true"></i>
+            </a>
         </div>
-
-        <!-- Quick Edit Modal -->
-        <div class="modal fade" id="quickEditModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content shadow-lg border-0">
-                    <div class="modal-header bg-warning text-dark">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-magic me-2"></i>Chỉnh sửa nội dung nhanh</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        @php
-                            $isPolicyPage = request()->routeIs('pages.policy');
-                        @endphp
-                        
-                        @if($isPolicyPage)
-                            <ul class="nav nav-pills mb-4 gap-2" id="quickEditTabs">
-                                <li class="nav-item">
-                                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-footer">Thông tin & Footer</button>
-                                </li>
-                                <li class="nav-item">
-                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-policy">Chính sách & Điều khoản</button>
-                                </li>
-                            </ul>
-                        @endif
-
-                        <div class="tab-content">
-                            <div class="tab-pane fade show active" id="tab-footer">
-                                <form action="{{ route('admin.settings.update.general') }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Tên khách sạn</label>
-                                            <input type="text" name="name" class="form-control" value="{{ $hotelInfo->name ?? '' }}">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Điện thoại</label>
-                                            <input type="text" name="phone" class="form-control" value="{{ $hotelInfo->phone ?? '' }}">
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label small fw-bold">Địa chỉ</label>
-                                            <input type="text" name="address" class="form-control" value="{{ $hotelInfo->address ?? '' }}">
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label small fw-bold">Email</label>
-                                            <input type="email" name="email" class="form-control" value="{{ $hotelInfo->email ?? '' }}">
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label small fw-bold">Mô tả Footer (Mô tả ngắn)</label>
-                                            <textarea name="description" class="form-control" rows="3">{{ $hotelInfo->description ?? '' }}</textarea>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4 text-end">
-                                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
-                                        <button type="submit" class="btn btn-primary px-4">Lưu thay đổi</button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            @if($isPolicyPage)
-                            <div class="tab-pane fade" id="tab-policy">
-                                <form action="{{ route('admin.settings.update.site.content') }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-                                    @php
-                                        $policyPrivacy = \App\Models\SiteContent::where('type', 'policy_privacy')->first();
-                                        $policyTerms = \App\Models\SiteContent::where('type', 'policy_terms')->first();
-                                        $policyBooking = \App\Models\SiteContent::where('type', 'policy_booking')->first();
-                                        $policyCancellation = \App\Models\SiteContent::where('type', 'policy_cancellation')->first();
-                                        $policyCookies = \App\Models\SiteContent::where('type', 'policy_cookies')->first();
-                                    @endphp
-                                    
-                                    <div class="accordion" id="accordionPolicy">
-                                        <!-- Privacy -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header">
-                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivacy">
-                                                    Chính sách bảo mật
-                                                </button>
-                                            </h2>
-                                            <div id="collapsePrivacy" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
-                                                <div class="accordion-body">
-                                                    <input type="hidden" name="contents[0][type]" value="policy_privacy">
-                                                    <input type="hidden" name="contents[0][content_id]" value="{{ $policyPrivacy->id ?? '' }}">
-                                                    <textarea name="contents[0][content]" class="form-control" rows="5">{{ $policyPrivacy->content ?? "Chúng tôi thu thập thông tin cần thiết để xử lý đặt phòng (họ tên, email, số điện thoại, chi tiết lưu trú, và khi cần thông tin thanh toán theo kênh bạn chọn) và bảo mật theo quy định hiện hành tại Việt Nam.\n\nDữ liệu được dùng để xác nhận đơn, liên hệ khi cần, xử lý thanh toán/hoàn tiền và cải thiện dịch vụ. Chúng tôi không bán thông tin cá nhân cho bên thứ ba cho mục đích tiếp thị.\n\nHệ thống có thể ghi nhật ký kỹ thuật (địa chỉ IP, loại trình duyệt, thời gian truy cập) nhằm bảo mật và phân tích lỗi — dữ liệu này được lưu giữ có thời hạn và hạn chế quyền truy cập nội bộ." }}</textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Terms -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header">
-                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTerms">
-                                                    Điều khoản sử dụng
-                                                </button>
-                                            </h2>
-                                            <div id="collapseTerms" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
-                                                <div class="accordion-body">
-                                                    <input type="hidden" name="contents[1][type]" value="policy_terms">
-                                                    <input type="hidden" name="contents[1][content_id]" value="{{ $policyTerms->id ?? '' }}">
-                                                    <textarea name="contents[1][content]" class="form-control" rows="5">{{ $policyTerms->content ?? "Khi sử dụng website để tìm kiếm và đặt phòng, bạn đồng ý cung cấp thông tin trung thực và tuân thủ quy định của khách sạn trong thời gian lưu trú, bao gồm an ninh, an toàn cháy nổ và trật tự chung.\n\nNội dung, hình ảnh và mô tả trên website thuộc quyền sở hữu hoặc được cấp phép sử dụng. Việc sao chép cho mục đích thương mại cần có sự đồng ý bằng văn bản.\n\nKhách sạn có quyền từ chối phục vụ trong trường hợp vi phạm nội quy, an ninh hoặc gây ảnh hưởng đến khách khác." }}</textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Booking -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header">
-                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBooking">
-                                                    Đặt phòng & thanh toán
-                                                </button>
-                                            </h2>
-                                            <div id="collapseBooking" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
-                                                <div class="accordion-body">
-                                                    <input type="hidden" name="contents[2][type]" value="policy_booking">
-                                                    <input type="hidden" name="contents[2][content_id]" value="{{ $policyBooking->id ?? '' }}">
-                                                    <textarea name="contents[2][content]" class="form-control" rows="5">{{ $policyBooking->content ?? "Giá hiển thị theo từng loại phòng và ngày có thể thay đổi theo thời điểm, số lượng phòng còn trống và chương trình khuyến mãi. Giá cuối cùng được xác nhận tại bước thanh toán trước khi bạn hoàn tất đơn.\n\nĐơn đặt chỉ được coi là xác nhận sau khi hệ thống ghi nhận thanh toán thành công (hoặc theo điều kiện “giữ phòng” nếu được hiển thị rõ) và bạn nhận thông báo/email xác nhận từ khách sạn." }}</textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Cancellation -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header">
-                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCancellation">
-                                                    Hủy phòng & hoàn tiền
-                                                </button>
-                                            </h2>
-                                            <div id="collapseCancellation" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
-                                                <div class="accordion-body">
-                                                    <input type="hidden" name="contents[3][type]" value="policy_cancellation">
-                                                    <input type="hidden" name="contents[3][content_id]" value="{{ $policyCancellation->id ?? '' }}">
-                                                    <textarea name="contents[3][content]" class="form-control" rows="5">{{ $policyCancellation->content ?? "Điều kiện hủy miễn phí, hủy có phí và mức hoàn tiền phụ thuộc gói giá và thời điểm bạn gửi yêu cầu. Thông tin cụ thể được hiển thị trên trang đặt phòng và trong email xác nhận.\n\nTrường hợp bất khả kháng (thiên tai, sự cố hệ thống ngân hàng…), khách sạn sẽ phối hợp xử lý theo chính sách từng thời kỳ và thông báo qua kênh liên hệ đã đăng ký." }}</textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Cookies -->
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header">
-                                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCookies">
-                                                    Cookie & công nghệ tương tự
-                                                </button>
-                                            </h2>
-                                            <div id="collapseCookies" class="accordion-collapse collapse" data-bs-parent="#accordionPolicy">
-                                                <div class="accordion-body">
-                                                    <input type="hidden" name="contents[4][type]" value="policy_cookies">
-                                                    <input type="hidden" name="contents[4][content_id]" value="{{ $policyCookies->id ?? '' }}">
-                                                    <textarea name="contents[4][content]" class="form-control" rows="5">{{ $policyCookies->content ?? "Website có thể sử dụng cookie phiên và cookie chức năng để duy trì phiên đăng nhập (nếu có), ghi nhớ tùy chọn ngôn ngữ và bảo vệ chống lạm dụng (CSRF). Bạn có thể điều chỉnh trình duyệt để từ chối cookie, tuy nhiên một số tính năng có thể không hoạt động đầy đủ.\n\nChúng tôi không dùng cookie để theo dõi hành vi nhạy cảm ngoài phạm vi vận hành website và xử lý đặt phòng." }}</textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4 text-end">
-                                        <button type="submit" class="btn btn-success px-4">Cập nhật toàn bộ chính sách</button>
-                                    </div>
-                                </form>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <style>
-            .pulse-animation { animation: pulse-yellow 2s infinite; }
-            @keyframes pulse-yellow {
-                0% { box-shadow: 0 0 0 0 rgba(254, 190, 2, 0.7); }
-                70% { box-shadow: 0 0 0 15px rgba(254, 190, 2, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(254, 190, 2, 0); }
-            }
-            .nav-pills .nav-link { color: #64748b; font-weight: 600; border-radius: 8px; }
-            .nav-pills .nav-link.active { background-color: #febb02; color: #1e293b; }
-        </style>
     @endif
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

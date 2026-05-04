@@ -1,28 +1,35 @@
+@include('admin.bookings.partials.extras-form-styles')
+@if(! empty($catalogNotice))
+    <p class="small text-secondary mb-2">{{ $catalogNotice }}</p>
+@endif
 <div class="js-booking-svc-wrap">
-    <div class="js-booking-svc-rows">
-        <div class="js-booking-svc-row border rounded p-3 mb-2 bg-white">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-7 col-lg-8">
-                    <label class="form-label small fw-bold mb-1">Dịch vụ <span class="text-muted fw-normal">(khi thêm DV)</span></label>
+    <div class="js-booking-svc-rows abs-extras-rows">
+        <div class="js-booking-svc-row abs-extras-row">
+            <div class="d-flex flex-wrap gap-2 gap-md-3 align-items-end">
+                <div class="flex-grow-1" style="min-width: min(100%, 220px);">
+                    <label class="abs-extras-label">Dịch vụ <span class="fw-normal text-secondary">(tuỳ chọn)</span></label>
                     <select name="svc_items[0][service_id]" class="form-select form-select-sm">
-                        <option value="">— Dịch vụ —</option>
+                        <option value="">— Chọn dịch vụ —</option>
                         @foreach($services as $svc)
                             <option value="{{ $svc->id }}">{{ $svc->name }} — {{ number_format((float) $svc->price, 0, ',', '.') }} ₫</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-5 col-lg-4">
-                    <label class="form-label small fw-bold mb-1">Số lượng</label>
-                    <input type="number" name="svc_items[0][quantity]" value="1" min="1" max="9999" class="form-control form-control-sm">
+                <div style="width: 5.5rem; flex-shrink: 0;">
+                    <label class="abs-extras-label">SL</label>
+                    <input type="number" name="svc_items[0][quantity]" value="1" min="1" max="9999" class="form-control form-control-sm text-center">
                 </div>
-                <div class="col-12 text-md-end">
-                    <button type="button" class="btn btn-outline-danger btn-sm js-booking-svc-remove mt-1" hidden title="Xóa dòng">&times; Xóa dòng</button>
+                <div class="ms-md-auto pb-md-1">
+                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 js-booking-svc-remove" hidden title="Xóa dòng" aria-label="Xóa dòng">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-    <button type="button" class="btn btn-outline-primary btn-sm js-booking-svc-add">
-        <i class="bi bi-plus-lg"></i> Thêm dòng
+    <button type="button" class="abs-extras-add js-booking-svc-add mt-2">
+        <i class="bi bi-plus-circle"></i>
+        <span>Thêm dòng</span>
     </button>
 </div>
 

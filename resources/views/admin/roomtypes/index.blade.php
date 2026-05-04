@@ -18,15 +18,6 @@
         </div>
     </div>
 
-    <!-- Alert -->
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show shadow-sm">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-
     <!-- Card -->
     <div class="card shadow border-0">
 

@@ -6,7 +6,7 @@
 <div class="container-fluid px-0">
     <div class="page-header">
         <h1 class="text-dark fw-bold">Quản lý phòng</h1>
-        @if(auth()->user()->canAccessAdmin())
+        @if(auth()->user()->isAdmin())
         <a href="{{ route('admin.rooms.create') }}" class="btn btn-primary btn-sm" title="Thêm phòng"><i class="bi bi-plus-lg"></i> Thêm phòng</a>
         @endif
     </div>
@@ -64,8 +64,10 @@
                                         <span class="badge bg-success">Sẵn sàng</span>
                                     @elseif($room->status === 'booked')
                                         <span class="badge bg-warning text-dark">Đã đặt</span>
-                                    @else
+                                    @elseif($room->status === 'maintenance')
                                         <span class="badge bg-secondary">Bảo trì</span>
+                                    @else
+                                        <span class="badge bg-dark" title="Trạng thái không chuẩn — nên sửa trong CSDL">{{ $room->status ?: '—' }}</span>
                                     @endif
                                 </td>
                                 <td>
@@ -77,9 +79,11 @@
                                                 data-bs-target="#detailModal{{ $room->id }}">
                                             <i class="bi bi-eye"></i>
                                         </button>
+                                        @if(auth()->user()->isAdmin())
                                         <a href="{{ route('admin.rooms.edit', $room->id) }}"
                                            class="btn btn-sm btn-outline-warning btn-admin-icon"
                                            title="Sửa"><i class="bi bi-pencil-square"></i></a>
+                                        @endif
 
                                     </div>
                                 </td>
@@ -178,8 +182,10 @@
                                         <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Sẵn sàng</span>
                                     @elseif($room->status === 'booked')
                                         <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Đã đặt</span>
-                                    @else
+                                    @elseif($room->status === 'maintenance')
                                         <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Bảo trì</span>
+                                    @else
+                                        <span class="badge bg-dark-subtle text-dark border" title="Trạng thái không chuẩn">{{ $room->status ?: '—' }}</span>
                                     @endif
                                 </td>
                             </tr>

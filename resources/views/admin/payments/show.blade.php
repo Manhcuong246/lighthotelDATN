@@ -25,18 +25,18 @@
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Mã giao dịch</label>
+                            <label class="form-label">Mã giao dịch</label>
                             <p class="form-control-plaintext">{{ $payment->transaction_id ?? '—' }}</p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Ngày tạo</label>
+                            <label class="form-label">Ngày tạo</label>
                             <p class="form-control-plaintext">{{ $payment->created_at ? (is_string($payment->created_at) ? \Carbon\Carbon::parse($payment->created_at)->format('d/m/Y H:i:s') : $payment->created_at->format('d/m/Y H:i:s')) : '—' }}</p>
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Trạng thái</label>
+                            <label class="form-label">Trạng thái</label>
                             <p class="form-control-plaintext">
                                 @if($payment->status === 'pending')
                                     <span class="badge bg-warning text-dark">Chờ thanh toán</span>
@@ -52,7 +52,7 @@
                             </p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Ngày thanh toán</label>
+                            <label class="form-label">Ngày thanh toán</label>
                             <p class="form-control-plaintext">
                                 {{ $payment->paid_at
                                     ? (is_string($payment->paid_at)
@@ -65,11 +65,11 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Số tiền</label>
+                            <label class="form-label">Số tiền</label>
                             <p class="form-control-plaintext h5 text-success fw-bold">{{ number_format($payment->amount, 0, ',', '.') }} VNĐ</p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Phương thức thanh toán</label>
+                            <label class="form-label">Phương thức thanh toán</label>
                             <p class="form-control-plaintext">
                                 @if($payment->method === 'credit_card')
                                     <span class="badge bg-info">Thẻ tín dụng</span>
@@ -88,11 +88,11 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Cập nhật lần cuối</label>
+                            <label class="form-label">Cập nhật lần cuối</label>
                             <p class="form-control-plaintext">{{ $payment->updated_at ? (is_string($payment->updated_at) ? \Carbon\Carbon::parse($payment->updated_at)->format('d/m/Y H:i:s') : $payment->updated_at->format('d/m/Y H:i:s')) : '—' }}</p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Mã thanh toán</label>
+                            <label class="form-label">Mã thanh toán</label>
                             <p class="form-control-plaintext"><code>#{{ $payment->id }}</code></p>
                         </div>
                     </div>
@@ -100,7 +100,7 @@
                     @if($payment->notes)
                     <div class="row mb-3">
                         <div class="col-12">
-                            <label class="form-label fw-bold">Ghi chú</label>
+                            <label class="form-label">Ghi chú</label>
                             <p class="form-control-plaintext">{{ $payment->notes }}</p>
                         </div>
                     </div>

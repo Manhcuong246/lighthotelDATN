@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Service;
+use Illuminate\Support\Facades\Cache;
 
 class ServiceController extends Controller
 {
@@ -46,6 +47,8 @@ class ServiceController extends Controller
             'description' => $request->description
         ]);
 
+        $this->forgetServiceCatalogCaches();
+
         return redirect()
             ->route('admin.services.index')
             ->with('success', 'Thêm dịch vụ thành công!');
@@ -83,6 +86,8 @@ class ServiceController extends Controller
             'description' => $request->description
         ]);
 
+        $this->forgetServiceCatalogCaches();
+
         return redirect()
             ->route('admin.services.index')
             ->with('success', 'Cập nhật dịch vụ thành công!');
@@ -97,8 +102,17 @@ class ServiceController extends Controller
 
         $service->delete();
 
+        $this->forgetServiceCatalogCaches();
+
         return redirect()
             ->route('admin.services.index')
             ->with('success', 'Xóa dịch vụ thành công!');
+    }
+
+    private function forgetServiceCatalogCaches(): void
+    {
+        foreach (['catalog.services.order_by_name', 'catalog.services.admin_booking_detail'] as $key) {
+            Cache::forget($key);
+        }
     }
 }

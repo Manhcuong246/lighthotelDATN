@@ -46,7 +46,7 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Ảnh phòng</label>
+                    <label class="form-label">Ảnh phòng</label>
                     @if($room->images->isNotEmpty())
                     <div class="d-flex flex-wrap gap-2 mb-2">
                         @foreach($room->images as $img)

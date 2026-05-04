@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingLog;
 use App\Models\Guest;
 use App\Models\Room;
+use App\Support\BookingCatalogServices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -95,6 +96,12 @@ class NewBookingController extends Controller
         ]);
 
         try {
+            if ($request->input('payment_method') === 'vnpay') {
+                return back()->withErrors(
+                    'Thanh toán online (VNPay) chỉ dùng được trên trang Tra cứu phòng; đơn chỉ được tạo sau khi thanh toán thành công. Vui lòng quay lại và chọn luồng đặt từ trang chủ.'
+                )->withInput();
+            }
+
             DB::beginTransaction();
 
             // Tính tổng giá dựa trên số phòng
@@ -126,8 +133,7 @@ class NewBookingController extends Controller
 
             DB::commit();
 
-            return redirect()->route('bookings.confirmation', $booking->id)
-                ->with('success', 'Đặt phòng thành công! Vui lòng đến đúng giờ để check-in.');
+            return redirect()->route('bookings.confirmation', $booking->id);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -283,9 +289,10 @@ class NewBookingController extends Controller
             'logs.user',
             'invoice',
         ]);
-        $services = \App\Models\Service::query()->orderBy('name')->get();
+        $services = BookingCatalogServices::forBooking($booking);
+        $bookingSvcCatalogNotice = BookingCatalogServices::resolveNoticeForBooking($booking);
 
-        return view('bookings.admin-show', compact('booking', 'services'));
+        return view('bookings.admin-show', compact('booking', 'services', 'bookingSvcCatalogNotice'));
     }
 
     /**

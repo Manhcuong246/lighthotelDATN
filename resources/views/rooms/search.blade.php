@@ -24,7 +24,7 @@
     }
     .booking-container .bk-search-bar.bk-search-bar--in-stack {
         border-radius: 9px 9px 0 0 !important;
-        overflow: visible !important;
+        overflow: hidden !important;
     }
     .booking-container .bk-filter-row {
         overflow: visible !important;
@@ -428,7 +428,7 @@
                     <i class="bi bi-calendar-event bk-seg-icon"></i>
                     <div class="bk-seg-content">
                         <div class="bk-seg-label">Nhận phòng - Trả phòng</div>
-                        <div class="d-flex align-items-center gap-1">
+                        <div class="d-flex align-items-center gap-1 bk-date-range-inputs flex-wrap flex-sm-nowrap">
                             <input type="date" name="check_in" id="search_check_in" class="bk-date-input"
                                    value="{{ $check_in }}" min="{{ date('Y-m-d') }}">
                             <span class="text-muted">→</span>
@@ -628,7 +628,7 @@
                                                 <i class="bi bi-person-fill fs-6" style="opacity: 0.6;"></i>
                                             @endfor
                                             <i class="bi bi-info-circle text-primary ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top"
-                                               title="TC {{ (int) ($type->standard_capacity ?? $type->capacity) }} · Tối đa {{ (int) ($type->capacity ?? 6) }} (tính cả trẻ 0–5). Trẻ 0–5 miễn phụ thu. Vượt TC → phụ thu NL/trẻ 6–11."></i>
+                                               title="TC {{ (int) ($type->standard_capacity ?? $type->capacity) }} · Tối đa {{ (int) ($type->capacity ?? 6) }} · Vượt TC tính phụ thu."></i>
                                         </div>
                                     </td>
                                     <td>
@@ -672,7 +672,7 @@
                 <div class="alert alert-info py-5 text-center rounded-4 shadow-sm">
                     <i class="bi bi-info-circle fs-1 d-block mb-3"></i>
                     <h4 class="fw-bold">Rất tiếc, đã hết phòng!</h4>
-                    <p class="text-muted mb-0">Vui lòng chọn ngày khác hoặc thay đổi tiêu chí tìm kiếm của bạn.</p>
+                    <p class="text-muted mb-0">Vui lòng đổi ngày hoặc tiêu chí tìm kiếm.</p>
                 </div>
             @endforelse
 
@@ -874,48 +874,29 @@ const __BP = @json(config('booking.pricing'));
 /**
  * Đồng bộ với App\Support\RoomOccupancyPricing
  *
- * totalOcc = adults + c611 + c05  (TẤT CẢ tính sức chứa)
- * standardCap = 3  → ≤3 ko phụ phí; >3 phụ phí; >6 từ chối
- * Trẻ 0–5 chiếm slot tiêu chuẩn (miễn phí), slot còn lại cho NL + trẻ 6–11
- * Phụ phí = % giá phòng/đêm cho NL / trẻ 6–11 vượt slot
+ * Capacity (max): chỉ adults + c611. Trẻ 0–5 không tính sức chứa / không chiếm chỗ tiêu chuẩn.
+ * Phụ phí = % giá phòng/đêm khi NL + trẻ 6–11 vượt standardCap.
  */
 function bookingPriceBreakdown(base, adults, c05, c611, adultRate, childRate, stdCap, maxCap) {
     const _stdCap = Number(stdCap) || 2;
     const _maxCap = Number(maxCap) || 3;
-    const maxC05Free = 2; // Chỉ 2 trẻ 0-5 được miễn phí
+    const maxC05Free = Number(__BP.max_children_05) || 2;
     const aRate = (adultRate != null) ? Number(adultRate) : (Number(__BP.default_adult_surcharge_rate) || 0.25);
     const cRate = (childRate != null) ? Number(childRate) : (Number(__BP.default_child_surcharge_rate) || 0.125);
 
-    // Tối đa 2 trẻ 0–5 / phòng (đồng bộ backend); không còn nhánh phụ phí cho trẻ 0–5 khi UI giới hạn 2
-    const c05Free = Math.min(c05, maxC05Free);
-    const c05Pay = Math.max(0, c05 - maxC05Free);
-
-    // Tổng người tính slot = người lớn + trẻ 6-11 + trẻ 0-5 phải trả phí
-    const billablePeople = adults + c611 + c05Pay;
-
-    // Tính slot còn trống sau khi trừ trẻ 0-5 miễn phí
-    const effectiveStdCap = Math.max(0, _stdCap); // Không trừ c05 nữa
-
-    // Người lớn vượt quá tiêu chuẩn
-    const extraAdults = Math.max(0, adults - effectiveStdCap);
-
-    // Slot còn lại sau khi đặt người lớn (tối đa đến tiêu chuẩn)
-    const slotsAfterAdults = Math.max(0, effectiveStdCap - adults);
-
-    // Trẻ phải trả phí = trẻ 6-11 + trẻ 0-5 thứ 3+
-    const totalPayChildren = c611 + c05Pay;
-    const extraChildren = Math.max(0, totalPayChildren - slotsAfterAdults);
+    const billableSlots = Math.max(0, _stdCap);
+    const extraAdults = Math.max(0, adults - billableSlots);
+    const remainingSlots = Math.max(0, billableSlots - adults);
+    const extraChildren = Math.max(0, c611 - remainingSlots);
 
     const adultFee = extraAdults * aRate * base;
     const childFee = extraChildren * cRate * base;
     const surcharge = adultFee + childFee;
     const perNight = base + surcharge;
 
-    // Tổng người = người lớn + tất cả trẻ (kể cả miễn phí)
     const total = adults + c611 + c05;
 
-    // Không giới hạn số khách - chỉ tính phụ thu khi vượt tiêu chuẩn
-    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05: maxC05Free, allowed: true, c05Free, c05Pay };
+    return { perNight, surcharge, adultFee, childFee, extraAdults, extraChildren, effective: total, stdCap: _stdCap, maxCap: _maxCap, maxC05: maxC05Free, allowed: true };
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1124,8 +1105,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <div class="small text-muted mb-1" style="font-size: 0.7rem;">
                                 <div>Cơ bản: ${new Intl.NumberFormat('vi-VN').format(basePrice)}đ</div>
-                                ${extraAdultFee > 0 ? `<div class="text-danger">Phụ thu NL thêm (${br.extraAdults} người): +${new Intl.NumberFormat('vi-VN').format(extraAdultFee)}đ/đêm</div>` : ''}
-                                ${childFee > 0 ? `<div class="text-danger">Phụ thu trẻ 6–11 thêm (${br.extraChildren} em): +${new Intl.NumberFormat('vi-VN').format(childFee)}đ/đêm</div>` : ''}
+                                ${extraAdultFee > 0 ? `<div class="text-primary">Phụ thu NL thêm (${br.extraAdults} người): +${new Intl.NumberFormat('vi-VN').format(extraAdultFee)}đ/đêm</div>` : ''}
+                                ${childFee > 0 ? `<div class="text-primary">Phụ thu trẻ 6–11 thêm (${br.extraChildren} em): +${new Intl.NumberFormat('vi-VN').format(childFee)}đ/đêm</div>` : ''}
                             </div>
                             <div class="d-flex justify-content-between small" style="font-size: 0.75rem;">
                                 <span>${nights} đêm x ${new Intl.NumberFormat('vi-VN').format(roomPricePerNight)}đ</span>

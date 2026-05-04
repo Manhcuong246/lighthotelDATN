@@ -25,6 +25,7 @@
         </p>
     @else
         <form method="POST" action="{{ route('reviews.store', ['room' => $roomEntity->id]) }}" class="text-start review-write-form-inner">
+            @php $lhStarRatingUid = 'lh-sr-' . bin2hex(random_bytes(4)); @endphp
             @csrf
             @if(!empty($reviewReturnUrl))
                 <input type="hidden" name="_return" value="{{ $reviewReturnUrl }}">
@@ -48,18 +49,27 @@
             @endif
 
             <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-3">
-                    <label class="form-label small text-muted mb-1">Số sao <span class="text-danger">*</span></label>
-                    <select name="rating" class="form-select form-select-sm" required>
-                        <option value="">Chọn</option>
-                        <option value="5">5 — Rất tốt</option>
-                        <option value="4">4 — Tốt</option>
-                        <option value="3">3 — Ổn</option>
-                        <option value="2">2 — Chưa tốt</option>
-                        <option value="1">1 — Tệ</option>
-                    </select>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label small text-muted mb-1" id="{{ $lhStarRatingUid }}-label">Số sao <span class="text-danger">*</span></label>
+                    <div class="lh-star-rating-input">
+                        <input type="hidden" name="rating" value="{{ old('rating', '') }}" required class="lh-star-rating-hidden" autocomplete="off">
+                        @php
+                            $lhReviewStarAria = [1 => '1 sao — Tệ', 2 => '2 sao — Chưa tốt', 3 => '3 sao — Ổn', 4 => '4 sao — Tốt', 5 => '5 sao — Rất tốt'];
+                        @endphp
+                        <div class="lh-star-rating-stars" role="radiogroup" aria-labelledby="{{ $lhStarRatingUid }}-label">
+                            @for($s = 1; $s <= 5; $s++)
+                                <button type="button" class="lh-star-btn" data-value="{{ $s }}" aria-label="{{ $lhReviewStarAria[$s] }}" aria-pressed="false">
+                                    <i class="bi bi-star-fill" aria-hidden="true"></i>
+                                </button>
+                            @endfor
+                        </div>
+                        <div class="lh-star-rating-caption small text-muted mt-1"></div>
+                        @error('rating')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
-                <div class="col-12 col-md-9">
+                <div class="col-12 col-md-8 col-lg-9">
                     <label class="form-label small text-muted mb-1">Tiêu đề (tuỳ chọn)</label>
                     <input type="text" name="title" class="form-control form-control-sm" maxlength="255" placeholder="Ví dụ: Phòng sạch, yên tĩnh">
                 </div>
@@ -74,3 +84,119 @@
         </form>
     @endif
 @endauth
+
+@once
+    @push('styles')
+    <style>
+        .lh-star-rating-input .lh-star-rating-stars {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.15rem;
+        }
+        .lh-star-rating-input .lh-star-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.15rem;
+            margin: 0;
+            border: none;
+            background: transparent;
+            color: #d1d5db;
+            font-size: 1.85rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: color 0.15s ease, transform 0.12s ease;
+        }
+        .lh-star-rating-input .lh-star-btn.is-lit {
+            color: #f59e0b;
+        }
+        .lh-star-rating-input.is-preview-mode .lh-star-btn.is-lit {
+            color: #fbbf24;
+        }
+        .lh-star-rating-input .lh-star-btn:hover {
+            transform: scale(1.1);
+        }
+        .lh-star-rating-input .lh-star-btn:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 3px;
+            border-radius: 6px;
+        }
+        .lh-star-rating-input .lh-star-rating-caption {
+            min-height: 1.35rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+    </style>
+    @endpush
+    @push('scripts')
+    <script>
+        (function () {
+            var LABELS = ['', 'Tệ', 'Chưa tốt', 'Ổn', 'Tốt', 'Rất tốt'];
+
+            function sync(wrap, previewVal) {
+                var hidden = wrap.querySelector('.lh-star-rating-hidden');
+                var caption = wrap.querySelector('.lh-star-rating-caption');
+                var btns = wrap.querySelectorAll('.lh-star-btn');
+                if (!hidden || !btns.length) return;
+
+                var selected = parseInt(hidden.value, 10) || 0;
+                var display = previewVal != null ? previewVal : selected;
+
+                wrap.classList.toggle('is-preview-mode', previewVal != null);
+
+                btns.forEach(function (btn, idx) {
+                    var n = idx + 1;
+                    var lit = display > 0 && n <= display;
+                    btn.classList.toggle('is-lit', lit);
+                    btn.setAttribute('aria-pressed', selected === n ? 'true' : 'false');
+                });
+
+                if (caption) {
+                    if (previewVal != null && previewVal > 0) {
+                        caption.textContent = LABELS[previewVal];
+                    } else if (selected > 0) {
+                        caption.textContent = LABELS[selected];
+                    } else {
+                        caption.textContent = 'Chọn số sao (bắt buộc)';
+                    }
+                }
+            }
+
+            function bind(wrap) {
+                var hidden = wrap.querySelector('.lh-star-rating-hidden');
+                var stars = wrap.querySelector('.lh-star-rating-stars');
+                var btns = wrap.querySelectorAll('.lh-star-btn');
+                if (!hidden || !stars || !btns.length) return;
+
+                btns.forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var v = parseInt(btn.getAttribute('data-value'), 10);
+                        hidden.value = String(v);
+                        sync(wrap, null);
+                    });
+                    btn.addEventListener('mouseenter', function () {
+                        var v = parseInt(btn.getAttribute('data-value'), 10);
+                        sync(wrap, v);
+                    });
+                });
+                stars.addEventListener('mouseleave', function () {
+                    sync(wrap, null);
+                });
+
+                sync(wrap, null);
+            }
+
+            function init() {
+                document.querySelectorAll('.review-write-form-inner .lh-star-rating-input').forEach(bind);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+    @endpush
+@endonce
