@@ -1,4 +1,10 @@
-# Không dùng pattern "*" của Laravel (sẽ ignore toàn bộ upload → IDE/Git coi folder "mờ").
-# Chỉ bỏ qua file hệ thống; ảnh trong avatars/, room_images/, refund_proofs/, refunds/ có thể add/commit.
+# File hệ thống
 .DS_Store
 Thumbs.db
+
+# Upload / dữ liệu runtime — không đưa lên git (ảnh dự án đặt vào public/images hoặc tương đương)
+avatars/
+refund_proofs/
+refunds/
+room_images/
+logo.png
