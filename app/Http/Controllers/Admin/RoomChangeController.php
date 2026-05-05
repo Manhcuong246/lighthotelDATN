@@ -10,7 +10,6 @@ use App\Models\BookingRoom;
 use App\Models\RoomBookedDate;
 use App\Services\RoomChangeService;
 use App\Support\InvoiceBookingSynchronizer;
-use App\Support\RoomOccupancyPricing;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -266,54 +265,9 @@ class RoomChangeController extends Controller
 
         $booking = Booking::with('bookingRooms.room.roomType')->findOrFail($request->booking_id);
 
-        $bookingRoom = $booking->bookingRooms->firstWhere('room_id', (int) $request->get('old_room_id'))
-            ?? $booking->bookingRooms->first();
+        $oldRoomId = $request->filled('old_room_id') ? (int) $request->get('old_room_id') : null;
 
-        if (! $bookingRoom) {
-            return response()->json([
-                'success' => true,
-                'data' => [],
-            ]);
-        }
-
-        $excludeIds = $roomChangeService->getExcludedRoomIdsForChange($booking);
-
-        $query = Room::with('roomType')
-            ->where('status', 'available')
-            ->excludeMaintenance();
-
-        if ($excludeIds !== []) {
-            $query->whereNotIn('id', $excludeIds);
-        }
-
-        // Trẻ 0–5 không tính vào sức chứa khi gợi ý phòng đổi
-        $totalGuests = (int) $bookingRoom->adults + (int) $bookingRoom->children_6_11;
-
-        $rooms = $query->get()
-            ->filter(static fn (Room $room) => $room->catalogueMaxGuests() >= $totalGuests)
-            ->map(function ($room) use ($bookingRoom) {
-            $rt = $room->roomType;
-            $base = (float) $room->catalogueBasePrice();
-
-            $breakdown = RoomOccupancyPricing::breakdown(
-                $base,
-                (int) $bookingRoom->adults,
-                (int) $bookingRoom->children_6_11,
-                (int) $bookingRoom->children_0_5,
-                $rt
-            );
-
-            return [
-                'id' => $room->id,
-                'room_number' => $room->room_number ?? $room->name ?? 'N/A',
-                'room_type' => $rt->name ?? 'N/A',
-                'price' => $breakdown['base_price'],
-                'price_per_night_full' => $breakdown['price_per_night'],
-                'surcharge_per_night' => $breakdown['surcharge_per_night'],
-                'capacity' => $rt->capacity ?? 0,
-                'standard_capacity' => $rt->standard_capacity ?? $rt->capacity ?? 0,
-            ];
-        });
+        $rooms = $roomChangeService->getCandidateRoomsPayloadForChangeScreen($booking, $oldRoomId);
 
         return response()->json([
             'success' => true,

@@ -142,6 +142,7 @@ class RoomChangeService
      * Các room_id không được chọn làm phòng đích khi đổi phòng:
      * - Mọi phòng vật lý đang gán cho đơn (tránh chọn lại đúng phòng / phòng của slot khác trên cùng đơn).
      * - Phòng có lịch đơn khác trùng các đêm cần giữ (theo roomChangeHoldNightRangeInclusive).
+     * - Phòng đã gán (booking_rooms.room_id) cho đơn khác có kỳ lưu trú chồng lấn — tránh trường hợp room_booked_dates lệch/thiếu.
      */
     public function getExcludedRoomIdsForChange(Booking $booking): array
     {
@@ -165,14 +166,30 @@ class RoomChangeService
             ->whereBetween('booked_date', [$rangeStart, $rangeEndNight])
             ->whereHas('booking', function ($q) use ($booking) {
                 $q->where('id', '!=', $booking->id)
-                    ->whereIn('status', ['pending', 'confirmed', 'checked_in']);
+                    ->whereNotIn('status', ['cancelled', 'completed']);
             })
             ->distinct()
             ->pluck('room_id')
             ->map(static fn ($id) => (int) $id)
             ->all();
 
-        return collect($held)->merge($blocked)->unique()->values()->all();
+        // Trùng đêm: đơn khác có check_in <= cuối đêm cần giữ và check_out > đầu đêm cần giữ (check-out là ngày rời, không tính đêm đó).
+        $assignedElsewhere = BookingRoom::query()
+            ->whereNotNull('room_id')
+            ->where('booking_id', '!=', $booking->id)
+            ->whereHas('booking', function ($q) use ($booking, $rangeStart, $rangeEndNight) {
+                $q->whereNotIn('status', ['cancelled', 'completed'])
+                    ->whereDate('check_in', '<=', $rangeEndNight)
+                    ->whereDate('check_out', '>', $rangeStart);
+            })
+            ->distinct()
+            ->pluck('room_id')
+            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn (int $id) => $id > 0)
+            ->values()
+            ->all();
+
+        return collect($held)->merge($blocked)->merge($assignedElsewhere)->unique()->values()->all();
     }
 
     /**
@@ -264,12 +281,47 @@ class RoomChangeService
         return RoomBookedDate::where('room_id', $roomId)
             ->whereBetween('booked_date', [$firstNightYmd, $lastNightYmd])
             ->whereHas('booking', function ($q) use ($excludeBookingId) {
-                $q->whereIn('status', ['pending', 'confirmed', 'checked_in']);
+                $q->whereNotIn('status', ['cancelled', 'completed']);
                 if ($excludeBookingId) {
                     $q->where('id', '!=', $excludeBookingId);
                 }
             })
             ->exists();
+    }
+
+    /**
+     * Phòng đã gán vật lý (booking_rooms.room_id) cho đơn khác có kỳ chồng khoảng đêm — bắt lệch khi room_booked_dates chưa đồng bộ.
+     */
+    private function roomHasAssignmentConflictFromOtherBookings(
+        int $roomId,
+        string $firstNightYmd,
+        string $lastNightYmd,
+        ?int $excludeBookingId = null
+    ): bool {
+        return BookingRoom::query()
+            ->where('room_id', $roomId)
+            ->when($excludeBookingId !== null && $excludeBookingId > 0, function ($q) use ($excludeBookingId) {
+                $q->where('booking_id', '!=', $excludeBookingId);
+            })
+            ->whereHas('booking', function ($q) use ($firstNightYmd, $lastNightYmd) {
+                $q->whereNotIn('status', ['cancelled', 'completed'])
+                    ->whereDate('check_in', '<=', $lastNightYmd)
+                    ->whereDate('check_out', '>', $firstNightYmd);
+            })
+            ->exists();
+    }
+
+    /**
+     * Xung đột đầy đủ: lịch room_booked_dates hoặc gán booking_rooms (đơn khác, kỳ chồng).
+     */
+    private function roomHasInventoryConflictForHoldRange(
+        int $roomId,
+        string $firstNightYmd,
+        string $lastNightYmd,
+        ?int $excludeBookingId = null
+    ): bool {
+        return $this->roomHasCalendarConflictFromOtherBookings($roomId, $firstNightYmd, $lastNightYmd, $excludeBookingId)
+            || $this->roomHasAssignmentConflictFromOtherBookings($roomId, $firstNightYmd, $lastNightYmd, $excludeBookingId);
     }
 
     /**
@@ -287,7 +339,66 @@ class RoomChangeService
         $first = Carbon::parse($checkIn)->toDateString();
         $last = Carbon::parse($checkOut)->copy()->subDay()->toDateString();
 
-        return ! $this->roomHasCalendarConflictFromOtherBookings($roomId, $first, $last, $excludeBookingId);
+        return ! $this->roomHasInventoryConflictForHoldRange($roomId, $first, $last, $excludeBookingId);
+    }
+
+    /**
+     * Danh sách phòng cho màn đổi phòng (admin/staff) — cùng logic loại trừ với {@see changeRoom()}.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getCandidateRoomsPayloadForChangeScreen(Booking $booking, ?int $oldRoomId = null): array
+    {
+        $booking->loadMissing('bookingRooms.room.roomType');
+
+        $bookingRoom = $oldRoomId
+            ? $booking->bookingRooms->firstWhere('room_id', $oldRoomId)
+            : null;
+        if (! $bookingRoom) {
+            $bookingRoom = $booking->bookingRooms->first();
+        }
+        if (! $bookingRoom) {
+            return [];
+        }
+
+        $excludeIds = $this->getExcludedRoomIdsForChange($booking);
+
+        $query = Room::with('roomType')
+            ->where('status', 'available')
+            ->excludeMaintenance();
+        if ($excludeIds !== []) {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        $totalGuests = (int) $bookingRoom->adults + (int) $bookingRoom->children_6_11;
+
+        return $query->get()
+            ->filter(static fn (Room $room) => $room->catalogueMaxGuests() >= $totalGuests)
+            ->map(function (Room $room) use ($bookingRoom) {
+                $rt = $room->roomType;
+                $base = (float) $room->catalogueBasePrice();
+
+                $breakdown = RoomOccupancyPricing::breakdown(
+                    $base,
+                    (int) $bookingRoom->adults,
+                    (int) $bookingRoom->children_6_11,
+                    (int) $bookingRoom->children_0_5,
+                    $rt
+                );
+
+                return [
+                    'id' => $room->id,
+                    'room_number' => $room->room_number ?? $room->name ?? 'N/A',
+                    'room_type' => $rt->name ?? 'N/A',
+                    'price' => $breakdown['base_price'],
+                    'price_per_night_full' => $breakdown['price_per_night'],
+                    'surcharge_per_night' => $breakdown['surcharge_per_night'],
+                    'capacity' => $rt->capacity ?? 0,
+                    'standard_capacity' => $rt->standard_capacity ?? $rt->capacity ?? 0,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -329,9 +440,9 @@ class RoomChangeService
         }
 
         [$holdFirstNight, $holdLastNight] = $this->roomChangeHoldNightRangeInclusive($booking);
-        if ($this->roomHasCalendarConflictFromOtherBookings($newRoomId, $holdFirstNight, $holdLastNight, $booking->id)) {
+        if ($this->roomHasInventoryConflictForHoldRange($newRoomId, $holdFirstNight, $holdLastNight, $booking->id)) {
             throw new \Exception(
-                'Phòng mới đã có đơn khác giữ lịch trùng ngày với đơn #'.$booking->id.'.'
+                'Phòng mới không khả dụng trong khoảng ngày cần thiết (đơn khác đã giữ lịch hoặc đã được gán phòng vật lý).'
             );
         }
 
@@ -369,9 +480,9 @@ class RoomChangeService
             $newRoom = Room::with('roomType')->whereKey($newRoomId)->lockForUpdate()->firstOrFail();
             $oldRoom = Room::whereKey($oldRoomId)->first();
 
-            if ($this->roomHasCalendarConflictFromOtherBookings($newRoomId, $holdFirstNight, $holdLastNight, $bookingLocked->id)) {
+            if ($this->roomHasInventoryConflictForHoldRange($newRoomId, $holdFirstNight, $holdLastNight, $bookingLocked->id)) {
                 throw new \Exception(
-                    'Phòng mới vừa bị giữ bởi đơn khác trên cùng khoảng ngày — chọn phòng khác.'
+                    'Phòng mới vừa không còn trống (đơn khác đã giữ lịch hoặc gán phòng) — chọn phòng khác.'
                 );
             }
 

@@ -15,29 +15,55 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create admin role if it doesn't exist
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $staffRole = Role::firstOrCreate(['name' => 'staff']);
-        $guestRole = Role::firstOrCreate(['name' => 'guest']);
+        Role::firstOrCreate(['name' => 'guest']);
+        $customerRole = Role::firstOrCreate(['name' => 'customer']);
 
-        // Create admin user
+        $demoPassword = Hash::make('Admin@123');
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@hotel.local'],
             [
                 'full_name' => 'Admin User',
-                'password' => Hash::make('Admin@123'),
+                'password' => $demoPassword,
                 'phone' => '0123456789',
                 'status' => 'active',
             ]
         );
-
-        // Attach admin role
-        if (!$admin->roles()->where('name', 'admin')->exists()) {
+        if (! $admin->roles()->where('name', 'admin')->exists()) {
             $admin->roles()->attach($adminRole->id);
         }
 
-        echo "\n✅ Admin user created successfully!";
-        echo "\nEmail: admin@hotel.local";
-        echo "\nPassword: Admin@123\n";
+        $staff = User::firstOrCreate(
+            ['email' => 'staff@hotel.local'],
+            [
+                'full_name' => 'Staff User',
+                'password' => $demoPassword,
+                'phone' => '0123456790',
+                'status' => 'active',
+            ]
+        );
+        if (! $staff->roles()->where('name', 'staff')->exists()) {
+            $staff->roles()->attach($staffRole->id);
+        }
+
+        $customer = User::firstOrCreate(
+            ['email' => 'customer@hotel.local'],
+            [
+                'full_name' => 'Khách demo',
+                'password' => $demoPassword,
+                'phone' => '0123456791',
+                'status' => 'active',
+            ]
+        );
+        if ($customerRole && ! $customer->roles()->where('name', 'customer')->exists()) {
+            $customer->roles()->attach($customerRole->id);
+        }
+
+        echo "\n✅ Demo users (mật khẩu chung: Admin@123)";
+        echo "\n  • admin    — admin@hotel.local";
+        echo "\n  • staff    — staff@hotel.local";
+        echo "\n  • customer — customer@hotel.local (đăng nhập site khách)\n";
     }
 }

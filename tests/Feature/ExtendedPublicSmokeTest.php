@@ -18,18 +18,31 @@ class ExtendedPublicSmokeTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_search_page_loads(): void
+    public function test_search_page_loads_with_date_query(): void
     {
         $this->seedMinimalHotelCatalog();
+        $checkIn = now()->addDay()->toDateString();
+        $checkOut = now()->addDays(4)->toDateString();
 
-        $response = $this->get(route('rooms.search'));
+        $response = $this->get(route('rooms.search', [
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+        ]));
 
         $response->assertOk();
     }
 
-    public function test_simple_booking_form_loads(): void
+    public function test_simple_booking_form_loads_with_required_query(): void
     {
-        $response = $this->get(route('bookings.create-simple'));
+        $room = $this->seedAvailableRoom();
+        $checkIn = now()->addDay()->toDateString();
+        $checkOut = now()->addDays(4)->toDateString();
+
+        $response = $this->get(route('bookings.create-simple', [
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'room_id' => $room->id,
+        ]));
 
         $response->assertOk();
     }
