@@ -129,6 +129,14 @@
                         <div class="mb-0 d-none" id="otherReasonDiv">
                             <textarea name="other_reason" class="form-control" placeholder="Nhập lý do chi tiết..." rows="2"></textarea>
                         </div>
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" name="is_emergency" id="rc_is_emergency" value="1">
+                            <label class="form-check-label" for="rc_is_emergency">Khẩn cấp (bỏ qua giới hạn giờ đổi phòng)</label>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="keep_price" id="rc_keep_price" value="1">
+                            <label class="form-check-label" for="rc_keep_price">Giữ nguyên đơn giá hiện tại trên dòng phòng</label>
+                        </div>
                     </div>
                 </div>
             </div>

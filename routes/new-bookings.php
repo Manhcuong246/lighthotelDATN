@@ -1,9 +1,12 @@
 <?php
 
+/**
+ * Wizard đặt phòng (URL prefix /bookings): NewBookingController.
+ * Trùng prefix với một số route BookingController trong web.php (POST /bookings …); Laravel ghép route theo thứ tự đăng ký — đổi URL cần kiểm tra route:list và link Blade.
+ */
 use App\Http\Controllers\NewBookingController;
 use Illuminate\Support\Facades\Route;
 
-// Routes cho hệ thống đặt phòng mới
 Route::prefix('bookings')->name('bookings.')->group(function () {
     // Trang chủ đặt phòng
     Route::get('/', [NewBookingController::class, 'index'])->name('index');

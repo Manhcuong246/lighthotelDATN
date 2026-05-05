@@ -16,6 +16,10 @@ return new class extends Migration
         }
         Schema::create('refund_logs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('booking_id')->constrained()->onDelete('cascade');
+            $table->decimal('refund_amount', 12, 2)->nullable();
+            $table->string('refund_type', 50)->nullable();
+            $table->text('reason')->nullable();
             $table->timestamps();
         });
     }

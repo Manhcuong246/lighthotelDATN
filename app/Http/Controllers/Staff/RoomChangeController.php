@@ -143,7 +143,7 @@ class RoomChangeController extends AdminRoomChangeController
                     ->with('error', 'Đơn #'.$bookingId.' chưa gán phòng vật lý. Vui lòng gán phòng trong mục Đặt phòng trước khi đổi phòng.');
             }
 
-            $remainingNights = $this->calculateRemainingNights($booking);
+            $remainingNights = app(RoomChangeService::class)->calculateRemainingNights($booking);
         }
 
         return view('staff.room-changes.create', compact('booking', 'currentBookingRoom', 'remainingNights'));

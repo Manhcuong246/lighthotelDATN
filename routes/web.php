@@ -26,6 +26,13 @@ use App\Http\Controllers\Admin\RefundAdminController;
 use App\Http\Controllers\Admin\SiteContentAdminController;
 use App\Http\Controllers\DynamicPageController;
 
+/*
+| Hai luồng đặt phòng công khai (không đăng nhập admin):
+| - Luồng "classic": POST /bookings, /bookings/simple … → BookingController (tìm phòng / chi tiết phòng trên site).
+| - Luồng "wizard": GET|POST /bookings/* trong routes/new-bookings.php → NewBookingController (multi-step /bookings).
+| Không gộp controller để tránh phá tương thích URL hiện có; khi sửa logic giá hoặc chỗ trống phòng phải kiểm tra cả hai.
+*/
+
 // Serve storage files (fallback when symlink fails or PHP built-in server)
 Route::get('/storage/{path}', function (string $path) {
     $path = str_replace(['../', '..\\'], '', $path);
@@ -65,7 +72,9 @@ Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('boo
 Route::get('/bookings/{booking}/cancel', [BookingCancellationController::class, 'show'])->name('bookings.cancel');
 Route::post('/bookings/{booking}/cancel', [BookingCancellationController::class, 'cancel'])->name('bookings.cancel.post');
 Route::get('/bookings/{booking}/policy', [BookingCancellationController::class, 'getPolicy'])->name('bookings.policy');
-Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])->name('coupons.verify');
+Route::post('/coupons/verify', [\App\Http\Controllers\CouponController::class, 'verify'])
+    ->middleware('throttle:coupon-verify')
+    ->name('coupons.verify');
 
 Route::get('/rooms/{room}/review', [ReviewController::class, 'create'])->name('reviews.create')->middleware('auth');
 Route::post('/rooms/{room}/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
@@ -131,7 +140,8 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/bookings/{booking}/available-rooms-for-change', [BookingAdminController::class, 'getAvailableRoomsForChange'])->name('bookings.available-rooms-for-change');
     Route::post('/bookings/{booking}/cancel', [BookingAdminController::class, 'cancel'])->name('bookings.cancel');
 
-    Route::middleware(['admin_only'])->group(function () {
+    // Chỉ tài khoản có role admin (không gồm staff): sửa/xóa booking khỏi DB — thao tác đặc quyền, tránh nhầm với kiểm tra staff ở các route vận hành khác.
+    Route::middleware(['only_admin'])->group(function () {
         Route::get('/bookings/{booking}/edit', [BookingAdminController::class, 'edit'])->name('bookings.edit');
         Route::put('/bookings/{booking}', [BookingAdminController::class, 'update'])->name('bookings.update');
         Route::delete('/bookings/{booking}', [BookingAdminController::class, 'destroy'])->name('bookings.destroy');

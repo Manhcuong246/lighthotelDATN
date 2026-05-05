@@ -46,8 +46,14 @@ class VnPayService
         ?string $bankCode = null
     ): string {
         $vnpUrl = config('vnpay.url');
-        $vnpTmnCode = config('vnpay.tmn_code');
-        $vnpHashSecret = config('vnpay.hash_secret');
+        $vnpTmnCode = (string) config('vnpay.tmn_code', '');
+        $vnpHashSecret = (string) config('vnpay.hash_secret', '');
+
+        if ($vnpTmnCode === '' || $vnpHashSecret === '') {
+            throw new \RuntimeException(
+                'VNPay chưa cấu hình: đặt VNPAY_TMN_CODE và VNPAY_HASH_SECRET trong .env, hoặc dùng thanh toán tiền mặt / chuyển khoản.'
+            );
+        }
 
         // Thời điểm tạo phiên = lúc gọi hàm (khách vừa bấm “Đặt” hoặc vừa mở link thanh toán).
         // App timezone (config/app.php) phải là GMT+7 theo tài liệu VNPay cho yyyyMMddHHmmss.

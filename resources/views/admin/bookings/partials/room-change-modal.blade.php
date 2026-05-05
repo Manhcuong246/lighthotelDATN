@@ -84,6 +84,14 @@
                         </label>
                         <textarea name="reason" class="form-control" rows="2" placeholder="Ví dụ: Khách yêu cầu đổi phòng rộng hơn, Phòng hỏng thiết bị..." required></textarea>
                     </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="is_emergency" id="{{ $modalId }}_emergency" value="1">
+                        <label class="form-check-label" for="{{ $modalId }}_emergency">Khẩn cấp (bỏ qua giới hạn giờ đổi phòng nếu hệ thống bật)</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="keep_price" id="{{ $modalId }}_keepprice" value="1">
+                        <label class="form-check-label" for="{{ $modalId }}_keepprice">Giữ nguyên đơn giá đang áp dụng (không tính lại theo giá catalogue phòng mới)</label>
+                    </div>
 
                     <!-- Cảnh báo -->
                     <div class="alert alert-warning d-flex align-items-center">

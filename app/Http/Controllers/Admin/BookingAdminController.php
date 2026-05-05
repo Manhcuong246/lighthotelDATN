@@ -3705,7 +3705,8 @@ class BookingAdminController extends Controller
                 $request->reason,
                 Auth::id(),
                 null,
-                false
+                $request->boolean('is_emergency'),
+                $request->boolean('keep_price')
             );
 
             $message = 'Đổi phòng thành công!';

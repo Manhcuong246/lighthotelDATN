@@ -7,6 +7,9 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,7 +30,10 @@ class AppServiceProvider extends ServiceProvider
 
         Paginator::useBootstrapFive();
         $this->app['router']->aliasMiddleware('admin', \App\Http\Middleware\AdminMiddleware::class);
-        $this->app['router']->aliasMiddleware('admin.only', \App\Http\Middleware\AdminOnlyMiddleware::class);
+
+        RateLimiter::for('coupon-verify', function (Request $request): Limit {
+            return Limit::perMinute(30)->by((string) $request->ip());
+        });
 
         View::composer(
             ['layouts.app', 'pages.*', 'layouts.admin'],

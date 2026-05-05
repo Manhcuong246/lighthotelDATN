@@ -1,8 +1,9 @@
 <?php
 
 return [
-    'tmn_code' => env('VNPAY_TMN_CODE', 'RAN82HXP'),
-    'hash_secret' => env('VNPAY_HASH_SECRET', '4EBRZ3S70W7RVBK5RZKZBSN8T8YZYGKZ'),
+    /** Để trống trong .env = không cấu hình VNPay (chỉ local / chỉ tiền mặt). */
+    'tmn_code' => (string) env('VNPAY_TMN_CODE', ''),
+    'hash_secret' => (string) env('VNPAY_HASH_SECRET', ''),
     'url' => env('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
     /** IP gửi kèm khi tạo link thanh toán từ server (không có IP khách). */
     'server_ip' => env('VNPAY_SERVER_IP', '127.0.0.1'),

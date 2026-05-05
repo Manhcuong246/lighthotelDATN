@@ -1,4 +1,4 @@
-# Light Hotel — tunnel HTTPS tới nginx Docker (hoặc php artisan serve).
+# Light Hotel — tùy chọn: tunnel HTTPS tới nginx Docker (hoặc php artisan serve). Chạy local thường không cần file này.
 #
 # 1) Đăng ký / authtoken (một lần): https://dashboard.ngrok.com/get-started/your-authtoken
 #    ngrok config add-authtoken <token>

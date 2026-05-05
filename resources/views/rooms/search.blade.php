@@ -971,12 +971,23 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify({ code: code })
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(async response => {
+            let data = {};
+            try {
+                data = await response.json();
+            } catch (e) { /* ignore */ }
+            if (!response.ok) {
+                currentDiscountPercent = 0;
+                const msg = (data.errors && data.errors.code && data.errors.code[0]) || data.message || 'Không thể kiểm tra mã giảm giá.';
+                couponMessage.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-circle-fill"></i> ${msg}</span>`;
+                updateSummary();
+                return;
+            }
             if (data.success) {
                 currentDiscountPercent = data.discount_percent;
                 couponMessage.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill"></i> ${data.message}</span>`;

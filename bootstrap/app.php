@@ -36,9 +36,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // Admin
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
-            'admin_only' => \App\Http\Middleware\AdminOnlyMiddleware::class,
-            'admin.only' => \App\Http\Middleware\AdminOnlyMiddleware::class,
-
             // Staff (THÊM MỚI)
             'staff' => \App\Http\Middleware\StaffMiddleware::class,
 

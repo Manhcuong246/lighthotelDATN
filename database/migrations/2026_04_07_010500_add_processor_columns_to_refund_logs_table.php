@@ -16,10 +16,12 @@ return new class extends Migration
         }
 
         if (! Schema::hasColumn('refund_logs', 'processed_by')) {
-            Schema::table('refund_logs', function (Blueprint $table) {
+            $after = Schema::hasColumn('refund_logs', 'reason') ? 'reason' : 'updated_at';
+
+            Schema::table('refund_logs', function (Blueprint $table) use ($after) {
                 $table->foreignId('processed_by')
                     ->nullable()
-                    ->after('reason')
+                    ->after($after)
                     ->constrained('users')
                     ->nullOnDelete();
             });

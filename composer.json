@@ -26,7 +26,11 @@
             "Database\\Seeders\\": "database/seeders/"
         }
     },
-    "autoload-dev": {},
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
     "scripts": {
         "setup": [
             "composer install",
@@ -40,6 +44,9 @@
         ],
         "flush": [
             "@php artisan optimize:clear"
+        ],
+        "test": [
+            "php vendor/bin/phpunit -c phpunit.xml"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

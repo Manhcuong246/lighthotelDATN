@@ -2,25 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\VerifyCouponCodeRequest;
 use App\Models\Coupon;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 
 class CouponController extends Controller
 {
     /**
      * Verify coupon code and return discount percentage.
      */
-    public function verify(Request $request)
+    public function verify(VerifyCouponCodeRequest $request): JsonResponse
     {
-        $code = $request->input('code');
-        
-        if (empty($code)) {
-            return response()->json([
-                'success' => false, 
-                'message' => 'Vui lòng nhập mã giảm giá.'
-            ]);
-        }
+        $code = $request->validated('code');
 
         $coupon = Coupon::where('code', $code)
             ->where('is_active', true)
@@ -30,18 +24,18 @@ class CouponController extends Controller
             })
             ->first();
 
-        if (!$coupon) {
+        if (! $coupon) {
             return response()->json([
-                'success' => false, 
-                'message' => 'Mã giảm giá không hợp lệ, đã hết hạn hoặc không còn hiệu lực.'
+                'success' => false,
+                'message' => 'Mã giảm giá không hợp lệ, đã hết hạn hoặc không còn hiệu lực.',
             ]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Áp dụng mã giảm giá: -' . $coupon->discount_percent . '%',
-            'discount_percent' => (float)$coupon->discount_percent,
-            'code' => $coupon->code
+            'message' => 'Áp dụng mã giảm giá: -'.$coupon->discount_percent.'%',
+            'discount_percent' => (float) $coupon->discount_percent,
+            'code' => $coupon->code,
         ]);
     }
 }

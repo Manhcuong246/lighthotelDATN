@@ -1,7 +1,7 @@
-# --- Docker nhanh (khách sạn / Laravel) ---
-# 1) Sao chép: cp .env.example .env rồi chỉnh .env (APP_URL, APP_PORT, DB_*…). APP_URL chỉ nằm trong .env (không inject từ compose).
+# --- Docker nhanh (khách sạn / Laravel) — chạy local ---
+# 1) Sao chép: cp .env.example .env rồi chỉnh .env (APP_URL khớp http://127.0.0.1:${APP_PORT}, DB_*…). APP_URL chỉ trong .env (compose không inject).
 # 2) Chạy:      docker compose up -d --build
-# 3) Mở web:    cổng APP_PORT (vd. http://127.0.0.1:8088). Đổi ngrok → cập nhật APP_URL trong .env + php artisan optimize:clear (không bắt buộc --force-recreate app nữa).
+# 3) Mở web:    http://127.0.0.1:${APP_PORT:-8080} (không dấu / cuối trong APP_URL). Sau khi đổi .env: php artisan config:clear (trong container: docker compose exec app php artisan config:clear).
 # PhpMyAdmin:  http://127.0.0.1:${PMA_PORT:-8081} — đăng nhập user DB Laravel (vd. app / DB_PASSWORD) hoặc root / DB_ROOT_PASSWORD
 # Artisan trên host (MySQL trong Docker): DB_HOST=127.0.0.1 DB_USERNAME=app DB_PASSWORD=app_password php artisan ...
 #
@@ -46,7 +46,7 @@ services:
     entrypoint: ["/bin/sh", "/var/www/html/docker/entrypoint-app.sh"]
     environment:
       # Không set APP_URL / APP_ENV / APP_DEBUG tại đây: Laravel đọc từ file .env đã mount.
-      # Nếu set ở đây, biến bị "đóng" lúc tạo container → đổi APP_URL (ngrok) trong .env không có hiệu lực
+      # Nếu set ở đây, biến bị "đóng" lúc tạo container → đổi APP_URL trong .env không có hiệu lực
       # cho tới khi --force-recreate. Chỉ giữ biến cần khớp dịch vụ Docker (MySQL).
       DB_CONNECTION: ${DB_CONNECTION:-mysql}
       DB_HOST: mysql

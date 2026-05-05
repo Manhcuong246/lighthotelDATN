@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomChangeHistory;
-use App\Models\BookingSurcharge;
 use App\Models\BookingRoom;
 use App\Models\RoomBookedDate;
 use App\Services\RoomChangeService;
@@ -161,7 +160,7 @@ class RoomChangeController extends Controller
                     ->with('error', 'Đơn #'.$bookingId.' chưa gán phòng vật lý. Vui lòng gán phòng trong mục Đặt phòng trước khi đổi phòng.');
             }
 
-            $remainingNights = $this->calculateRemainingNights($booking);
+            $remainingNights = app(RoomChangeService::class)->calculateRemainingNights($booking);
         }
 
         return view('admin.room-changes.create', compact('booking', 'currentBookingRoom', 'remainingNights'));
@@ -368,7 +367,8 @@ class RoomChangeController extends Controller
                 $reason,
                 auth()->id(),
                 null,
-                false
+                $request->boolean('is_emergency'),
+                $request->boolean('keep_price')
             );
         } catch (\Throwable $e) {
             Log::error('Room change error: ' . $e->getMessage());
@@ -445,15 +445,6 @@ class RoomChangeController extends Controller
                     RoomBookedDate::replaceBookingRoomNights($booking->id, $toRoom->id, $fromRoom->id, $period);
                 }
 
-                $delta = (float) ($history->price_difference ?? 0);
-
-                BookingSurcharge::create([
-                    'booking_id' => $booking->id,
-                    'reason' => 'Hoàn tác đổi phòng ('.$toRoom->room_number.' → '.$fromRoom->room_number.')',
-                    'quantity' => 1,
-                    'amount' => -$delta,
-                ]);
-
                 $booking->refresh();
                 $roomsTotal = (float) $booking->bookingRooms()->sum('subtotal');
                 $servicesTotal = (float) $booking->bookingServices()->get()->sum(static fn ($bs) => $bs->quantity * $bs->price);
@@ -487,13 +478,4 @@ class RoomChangeController extends Controller
         }
     }
 
-    protected function calculateRemainingNights($booking)
-    {
-        $now = Carbon::now()->startOfDay();
-        $checkOut = Carbon::parse($booking->check_out)->startOfDay();
-        
-        if ($now >= $checkOut) return 0;
-        
-        return $now->diffInDays($checkOut);
-    }
 }
