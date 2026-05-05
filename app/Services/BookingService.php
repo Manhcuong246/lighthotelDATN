@@ -6,7 +6,6 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomType;
-use App\Models\RoomBookedDate;
 use App\Models\User;
 use App\Models\Coupon;
 use App\Models\BookingRoom;
@@ -61,12 +60,11 @@ class BookingService
             $roomTypes[$index] = $roomType;
             $pricingRoom = Room::query()
                 ->where('room_type_id', $roomType->id)
-                ->where('status', 'available')
-                ->excludeMaintenance()
+                ->vacantForGuestBookingWindow($checkIn->toDateString(), $checkOut->toDateString())
                 ->orderBy('id')
                 ->first();
             if (! $pricingRoom) {
-                throw new BookingException('Loại phòng "'.$roomType->name.'" chưa có phòng trống (không bảo trì) để báo giá.');
+                throw new BookingException('Loại phòng "'.$roomType->name.'" không còn phòng trống trong khoảng ngày đã chọn (hoặc đang có khách).');
             }
             $pricingRooms[$index] = $pricingRoom;
         }
@@ -205,8 +203,7 @@ class BookingService
             foreach ($neededByType as $typeId => $needQty) {
                 Room::query()
                     ->where('room_type_id', (int) $typeId)
-                    ->where('status', 'available')
-                    ->excludeMaintenance()
+                    ->vacantForGuestBookingWindow($checkIn->toDateString(), $checkOut->toDateString())
                     ->lockForUpdate()
                     ->pluck('id');
 
@@ -367,17 +364,12 @@ class BookingService
                 continue;
             }
 
-            $bookedRoomIds = RoomBookedDate::query()
-                ->whereIn('booked_date', $dates)
-                ->pluck('room_id')
-                ->unique()
-                ->toArray();
-
             $physicalAvailable = Room::query()
                 ->where('room_type_id', $roomTypeId)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->whereNotIn('id', $bookedRoomIds)
+                ->vacantForGuestBookingWindow(
+                    Carbon::parse((string) $booking->check_in)->toDateString(),
+                    Carbon::parse((string) $booking->check_out)->toDateString()
+                )
                 ->count();
             $unassigned = BookingRoom::unassignedCountForRoomTypeBetween(
                 $roomTypeId,
@@ -408,29 +400,23 @@ class BookingService
     }
 
     /**
-     * Phòng vật lý đang available và không có RoomBookedDate trong các đêm đó.
+     * Đếm phòng vật lý trống thật trong cửa sổ ngày (đồng bộ với {@see Room::scopeVacantForGuestBookingWindow}).
      *
      * @param  \Illuminate\Support\Collection<int, string>  $dates
      */
     private function countPhysicalFreeRoomsOfType(int $roomTypeId, Collection $dates): int
     {
-        $busyRoomIds = RoomBookedDate::query()
-            ->whereIn('booked_date', $dates->all())
-            ->distinct()
-            ->pluck('room_id')
-            ->filter()
-            ->values()
-            ->all();
-
-        $q = Room::query()
-            ->where('room_type_id', $roomTypeId)
-            ->where('status', 'available')
-            ->excludeMaintenance();
-        if ($busyRoomIds !== []) {
-            $q->whereNotIn('id', $busyRoomIds);
+        if ($dates->isEmpty()) {
+            return 0;
         }
 
-        return (int) $q->count();
+        $checkIn = (string) $dates->min();
+        $checkOut = Carbon::parse((string) $dates->max())->addDay()->toDateString();
+
+        return (int) Room::query()
+            ->where('room_type_id', $roomTypeId)
+            ->vacantForGuestBookingWindow($checkIn, $checkOut)
+            ->count();
     }
 
     /**

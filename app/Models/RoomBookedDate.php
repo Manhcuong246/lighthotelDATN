@@ -51,6 +51,29 @@ class RoomBookedDate extends Model
     }
 
     /**
+     * Giải phóng ô lịch (room_id + booked_date) vẫn tồn tại dù logic “phòng bận” đã không còn tính các đơn đó
+     * (đơn completed/cancelled hoặc booking đã soft-delete). UNIQUE(room_id, booked_date) không biết booking_id —
+     * nếu không xóa, INSERT cho đơn mới sẽ 1062 dù màn hình vẫn báo phòng trống.
+     */
+    public static function purgeStaleCalendarSlotsForRoomDates(int $roomId, array $dates): void
+    {
+        $dates = static::normalizeNightDateStrings($dates);
+        if ($dates === []) {
+            return;
+        }
+
+        static::query()
+            ->where('room_id', $roomId)
+            ->whereIn('booked_date', $dates)
+            ->where(function ($q) {
+                $q->whereDoesntHave('booking')
+                    ->orWhereHas('booking', fn ($b) => $b->onlyTrashed())
+                    ->orWhereHas('booking', fn ($b) => $b->whereIn('status', ['cancelled', 'completed', 'checked_out']));
+            })
+            ->delete();
+    }
+
+    /**
      * Chuyển các đêm đặt của một đơn từ phòng cũ sang phòng mới mà không dùng UPDATE `room_id`:
      * tránh trùng UNIQUE(room_id, booked_date) khi đã có dòng trùng đêm trên phòng đích (dữ liệu lệch / đổi phòng trước đó).
      */
@@ -72,6 +95,8 @@ class RoomBookedDate extends Model
             ->where('room_id', $newRoomId)
             ->whereIn('booked_date', $dates)
             ->delete();
+
+        static::purgeStaleCalendarSlotsForRoomDates($newRoomId, $dates);
 
         $now = now();
         $rows = [];
@@ -120,6 +145,7 @@ class RoomBookedDate extends Model
             if (! $br->room_id) {
                 continue;
             }
+            static::purgeStaleCalendarSlotsForRoomDates((int) $br->room_id, $dates);
             foreach ($dates as $ds) {
                 $rows[] = [
                     'room_id' => $br->room_id,

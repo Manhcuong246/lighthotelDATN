@@ -45,6 +45,9 @@ class Booking extends Model
         'discount_amount' => 0,
     ];
 
+    /** Không còn chiếm chỗ phòng vật lý / ô lịch khi đếm phòng cho đặt phòng & hiển thị catalogue */
+    public const STATUSES_RELEASE_ROOM_INVENTORY = ['cancelled', 'completed', 'checked_out', 'cancel_requested'];
+
     protected $fillable = [
         'user_id',
         'room_id',

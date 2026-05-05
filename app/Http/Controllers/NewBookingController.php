@@ -35,16 +35,8 @@ class NewBookingController extends Controller
         $checkIn = $request->check_in;
         $checkOut = $request->check_out;
 
-        // Tìm phòng trống (loại trừ bảo trì và phòng không available)
         $availableRooms = Room::query()
-            ->where('status', 'available')
-            ->excludeMaintenance()
-            ->whereDoesntHave('bookedDates', function ($query) use ($checkIn, $checkOut) {
-                $query->whereBetween('booked_date', [
-                    $checkIn,
-                    Carbon::parse($checkOut)->subDay()->toDateString()
-                ]);
-            })
+            ->vacantForGuestBookingWindow($checkIn, $checkOut)
             ->with('roomType')
             ->get();
 

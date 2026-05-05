@@ -530,13 +530,18 @@ class BookingAdminController extends Controller
             return back()->withErrors(['room_type_id' => 'Vui lòng chọn loại phòng.'])->withInput();
         }
 
+        $checkIn = Carbon::parse($validated['check_in']);
+        $checkOut = Carbon::parse($validated['check_out']);
+        $winStart = $checkIn->toDateString();
+        $winEnd = $checkOut->toDateString();
+
         $pricingRoom = null;
+        $roomTypeId = null;
         if (! empty($validated['room_type_id'])) {
             $roomTypeId = (int) $validated['room_type_id'];
             $pricingRoom = Room::query()
                 ->where('room_type_id', $roomTypeId)
-                ->where('status', 'available')
-                ->excludeMaintenance()
+                ->vacantForGuestBookingWindow($winStart, $winEnd)
                 ->orderBy('id')
                 ->first()
                 ?? Room::firstCatalogueRoomForRoomType($roomTypeId);
@@ -545,22 +550,16 @@ class BookingAdminController extends Controller
             if ($selectedRoom->isInMaintenance()) {
                 return back()->withErrors(['room_id' => 'Không thể đặt phòng đang bảo trì.'])->withInput();
             }
+            if (! Room::query()->whereKey($selectedRoom->id)->vacantForGuestBookingWindow($winStart, $winEnd)->exists()) {
+                return back()->withErrors(['room_id' => 'Phòng đã chọn đang có khách hoặc không còn trống trong khoảng ngày này.'])->withInput();
+            }
             $roomTypeId = (int) $selectedRoom->room_type_id;
-            $pricingRoom = Room::query()
-                ->where('room_type_id', $roomTypeId)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->orderBy('id')
-                ->first()
-                ?? $selectedRoom;
+            $pricingRoom = $selectedRoom;
         }
 
         if (! $pricingRoom || ! $roomTypeId) {
             return back()->withErrors(['room_type_id' => 'Loại phòng không hợp lệ hoặc chưa có phòng mẫu để báo giá.'])->withInput();
         }
-
-        $checkIn = new \Carbon\Carbon($validated['check_in']);
-        $checkOut = new \Carbon\Carbon($validated['check_out']);
 
         $adults = $validated['adults'];
         $children611 = $validated['children_6_11'] ?? 0;
@@ -578,16 +577,9 @@ class BookingAdminController extends Controller
         }
 
         if (! $deferRooms) {
-            $bookedRoomIds = RoomBookedDate::query()
-                ->whereIn('booked_date', $dates->all())
-                ->pluck('room_id')
-                ->unique()
-                ->toArray();
             $physicalAvailable = Room::query()
                 ->where('room_type_id', $roomTypeId)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->whereNotIn('id', $bookedRoomIds)
+                ->vacantForGuestBookingWindow($winStart, $winEnd)
                 ->count();
             $unassigned = BookingRoom::unassignedCountForRoomTypeBetween(
                 $roomTypeId,
@@ -1184,6 +1176,20 @@ class BookingAdminController extends Controller
         $booking->status = 'completed';
         $booking->save();
 
+        RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+        $releasedRoomIds = $booking->bookingRooms()
+            ->whereNotNull('room_id')
+            ->pluck('room_id')
+            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+        if ($releasedRoomIds !== []) {
+            Room::whereIn('id', $releasedRoomIds)->update(['status' => 'available']);
+        }
+
         // Cập nhật trạng thái tất cả khách thành checked_out
         $booking->guests()->update(['checkin_status' => 'checked_out']);
         $booking->bookingGuests()->update(['status' => 'checked_out', 'checkin_status' => 'checked_out']);
@@ -1548,33 +1554,20 @@ class BookingAdminController extends Controller
             return response()->json(['error' => 'Thiếu ngày check-in hoặc check-out'], 400);
         }
 
-        // Get all rooms with their types (exclude maintenance rooms)
         $rooms = Room::with('roomType')
-            ->where('status', 'available')
-            ->excludeMaintenance()
+            ->vacantForGuestBookingWindow($checkIn, $checkOut)
             ->get();
 
-        // Get booked dates in range
         $period = CarbonPeriod::create($checkIn, Carbon::parse($checkOut)->subDay());
         $dates = [];
         foreach ($period as $date) {
             $dates[] = $date->toDateString();
         }
 
-        $bookedRoomIds = RoomBookedDate::whereIn('booked_date', $dates)
-            ->pluck('room_id')
-            ->unique()
-            ->toArray();
-
         // Group by room type
         $roomTypes = [];
         foreach ($rooms as $room) {
             /** @var Room $room */
-            // Skip if room is already booked
-            if (in_array($room->id, $bookedRoomIds)) {
-                continue;
-            }
-
             $typeId = $room->room_type_id;
             if (!isset($roomTypes[$typeId])) {
                 $roomTypes[$typeId] = [
@@ -2460,13 +2453,22 @@ class BookingAdminController extends Controller
         $totalGuests = 0;
         $calculatedRoomData = [];
 
+        $sortedDates = array_values(array_unique($dates));
+        sort($sortedDates);
+        $windowStart = $sortedDates[0] ?? null;
+        $lastNight = $sortedDates !== [] ? (string) $sortedDates[array_key_last($sortedDates)] : null;
+        $windowEnd = $lastNight !== null && $lastNight !== ''
+            ? Carbon::parse($lastNight)->addDay()->toDateString()
+            : null;
+
         foreach ($roomsData as $roomIndex => $roomData) {
             $roomTypeId = $roomData['room_type_id'];
-            $room = Room::where('room_type_id', $roomTypeId)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->first()
-                ?? Room::firstCatalogueRoomForRoomType($roomTypeId);
+            $room = $windowStart && $windowEnd
+                ? Room::where('room_type_id', $roomTypeId)
+                    ->vacantForGuestBookingWindow($windowStart, $windowEnd)
+                    ->first()
+                : null;
+            $room = $room ?? Room::firstCatalogueRoomForRoomType($roomTypeId);
 
             $basePrice = (float) ($room ? $room->catalogueBasePrice() : 0);
             $roomType = $room?->roomType;
@@ -2509,17 +2511,12 @@ class BookingAdminController extends Controller
             $roomTypeId = (int) $calculated['room_type_id'];
             $quantity = (int) $calculated['quantity'];
 
-            $bookedRoomIds = RoomBookedDate::query()
-                ->whereIn('booked_date', $dates)
-                ->pluck('room_id')
-                ->unique()
-                ->toArray();
-
             $physicalAvailable = Room::query()
                 ->where('room_type_id', $roomTypeId)
-                ->where('status', 'available')
-                ->excludeMaintenance()
-                ->whereNotIn('id', $bookedRoomIds)
+                ->vacantForGuestBookingWindow(
+                    (string) $booking->check_in,
+                    (string) $booking->check_out
+                )
                 ->count();
             $unassigned = BookingRoom::unassignedCountForRoomTypeBetween(
                 $roomTypeId,
@@ -3466,6 +3463,18 @@ class BookingAdminController extends Controller
         $booking->status = 'checked_in';
         $booking->actual_check_in = Carbon::now();
         $booking->save();
+
+        $occupiedIds = $booking->bookingRooms()
+            ->whereNotNull('room_id')
+            ->pluck('room_id')
+            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+        if ($occupiedIds !== []) {
+            Room::whereIn('id', $occupiedIds)->update(['status' => 'booked']);
+        }
 
         /** @var \App\Models\User|null $user */
         $user      = Auth::user();

@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingLog;
 use App\Models\RefundLog;
 use App\Models\RefundRequest;
+use App\Models\Room;
 use App\Models\RoomBookedDate;
 use App\Support\CancellationRefundPolicy;
 use Illuminate\Support\Facades\DB;
@@ -170,6 +171,18 @@ class RefundService
 
             // 3. RELEASE ROOM DATES - Logic quan trọng nhất
             RoomBookedDate::where('booking_id', $booking->id)->delete();
+
+            $released = $booking->bookingRooms()
+                ->whereNotNull('room_id')
+                ->pluck('room_id')
+                ->map(static fn ($id) => (int) $id)
+                ->filter(static fn (int $id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+            if ($released !== []) {
+                Room::whereIn('id', $released)->update(['status' => 'available']);
+            }
 
             // 4. Log
             BookingLog::create([

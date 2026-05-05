@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -176,6 +178,44 @@ class Room extends Model
     public function scopeExcludeMaintenance($query)
     {
         return $query->where('status', '!=', 'maintenance');
+    }
+
+    /**
+     * Phòng được coi là có thể bán trong cửa sổ [check_in, check_out): trống PMS, không đêm bận trên lịch (đơn còn hiệu lực),
+     * không bị gán booking_rooms cho đơn chồng ngày (kể cả check-in quên cập nhật status phòng).
+     *
+     * @param  string  $checkInYmd  Ngày nhận (Y-m-d)
+     * @param  string  $checkOutYmd  Ngày trả — đêm cuối là check_out − 1 ngày
+     */
+    public function scopeVacantForGuestBookingWindow($query, string $checkInYmd, string $checkOutYmd)
+    {
+        $lastNight = Carbon::parse($checkOutYmd)->subDay()->toDateString();
+        $terminal = Booking::STATUSES_RELEASE_ROOM_INVENTORY;
+
+        return $query
+            ->where('status', 'available')
+            ->excludeMaintenance()
+            ->whereDoesntHave('bookedDates', function ($q) use ($checkInYmd, $lastNight, $terminal) {
+                $q->whereBetween('booked_date', [$checkInYmd, $lastNight])
+                    ->where(function ($inner) use ($terminal) {
+                        $inner->whereDoesntHave('booking')
+                            ->orWhereHas(
+                                'booking',
+                                fn ($b) => $b->whereNotIn('status', $terminal)
+                            );
+                    });
+            })
+            ->whereNotExists(function ($sub) use ($checkInYmd, $checkOutYmd, $terminal) {
+                $sub->select(DB::raw('1'))
+                    ->from('booking_rooms')
+                    ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
+                    ->whereColumn('booking_rooms.room_id', 'rooms.id')
+                    ->whereNotNull('booking_rooms.room_id')
+                    ->whereNull('bookings.deleted_at')
+                    ->whereNotIn('bookings.status', $terminal)
+                    ->whereDate('bookings.check_in', '<', $checkOutYmd)
+                    ->whereDate('bookings.check_out', '>', $checkInYmd);
+            });
     }
 
     /**

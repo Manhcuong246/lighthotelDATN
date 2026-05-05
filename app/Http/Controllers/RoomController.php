@@ -180,16 +180,9 @@ class RoomController extends Controller
         $checkOut = $request->check_out;
         $roomsNeeded = max(1, (int) $request->input('rooms', 1));
 
-        // 1) Tìm tất cả các phòng vật lý đang rảnh theo ngày
+        // 1) Phòng vật lý thực sự có thể đặt (trống + không lịch đơn hiệu lực + không gán đơn chồng ngày)
         $availableRoomsQuery = Room::query()
-            ->where('status', 'available')
-            ->excludeMaintenance()
-            ->whereDoesntHave('bookedDates', function ($q) use ($checkIn, $checkOut) {
-                $q->whereBetween('booked_date', [
-                    $checkIn,
-                    Carbon::parse($checkOut)->subDay()->toDateString()
-                ]);
-            })
+            ->vacantForGuestBookingWindow($checkIn, $checkOut)
             ->with(['amenities', 'images']);
 
         // 2) Filter theo loại phòng (room_type)
