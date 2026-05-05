@@ -30,6 +30,9 @@ COPY --from=vendor /app/vendor ./vendor
 COPY docker/php/zz-charset.ini /usr/local/etc/php/conf.d/zz-charset.ini
 COPY docker/php/zz-uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
 
+# Không dùng bootstrap/cache/*.php từ máy dev: image --no-dev không có laravel/pail nhưng cache cũ có thể vẫn ghi PailServiceProvider → Class not found.
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/config.php
+
 RUN php artisan package:discover --ansi
 
 RUN mkdir -p storage bootstrap/cache \
